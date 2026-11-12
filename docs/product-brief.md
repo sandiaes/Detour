@@ -110,11 +110,11 @@ Not in the MVP (see `docs/app-plan.md` for the phase each belongs to):
 
 | Assumption | Why it matters |
 |---|---|
-| The MVP serves a few imported pilot regions, not the whole world | Decides data and routing footprint (D2) |
-| The app is personal and non-commercial at first | Decides which free services are permitted (D1) |
-| One anonymous installation per device is enough | Avoids account features not in the brief (D5) |
+| The MVP serves imported pilot regions: Japan, Italy, Austria, Czechia and Hungary | Decided (D2) |
+| The app is open source and non-commercial | Decided (D1) |
+| One anonymous installation per device is enough | Approved (D5) |
 | Day start and end points are not tied to accommodation | Hotels are out of scope; days start at the first item |
-| Walking and driving are sufficient for the MVP | Public transport needs separate infrastructure (D4) |
+| Walking and driving are sufficient for the MVP | Approved (D4); weakest for multi-city trips in Japan |
 
 ## 10. Success criteria
 

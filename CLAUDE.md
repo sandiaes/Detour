@@ -10,9 +10,10 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Documentation only.** There is no application code, no build, and no commands to run. Do not
-scaffold a project or write production code until the owner approves the open decisions in
-`docs/app-plan.md` section 1 and asks for implementation.
+**Documentation only.** There is no application code, no build, and no commands to run. The
+decisions in `docs/app-plan.md` section 1 are recorded; hosting (D3) and the licence (D11) are
+still open. Do not scaffold a project or write production code until the owner asks for
+implementation.
 
 ## Read first
 

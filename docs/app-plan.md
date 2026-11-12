@@ -3,22 +3,60 @@
 Status: **proposed**. Nothing is implemented. Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
-## 1. Decisions required first
+## 1. Decisions
 
-These need the owner's approval. Phase 1 cannot start responsibly without D1, D2 and D5.
+Recorded on 2026-11-12 from the owner's answers.
 
-| ID | Decision | Recommendation | Blocks |
+| ID | Decision | Outcome | Status |
 |---|---|---|---|
-| D1 | Licence and commercial posture: is the project open source, and is it non-commercial for now? | State it explicitly. It decides whether Transitous and Open-Meteo's free API are permitted. | Phase 10, weather |
-| D2 | MVP coverage: imported pilot regions, or any destination worldwide? | One to three pilot regions chosen by the owner. | Phase 0 spikes, Phase 2 |
-| D3 | Backend hosting beyond a local machine | Decide after the Phase 0 sizing spike; hosting providers have not been evaluated. | Phase 9 |
-| D4 | Public transport outside the MVP | Yes: deliver it as Phase 10 through self-hosted MOTIS, or Transitous if D1 allows. | MVP scope |
-| D5 | Identity: anonymous installation token, no accounts | Yes for the MVP. | Phase 1 |
-| D6 | Weather | Exclude: it is not a stated product goal. Revisit after the MVP. | Scope |
-| D7 | OR-Tools | Adopt only if the Phase 0 spike shows better plans within the latency budget; keep the heuristic as fallback. | Phase 6 |
-| D8 | Map tiles: OpenFreeMap public instance now, self-hosted PMTiles as rehearsed fallback | Yes. | Phase 5 |
-| D9 | Photo storage: on-device first, cloud backup decided when the photo phase starts | Yes. | Phase 12 |
-| D10 | Restaurant prices: user-entered only; no price inferred from venue type; default band limits set in Phase 8 | Yes. | Phase 8 |
+| D1 | Licence and commercial posture | **Open source and non-commercial.** Free non-commercial services (Open-Meteo, Transitous) become permissible, subject to their other conditions. | Decided |
+| D2 | MVP coverage | **Pilot regions: Japan, Italy, and Central Europe (Austria, Czechia and Hungary at least).** | Decided |
+| D3 | Backend hosting: where the API server, the database and the routing engine run when not on a local machine | Open. Supabase is a candidate for the database only; see below. Decide after spikes S2 and S3 give real sizes. | **Open** |
+| D4 | Public transport after the MVP (Phase 10) | Approved. See the note on Japan below. | Approved |
+| D5 | Anonymous installation token, no accounts | Approved. | Approved |
+| D6 | Weather excluded from the MVP | Approved. | Approved |
+| D7 | OR-Tools only if the Phase 0 spike justifies it | Approved. | Approved |
+| D8 | OpenFreeMap tiles now, self-hosted PMTiles as rehearsed fallback | Approved. | Approved |
+| D9 | Photos on-device first; cloud backup decided in the photo phase | Approved. | Approved |
+| D10 | Restaurant prices from users only; default band limits set in Phase 8 | Approved. | Approved |
+| D11 | Which open-source licence, and when the repository becomes public | New, follows from D1. Transitous requires published source under an open-source licence. | **Open** |
+
+### Notes on the decided items
+
+**D1.** "Non-commercial" describes how the app is operated: no subscriptions, advertising or
+sales. An open-source licence cannot itself forbid others' commercial use. Usage limits of the
+community servers (Nominatim, Overpass, FOSSGIS routing) are about load, not commerce, so they
+remain development-only.
+
+**D2.** Five countries is a large first footprint. The Phase 0 spikes measure it before
+anything is committed:
+
+- S2 runs for all five countries, because the data quality report is cheap and decides which
+  regions are enabled.
+- S3 sizes routing for one country first, then the rest.
+- Place names in Japan need a display rule (local name, English name, romanised name) in
+  Phase 2.
+
+**D4 and Japan.** Travel between Japanese cities is mostly by rail. With walking and driving
+only, multi-city itineraries in Japan will be weaker than in Italy or Central Europe. Options:
+keep the MVP order and limit Japan to single-city trips at first, or bring Phase 10 forward for
+Japan. To be settled when Phase 4 results are reviewed.
+
+**D3 and Supabase.** Three things need a host: the API server, the PostgreSQL/PostGIS database,
+and the Valhalla routing engine.
+
+| Component | Supabase |
+|---|---|
+| Database | Viable in principle: it is PostgreSQL and PostGIS can be enabled as an extension. |
+| API server (FastAPI) | Not hosted by Supabase; needs a separate server. |
+| Routing engine (Valhalla) | Not hosted by Supabase; needs a separate server with enough memory and disk. |
+
+Limits of the Supabase Free plan read on 2026-11-12: 500 MB database, shared CPU with 500 MB
+RAM, 5 GB egress, at most 2 active projects, and projects paused after one week of inactivity.
+The user data (`app` schema) fits easily. The imported data for five countries (`geo` schema)
+is likely to exceed 500 MB; S2 measures it. Because a server is needed for the API and Valhalla
+anyway, running PostgreSQL on that same server is the simpler default, with Supabase as an
+option if the measured size fits or a paid plan is acceptable.
 
 ## 2. Phase overview
 
@@ -46,7 +84,7 @@ throwaway and is not merged into the product.
 | S4 Hours | Which opening-hours parser handles real values from S2? | Parse success rate by library on a sample |
 | S5 Sequencing | Heuristic versus OR-Tools on three fixture trips | Plan quality, latency, repeatability across runs |
 
-- **Dependencies:** D2 (which regions to test).
+- **Dependencies:** none; D2 is decided.
 - **Exit:** a short findings note per spike; D2, D3 and D7 can be decided; verification gaps in
   `docs/api-evaluation.md` section 15 marked for this phase are closed.
 - **Risks:** a pilot region with poor data; mitigation is to pick another region.
@@ -209,6 +247,7 @@ GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 
 ## 7. Recommended next task
 
-**Phase 0, spike S2 together with decision D2:** choose the candidate pilot regions and produce
-the data quality report for each from an OSM extract. Its result decides whether the open-data
-approach is good enough where the app will first be used, and it feeds every later phase.
+**Phase 0, spike S2:** produce the data quality report for Japan, Italy, Austria, Czechia and
+Hungary from OSM extracts, including the database size of the imported data. Its result decides
+which regions are enabled, whether Supabase's free database is large enough (D3), and it feeds
+every later phase.

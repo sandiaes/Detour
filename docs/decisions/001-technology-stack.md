@@ -1,6 +1,6 @@
 # ADR 001 — Technology stack
 
-- **Status:** Proposed. Awaiting owner approval.
+- **Status:** Accepted on 2026-11-12, except hosting (D3), which is open.
 - **Date:** 2026-11-12
 - **Related:** [`../architecture.md`](../architecture.md), [`002-api-strategy.md`](002-api-strategy.md)
 
@@ -80,13 +80,13 @@ All planning logic lives in the backend so that Android and iOS share it complet
 - MapLibre React Native is community-maintained and outside the Expo SDK.
 - OR-Tools searches bounded by wall-clock time may not be reproducible across machines.
 
-## Open decisions for the owner
+## Decision record
 
-| ID | Decision | Recommendation |
+| ID | Decision | Status |
 |---|---|---|
-| D3 | Backend hosting beyond a local machine | Decide after the Phase 0 sizing spike. Hosting providers were not evaluated. |
-| D5 | Anonymous installation identity, no accounts | Approve for the MVP. |
-| D7 | OR-Tools adoption | Approve the gate: adopt only if the spike shows better plans within the latency budget. |
+| D3 | Backend hosting beyond a local machine | **Open.** Supabase is a candidate for the database only; the API server and Valhalla need a separate host. Decide after the Phase 0 sizing spikes. Details in `../app-plan.md`, section 1. |
+| D5 | Anonymous installation identity, no accounts | Approved 2026-11-12 |
+| D7 | OR-Tools adopted only if the spike shows better plans within the latency budget | Approved 2026-11-12 |
 
 ## Follow-up
 

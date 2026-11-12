@@ -1,6 +1,6 @@
 # ADR 002 — API and data-source strategy
 
-- **Status:** Proposed. Awaiting owner approval.
+- **Status:** Accepted on 2026-11-12.
 - **Date:** 2026-11-12
 - **Related:** [`../api-evaluation.md`](../api-evaluation.md), [`001-technology-stack.md`](001-technology-stack.md)
 
@@ -123,17 +123,18 @@ What the official terms say, in short (details and sources in `api-evaluation.md
 - OSM coverage may be inadequate in a chosen region; the Phase 0 data quality report is the
   gate.
 
-## Open decisions for the owner
+## Decision record
 
-| ID | Decision | Recommendation |
+| ID | Decision | Status |
 |---|---|---|
-| D1 | Is the project open source, and non-commercial for now? | State it. It determines eligibility for Transitous and Open-Meteo's free API. |
-| D2 | Pilot regions for the MVP instead of worldwide coverage | Approve, and name one to three regions. |
-| D4 | Public transport after the MVP | Approve Phase 10. |
-| D6 | Weather excluded | Approve; revisit after the MVP. |
-| D8 | OpenFreeMap now, PMTiles fallback rehearsed before release | Approve. |
-| D9 | Photos on-device first; cloud backup decided later | Approve. |
-| D10 | Prices from users only; no price inferred from venue type | Approve. |
+| D1 | The project is open source and non-commercial | Decided 2026-11-12. Transitous and Open-Meteo's free API become permissible, subject to their other conditions (published source, light usage, attribution). |
+| D2 | Pilot regions: Japan, Italy, Central Europe (Austria, Czechia, Hungary at least) | Decided 2026-11-12 |
+| D4 | Public transport after the MVP | Approved 2026-11-12 |
+| D6 | Weather excluded from the MVP | Approved 2026-11-12 |
+| D8 | OpenFreeMap now, PMTiles fallback rehearsed before release | Approved 2026-11-12 |
+| D9 | Photos on-device first; cloud backup decided later | Approved 2026-11-12 |
+| D10 | Prices from users only; no price inferred from venue type | Approved 2026-11-12 |
+| D11 | Open-source licence and date the repository becomes public | **Open.** Needed before Transitous can be used. |
 
 ## Verification gaps
 

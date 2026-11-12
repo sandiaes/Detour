@@ -1,8 +1,9 @@
 # Architecture
 
-Status: **proposed**, pending approval of the open decisions listed in
+Status: **accepted** on 2026-11-12 through
 [`decisions/001-technology-stack.md`](decisions/001-technology-stack.md) and
-[`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). No code exists yet.
+[`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is still open.
+No code exists yet.
 
 ## 1. Principles
 
@@ -90,8 +91,7 @@ Android-only native module is allowed into the dependency list without an ADR.
   the app are generated from that contract.
 - Stateless request handling; all state in PostgreSQL.
 - Identity in the MVP is an **anonymous installation**: the app registers once and receives a
-  bearer token. This is an open decision (ADR 001, D5); it avoids building accounts, which are
-  not a product goal.
+  bearer token (D5, approved). This avoids building accounts, which are not a product goal.
 - Indicative resource groups (final shapes are defined in Phase 1):
   - destinations: search cities and areas
   - trips: create, read, update
@@ -125,7 +125,8 @@ A command-line job, run by the operator, that makes a region usable:
 7. Record an `import_run` with source dates and counts, and publish a **data quality report**
    (how many places, share with opening hours, share with cuisine, share with Wikidata link).
 
-The MVP supports a small set of operator-imported **pilot regions** (open decision D2). A
+The MVP supports operator-imported **pilot regions**: Japan, Italy, Austria, Czechia and
+Hungary (D2). A
 request for a destination outside them returns a clear "region not available" response.
 On-demand import is a post-MVP item.
 
