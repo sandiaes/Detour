@@ -86,7 +86,7 @@ All planning logic lives in the backend so that Android and iOS share it complet
 |---|---|---|
 | D3 | Backend hosting beyond a local machine | **Decided** in [`005-free-managed-hosting.md`](005-free-managed-hosting.md): Supabase Free (database), Render free web service (API), GitHub Actions (import). Routing per ADR 004. |
 | D5 | Anonymous installation identity, no accounts | Approved 2026-11-12 |
-| D7 | OR-Tools adopted only if the spike shows better plans within the latency budget | Approved 2026-11-12 |
+| D7 | OR-Tools adopted only if the spike shows better plans within the latency budget | Approved 2026-11-12. **Outcome (spike S5, 2026-11-12): not adopted; the heuristic is the only sequencer.** See `../spikes/s5-sequencing-findings.md`. |
 
 ## Follow-up
 

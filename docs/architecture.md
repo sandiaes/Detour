@@ -26,11 +26,11 @@ No code exists yet.
 |---|---|---|
 | React Native + Expo + TypeScript | **Confirmed** | Expo SDK 58 (React Native 0.88). The New Architecture is mandatory since SDK 55. A development build is required because MapLibre is not in Expo Go. |
 | MapLibre + OSM-compatible data | **Confirmed** | `@maplibre/maplibre-react-native` v11 (MIT), Android and iOS. `expo-maps` is rejected: alpha, Google Maps on Android, Apple Maps on iOS. |
-| Python + FastAPI | **Confirmed** | MIT. Pin the Python version in Phase 1 to one supported by both FastAPI and the OR-Tools wheels. |
+| Python + FastAPI | **Confirmed** | MIT. Pin the Python version in Phase 1. |
 | PostgreSQL + PostGIS | **Confirmed** | Image `postgis/postgis:18-3.7`. The `-3.5` and `-3.6` tags are no longer updated. PostgreSQL 18 changed the data volume path to `/var/lib/postgresql`. |
 | Docker Compose | **Confirmed** for local development | Production hosting: ADR 005. |
 | Deterministic planning engine | **Confirmed** | Section 5. |
-| OR-Tools | **Conditionally justified** | Useful for the multi-day, time-windowed, optional-visit problem. Introduced behind an interface after a Phase 0 spike; a simple heuristic remains as baseline and fallback. Section 5.5. |
+| OR-Tools | **Not adopted** (spike S5, D7). Earlier verdict: conditionally justified | Useful for the multi-day, time-windowed, optional-visit problem. Introduced behind an interface after a Phase 0 spike; a simple heuristic remains as baseline and fallback. Section 5.5. |
 
 Additions the provisional stack did not name: **Valhalla** (self-hosted routing and matrices), a
 **region import pipeline**, and **expo-sqlite** for an on-device read cache.
@@ -230,14 +230,36 @@ all of which its documentation covers.
 
 | Option | For | Against |
 |---|---|---|
-| Hand-written heuristic (greedy insertion + local search) | Small, transparent, no dependency, easy to make deterministic | Weak once time windows, optional visits and stability costs combine |
+| Hand-written heuristic (greedy insertion + local search) | Small, transparent, no dependency, easy to make deterministic | Expected to be weak once time windows, optional visits and stability costs combine; S5 measured a 6–8% gap on two of three fixtures |
 | OR-Tools routing solver (Apache 2.0) | Handles the combined constraints; mature | Native dependency; time-limited search can end at different points on different machines |
 
-**Recommendation.** Define a `Sequencer` interface. Ship the heuristic first as the baseline.
-Run a Phase 0 spike comparing both on fixture trips; adopt OR-Tools as the default sequencer in
-Phase 6 if it gives better plans within the latency budget. For reproducibility, bound the
-search by solution count or iteration limits with a fixed first-solution strategy, and use the
-wall-clock limit only as a safety cap. This determinism approach must be validated in the spike.
+**Outcome of spike S5 (2026-11-12): the heuristic only; OR-Tools is not adopted.** Details in
+[`spikes/s5-sequencing-findings.md`](spikes/s5-sequencing-findings.md). Measured on three synthetic
+fixture trips (3-day city, 7-day region, 14-day multi-city) with meal windows and the day length
+as the only time windows:
+
+- **Quality:** where OR-Tools found a plan, its best repeatable configuration was 6–8% better on
+  the shared objective than the heuristic on the city and regional trips (2–6% more score). On
+  the 14-day trip the heuristic was as good as the best OR-Tools result.
+- **Latency:** the heuristic needs 7–43 ms per plan. OR-Tools needs 0.1–1.3 s for a plain
+  descent and 1.7–4.2 s with guided local search for 100 solutions, per variant; on a GitHub
+  x86-64 runner two such variants take about 8 s against the 5 s KPI for the whole request.
+- **Robustness:** on the 14-day trip, a day that starts late (after an inter-city drive) made
+  every insertion-based first-solution strategy return no plan within 60 s. Only "start with
+  nothing planned" found one, in 18 s. A sequencer that can return nothing for a feasible trip
+  would need the heuristic as a fallback anyway.
+- **Determinism:** solution-count limits gave identical plans on Linux x86-64, Linux arm64 and
+  Windows, but only while the 60 s wall-clock safety cap was not reached. Where it was reached
+  (7-day trip, 1,000 solutions) the slower machines returned a different plan. What a
+  "solution" counts also depends on the first-solution strategy (100 solutions lasted 70 ms with
+  one and 2 s with another). The heuristic gave the same plan on every machine.
+
+**Consequences.** The `Sequencer` interface stays, with the heuristic as its only
+implementation (greedy best-gain insertion, then 2-opt, relocation, swap-in and re-insertion in
+a fixed order, ties by identifier, no randomness, no clock). Every run is deterministic by
+construction, so golden tests need no solver limits. OR-Tools may be reconsidered only through a
+new spike on real imported data, if the Phase 4 or Phase 6 fixture KPIs show the heuristic
+falling short, and then only behind the same interface with the heuristic as fallback.
 
 ### 5.6 Determinism rules
 
