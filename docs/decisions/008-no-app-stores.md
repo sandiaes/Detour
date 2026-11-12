@@ -53,3 +53,24 @@ Expo Go (ADR 001, `api-evaluation.md`), so a **development build** is required.
 - No store review, but also no automatic updates and no distribution to other people without the
   same manual steps (an Android APK can be shared; an iPhone build cannot, short of the paid
   ad hoc route).
+
+## Result of spike S1 (2026-11-12)
+
+See [`../spikes/s1-map-findings.md`](../spikes/s1-map-findings.md). This addendum closes three of
+the items marked ✗ above and amends decision 2.
+
+- **GitHub Actions can build the Android APK.** A GitHub-hosted `ubuntu-24.04` runner builds an
+  installable APK of an Expo SDK 58 app with MapLibre React Native in about 14 minutes, with no
+  Expo account and no local software. The APK is downloaded from the run's artifacts.
+- **Expo's cloud build** is not needed. Its free plan was read for the record: 15 Android builds
+  a month, low-priority queue, 45-minute timeout (<https://expo.dev/pricing>, read 2026-11-12).
+- **Amendment to decision 2:** "development builds first" is replaced by **release-variant APKs
+  with the JavaScript bundled in**. An `expo-dev-client` development build loads its JavaScript
+  from a development server on a computer, which the owner does not have. The release variant
+  contains the same native code and runs on its own. A development build is reconsidered only if
+  a machine that can run `npx expo start` becomes available.
+- **Signing:** the spike APK is signed with the public React Native debug key. Before any build
+  is kept for real use, the project needs its own keystore, stored as a GitHub Actions secret
+  and applied without hand-editing the native project. Switching keys requires one uninstall.
+- **Confirmed on a phone:** the owner installed the APK on a Samsung Galaxy S22 with Android 16
+  on 2026-11-12; the OpenFreeMap map rendered (S1 findings, section 1).

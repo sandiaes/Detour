@@ -67,8 +67,8 @@ implementation.
 ## Planned stack
 
 React Native with Expo and TypeScript; MapLibre React Native; Python with FastAPI; PostgreSQL
-with PostGIS; Valhalla (FOSSGIS server per ADR 004, self-hosted only if S3 and the owner say so); Docker Compose for local development. OR-Tools only if the
-Phase 0 spike justifies it. Exact versions are pinned in Phase 1 and recorded in
+with PostGIS; Valhalla (FOSSGIS server per ADR 004, self-hosted only if S3 and the owner say so); Docker Compose for local development. No OR-Tools: spike S5
+found the heuristic sequencer sufficient (D7). Exact versions are pinned in Phase 1 and recorded in
 `docs/decisions/001-technology-stack.md`.
 
 ## Working conventions

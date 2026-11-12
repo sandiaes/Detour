@@ -1,0 +1,12 @@
+{
+  "_comment": "SPIKE ONLY. Bundled stand-in for the response of the backend's GET /v1/config, used only when the APK is built without an API URL. In Phase 1 this file does not exist; the app always asks the backend.",
+  "config_version": "spike-s1-2026-11-12",
+  "map": {
+    "style_url": "https://tiles.openfreemap.org/styles/liberty",
+    "attribution": [
+      { "text": "OpenFreeMap", "url": "https://openfreemap.org" },
+      { "text": "© OpenMapTiles", "url": "https://www.openmaptiles.org/" },
+      { "text": "Data from OpenStreetMap", "url": "https://www.openstreetmap.org/copyright" }
+    ]
+  }
+}

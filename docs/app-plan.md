@@ -15,7 +15,7 @@ Recorded on 2026-11-12 from the owner's answers.
 | D4 | Public transport after the MVP (Phase 10) | Approved. See the note on Japan below. | Approved |
 | D5 | Anonymous installation token, no accounts | Approved. | Approved |
 | D6 | Weather excluded from the MVP | Approved. | Approved |
-| D7 | OR-Tools only if the Phase 0 spike justifies it | Approved. | Approved |
+| D7 | OR-Tools only if the Phase 0 spike justifies it | **Not justified: the heuristic only.** Spike S5 found OR-Tools 6–8% better on two fixtures but 7–300 times slower, and unable to find any plan for the 14-day fixture with its usual strategies. See `docs/spikes/s5-sequencing-findings.md`. | Decided by the approved rule; the owner may override |
 | D8 | OpenFreeMap tiles now, self-hosted PMTiles as rehearsed fallback | Approved. | Approved |
 | D9 | Photos on-device first; cloud backup decided in the photo phase | Approved. | Approved |
 | D10 | Restaurant prices from users only; default band limits set in Phase 8 | Approved. | Approved |
@@ -84,11 +84,11 @@ throwaway and is not merged into the product.
 
 | Spike | Question | Evidence to produce |
 |---|---|---|
-| S1 Map | Does MapLibre React Native render OpenFreeMap in an Expo development build on Android? Can the APK be built in GitHub Actions (ADR 008)? | Running build on the owner's phone; notes on configuration |
+| S1 Map | Does MapLibre React Native render OpenFreeMap in an Expo development build on Android? Can the APK be built in GitHub Actions (ADR 008)? | **Done.** APK built in GitHub Actions in about 14 min; map confirmed on the owner's Galaxy S22 (Android 16); release-variant APK instead of a development build (ADR 008 addendum). `docs/spikes/s1-map-findings.md` |
 | S2 Data | Is OSM data in the candidate pilot regions good enough? | Data quality report: attractions, restaurants, cuisine, Wikidata link |
 | S3 Routing | What does a regional Valhalla instance need? | Tile build time, memory, matrix latency for 50 points |
 | S4 | Removed: opening hours are out of scope (ADR 003) | none |
-| S5 Sequencing | Heuristic versus OR-Tools on three fixture trips | Plan quality, latency, repeatability across runs |
+| S5 Sequencing | Heuristic versus OR-Tools on three fixture trips | **Done.** Heuristic only (D7). `docs/spikes/s5-sequencing-findings.md` |
 
 - **Dependencies:** none; D2 is decided.
 - **Exit:** a short findings note per spike; D2, D3 and D7 can be decided; verification gaps in
@@ -166,7 +166,7 @@ throwaway and is not merged into the product.
 
 **Goal:** plans include meals.
 
-- **Deliverables:** meal windows in sequencing (OR-Tools here if D7 says so); area
+- **Deliverables:** meal windows in the heuristic sequencer (no OR-Tools, D7); area
   destinations with base cities and day allocation; meal slots with restaurant selection by
   proximity, cuisine variety and venue type; restaurant attributes in the API and app.
 - **Tests:** meals inside meal windows; area fixtures produce sensible day allocation; golden
@@ -254,8 +254,9 @@ GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 
 ## 7. Recommended next task
 
-**Finish Phase 0, then Phase 1.** Spikes S2, S3 and S4 are done or removed, and the hosting (D3),
-routing (ADR 004), licence, distribution and region-threshold decisions are recorded. Remaining
-in Phase 0: spike S1 (the map, and building the Android APK in GitHub Actions) and spike S5
-(heuristic versus OR-Tools). These are Prompt 1 in `docs/build-prompts.md`. Phase 1
-(scaffolding) starts only when the owner gives the go-ahead (CLAUDE.md).
+**Phase 1, when the owner gives the go-ahead (CLAUDE.md).** All Phase 0 spikes are done or
+removed: S1 (map and APK build in GitHub Actions), S2, S3, S5 (heuristic only, D7); S4 was
+removed. D2, D3 and D7 are decided. One Phase 0 exit item remains open: the Geofabrik terms and
+update cadence (`docs/api-evaluation.md` section 15). Items S1 hands to Phase 1: the project's own
+signing key, the config endpoint that replaces the bundled stand-in, and the attribution rule with
+a test (`docs/spikes/s1-map-findings.md` section 8).

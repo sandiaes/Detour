@@ -1,0 +1,95 @@
+# Phase 0, spike S1 (throwaway): build an installable Android APK of the map spike in GitHub
+# Actions, with no Android Studio and no local machine. The APK is uploaded as an artifact.
+# Run by hand: Actions tab -> "Spike S1 map APK" -> Run workflow (button shows only once this
+# file is on the default branch); a push to the working branch that changes the spike also runs it.
+name: Spike S1 map APK
+
+on:
+  push:
+    branches: [claude/beautiful-archimedes-f8taqy]
+    paths: [".github/workflows/spike-s1-map.yml", "spikes/s1-map/**"]
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Backend base URL that serves GET /v1/config (empty: bundled stand-in file)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: spikes/s1-map
+    env:
+      EXPO_PUBLIC_DETOUR_API_URL: ${{ inputs.api_url || '' }}
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      # Do NOT free disk by deleting /usr/local/lib/android here: that is the Android SDK.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: spikes/s1-map/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Record environment
+        run: |
+          mkdir -p ../../out
+          {
+            echo "runner_cpus=$(nproc)"
+            echo "runner_mem_mb=$(free -m | awk '/^Mem:/ {print $2}')"
+            echo "runner_disk_free_mb=$(df -m . | awk 'NR==2 {print $4}')"
+            echo "node=$(node -v)"
+            echo "java=$(java -version 2>&1 | head -1)"
+            echo "android_home=$ANDROID_HOME"
+            echo "android_platforms=$(ls "$ANDROID_HOME/platforms" | tr '\n' ' ')"
+            echo "android_build_tools=$(ls "$ANDROID_HOME/build-tools" | tr '\n' ' ')"
+            echo "api_url=${EXPO_PUBLIC_DETOUR_API_URL:-<none: bundled stand-in>}"
+            echo "commit=$GITHUB_SHA"
+          } | tee ../../out/build-info.txt
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Generate the Android project (Continuous Native Generation)
+        run: npx expo prebuild --platform android --no-install --clean
+      - name: Build release APK (JavaScript bundled, arm64-v8a only)
+        working-directory: spikes/s1-map/android
+        run: |
+          t0=$(date +%s)
+          ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
+          echo "gradle_build_s=$(( $(date +%s) - t0 ))" | tee -a ../../../out/build-info.txt
+      - name: Inspect APK
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          bt="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          cp "$apk" ../../out/detour-s1-map.apk
+          {
+            echo "apk_bytes=$(stat -c %s "$apk")"
+            echo "apk_sha256=$(sha256sum "$apk" | cut -d' ' -f1)"
+            echo "--- aapt2 dump badging (selected lines)"
+            "$bt/aapt2" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|native-code|application-label):"
+            echo "--- apksigner verify --print-certs"
+            "$bt/apksigner" verify --print-certs "$apk"
+          } | tee -a ../../out/build-info.txt
+          {
+            echo '### Spike S1 APK'
+            echo '```'
+            cat ../../out/build-info.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: detour-s1-map-apk
+          path: out/
+          # Artifact storage on GitHub Free is 500 MB, shared with Packages; keep it short.
+          retention-days: 14
+          if-no-files-found: error
