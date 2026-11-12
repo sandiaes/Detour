@@ -27,3 +27,24 @@ Do not retry a refused test repeatedly. Do not share anything else from the page
 
 Why this matters: it shows whether a 50-place itinerary needs one request or many (the server
 allows about one request per second per user). Date of the check: record it in ADR 004.
+
+## Result of the first check (2026-11-12, by the owner)
+
+| Test | Result |
+|---|---|
+| 2 x 2 | Worked, immediate |
+| 10 x 10 (100 cells) | Worked, about 1 second |
+| 25 x 25 (625 cells) | Refused: `error_code` 150, "Exceeded max locations: 100.000000" |
+| 50 x 50 (2500 cells) | Refused: same error |
+
+The error says "locations", but 25 + 25 locations is only 50, and 10 x 10 (100 cells) passed. The
+simplest reading is a limit of **100 matrix cells** (sources x targets) per request, but this is
+an inference. The two follow-up links separate the readings: if the server limits cells, the first
+works and the second is refused.
+
+## Optional follow-up (same rules: one at a time, 10 seconds apart)
+
+| Test | What it shows | Link |
+|---|---|---|
+| 20 sources x 5 targets | 100 cells, 25 locations | [open](https://valhalla1.openstreetmap.de/sources_to_targets?json=%7B%22sources%22%3A%5B%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2454%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2454%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2454%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2454%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2454%7D%5D%2C%22targets%22%3A%5B%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2298%7D%5D%2C%22costing%22%3A%22pedestrian%22%7D) |
+| 11 sources x 10 targets | 110 cells, 21 locations | [open](https://valhalla1.openstreetmap.de/sources_to_targets?json=%7B%22sources%22%3A%5B%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2402%7D%5D%2C%22targets%22%3A%5B%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.235%7D%5D%2C%22costing%22%3A%22pedestrian%22%7D) |

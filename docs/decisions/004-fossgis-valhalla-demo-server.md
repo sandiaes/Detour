@@ -1,8 +1,8 @@
 # ADR 004 — FOSSGIS Valhalla demo server as the MVP travel-time provider
 
 - **Status:** **Accepted** on 2026-11-12 (owner approval). CLAUDE.md and ADR 002 were amended
-  in the same change. Open item before Phase 3: a manual check of the largest matrix the
-  server accepts (`docs/spikes/fossgis-matrix-check.md`).
+  in the same change. The manual matrix check is recorded below and in
+  `docs/spikes/fossgis-matrix-check.md`.
 - **Date:** 2026-11-12
 - **Related:** [`001-technology-stack.md`](001-technology-stack.md),
   [`002-api-strategy.md`](002-api-strategy.md), [`../app-plan.md`](../app-plan.md) (D3, D14),
@@ -75,9 +75,12 @@ Rules this would amend, if approved:
 
 ## Risks and unknowns
 
-- **Matrix limits are unknown.** A 50 x 50 request may be refused ("service limits are a lot
-  stricter now"). Smaller chunks mean more requests against a 1 per second rate. A one-time
-  manual check by the owner is needed before Phase 3 design.
+- **Matrix limit measured (owner, by hand, 2026-11-12):** 2 x 2 and 10 x 10 pedestrian
+  matrices worked (the 10 x 10 took about 1 second); 25 x 25 and 50 x 50 were refused with
+  `error_code` 150, "Exceeded max locations: 100.000000". The consistent reading is a limit of
+  100 cells (sources x targets) per request; a follow-up in `docs/spikes/fossgis-matrix-check.md`
+  confirms it. At that size a full 50 x 50 matrix needs 25 requests, so Phase 3 must plan
+  sparse matrices (each place against a bounded set of neighbours) and cache every cell.
 - **No availability promise.** The operators can throttle or block at any time.
 - **Data versions.** Their OSM snapshot differs from our `geo` extract, so a time can describe a
   road that our data lacks. Determinism then rests on the cache and recorded responses, not on
