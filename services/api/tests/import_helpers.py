@@ -99,7 +99,14 @@ def canonical_geo_dump(url: str, region_id: str) -> dict[str, list[tuple[Any, ..
 
 def strip_run_details(report: dict[str, Any]) -> dict[str, Any]:
     """The report without what legitimately differs between two runs."""
-    clean = {k: v for k, v in report.items() if k not in ("run", "geo_size_bytes", "gates")}
+    volatile = (
+        "run",
+        "geo_size_bytes",
+        "geo_size_at_commit_bytes",
+        "geo_size_after_vacuum_bytes",
+        "gates",
+    )
+    clean = {k: v for k, v in report.items() if k not in volatile}
     clean["gates"] = [
         {
             **g,

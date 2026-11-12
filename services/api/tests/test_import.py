@@ -283,7 +283,8 @@ def test_the_vacuum_after_an_import_is_reported_and_full_vacuum_works(
     report = import_fixture_region(target, staging, tmp_path)
     assert report["vacuum"] == "plain"  # far below FULL_VACUUM_THRESHOLD
     assert isinstance(report["geo_size_after_vacuum_bytes"], int)
-    assert "after the plain vacuum" in render_markdown(report)
+    assert report["geo_size_bytes"] == report["geo_size_after_vacuum_bytes"]
+    assert "Vacuum after the commit: plain" in render_markdown(report)
     with psycopg.connect(target) as conn:
         size = loader.vacuum_and_analyze(conn, full=True)
         assert isinstance(size, int) and size > 0
@@ -550,3 +551,32 @@ def test_the_proximity_rule_leaves_the_import_repeatable(
     second_report = import_fixture_region(target, staging, tmp_path / "b")
     assert canonical_geo_dump(target, TEST_REGION.id) == first
     assert second_report["excluded"]["total"] == 21
+
+
+def test_gate_6_is_judged_on_the_size_after_the_vacuum(
+    pipeline_dbs: tuple[str, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The size inside the import transaction still holds dead rows the vacuum frees."""
+    from detour_api.importer import loader
+    from detour_api.importer.report import GEO_SIZE_LIMIT_BYTES
+
+    target, staging = pipeline_dbs
+
+    def fake_vacuum(conn: object, full: bool = False) -> int:
+        return GEO_SIZE_LIMIT_BYTES + 1
+
+    monkeypatch.setattr(loader, "vacuum_and_analyze", fake_vacuum)
+    report = import_fixture_region(target, staging, tmp_path / "over")
+    gate6 = next(g for g in report["gates"] if g["gate"] == 6)
+    assert gate6["passed"] is False and gate6["checks"][0]["value"] == GEO_SIZE_LIMIT_BYTES + 1
+    assert report["geo_size_at_commit_bytes"] < GEO_SIZE_LIMIT_BYTES  # it passed at commit
+    with psycopg.connect(target) as conn:
+        stored = conn.execute(
+            "SELECT report -> 'geo_size_bytes' FROM geo.import_run ORDER BY started_at DESC LIMIT 1"
+        ).fetchone()
+    assert stored == (GEO_SIZE_LIMIT_BYTES + 1,)  # the stored report was updated too
+
+    monkeypatch.setattr(loader, "vacuum_and_analyze", lambda conn, full=False: 12345)
+    report = import_fixture_region(target, staging, tmp_path / "small")
+    gate6 = next(g for g in report["gates"] if g["gate"] == 6)
+    assert gate6["passed"] is True and gate6["checks"][0]["value"] == 12345

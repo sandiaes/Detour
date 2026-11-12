@@ -291,10 +291,15 @@ def render_markdown(report: dict[str, Any]) -> str:
         out.append(f"| {row['kind']} | {row['category']} | {row['count']} |")
     out += [
         "",
-        f"Geo schema size at commit: {report['geo_size_bytes']} bytes (gate 6 limit "
-        f"{GEO_SIZE_LIMIT_BYTES}); this still counts dead row versions that the vacuum after the "
-        "commit frees.",
+        f"Geo schema size used for gate 6: {report['geo_size_bytes']} bytes "
+        f"(limit {GEO_SIZE_LIMIT_BYTES}), measured after the vacuum that follows the commit.",
     ]
+    at_commit = report.get("geo_size_at_commit_bytes")
+    if at_commit is not None:
+        out.append(
+            f"Inside the import transaction the files were {at_commit} bytes: that figure still "
+            "holds the dead row versions the vacuum frees, so it is not used."
+        )
     retention = report.get("retention")
     if retention:
         out.append(
@@ -302,9 +307,8 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"places, {retention['admin_areas_purged']} areas; kept inactive because an itinerary "
             f"item or price still names them: {retention['places_deactivated']}."
         )
-    after = report.get("geo_size_after_vacuum_bytes")
-    if after is not None:
-        out.append(f"Geo schema size after the {report['vacuum']} vacuum: {after} bytes.")
+    if report.get("geo_size_after_vacuum_bytes") is not None:
+        out.append(f"Vacuum after the commit: {report['vacuum']}.")
     out.append("")
     if report["warnings"]:
         out += ["## Warnings", ""] + [f"- {w}" for w in report["warnings"]] + [""]

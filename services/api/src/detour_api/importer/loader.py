@@ -641,6 +641,34 @@ def vacuum_and_analyze(conn: psycopg.Connection[Any], full: bool = False) -> int
         conn.autocommit = False
 
 
+def finalize_size_gate(
+    conn: psycopg.Connection[Any],
+    run_id: uuid.UUID,
+    region_id: str,
+    report: dict[str, Any],
+    counters: Counters,
+    size_after: int,
+) -> None:
+    """Gate 6 judged on the size after the vacuum, not on the size inside the import transaction.
+
+    Inside the transaction the files still hold every dead row version the import is about to
+    free, so the size read there can fail a region for space that is freed a moment later. The
+    other five gates do not depend on size and are unchanged. Updates the stored report and the
+    region status when the outcome moves.
+    """
+    gates = evaluate_gates(counters, size_after)
+    all_passed = all(g.passed for g in gates)
+    status = "available" if all_passed else "disabled"
+    report["geo_size_at_commit_bytes"] = report["geo_size_bytes"]
+    report["geo_size_bytes"] = size_after
+    report["gates"] = [g.as_dict() for g in gates]
+    report["all_gates_passed"] = all_passed
+    report["region_status"] = status
+    with conn.transaction():
+        conn.execute("UPDATE geo.import_run SET report = %s WHERE id = %s", (Jsonb(report), run_id))
+        conn.execute("UPDATE geo.region SET status = %s WHERE id = %s", (status, region_id))
+
+
 def import_region(
     *,
     region: RegionDef,
@@ -664,10 +692,12 @@ def import_region(
             fail_run(conn, run_id, region.id, f"{type(exc).__name__}: {exc}")
             raise
         removed = report["retention"]["places_purged"] + report["retention"]["admin_areas_purged"]
-        report["geo_size_after_vacuum_bytes"] = vacuum_and_analyze(
-            conn, full=removed >= FULL_VACUUM_THRESHOLD
-        )
-        report["vacuum"] = "full" if removed >= FULL_VACUUM_THRESHOLD else "plain"
+        full = removed >= FULL_VACUUM_THRESHOLD
+        size_after = vacuum_and_analyze(conn, full=full)
+        report["geo_size_after_vacuum_bytes"] = size_after
+        report["vacuum"] = "full" if full else "plain"
+        if size_after is not None:
+            finalize_size_gate(conn, run_id, region.id, report, counters, size_after)
     log.info("import_done", region=region.id, status=report["region_status"])
     return report, counters
 
