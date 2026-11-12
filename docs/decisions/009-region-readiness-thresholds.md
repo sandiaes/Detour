@@ -1,6 +1,6 @@
 # ADR 009 — Region readiness thresholds and enablement order
 
-- **Status:** **Proposed.** Not in force until the owner approves. Closes the open item in D2.
+- **Status:** **Accepted** on 2026-11-12 (owner approval). Closes the open item in D2.
 - **Date:** 2026-11-12
 - **Related:** [`../spikes/s2-data-findings.md`](../spikes/s2-data-findings.md), [`../kpis.md`](../kpis.md)
   ("Region readiness"), [`003-scope-opening-hours-and-attractions.md`](003-scope-opening-hours-and-attractions.md)

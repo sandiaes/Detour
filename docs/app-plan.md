@@ -23,7 +23,7 @@ Recorded on 2026-11-12 from the owner's answers.
 | D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
 | D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
 | D15 | Past trips archive | Past trips are kept as a map and list of visited cities and attractions, without routing. See ADR 006. Release timing open. | Decided |
-| D17 | Region readiness thresholds | Proposed in ADR 009 (not approved): Austria, Czechia and Hungary first, then Italy, then Japan. | **Proposed** |
+| D17 | Region readiness thresholds | ADR 009: six gates; Austria, Czechia and Hungary first, then Italy, then Japan. | Decided |
 | D16 | Distribution | No app stores. Android by sideloaded APK; iPhone built on the owner's Mac. See ADR 008. | Decided |
 | D14 | Hosting constraint | Owner has no server and wants free, managed services. Travel times come from the FOSSGIS Valhalla server through a cached adapter (ADR 004, approved); S3 stays the reference for self-hosting. | Constraint |
 
@@ -254,9 +254,8 @@ GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 
 ## 7. Recommended next task
 
-**The hosting decision (D3) for the API server and the data import.** S2 and S3 are done; see
-`docs/spikes/s2-data-findings.md` and `docs/spikes/s3-routing-findings.md`. Routing no longer
-needs a server of ours (ADR 004). What remains is where the small API server runs and how the
-region data gets into the database without a server of the owner's, under the free, managed
-constraint (D14). Free-tier terms were read on 2026-11-12; ADR 005 is accepted.
-Region readiness thresholds are still to be set by the owner.
+**Finish Phase 0, then Phase 1.** Spikes S2, S3 and S4 are done or removed, and the hosting (D3),
+routing (ADR 004), licence, distribution and region-threshold decisions are recorded. Remaining
+in Phase 0: spike S1 (the map, and building the Android APK in GitHub Actions) and spike S5
+(heuristic versus OR-Tools). These are Prompt 1 in `docs/build-prompts.md`. Phase 1
+(scaffolding) starts only when the owner gives the go-ahead (CLAUDE.md).

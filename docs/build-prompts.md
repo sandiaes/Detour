@@ -3,8 +3,9 @@
 Adjusted on 2026-11-12 from the owner's original file "Dtour — Claude Code Build Prompts" (13
 prompts). The project name is **Detour** (the original file said "Dtour"). Every change from the
 original is listed in section 3, with its reason. Items that the original asked for but that the
-recorded decisions removed are listed in section 4; they need the owner's approval and an ADR
-before they come back.
+recorded decisions removed are listed in section 4; the owner reviewed them on 2026-11-12 and
+wants none of them for now. Each needs an ADR before it comes back. The prompt order was also
+confirmed.
 
 ## 1. How to use this file
 
@@ -24,7 +25,7 @@ before they come back.
 - An Android phone on which the app is installed as a sideloaded APK.
 - No server of the owner's own. Development and tests therefore run in **GitHub Actions** and in
   Claude Code's cloud sessions. Local Docker Compose is kept for any machine that can run it, but
-  nothing may require a local Windows toolchain. **Open question for the owner: confirm this.**
+  nothing may require a local Windows toolchain. Confirmed by the owner on 2026-11-12.
 
 ## 2. Fixed decisions (the prompts depend on these)
 
