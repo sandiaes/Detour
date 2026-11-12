@@ -73,3 +73,20 @@ seconds apart. Send back worked or not, and the full error text if any.
 |---|---|
 | 5 x 5 cities, driving (25 cells) | [open](https://valhalla1.openstreetmap.de/sources_to_targets?json=%7B%22sources%22%3A%5B%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2558%7D%2C%7B%22lat%22%3A45.4642%2C%22lon%22%3A9.19%7D%2C%7B%22lat%22%3A40.8518%2C%22lon%22%3A14.2681%7D%2C%7B%22lat%22%3A45.4408%2C%22lon%22%3A12.3155%7D%5D%2C%22targets%22%3A%5B%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2558%7D%2C%7B%22lat%22%3A45.4642%2C%22lon%22%3A9.19%7D%2C%7B%22lat%22%3A40.8518%2C%22lon%22%3A14.2681%7D%2C%7B%22lat%22%3A45.4408%2C%22lon%22%3A12.3155%7D%5D%2C%22costing%22%3A%22auto%22%7D) |
 | Rome to Milan only, driving (1 cell, the longest pair) | [open](https://valhalla1.openstreetmap.de/sources_to_targets?json=%7B%22sources%22%3A%5B%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%5D%2C%22targets%22%3A%5B%7B%22lat%22%3A45.4642%2C%22lon%22%3A9.19%7D%5D%2C%22costing%22%3A%22auto%22%7D) |
+
+## Result of the distance check (2026-11-12, by the owner)
+
+Both tests (5 x 5 cities, and Rome to Milan alone) were refused with `error_code` 154:
+"Path distance exceeds the max distance limit: 150000 meters". So a **matrix request is limited to
+150 km** between places (in addition to the 100-cell limit).
+
+## Single-route check (optional, same rules)
+
+Tests whether the separate single-route request accepts long distances. Most of the response is
+directions text; send only worked or not, plus `trip.summary.length` (km) and `trip.summary.time`
+(seconds), or the full error text.
+
+| Test | Link |
+|---|---|
+| Single driving route, Florence to Rome | [open](https://valhalla1.openstreetmap.de/route?json=%7B%22locations%22%3A%5B%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2558%7D%2C%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%5D%2C%22costing%22%3A%22auto%22%7D) |
+| Single driving route, Rome to Milan | [open](https://valhalla1.openstreetmap.de/route?json=%7B%22locations%22%3A%5B%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%2C%7B%22lat%22%3A45.4642%2C%22lon%22%3A9.19%7D%5D%2C%22costing%22%3A%22auto%22%7D) |

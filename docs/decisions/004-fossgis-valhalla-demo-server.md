@@ -86,6 +86,11 @@ Rules this would amend, if approved:
   road that our data lacks. Determinism then rests on the cache and recorded responses, not on
   our own data version.
 - **Scope of "personal".** Publishing to other users raises load and requires notification.
+- **Matrix distance limit measured (owner, 2026-11-12):** a matrix with places farther apart than
+  150 km is refused (`error_code` 154, "Path distance exceeds the max distance limit: 150000
+  meters"). Matrices therefore serve walking and driving inside a city or region only. Legs
+  between distant cities need either the single-route request (limit not yet known; test in
+  `docs/spikes/fossgis-matrix-check.md`) or labelled estimates.
 - **Times can differ between request shapes.** The same pair returned 523 s in two requests and
   653 s in a 20 x 5 request, with the same distance (cause unknown). Phase 3 must therefore
   request cells in one fixed chunk shape, store the provider response with each cached cell,
