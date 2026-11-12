@@ -76,7 +76,11 @@ export default function App() {
         logo={false}
         onDidFinishLoadingMap={() => setMapState("loaded")}
         onDidFailLoadingMap={() => setMapState("failed")}
-        onRegionWillChange={() => setExpanded(false)}
+        // Collapse on a user gesture only: the map's own initial camera move also fires this
+        // event, which collapsed the credit at once in the first build (owner's check).
+        onRegionWillChange={(e) => {
+          if (e.nativeEvent.userInteraction) setExpanded(false);
+        }}
       >
         <Camera initialViewState={START} />
       </Map>

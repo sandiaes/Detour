@@ -29,8 +29,16 @@ APK from run 43213779230 by the steps in section 3 on a **Samsung Galaxy S22 wit
 The map appeared, and the status box read: `Detour spike S1`, `Map: loaded`,
 `Config: bundled stand-in (spike-s1-2026-11-12)`, `From: spike-config.json`, and the Liberty style
 URL. So MapLibre React Native 11.5.1 renders the OpenFreeMap style in our own build, with the
-style URL taken from the config object. The owner did not report on the attribution line or the
-"i" button; that check is still open (section 8).
+style URL taken from the config object.
+
+**Attribution check (owner, same day):** the credit line "OpenFreeMap © OpenMapTiles Data from
+OpenStreetMap" appears bottom left, tapping "i" brings it back, and moving the map collapses it.
+**Defect:** it collapsed to "i" almost at once instead of staying visible for about five seconds,
+which does not meet the OSMF rule that attribution is visible without interaction at first
+(section 5). Cause: the code collapsed it on every "region will change" event, and the map fires
+that event for its own initial camera move. Fix in `spikes/s1-map/src/App.tsx`: collapse only when
+the event's `userInteraction` flag is true. The rebuilt APK (the next run of the workflow) needs
+the owner's re-check; Phase 5 must carry the same rule and a component test for it.
 
 Nothing on this path needs an Expo account, Expo's servers or Android Studio. Expo's cloud build
 (section 6) is therefore not needed.
@@ -188,8 +196,8 @@ Actions stops being usable (for example, minutes run out in a private repository
 
 ## 8. Open items
 
-- Confirm on the phone that the credit line shows at start, collapses to "i" after five seconds
-  or on panning, and comes back when "i" is tapped (section 5). Not yet reported.
+- Re-check on the phone, with the rebuilt APK, that the credit line now stays for about five
+  seconds before collapsing (section 1, attribution defect).
 - Own signing key before any build that is kept (section 2).
 - Only `arm64-v8a` is built, to keep the APK small. Nearly all current phones use it; an older
   32-bit phone would need `armeabi-v7a` added.
