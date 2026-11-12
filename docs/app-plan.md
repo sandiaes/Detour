@@ -122,12 +122,14 @@ throwaway and is not merged into the product.
 
 **Goal:** routed walking and driving times, with a safe fallback.
 
-- **Deliverables:** Valhalla container and tile build for the pilot region; travel-time
-  interface with cache; estimated fallback with confidence label; route geometry.
+- **Deliverables:** FOSSGIS routing adapter (ADR 004) with cache, chunked matrices (at most 100
+  cells and 150 km each), single-route requests for legs between cities; estimated fallback with
+  confidence label; route geometry. Self-hosted Valhalla only if the owner chooses it later (S3).
 - **Tests:** matrix symmetry and sanity checks; fallback used when the container is stopped;
   cache hit on repeat; latency measured.
 - **Dependencies:** Phase 2 (same extract), S3.
-- **Risks:** memory needs exceed the target host; mitigation is a smaller region or OSRM.
+- **Risks:** FOSSGIS throttles or blocks the app; mitigation is the cache, labelled estimates and
+  the self-hosting fallback measured in S3.
 
 ### Phase 4 — Planner v1: attractions and days
 
@@ -249,8 +251,9 @@ GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 
 ## 7. Recommended next task
 
-**Phase 0, spike S3 (Italy), then the hosting decision (D3).** S2 is done; see
-`docs/spikes/s2-data-findings.md`. S3 measures tile build time, memory and 50 x 50 matrix
-latency for Italy. With those figures and the free-tier terms read from the providers' official
-pages, D3 can be decided under the owner's constraint of free, managed hosting (D14).
+**The hosting decision (D3) for the API server and the data import.** S2 and S3 are done; see
+`docs/spikes/s2-data-findings.md` and `docs/spikes/s3-routing-findings.md`. Routing no longer
+needs a server of ours (ADR 004). What remains is where the small API server runs and how the
+region data gets into the database without a server of the owner's, under the free, managed
+constraint (D14). Free-tier terms must be read from the providers' official pages first.
 Region readiness thresholds are still to be set by the owner.

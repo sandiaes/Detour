@@ -818,7 +818,7 @@ mledoze/countries; ECB reference rates. ODbL share-alike and attribution obligat
 | Item | Why it matters | When |
 |---|---|---|
 | Geofabrik extract terms and cadence | Primary data pipeline | Phase 0 |
-| Valhalla API reference (matrix limits) and resource needs for a pilot region | Sizing the routing container | Phase 0 spike |
+| Valhalla resource needs for Japan, Austria, Czechia and Hungary (Italy measured in S3) | Sizing the routing container if self-hosted | Only if self-hosting is chosen |
 | GeoNames dump readme (file names, columns) | Gazetteer import | Phase 2 |
 | openrouteservice plans and terms | Only hosted routing fallback worth having | Before adopting |
 | Foursquare Places API pricing and terms | Only if a provider price source is ever wanted | Before adopting |

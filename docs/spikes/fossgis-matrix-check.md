@@ -90,3 +90,12 @@ directions text; send only worked or not, plus `trip.summary.length` (km) and `t
 |---|---|
 | Single driving route, Florence to Rome | [open](https://valhalla1.openstreetmap.de/route?json=%7B%22locations%22%3A%5B%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2558%7D%2C%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%5D%2C%22costing%22%3A%22auto%22%7D) |
 | Single driving route, Rome to Milan | [open](https://valhalla1.openstreetmap.de/route?json=%7B%22locations%22%3A%5B%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%2C%7B%22lat%22%3A45.4642%2C%22lon%22%3A9.19%7D%5D%2C%22costing%22%3A%22auto%22%7D) |
+
+## Result of the single-route check (2026-11-12, by the owner)
+
+| Test | Result |
+|---|---|
+| Florence to Rome, driving | Worked: 282.885 km, 11,505 s |
+| Rome to Milan, driving | Worked: 580.594 km, 22,188 s |
+
+The single-route request has no 150 km limit at these distances.

@@ -284,7 +284,7 @@ in this round** and are an open decision.
 | OSM data is thin in a chosen region | Poor itineraries | Data quality report gates a region; Overture and Foursquare OS Places as supplements |
 | Many mapped "attractions" are not sightseeing (shrines, stones) | Noisy candidates | Selection rule (ADR 003), Wikidata signal |
 | Region-pack model limits "any destination" | Product feels narrow | Explicit pilot regions; on-demand import after MVP |
-| Routing container sizing unknown | Hosting cost or latency | Phase 0 spike measures memory and build time |
+| Routing capacity: FOSSGIS limits (100 cells, 150 km per matrix, about 1 request per second) and no availability promise | Slow first plans, or blocking | Chunked matrices, route requests for long legs, cache, labelled estimates; self-hosting fallback sized in S3 |
 | OpenFreeMap discontinued | No map | Style URL from backend; PMTiles fallback rehearsed in Phase 9 |
 | Two variants look alike | Core goal missed | Diversity gate and KPI |
 | MapLibre React Native breaking changes | App build breaks | Pin versions; upgrade only with the Expo SDK |

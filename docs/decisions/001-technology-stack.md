@@ -76,7 +76,7 @@ All planning logic lives in the backend so that Android and iOS share it complet
 
 **Risks**
 
-- Resource needs of a regional Valhalla instance are unmeasured.
+- Resource needs of Valhalla for Italy are measured (S3: about 8 GB RAM to build, 2.4 GB of tiles); the other countries are not.
 - MapLibre React Native is community-maintained and outside the Expo SDK.
 - OR-Tools searches bounded by wall-clock time may not be reproducible across machines.
 

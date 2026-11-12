@@ -89,8 +89,7 @@ Rules this would amend, if approved:
 - **Matrix distance limit measured (owner, 2026-11-12):** a matrix with places farther apart than
   150 km is refused (`error_code` 154, "Path distance exceeds the max distance limit: 150000
   meters"). Matrices therefore serve walking and driving inside a city or region only. Legs
-  between distant cities need either the single-route request (limit not yet known; test in
-  `docs/spikes/fossgis-matrix-check.md`) or labelled estimates.
+  between distant cities use the single-route request (next item) or labelled estimates.
 - **Single-route limit measured (owner, 2026-11-12):** the single-route request accepted both
   long legs tested: Florence to Rome 282.885 km, 11,505 s; Rome to Milan 580.594 km, 22,188 s
   (driving, tolls on the route). Legs between distant cities therefore use one route request
@@ -106,4 +105,5 @@ Rules this would amend, if approved:
 
 - D3 reduces to the database and a small API host; Valhalla is no longer hosted by us.
 - Phase 3 builds the adapter, cache and estimate fallback instead of a Valhalla container.
-- S3 results remain the reference for a later move to self-hosting.
+- S3 results (`docs/spikes/s3-routing-findings.md`) are the reference for a later move to
+  self-hosting: Italy needs about 2.4 GB of tiles and roughly 8 GB of RAM to build.
