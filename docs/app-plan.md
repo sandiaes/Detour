@@ -1,6 +1,6 @@
 # App plan
 
-Status: **Phase 0, 1 and 2 are done; Phases 3 and 4 are built and await the owner's acceptance**; Phase 5 onward is proposed. Each phase is small enough to review on its own
+Status: **Phase 0, 1 and 2 are done; Phases 3, 4 and 5 are built and await the owner's acceptance**; Phase 5 onward is proposed. Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
 ## 1. Decisions
@@ -185,6 +185,8 @@ cache warms; 14 days in one city run out of distinct sights.
   scoring with the owner on real destinations.
 
 ### Phase 5 — Mobile shell
+
+**Status: built on 2026-11-12, not yet accepted** (ADR 015, proposed). All deliverables below are implemented with component tests (139) and an Android emulator workflow. **Not verified:** the emulator workflow has not run; no APK was built or run on a device in this change. Map lines are straight connectors (no route geometry exists); area destinations are disabled (the planner supports cities only).
 
 **Goal:** create a trip, compare two proposals, view days and the map on Android.
 

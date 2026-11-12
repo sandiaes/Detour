@@ -36,3 +36,28 @@ def request(
         currency_code="EUR",
         data_version=data_version,
     )
+
+
+def insert_synthetic_sights(database_url: str, region_id: str = "test-region") -> int:
+    """Load the synthetic city fixture (invented places centred on Testburg) into a database whose
+    fixture region is imported, so the region is big enough for two plans. Returns the count."""
+    import psycopg
+
+    rows = candidates("city-large")
+    with psycopg.connect(database_url, autocommit=True) as conn:
+        [(run,)] = conn.execute(
+            "SELECT current_import_run_id FROM geo.region WHERE id = %s", (region_id,)
+        ).fetchall()
+        for c in rows:
+            conn.execute(
+                "INSERT INTO geo.place (id, region_id, kind, category, name, name_norm, geom,"
+                " first_import_run_id, last_changed_import_run_id)"
+                " VALUES (%s, %s, 'attraction', %s, %s, lower(%s),"
+                " ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s)",
+                (c.place_id, region_id, c.category, c.name, c.name, c.lon, c.lat, run, run),
+            )
+            conn.execute(
+                "INSERT INTO geo.place_signal (place_id, osm_signals, score) VALUES (%s, %s, 0)",
+                (c.place_id, json.dumps(c.signals)),
+            )
+    return len(rows)

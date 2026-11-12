@@ -1,0 +1,52 @@
+# The one end-to-end flow (docs/development.md, "End-to-end test"): create a trip, compare the two
+# proposals, select one, read its days, open the map, and find the trip again in the list.
+# It runs on an Android emulator against the seeded fixture backend (services/api/tests/e2e_seed.py:
+# the invented city Testburg, no real map data) with routing switched off, so every transfer is a
+# labelled estimate. Controls are found by testID, which React Native exposes as the resource id.
+appId: io.github.sandiaes.detour
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "No trips yet"
+    timeout: 90000
+- tapOn: "Plan a trip"
+- tapOn:
+    id: "destination-input"
+- inputText: "Testburg"
+- extendedWaitUntil:
+    visible:
+      id: "destination-result-900101"
+    timeout: 30000
+- tapOn:
+    id: "destination-result-900101"
+- hideKeyboard
+- tapOn:
+    id: "plan-trip"
+- extendedWaitUntil:
+    visible: "How they differ"
+    timeout: 60000
+- assertVisible: "Essentials"
+- scrollUntilVisible:
+    element:
+      id: "select-essentials"
+- tapOn:
+    id: "select-essentials"
+- assertVisible: "✓ Selected"
+- tapOn:
+    id: "view-days-essentials"
+- extendedWaitUntil:
+    visible: "Day 1.*"
+    timeout: 30000
+- scrollUntilVisible:
+    element: "Estimated"
+- tapOn:
+    id: "show-map"
+- assertVisible: "Solid line: travel time routed"
+- assertVisible: "Data from OpenStreetMap"
+- back
+- back
+- extendedWaitUntil:
+    visible: "Testburg, 3 days"
+    timeout: 20000
+- assertVisible: "✓ Plan selected"

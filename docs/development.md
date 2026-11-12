@@ -110,6 +110,15 @@ Photon's API documentation (it is not a live recording). The FOSSGIS Valhalla ad
 fixtures: real responses the owner recorded by hand (`*-recorded.json`) and a few documented-format ones (`*-documented.json`). The routing adapter stays off in the `test`
 environment unless a transport is injected, so no test or CI run can reach the server.
 
+## End-to-end test (Android emulator)
+
+`.github/workflows/e2e-android.yml` builds an x86_64 release APK with `DETOUR_E2E=1` (allows plain
+HTTP to the CI runner only), seeds a database with `python -m tests.e2e_seed` (the API tests'
+invented fixture region plus synthetic sights, Testburg), starts the API with routing and Photon
+off, and runs `apps/mobile/e2e/trip-flow.yaml` with Maestro on an API 34 emulator. It runs on pull
+requests that touch the app, the API or the workflow, on pushes to main, and by hand. Reports are
+uploaded as an artifact. Component tests (`npm test`) cover the same flow with a fake server.
+
 ## Running an import locally
 
 Needs a PostGIS for the target (migrated: `alembic upgrade head` with `DETOUR_DATABASE_URL`), a
@@ -164,7 +173,6 @@ Secrets are set in the hosting providers' settings only ([`deployment.md`](deplo
 - `starlette.testclient` prints a deprecation notice asking for a package called `httpx2`. It is
   not adopted: it was not vetted, `httpx` 0.28.1 works, and the warning is filtered for that one
   message in `pyproject.toml`. Revisit as a planned dependency task.
-- The app has no navigation, state or form library yet; they are chosen in Phase 5 and recorded in
-  an ADR.
+- The app has no navigation, state or form library (ADR 015).
 - Logs are JSON on stdout with secrets redacted (`detour_api/logging.py`). Request logs carry the
   method, path (never the query string), status and duration; never headers or bodies.

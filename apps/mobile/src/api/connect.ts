@@ -13,6 +13,8 @@ export type Connection = {
   installationId: string;
   /** True when this run created a new anonymous installation. */
   registered: boolean;
+  /** The typed client, already carrying the installation token. */
+  client: ApiClient;
 };
 
 export class ConnectionError extends Error {}
@@ -85,5 +87,5 @@ export async function connect(options: ConnectOptions): Promise<Connection> {
   const installation = await ensureInstallation(client, options.store, (t) => {
     token = t;
   });
-  return { health: health.data, config: config.data, ...installation };
+  return { health: health.data, config: config.data, ...installation, client };
 }

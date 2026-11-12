@@ -12,6 +12,21 @@ export type HealthResponse = components["schemas"]["HealthResponse"];
 export type InstallationRegistration = components["schemas"]["InstallationRegistration"];
 export type InstallationInfo = components["schemas"]["InstallationInfo"];
 
+// Trips, itineraries and search (Phases 2 and 4).
+export type Trip = components["schemas"]["Trip"];
+export type TripCreate = components["schemas"]["TripCreate"];
+export type Itinerary = components["schemas"]["Itinerary"];
+export type ItinerarySummary = components["schemas"]["ItinerarySummary"];
+export type Day = components["schemas"]["Day"];
+export type Item = components["schemas"]["Item"];
+export type Transfer = components["schemas"]["Transfer"];
+export type PlanNote = components["schemas"]["PlanNote"];
+export type PlanStats = components["schemas"]["PlanStats"];
+export type GenerationResult = components["schemas"]["GenerationResult"];
+export type DestinationResult = components["schemas"]["DestinationResult"];
+export type DestinationSearchResponse = components["schemas"]["DestinationSearchResponse"];
+export type AttributionEntry = components["schemas"]["AttributionEntry"];
+
 export type ApiClientOptions = {
   /** Bearer token of the anonymous installation, read on every request. */
   getToken?: () => string | null | undefined;

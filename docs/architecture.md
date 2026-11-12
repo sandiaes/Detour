@@ -76,6 +76,7 @@ All services except the tile host run from one Docker Compose file in developmen
 
 - Expo SDK 58, TypeScript, Continuous Native Generation with config plugins; no hand-edited
   native projects. This keeps the iOS build a configuration task, not a port.
+- **Built in Phase 5 (ADR 015):** a stack navigator in React state, a small server-state layer in front of an `expo-sqlite` read cache, and the screens: trips, new trip, the two proposals compared, day list, plan map, Settings with credits. Offline reads, "waking the server" and error states are in every list screen. The Phase 1 description that follows is the shell it replaced.
 - **Built in Phase 1:** `apps/mobile` with six placeholder screens (Trips, Create Trip, Itinerary,
   Map, Saved Places, Settings), a tab bar held in React state (no navigation library until the
   Phase 5 ADR), a backend connection layer (health, then config, then anonymous registration;
@@ -98,7 +99,7 @@ All services except the tile host run from one Docker Compose file in developmen
   without a connection. Planning and recalculation always need the backend.
 - No direct calls to any third-party API other than the tile host.
 - Platform-specific behaviour is limited to permissions and build configuration.
-- Navigation, server-state and form libraries are chosen in Phase 5 and recorded in an ADR.
+- Navigation, server-state and form libraries: none (ADR 015).
 
 **iOS readiness.** Minimum iOS for SDK 58 is 16.4. MapLibre's config plugin is required on iOS.
 The app is not distributed through app stores (ADR 008): iPhone builds are compiled on the

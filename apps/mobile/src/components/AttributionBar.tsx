@@ -62,14 +62,16 @@ export function AttributionBar({ lines, userInteractionCount = 0 }: Props) {
   return (
     <View style={styles.bar} accessibilityLabel="Map attribution">
       {lines.map((line) => (
-        <Text
+        <Pressable
           key={line.url}
-          style={styles.link}
           accessibilityRole="link"
+          accessibilityLabel={line.text}
+          hitSlop={{ top: 14, bottom: 14, left: 4, right: 4 }}
+          style={styles.linkTarget}
           onPress={() => void Linking.openURL(line.url)}
         >
-          {line.text}
-        </Text>
+          <Text style={styles.link}>{line.text}</Text>
+        </Pressable>
       ))}
     </View>
   );
@@ -88,6 +90,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.9)",
     borderRadius: 4,
   },
+  // 20 dp of text line plus 14 dp of hit slop above and below: a 48 dp touch target.
+  linkTarget: { minHeight: 20, justifyContent: "center" },
   link: { fontSize: 12, color: colors.link, textDecorationLine: "underline", marginRight: 6 },
   infoButton: {
     position: "absolute",

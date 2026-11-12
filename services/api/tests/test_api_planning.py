@@ -5,7 +5,6 @@ in the test that injects the Valhalla stub (no test reaches the network).
 """
 
 import itertools
-import json
 import time
 import uuid
 from typing import Any
@@ -18,7 +17,7 @@ from detour_api.main import create_app
 from detour_api.planner.config import CONFIG_VERSION, ENGINE_VERSION
 from detour_api.settings import Settings
 from tests.conftest import TEST_SECRET, ApiEnv
-from tests.planner_helpers import candidates
+from tests.planner_helpers import insert_synthetic_sights
 from tests.valhalla_stub import ValhallaStub
 
 pytestmark = pytest.mark.db
@@ -41,26 +40,9 @@ def make_trip(env: ApiEnv, client: TestClient | None = None, **over: Any) -> dic
 
 
 def add_synthetic_sights(env: ApiEnv) -> int:
-    """Load the planner's synthetic city fixture (invented places centred on Testburg) into this
-    test's scratch database, so the region is big enough for two plans."""
-    rows = candidates("city-large")
-    with psycopg.connect(env.database_url, autocommit=True) as conn:
-        [(run,)] = conn.execute(
-            "SELECT current_import_run_id FROM geo.region WHERE id = 'test-region'"
-        ).fetchall()
-        for c in rows:
-            conn.execute(
-                "INSERT INTO geo.place (id, region_id, kind, category, name, name_norm, geom,"
-                " first_import_run_id, last_changed_import_run_id)"
-                " VALUES (%s, 'test-region', 'attraction', %s, %s, lower(%s),"
-                " ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s)",
-                (c.place_id, c.category, c.name, c.name, c.lon, c.lat, run, run),
-            )
-            conn.execute(
-                "INSERT INTO geo.place_signal (place_id, osm_signals, score) VALUES (%s, %s, 0)",
-                (c.place_id, json.dumps(c.signals)),
-            )
-    return len(rows)
+    """The planner's synthetic city fixture (invented places centred on Testburg) in this test's
+    scratch database, so the region is big enough for two plans."""
+    return insert_synthetic_sights(env.database_url)
 
 
 def generate(env: ApiEnv, trip: dict[str, Any], client: TestClient | None = None) -> Any:
