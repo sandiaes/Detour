@@ -72,7 +72,7 @@ def create_app(
     app = FastAPI(
         title="Detour API",
         version=__version__,
-        summary="Backend for the Detour travel planner (Phase 2: data and search).",
+        summary="Backend for the Detour travel planner (Phase 4: planning engine v1).",
         openapi_url="/v1/openapi.json",
         docs_url="/v1/docs",
         redoc_url=None,

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Detour API",
-    "summary": "Backend for the Detour travel planner (Phase 2: data and search).",
+    "summary": "Backend for the Detour travel planner (Phase 4: planning engine v1).",
     "version": "0.1.0"
   },
   "paths": {
@@ -1385,6 +1385,84 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/trips/{trip_id}/itineraries/generate": {
+      "post": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Plan the trip: two meaningfully different itineraries of attractions, or one with the reason (Phase 4: city destinations, no meals). Replaces earlier unselected proposals.",
+        "operationId": "generate_itineraries",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorBody"
                 }
               }
             },
@@ -2890,6 +2968,60 @@
         ],
         "title": "ExternalStatus"
       },
+      "GenerationResult": {
+        "properties": {
+          "generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Generation Id"
+          },
+          "distinct": {
+            "type": "boolean",
+            "title": "Distinct",
+            "description": "True when two meaningfully different itineraries were made; false when the destination supports only one (the notes say why)"
+          },
+          "jaccard_permille": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jaccard Permille",
+            "description": "Overlap of the two variants' visit sets; null with one itinerary"
+          },
+          "max_jaccard_permille": {
+            "type": "integer",
+            "title": "Max Jaccard Permille"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanNote"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "itineraries": {
+            "items": {
+              "$ref": "#/components/schemas/Itinerary"
+            },
+            "type": "array",
+            "title": "Itineraries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generation_id",
+          "distinct",
+          "jaccard_permille",
+          "max_jaccard_permille",
+          "notes",
+          "itineraries"
+        ],
+        "title": "GenerationResult"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2973,6 +3105,24 @@
           "token"
         ],
         "title": "InstallationRegistration"
+      },
+      "IssueBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "text"
+        ],
+        "title": "IssueBody"
       },
       "Item": {
         "properties": {
@@ -3118,7 +3268,27 @@
               "type": "string"
             },
             "type": "array",
-            "title": "Reasons"
+            "title": "Reasons",
+            "description": "Reason codes"
+          },
+          "reason_texts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reason Texts",
+            "description": "The reason codes rendered through fixed templates, in the same order"
+          },
+          "transfer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Transfer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "To the next item of the day. Null for the last item, or when no transfer has been computed (items added or moved by hand)"
           }
         },
         "type": "object",
@@ -3139,7 +3309,8 @@
           "duration_source",
           "origin",
           "locked",
-          "reasons"
+          "reasons",
+          "reason_texts"
         ],
         "title": "Item"
       },
@@ -3345,6 +3516,12 @@
             "format": "uuid",
             "title": "Trip Id"
           },
+          "generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Generation Id",
+            "description": "Shared by the variants of one generation"
+          },
           "profile": {
             "type": "string",
             "enum": [
@@ -3385,7 +3562,50 @@
                 "type": "null"
               }
             ],
-            "title": "Import Run Id"
+            "title": "Import Run Id",
+            "description": "The data version the plan was built on"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "diversity_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diversity Score",
+            "description": "Jaccard similarity of the visit sets of the generation's two variants"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanNote"
+            },
+            "type": "array",
+            "title": "Notes",
+            "description": "Plan-level explanations; empty for manual plans"
+          },
+          "stats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanStats"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for manual itineraries"
           },
           "created_at": {
             "type": "string",
@@ -3404,12 +3624,17 @@
         "required": [
           "id",
           "trip_id",
+          "generation_id",
           "profile",
           "status",
           "version",
           "engine_version",
           "config_version",
           "import_run_id",
+          "seed",
+          "diversity_score",
+          "notes",
+          "stats",
           "created_at",
           "days"
         ],
@@ -3426,6 +3651,12 @@
             "type": "string",
             "format": "uuid",
             "title": "Trip Id"
+          },
+          "generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Generation Id",
+            "description": "Shared by the variants of one generation"
           },
           "profile": {
             "type": "string",
@@ -3467,7 +3698,50 @@
                 "type": "null"
               }
             ],
-            "title": "Import Run Id"
+            "title": "Import Run Id",
+            "description": "The data version the plan was built on"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "diversity_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diversity Score",
+            "description": "Jaccard similarity of the visit sets of the generation's two variants"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanNote"
+            },
+            "type": "array",
+            "title": "Notes",
+            "description": "Plan-level explanations; empty for manual plans"
+          },
+          "stats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanStats"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for manual itineraries"
           },
           "created_at": {
             "type": "string",
@@ -3479,12 +3753,17 @@
         "required": [
           "id",
           "trip_id",
+          "generation_id",
           "profile",
           "status",
           "version",
           "engine_version",
           "config_version",
           "import_run_id",
+          "seed",
+          "diversity_score",
+          "notes",
+          "stats",
           "created_at"
         ],
         "title": "ItinerarySummary"
@@ -3944,6 +4223,114 @@
         ],
         "title": "PlaceSummary"
       },
+      "PlanNote": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Stable code"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "The code rendered through its fixed template"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "text"
+        ],
+        "title": "PlanNote"
+      },
+      "PlanStats": {
+        "properties": {
+          "visits": {
+            "type": "integer",
+            "title": "Visits"
+          },
+          "days_with_visits": {
+            "type": "integer",
+            "title": "Days With Visits"
+          },
+          "visit_minutes": {
+            "type": "integer",
+            "title": "Visit Minutes"
+          },
+          "travel_minutes": {
+            "type": "integer",
+            "title": "Travel Minutes"
+          },
+          "travel_seconds": {
+            "type": "integer",
+            "title": "Travel Seconds"
+          },
+          "routed_transfers": {
+            "type": "integer",
+            "title": "Routed Transfers"
+          },
+          "estimated_transfers": {
+            "type": "integer",
+            "title": "Estimated Transfers"
+          },
+          "day_utilisation_permille": {
+            "type": "integer",
+            "title": "Day Utilisation Permille",
+            "description": "Visits and transfers as permille of the 09:00-21:00 window of all days"
+          },
+          "travel_share_permille": {
+            "type": "integer",
+            "title": "Travel Share Permille",
+            "description": "Transfer time as permille of planned time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "visits",
+          "days_with_visits",
+          "visit_minutes",
+          "travel_minutes",
+          "travel_seconds",
+          "routed_transfers",
+          "estimated_transfers",
+          "day_utilisation_permille",
+          "travel_share_permille"
+        ],
+        "title": "PlanStats"
+      },
+      "PlanningErrorBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code",
+            "description": "Stable machine-readable reason, for example region_not_available"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/IssueBody"
+            },
+            "type": "array",
+            "title": "Issues",
+            "description": "With code planning_impossible: each reason no plan can be made"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "PlanningErrorBody"
+      },
       "ReadinessResponse": {
         "properties": {
           "status": {
@@ -4021,6 +4408,49 @@
           "counts"
         ],
         "title": "RegionInfo"
+      },
+      "Transfer": {
+        "properties": {
+          "to_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "To Item Id"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "drive"
+            ],
+            "title": "Mode"
+          },
+          "seconds": {
+            "type": "integer",
+            "title": "Seconds"
+          },
+          "meters": {
+            "type": "integer",
+            "title": "Meters"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "routed",
+              "estimated"
+            ],
+            "title": "Confidence",
+            "description": "routed: from the routing provider; estimated: straight-line distance times a detour factor, an assumption and not a measurement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to_item_id",
+          "mode",
+          "seconds",
+          "meters",
+          "confidence"
+        ],
+        "title": "Transfer"
       },
       "Trip": {
         "properties": {

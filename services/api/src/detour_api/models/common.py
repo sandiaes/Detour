@@ -32,3 +32,15 @@ class ErrorBody(BaseModel):
     code: str | None = Field(
         default=None, description="Stable machine-readable reason, for example region_not_available"
     )
+
+
+class IssueBody(BaseModel):
+    code: str
+    text: str
+
+
+class PlanningErrorBody(ErrorBody):
+    issues: list[IssueBody] = Field(
+        default_factory=list,
+        description="With code planning_impossible: each reason no plan can be made",
+    )

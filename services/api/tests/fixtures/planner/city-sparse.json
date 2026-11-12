@@ -1,0 +1,94 @@
+{
+ "synthetic": true,
+ "note": "Invented test data: not real places. See make_candidates.py.",
+ "centre": {
+  "lat": 48.2082,
+  "lon": 16.3738
+ },
+ "candidates": [
+  {
+   "place_id": "00000000-0000-4000-9000-000000000001",
+   "name": "Sparse synthetic sight 1",
+   "category": "church",
+   "lat": 48.200651,
+   "lon": 16.369334,
+   "signals": {},
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-9000-000000000002",
+   "name": "Sparse synthetic sight 2",
+   "category": "historic_tomb",
+   "lat": 48.174245,
+   "lon": 16.384971,
+   "signals": {
+    "has_name": true,
+    "has_wikidata": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-9000-000000000003",
+   "name": "Sparse synthetic sight 3",
+   "category": "unlisted_category",
+   "lat": 48.200051,
+   "lon": 16.366319,
+   "signals": {},
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-9000-000000000004",
+   "name": "Sparse synthetic sight 4",
+   "category": "museum",
+   "lat": 48.205457,
+   "lon": 16.373491,
+   "signals": {
+    "has_name": true,
+    "has_wikidata": true
+   },
+   "sitelink_count": 60
+  },
+  {
+   "place_id": "00000000-0000-4000-9000-000000000005",
+   "name": "Sparse synthetic sight 5",
+   "category": "chapel",
+   "lat": 48.211773,
+   "lon": 16.354432,
+   "signals": {},
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-9000-000000000006",
+   "name": "Sparse synthetic sight 6",
+   "category": "statue",
+   "lat": 48.207761,
+   "lon": 16.375687,
+   "signals": {
+    "has_name": true,
+    "has_wikidata": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-9000-000000000007",
+   "name": "Sparse synthetic sight 7",
+   "category": "viewpoint",
+   "lat": 48.208669,
+   "lon": 16.372012,
+   "signals": {},
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-9000-000000000008",
+   "name": "Sparse synthetic sight 8",
+   "category": "theme_park",
+   "lat": 48.223583,
+   "lon": 16.380018,
+   "signals": {
+    "has_name": true,
+    "has_wikidata": false
+   },
+   "sitelink_count": null
+  }
+ ]
+}

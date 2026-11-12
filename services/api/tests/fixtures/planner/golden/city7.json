@@ -1,0 +1,3944 @@
+{
+ "config_version": "2026-11-12.2+durations-2026-11-12.1",
+ "data_version": "run-fixture",
+ "distinct": true,
+ "engine_version": "planner-1.0.0",
+ "jaccard_permille": 509,
+ "notes": [
+  {
+   "code": "DISTINCT_PLANS",
+   "params": {
+    "jaccard_percent": 50,
+    "max_percent": 60
+   }
+  },
+  {
+   "code": "NOTABILITY_FROM_TAGS",
+   "params": {}
+  },
+  {
+   "code": "DURATIONS_ARE_DEFAULTS",
+   "params": {}
+  },
+  {
+   "code": "NO_OPENING_HOURS",
+   "params": {}
+  },
+  {
+   "code": "NO_MEALS_YET",
+   "params": {}
+  }
+ ],
+ "plans": [
+  {
+   "days": [
+    {
+     "date": null,
+     "day_index": 1,
+     "visits": [
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 555,
+       "lat": 48.225648,
+       "lon": 16.403113,
+       "name": "Synthetic sight 086",
+       "place_id": "00000000-0000-4000-8000-000000000086",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2689,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 323
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 606,
+       "lat": 48.218927,
+       "lon": 16.377069,
+       "name": "Synthetic sight 136",
+       "place_id": "00000000-0000-4000-8000-000000000136",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 561,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2623,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 315
+       }
+      },
+      {
+       "category": "ruins",
+       "duration_minutes": 40,
+       "end_minute": 652,
+       "lat": 48.200812,
+       "lon": 16.375692,
+       "name": "Synthetic sight 122",
+       "place_id": "00000000-0000-4000-8000-000000000122",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 612,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2960,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 355
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 678,
+       "lat": 48.221258,
+       "lon": 16.377273,
+       "name": "Synthetic sight 047",
+       "place_id": "00000000-0000-4000-8000-000000000047",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 658,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2685,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 322
+       }
+      },
+      {
+       "category": "ruins",
+       "duration_minutes": 40,
+       "end_minute": 724,
+       "lat": 48.202751,
+       "lon": 16.3749,
+       "name": "Synthetic sight 114",
+       "place_id": "00000000-0000-4000-8000-000000000114",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 684,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 83,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 67
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "duration_minutes": 60,
+       "end_minute": 786,
+       "lat": 48.203157,
+       "lon": 16.374798,
+       "name": "Synthetic sight 043",
+       "place_id": "00000000-0000-4000-8000-000000000043",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 726,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 297,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 238
+       }
+      },
+      {
+       "category": "monument",
+       "duration_minutes": 15,
+       "end_minute": 805,
+       "lat": 48.202773,
+       "lon": 16.37695,
+       "name": "Synthetic sight 104",
+       "place_id": "00000000-0000-4000-8000-000000000104",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 790,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2960,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 355
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 826,
+       "lat": 48.187414,
+       "lon": 16.35664,
+       "name": "Synthetic sight 098",
+       "place_id": "00000000-0000-4000-8000-000000000098",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 811,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2762,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 331
+       }
+      },
+      {
+       "category": "gallery",
+       "duration_minutes": 60,
+       "end_minute": 892,
+       "lat": 48.205539,
+       "lon": 16.365696,
+       "name": "Synthetic sight 093",
+       "place_id": "00000000-0000-4000-8000-000000000093",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 832,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2822,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 339
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 928,
+       "lat": 48.224558,
+       "lon": 16.372303,
+       "name": "Synthetic sight 072",
+       "place_id": "00000000-0000-4000-8000-000000000072",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 898,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2973,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 357
+       }
+      },
+      {
+       "category": "castle",
+       "duration_minutes": 75,
+       "end_minute": 1009,
+       "lat": 48.20402,
+       "lon": 16.370698,
+       "name": "Synthetic sight 014",
+       "place_id": "00000000-0000-4000-8000-000000000014",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 934,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3893,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 467
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "duration_minutes": 60,
+       "end_minute": 1077,
+       "lat": 48.228235,
+       "lon": 16.388369,
+       "name": "Synthetic sight 132",
+       "place_id": "00000000-0000-4000-8000-000000000132",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1017,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 2,
+     "visits": [
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 560,
+       "lat": 48.206805,
+       "lon": 16.380808,
+       "name": "Synthetic sight 022",
+       "place_id": "00000000-0000-4000-8000-000000000022",
+       "reasons": [
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 110,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 88
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 582,
+       "lat": 48.206396,
+       "lon": 16.381383,
+       "name": "Synthetic sight 147",
+       "place_id": "00000000-0000-4000-8000-000000000147",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 562,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3118,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 374
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 679,
+       "lat": 48.226715,
+       "lon": 16.37051,
+       "name": "Synthetic sight 149",
+       "place_id": "00000000-0000-4000-8000-000000000149",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 589,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2668,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 320
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 715,
+       "lat": 48.212626,
+       "lon": 16.352616,
+       "name": "Synthetic sight 033",
+       "place_id": "00000000-0000-4000-8000-000000000033",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 685,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2840,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 341
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 736,
+       "lat": 48.196057,
+       "lon": 16.368447,
+       "name": "Synthetic sight 140",
+       "place_id": "00000000-0000-4000-8000-000000000140",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 721,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2613,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 314
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 757,
+       "lat": 48.211171,
+       "lon": 16.383337,
+       "name": "Synthetic sight 036",
+       "place_id": "00000000-0000-4000-8000-000000000036",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 742,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2766,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 332
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "duration_minutes": 60,
+       "end_minute": 823,
+       "lat": 48.194616,
+       "lon": 16.397759,
+       "name": "Synthetic sight 078",
+       "place_id": "00000000-0000-4000-8000-000000000078",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 763,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2756,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 331
+       }
+      },
+      {
+       "category": "chapel",
+       "duration_minutes": 15,
+       "end_minute": 844,
+       "lat": 48.207902,
+       "lon": 16.377228,
+       "name": "Synthetic sight 051",
+       "place_id": "00000000-0000-4000-8000-000000000051",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 829,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 238,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 191
+       }
+      },
+      {
+       "category": "castle",
+       "duration_minutes": 75,
+       "end_minute": 923,
+       "lat": 48.20871,
+       "lon": 16.378536,
+       "name": "Synthetic sight 080",
+       "place_id": "00000000-0000-4000-8000-000000000080",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 848,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2954,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 355
+       }
+      },
+      {
+       "category": "statue",
+       "duration_minutes": 10,
+       "end_minute": 939,
+       "lat": 48.197495,
+       "lon": 16.352895,
+       "name": "Synthetic sight 160",
+       "place_id": "00000000-0000-4000-8000-000000000160",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 929,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2924,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 351
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 1035,
+       "lat": 48.21539,
+       "lon": 16.367065,
+       "name": "Synthetic sight 134",
+       "place_id": "00000000-0000-4000-8000-000000000134",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 945,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2731,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 328
+       }
+      },
+      {
+       "category": "monument",
+       "duration_minutes": 15,
+       "end_minute": 1056,
+       "lat": 48.211316,
+       "lon": 16.394753,
+       "name": "Synthetic sight 053",
+       "place_id": "00000000-0000-4000-8000-000000000053",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1041,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2963,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 356
+       }
+      },
+      {
+       "category": "chapel",
+       "duration_minutes": 15,
+       "end_minute": 1077,
+       "lat": 48.228125,
+       "lon": 16.412376,
+       "name": "Synthetic sight 008",
+       "place_id": "00000000-0000-4000-8000-000000000008",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1062,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 3,
+     "visits": [
+      {
+       "category": "memorial",
+       "duration_minutes": 15,
+       "end_minute": 555,
+       "lat": 48.224161,
+       "lon": 16.380403,
+       "name": "Synthetic sight 011",
+       "place_id": "00000000-0000-4000-8000-000000000011",
+       "reasons": [
+        "WIKIDATA_LINKED"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2655,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 319
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 581,
+       "lat": 48.206709,
+       "lon": 16.388986,
+       "name": "Synthetic sight 170",
+       "place_id": "00000000-0000-4000-8000-000000000170",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 561,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2934,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 352
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 617,
+       "lat": 48.209161,
+       "lon": 16.35876,
+       "name": "Synthetic sight 006",
+       "place_id": "00000000-0000-4000-8000-000000000006",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 587,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2924,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 351
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 668,
+       "lat": 48.228854,
+       "lon": 16.365696,
+       "name": "Synthetic sight 050",
+       "place_id": "00000000-0000-4000-8000-000000000050",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 623,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2825,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 339
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 764,
+       "lat": 48.209842,
+       "lon": 16.372525,
+       "name": "Synthetic sight 049",
+       "place_id": "00000000-0000-4000-8000-000000000049",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 674,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 129,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 103
+       }
+      },
+      {
+       "category": "memorial",
+       "duration_minutes": 15,
+       "end_minute": 781,
+       "lat": 48.209783,
+       "lon": 16.373475,
+       "name": "Synthetic sight 125",
+       "place_id": "00000000-0000-4000-8000-000000000125",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 766,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 109,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 87
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 803,
+       "lat": 48.210227,
+       "lon": 16.373016,
+       "name": "Synthetic sight 030",
+       "place_id": "00000000-0000-4000-8000-000000000030",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 783,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 148,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 118
+       }
+      },
+      {
+       "category": "gallery",
+       "duration_minutes": 60,
+       "end_minute": 865,
+       "lat": 48.210935,
+       "lon": 16.373327,
+       "name": "Synthetic sight 015",
+       "place_id": "00000000-0000-4000-8000-000000000015",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 805,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 251,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 200
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 959,
+       "lat": 48.212186,
+       "lon": 16.373433,
+       "name": "Synthetic sight 169",
+       "place_id": "00000000-0000-4000-8000-000000000169",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 869,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2749,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 330
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 1055,
+       "lat": 48.195739,
+       "lon": 16.387737,
+       "name": "Synthetic sight 145",
+       "place_id": "00000000-0000-4000-8000-000000000145",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 965,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2731,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 328
+       }
+      },
+      {
+       "category": "chapel",
+       "duration_minutes": 15,
+       "end_minute": 1076,
+       "lat": 48.205105,
+       "lon": 16.412357,
+       "name": "Synthetic sight 103",
+       "place_id": "00000000-0000-4000-8000-000000000103",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1061,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 4,
+     "visits": [
+      {
+       "category": "castle",
+       "duration_minutes": 75,
+       "end_minute": 615,
+       "lat": 48.189881,
+       "lon": 16.401789,
+       "name": "Synthetic sight 157",
+       "place_id": "00000000-0000-4000-8000-000000000157",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2764,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 332
+       }
+      },
+      {
+       "category": "chapel",
+       "duration_minutes": 15,
+       "end_minute": 636,
+       "lat": 48.208622,
+       "lon": 16.407508,
+       "name": "Synthetic sight 129",
+       "place_id": "00000000-0000-4000-8000-000000000129",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 621,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2727,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 327
+       }
+      },
+      {
+       "category": "palace",
+       "duration_minutes": 75,
+       "end_minute": 717,
+       "lat": 48.213984,
+       "lon": 16.380374,
+       "name": "Synthetic sight 001",
+       "place_id": "00000000-0000-4000-8000-000000000001",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 642,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2666,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 320
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 753,
+       "lat": 48.198015,
+       "lon": 16.36651,
+       "name": "Synthetic sight 152",
+       "place_id": "00000000-0000-4000-8000-000000000152",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 723,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2813,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 338
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 774,
+       "lat": 48.205191,
+       "lon": 16.393646,
+       "name": "Synthetic sight 175",
+       "place_id": "00000000-0000-4000-8000-000000000175",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 759,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2663,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 320
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 870,
+       "lat": 48.217388,
+       "lon": 16.372935,
+       "name": "Synthetic sight 002",
+       "place_id": "00000000-0000-4000-8000-000000000002",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 780,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2607,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 313
+       }
+      },
+      {
+       "category": "statue",
+       "duration_minutes": 10,
+       "end_minute": 886,
+       "lat": 48.206974,
+       "lon": 16.350845,
+       "name": "Synthetic sight 107",
+       "place_id": "00000000-0000-4000-8000-000000000107",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 876,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 196,
+        "minutes": 3,
+        "mode": "walk",
+        "seconds": 157
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 904,
+       "lat": 48.207124,
+       "lon": 16.352289,
+       "name": "Synthetic sight 059",
+       "place_id": "00000000-0000-4000-8000-000000000059",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 889,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2808,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 337
+       }
+      },
+      {
+       "category": "tower",
+       "duration_minutes": 30,
+       "end_minute": 940,
+       "lat": 48.226465,
+       "lon": 16.35505,
+       "name": "Synthetic sight 148",
+       "place_id": "00000000-0000-4000-8000-000000000148",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 910,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3278,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 393
+       }
+      },
+      {
+       "category": "monument",
+       "duration_minutes": 15,
+       "end_minute": 962,
+       "lat": 48.204264,
+       "lon": 16.361988,
+       "name": "Synthetic sight 055",
+       "place_id": "00000000-0000-4000-8000-000000000055",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 947,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3196,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 383
+       }
+      },
+      {
+       "category": "palace",
+       "duration_minutes": 75,
+       "end_minute": 1044,
+       "lat": 48.216798,
+       "lon": 16.389313,
+       "name": "Synthetic sight 082",
+       "place_id": "00000000-0000-4000-8000-000000000082",
+       "reasons": [
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 969,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3086,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 370
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 1066,
+       "lat": 48.23218,
+       "lon": 16.367081,
+       "name": "Synthetic sight 016",
+       "place_id": "00000000-0000-4000-8000-000000000016",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1051,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 5,
+     "visits": [
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 630,
+       "lat": 48.219733,
+       "lon": 16.367356,
+       "name": "Synthetic sight 161",
+       "place_id": "00000000-0000-4000-8000-000000000161",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 337,
+        "minutes": 5,
+        "mode": "walk",
+        "seconds": 269
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 665,
+       "lat": 48.22098,
+       "lon": 16.365671,
+       "name": "Synthetic sight 040",
+       "place_id": "00000000-0000-4000-8000-000000000040",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 635,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2664,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 320
+       }
+      },
+      {
+       "category": "gallery",
+       "duration_minutes": 60,
+       "end_minute": 731,
+       "lat": 48.204705,
+       "lon": 16.352699,
+       "name": "Synthetic sight 032",
+       "place_id": "00000000-0000-4000-8000-000000000032",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 671,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2787,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 334
+       }
+      },
+      {
+       "category": "memorial",
+       "duration_minutes": 15,
+       "end_minute": 752,
+       "lat": 48.202016,
+       "lon": 16.381348,
+       "name": "Synthetic sight 054",
+       "place_id": "00000000-0000-4000-8000-000000000054",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 737,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3738,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 449
+       }
+      },
+      {
+       "category": "tower",
+       "duration_minutes": 30,
+       "end_minute": 790,
+       "lat": 48.177507,
+       "lon": 16.3937,
+       "name": "Synthetic sight 112",
+       "place_id": "00000000-0000-4000-8000-000000000112",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 760,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2916,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 350
+       }
+      },
+      {
+       "category": "city_gate",
+       "duration_minutes": 15,
+       "end_minute": 811,
+       "lat": 48.175825,
+       "lon": 16.363562,
+       "name": "Synthetic sight 156",
+       "place_id": "00000000-0000-4000-8000-000000000156",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 796,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2629,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 315
+       }
+      },
+      {
+       "category": "monument",
+       "duration_minutes": 15,
+       "end_minute": 832,
+       "lat": 48.19296,
+       "lon": 16.372679,
+       "name": "Synthetic sight 106",
+       "place_id": "00000000-0000-4000-8000-000000000106",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 817,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3760,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 451
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 930,
+       "lat": 48.180605,
+       "lon": 16.407008,
+       "name": "Synthetic sight 109",
+       "place_id": "00000000-0000-4000-8000-000000000109",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 840,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2771,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 333
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 981,
+       "lat": 48.198743,
+       "lon": 16.41632,
+       "name": "Synthetic sight 142",
+       "place_id": "00000000-0000-4000-8000-000000000142",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 936,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2802,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 336
+       }
+      },
+      {
+       "category": "palace",
+       "duration_minutes": 75,
+       "end_minute": 1062,
+       "lat": 48.21781,
+       "lon": 16.411081,
+       "name": "Synthetic sight 024",
+       "place_id": "00000000-0000-4000-8000-000000000024",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 987,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 6,
+     "visits": [
+      {
+       "category": "statue",
+       "duration_minutes": 10,
+       "end_minute": 550,
+       "lat": 48.222839,
+       "lon": 16.387614,
+       "name": "Synthetic sight 005",
+       "place_id": "00000000-0000-4000-8000-000000000005",
+       "reasons": [
+        "HERITAGE_LISTED"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2922,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 351
+       }
+      },
+      {
+       "category": "castle",
+       "duration_minutes": 75,
+       "end_minute": 631,
+       "lat": 48.203218,
+       "lon": 16.394887,
+       "name": "Synthetic sight 099",
+       "place_id": "00000000-0000-4000-8000-000000000099",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 556,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2853,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 342
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 667,
+       "lat": 48.209527,
+       "lon": 16.366828,
+       "name": "Synthetic sight 179",
+       "place_id": "00000000-0000-4000-8000-000000000179",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 637,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3627,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 435
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 720,
+       "lat": 48.196977,
+       "lon": 16.334231,
+       "name": "Synthetic sight 023",
+       "place_id": "00000000-0000-4000-8000-000000000023",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 675,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2686,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 322
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 746,
+       "lat": 48.206803,
+       "lon": 16.310559,
+       "name": "Synthetic sight 021",
+       "place_id": "00000000-0000-4000-8000-000000000021",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 726,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2899,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 348
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 772,
+       "lat": 48.192034,
+       "lon": 16.330911,
+       "name": "Synthetic sight 077",
+       "place_id": "00000000-0000-4000-8000-000000000077",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 752,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3072,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 369
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 869,
+       "lat": 48.197718,
+       "lon": 16.36163,
+       "name": "Synthetic sight 066",
+       "place_id": "00000000-0000-4000-8000-000000000066",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 779,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2608,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 313
+       }
+      },
+      {
+       "category": "gallery",
+       "duration_minutes": 60,
+       "end_minute": 935,
+       "lat": 48.211224,
+       "lon": 16.343673,
+       "name": "Synthetic sight 017",
+       "place_id": "00000000-0000-4000-8000-000000000017",
+       "reasons": [
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 875,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2911,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 349
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 986,
+       "lat": 48.212028,
+       "lon": 16.373874,
+       "name": "Synthetic sight 120",
+       "place_id": "00000000-0000-4000-8000-000000000120",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 941,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3109,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 373
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 1038,
+       "lat": 48.211912,
+       "lon": 16.406141,
+       "name": "Synthetic sight 105",
+       "place_id": "00000000-0000-4000-8000-000000000105",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 993,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3087,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 370
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 1075,
+       "lat": 48.218606,
+       "lon": 16.436571,
+       "name": "Synthetic sight 026",
+       "place_id": "00000000-0000-4000-8000-000000000026",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1045,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 7,
+     "visits": [
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 630,
+       "lat": 48.20476,
+       "lon": 16.407953,
+       "name": "Synthetic sight 121",
+       "place_id": "00000000-0000-4000-8000-000000000121",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3266,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 392
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 682,
+       "lat": 48.206629,
+       "lon": 16.374166,
+       "name": "Synthetic sight 091",
+       "place_id": "00000000-0000-4000-8000-000000000091",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 637,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 110,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 88
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 699,
+       "lat": 48.20702,
+       "lon": 16.373586,
+       "name": "Synthetic sight 062",
+       "place_id": "00000000-0000-4000-8000-000000000062",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 684,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 237,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 189
+       }
+      },
+      {
+       "category": "ruins",
+       "duration_minutes": 40,
+       "end_minute": 743,
+       "lat": 48.208175,
+       "lon": 16.373941,
+       "name": "Synthetic sight 095",
+       "place_id": "00000000-0000-4000-8000-000000000095",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 703,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 20,
+        "minutes": 1,
+        "mode": "walk",
+        "seconds": 16
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 834,
+       "lat": 48.20817,
+       "lon": 16.373793,
+       "name": "Synthetic sight 172",
+       "place_id": "00000000-0000-4000-8000-000000000172",
+       "reasons": [
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 744,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2640,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 317
+       }
+      },
+      {
+       "category": "gallery",
+       "duration_minutes": 60,
+       "end_minute": 900,
+       "lat": 48.211725,
+       "lon": 16.400667,
+       "name": "Synthetic sight 018",
+       "place_id": "00000000-0000-4000-8000-000000000018",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 840,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2853,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 342
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 996,
+       "lat": 48.216155,
+       "lon": 16.371814,
+       "name": "Synthetic sight 034",
+       "place_id": "00000000-0000-4000-8000-000000000034",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 906,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3957,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 475
+       }
+      },
+      {
+       "category": "castle",
+       "duration_minutes": 75,
+       "end_minute": 1079,
+       "lat": 48.205183,
+       "lon": 16.334181,
+       "name": "Synthetic sight 004",
+       "place_id": "00000000-0000-4000-8000-000000000004",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1004,
+       "transfer": null
+      }
+     ]
+    }
+   ],
+   "notes": [
+    {
+     "code": "PROFILE_ESSENTIALS",
+     "params": {
+      "radius_km": 5
+     }
+    },
+    {
+     "code": "ESTIMATED_TRANSFERS",
+     "params": {
+      "estimated": 70,
+      "transfers": 70
+     }
+    }
+   ],
+   "profile": "essentials",
+   "stats": {
+    "day_utilisation_permille": 740,
+    "days_with_visits": 7,
+    "estimated_transfers": 70,
+    "routed_transfers": 0,
+    "travel_minutes": 397,
+    "travel_seconds": 21815,
+    "travel_share_permille": 106,
+    "visit_minutes": 3335,
+    "visits": 77
+   }
+  },
+  {
+   "days": [
+    {
+     "date": null,
+     "day_index": 1,
+     "visits": [
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 555,
+       "lat": 48.23218,
+       "lon": 16.367081,
+       "name": "Synthetic sight 016",
+       "place_id": "00000000-0000-4000-8000-000000000016",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3423,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 411
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 592,
+       "lat": 48.209161,
+       "lon": 16.35876,
+       "name": "Synthetic sight 006",
+       "place_id": "00000000-0000-4000-8000-000000000006",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 562,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4373,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 525
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 631,
+       "lat": 48.213509,
+       "lon": 16.313825,
+       "name": "Synthetic sight 144",
+       "place_id": "00000000-0000-4000-8000-000000000144",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 601,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3688,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 443
+       }
+      },
+      {
+       "category": "statue",
+       "duration_minutes": 10,
+       "end_minute": 649,
+       "lat": 48.206974,
+       "lon": 16.350845,
+       "name": "Synthetic sight 107",
+       "place_id": "00000000-0000-4000-8000-000000000107",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 639,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 196,
+        "minutes": 3,
+        "mode": "walk",
+        "seconds": 157
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 667,
+       "lat": 48.207124,
+       "lon": 16.352289,
+       "name": "Synthetic sight 059",
+       "place_id": "00000000-0000-4000-8000-000000000059",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 652,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2881,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 346
+       }
+      },
+      {
+       "category": "palace",
+       "duration_minutes": 75,
+       "end_minute": 748,
+       "lat": 48.213984,
+       "lon": 16.380374,
+       "name": "Synthetic sight 001",
+       "place_id": "00000000-0000-4000-8000-000000000001",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 673,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2637,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 316
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 784,
+       "lat": 48.204558,
+       "lon": 16.403813,
+       "name": "Synthetic sight 133",
+       "place_id": "00000000-0000-4000-8000-000000000133",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 754,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2871,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 345
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 835,
+       "lat": 48.206629,
+       "lon": 16.374166,
+       "name": "Synthetic sight 091",
+       "place_id": "00000000-0000-4000-8000-000000000091",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 790,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2860,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 343
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "duration_minutes": 60,
+       "end_minute": 901,
+       "lat": 48.194616,
+       "lon": 16.397759,
+       "name": "Synthetic sight 078",
+       "place_id": "00000000-0000-4000-8000-000000000078",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 841,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2832,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 340
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 922,
+       "lat": 48.196057,
+       "lon": 16.368447,
+       "name": "Synthetic sight 140",
+       "place_id": "00000000-0000-4000-8000-000000000140",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 907,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2613,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 314
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 943,
+       "lat": 48.211171,
+       "lon": 16.383337,
+       "name": "Synthetic sight 036",
+       "place_id": "00000000-0000-4000-8000-000000000036",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 928,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2856,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 343
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 1039,
+       "lat": 48.197718,
+       "lon": 16.36163,
+       "name": "Synthetic sight 066",
+       "place_id": "00000000-0000-4000-8000-000000000066",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 949,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2607,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 313
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 1135,
+       "lat": 48.21539,
+       "lon": 16.367065,
+       "name": "Synthetic sight 134",
+       "place_id": "00000000-0000-4000-8000-000000000134",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1045,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 2,
+     "visits": [
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 585,
+       "lat": 48.261653,
+       "lon": 16.337179,
+       "name": "Synthetic sight 068",
+       "place_id": "00000000-0000-4000-8000-000000000068",
+       "reasons": [
+        "WIKIDATA_LINKED"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3900,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 468
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 683,
+       "lat": 48.237509,
+       "lon": 16.319081,
+       "name": "Synthetic sight 167",
+       "place_id": "00000000-0000-4000-8000-000000000167",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 593,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4660,
+        "minutes": 10,
+        "mode": "drive",
+        "seconds": 559
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 738,
+       "lat": 48.228854,
+       "lon": 16.365696,
+       "name": "Synthetic sight 050",
+       "place_id": "00000000-0000-4000-8000-000000000050",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 693,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3163,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 380
+       }
+      },
+      {
+       "category": "castle",
+       "duration_minutes": 75,
+       "end_minute": 820,
+       "lat": 48.20871,
+       "lon": 16.378536,
+       "name": "Synthetic sight 080",
+       "place_id": "00000000-0000-4000-8000-000000000080",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 745,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2954,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 355
+       }
+      },
+      {
+       "category": "statue",
+       "duration_minutes": 10,
+       "end_minute": 836,
+       "lat": 48.197495,
+       "lon": 16.352895,
+       "name": "Synthetic sight 160",
+       "place_id": "00000000-0000-4000-8000-000000000160",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 826,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3839,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 461
+       }
+      },
+      {
+       "category": "monument",
+       "duration_minutes": 15,
+       "end_minute": 859,
+       "lat": 48.173404,
+       "lon": 16.336157,
+       "name": "Synthetic sight 166",
+       "place_id": "00000000-0000-4000-8000-000000000166",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 844,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2950,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 354
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 895,
+       "lat": 48.154374,
+       "lon": 16.347215,
+       "name": "Synthetic sight 027",
+       "place_id": "00000000-0000-4000-8000-000000000027",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 865,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3478,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 417
+       }
+      },
+      {
+       "category": "city_gate",
+       "duration_minutes": 15,
+       "end_minute": 917,
+       "lat": 48.175825,
+       "lon": 16.363562,
+       "name": "Synthetic sight 156",
+       "place_id": "00000000-0000-4000-8000-000000000156",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 902,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2916,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 350
+       }
+      },
+      {
+       "category": "tower",
+       "duration_minutes": 30,
+       "end_minute": 953,
+       "lat": 48.177507,
+       "lon": 16.3937,
+       "name": "Synthetic sight 112",
+       "place_id": "00000000-0000-4000-8000-000000000112",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 923,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3289,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 395
+       }
+      },
+      {
+       "category": "ruins",
+       "duration_minutes": 40,
+       "end_minute": 1000,
+       "lat": 48.194472,
+       "lon": 16.416446,
+       "name": "Synthetic sight 081",
+       "place_id": "00000000-0000-4000-8000-000000000081",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 960,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4940,
+        "minutes": 10,
+        "mode": "drive",
+        "seconds": 593
+       }
+      },
+      {
+       "category": "tower",
+       "duration_minutes": 30,
+       "end_minute": 1040,
+       "lat": 48.161159,
+       "lon": 16.427921,
+       "name": "Synthetic sight 111",
+       "place_id": "00000000-0000-4000-8000-000000000111",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1010,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2698,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 324
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 1136,
+       "lat": 48.146418,
+       "lon": 16.410746,
+       "name": "Synthetic sight 028",
+       "place_id": "00000000-0000-4000-8000-000000000028",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1046,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 3,
+     "visits": [
+      {
+       "category": "tower",
+       "duration_minutes": 30,
+       "end_minute": 570,
+       "lat": 48.199269,
+       "lon": 16.452296,
+       "name": "Synthetic sight 153",
+       "place_id": "00000000-0000-4000-8000-000000000153",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3970,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 476
+       }
+      },
+      {
+       "category": "gallery",
+       "duration_minutes": 60,
+       "end_minute": 638,
+       "lat": 48.218979,
+       "lon": 16.480996,
+       "name": "Synthetic sight 165",
+       "place_id": "00000000-0000-4000-8000-000000000165",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 578,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3702,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 444
+       }
+      },
+      {
+       "category": "statue",
+       "duration_minutes": 10,
+       "end_minute": 656,
+       "lat": 48.213468,
+       "lon": 16.443468,
+       "name": "Synthetic sight 056",
+       "place_id": "00000000-0000-4000-8000-000000000056",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 646,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3189,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 383
+       }
+      },
+      {
+       "category": "gallery",
+       "duration_minutes": 60,
+       "end_minute": 723,
+       "lat": 48.1943,
+       "lon": 16.459857,
+       "name": "Synthetic sight 092",
+       "place_id": "00000000-0000-4000-8000-000000000092",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 663,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4275,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 513
+       }
+      },
+      {
+       "category": "chapel",
+       "duration_minutes": 15,
+       "end_minute": 747,
+       "lat": 48.182459,
+       "lon": 16.41921,
+       "name": "Synthetic sight 038",
+       "place_id": "00000000-0000-4000-8000-000000000038",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 732,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3339,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 401
+       }
+      },
+      {
+       "category": "chapel",
+       "duration_minutes": 15,
+       "end_minute": 769,
+       "lat": 48.205105,
+       "lon": 16.412357,
+       "name": "Synthetic sight 103",
+       "place_id": "00000000-0000-4000-8000-000000000103",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 754,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2731,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 328
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 865,
+       "lat": 48.195739,
+       "lon": 16.387737,
+       "name": "Synthetic sight 145",
+       "place_id": "00000000-0000-4000-8000-000000000145",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 775,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2870,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 344
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 961,
+       "lat": 48.180605,
+       "lon": 16.407008,
+       "name": "Synthetic sight 109",
+       "place_id": "00000000-0000-4000-8000-000000000109",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 871,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3963,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 476
+       }
+      },
+      {
+       "category": "memorial",
+       "duration_minutes": 15,
+       "end_minute": 984,
+       "lat": 48.202016,
+       "lon": 16.381348,
+       "name": "Synthetic sight 054",
+       "place_id": "00000000-0000-4000-8000-000000000054",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 969,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2695,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 323
+       }
+      },
+      {
+       "category": "chapel",
+       "duration_minutes": 15,
+       "end_minute": 1005,
+       "lat": 48.208622,
+       "lon": 16.407508,
+       "name": "Synthetic sight 129",
+       "place_id": "00000000-0000-4000-8000-000000000129",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 990,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2764,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 332
+       }
+      },
+      {
+       "category": "castle",
+       "duration_minutes": 75,
+       "end_minute": 1086,
+       "lat": 48.189881,
+       "lon": 16.401789,
+       "name": "Synthetic sight 157",
+       "place_id": "00000000-0000-4000-8000-000000000157",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1011,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3173,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 381
+       }
+      },
+      {
+       "category": "monument",
+       "duration_minutes": 15,
+       "end_minute": 1108,
+       "lat": 48.211316,
+       "lon": 16.394753,
+       "name": "Synthetic sight 053",
+       "place_id": "00000000-0000-4000-8000-000000000053",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1093,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3317,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 398
+       }
+      },
+      {
+       "category": "monument",
+       "duration_minutes": 15,
+       "end_minute": 1130,
+       "lat": 48.204264,
+       "lon": 16.361988,
+       "name": "Synthetic sight 055",
+       "place_id": "00000000-0000-4000-8000-000000000055",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1115,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 4,
+     "visits": [
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 570,
+       "lat": 48.218606,
+       "lon": 16.436571,
+       "name": "Synthetic sight 026",
+       "place_id": "00000000-0000-4000-8000-000000000026",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2705,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 325
+       }
+      },
+      {
+       "category": "chapel",
+       "duration_minutes": 15,
+       "end_minute": 591,
+       "lat": 48.228125,
+       "lon": 16.412376,
+       "name": "Synthetic sight 008",
+       "place_id": "00000000-0000-4000-8000-000000000008",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 576,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3651,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 438
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 644,
+       "lat": 48.218927,
+       "lon": 16.377069,
+       "name": "Synthetic sight 136",
+       "place_id": "00000000-0000-4000-8000-000000000136",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 599,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2623,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 315
+       }
+      },
+      {
+       "category": "ruins",
+       "duration_minutes": 40,
+       "end_minute": 690,
+       "lat": 48.200812,
+       "lon": 16.375692,
+       "name": "Synthetic sight 122",
+       "place_id": "00000000-0000-4000-8000-000000000122",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 650,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2803,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 336
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 726,
+       "lat": 48.212626,
+       "lon": 16.352616,
+       "name": "Synthetic sight 033",
+       "place_id": "00000000-0000-4000-8000-000000000033",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 696,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2684,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 322
+       }
+      },
+      {
+       "category": "historic_building",
+       "duration_minutes": 30,
+       "end_minute": 762,
+       "lat": 48.205584,
+       "lon": 16.378392,
+       "name": "Synthetic sight 029",
+       "place_id": "00000000-0000-4000-8000-000000000029",
+       "reasons": [
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 732,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 367,
+        "minutes": 5,
+        "mode": "walk",
+        "seconds": 293
+       }
+      },
+      {
+       "category": "castle",
+       "duration_minutes": 75,
+       "end_minute": 842,
+       "lat": 48.204816,
+       "lon": 16.375892,
+       "name": "Synthetic sight 110",
+       "place_id": "00000000-0000-4000-8000-000000000110",
+       "reasons": [
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 767,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 363,
+        "minutes": 5,
+        "mode": "walk",
+        "seconds": 290
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "duration_minutes": 60,
+       "end_minute": 907,
+       "lat": 48.203157,
+       "lon": 16.374798,
+       "name": "Synthetic sight 043",
+       "place_id": "00000000-0000-4000-8000-000000000043",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 847,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 83,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 67
+       }
+      },
+      {
+       "category": "ruins",
+       "duration_minutes": 40,
+       "end_minute": 949,
+       "lat": 48.202751,
+       "lon": 16.3749,
+       "name": "Synthetic sight 114",
+       "place_id": "00000000-0000-4000-8000-000000000114",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 909,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 273,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 219
+       }
+      },
+      {
+       "category": "monument",
+       "duration_minutes": 15,
+       "end_minute": 968,
+       "lat": 48.202773,
+       "lon": 16.37695,
+       "name": "Synthetic sight 104",
+       "place_id": "00000000-0000-4000-8000-000000000104",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 953,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2848,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 342
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 1004,
+       "lat": 48.22098,
+       "lon": 16.365671,
+       "name": "Synthetic sight 040",
+       "place_id": "00000000-0000-4000-8000-000000000040",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 974,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3236,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 388
+       }
+      },
+      {
+       "category": "palace",
+       "duration_minutes": 75,
+       "end_minute": 1086,
+       "lat": 48.234853,
+       "lon": 16.339292,
+       "name": "Synthetic sight 178",
+       "place_id": "00000000-0000-4000-8000-000000000178",
+       "reasons": [
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1011,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4520,
+        "minutes": 10,
+        "mode": "drive",
+        "seconds": 542
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 1126,
+       "lat": 48.209527,
+       "lon": 16.366828,
+       "name": "Synthetic sight 179",
+       "place_id": "00000000-0000-4000-8000-000000000179",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1096,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 5,
+     "visits": [
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 570,
+       "lat": 48.198015,
+       "lon": 16.36651,
+       "name": "Synthetic sight 152",
+       "place_id": "00000000-0000-4000-8000-000000000152",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2867,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 344
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 666,
+       "lat": 48.217388,
+       "lon": 16.372935,
+       "name": "Synthetic sight 002",
+       "place_id": "00000000-0000-4000-8000-000000000002",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 576,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2676,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 321
+       }
+      },
+      {
+       "category": "gallery",
+       "duration_minutes": 60,
+       "end_minute": 732,
+       "lat": 48.204705,
+       "lon": 16.352699,
+       "name": "Synthetic sight 032",
+       "place_id": "00000000-0000-4000-8000-000000000032",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 672,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2786,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 334
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 758,
+       "lat": 48.192034,
+       "lon": 16.330911,
+       "name": "Synthetic sight 077",
+       "place_id": "00000000-0000-4000-8000-000000000077",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 738,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2899,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 348
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 784,
+       "lat": 48.206803,
+       "lon": 16.310559,
+       "name": "Synthetic sight 021",
+       "place_id": "00000000-0000-4000-8000-000000000021",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 764,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 5251,
+        "minutes": 11,
+        "mode": "drive",
+        "seconds": 630
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 810,
+       "lat": 48.187414,
+       "lon": 16.35664,
+       "name": "Synthetic sight 098",
+       "place_id": "00000000-0000-4000-8000-000000000098",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED"
+       ],
+       "start_minute": 795,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3451,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 414
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 832,
+       "lat": 48.176207,
+       "lon": 16.325025,
+       "name": "Synthetic sight 168",
+       "place_id": "00000000-0000-4000-8000-000000000168",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 817,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2974,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 357
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "duration_minutes": 60,
+       "end_minute": 898,
+       "lat": 48.169722,
+       "lon": 16.354288,
+       "name": "Synthetic sight 143",
+       "place_id": "00000000-0000-4000-8000-000000000143",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 838,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3148,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 378
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 935,
+       "lat": 48.160498,
+       "lon": 16.324709,
+       "name": "Synthetic sight 089",
+       "place_id": "00000000-0000-4000-8000-000000000089",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 905,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 5806,
+        "minutes": 12,
+        "mode": "drive",
+        "seconds": 697
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 1037,
+       "lat": 48.19521,
+       "lon": 16.294396,
+       "name": "Synthetic sight 180",
+       "place_id": "00000000-0000-4000-8000-000000000180",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HIGHLIGHT_CATEGORY"
+       ],
+       "start_minute": 947,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 5026,
+        "minutes": 11,
+        "mode": "drive",
+        "seconds": 603
+       }
+      },
+      {
+       "category": "palace",
+       "duration_minutes": 75,
+       "end_minute": 1123,
+       "lat": 48.176735,
+       "lon": 16.250216,
+       "name": "Synthetic sight 131",
+       "place_id": "00000000-0000-4000-8000-000000000131",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY"
+       ],
+       "start_minute": 1048,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 6,
+     "visits": [
+      {
+       "category": "historic_building",
+       "duration_minutes": 30,
+       "end_minute": 570,
+       "lat": 48.252835,
+       "lon": 16.447315,
+       "name": "Synthetic sight 070",
+       "place_id": "00000000-0000-4000-8000-000000000070",
+       "reasons": [
+        "WIKIDATA_LINKED"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 7761,
+        "minutes": 16,
+        "mode": "drive",
+        "seconds": 931
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 616,
+       "lat": 48.296797,
+       "lon": 16.401011,
+       "name": "Synthetic sight 088",
+       "place_id": "00000000-0000-4000-8000-000000000088",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED"
+       ],
+       "start_minute": 586,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 5410,
+        "minutes": 11,
+        "mode": "drive",
+        "seconds": 649
+       }
+      },
+      {
+       "category": "memorial",
+       "duration_minutes": 15,
+       "end_minute": 642,
+       "lat": 48.262141,
+       "lon": 16.379784,
+       "name": "Synthetic sight 115",
+       "place_id": "00000000-0000-4000-8000-000000000115",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE"
+       ],
+       "start_minute": 627,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4970,
+        "minutes": 10,
+        "mode": "drive",
+        "seconds": 596
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "duration_minutes": 60,
+       "end_minute": 712,
+       "lat": 48.228235,
+       "lon": 16.388369,
+       "name": "Synthetic sight 132",
+       "place_id": "00000000-0000-4000-8000-000000000132",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 652,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2730,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 328
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 808,
+       "lat": 48.212186,
+       "lon": 16.373433,
+       "name": "Synthetic sight 169",
+       "place_id": "00000000-0000-4000-8000-000000000169",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 718,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 251,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 200
+       }
+      },
+      {
+       "category": "gallery",
+       "duration_minutes": 60,
+       "end_minute": 872,
+       "lat": 48.210935,
+       "lon": 16.373327,
+       "name": "Synthetic sight 015",
+       "place_id": "00000000-0000-4000-8000-000000000015",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 812,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 148,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 118
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 894,
+       "lat": 48.210227,
+       "lon": 16.373016,
+       "name": "Synthetic sight 030",
+       "place_id": "00000000-0000-4000-8000-000000000030",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 874,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 103,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 82
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 986,
+       "lat": 48.209842,
+       "lon": 16.372525,
+       "name": "Synthetic sight 049",
+       "place_id": "00000000-0000-4000-8000-000000000049",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 896,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 129,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 103
+       }
+      },
+      {
+       "category": "memorial",
+       "duration_minutes": 15,
+       "end_minute": 1003,
+       "lat": 48.209783,
+       "lon": 16.373475,
+       "name": "Synthetic sight 125",
+       "place_id": "00000000-0000-4000-8000-000000000125",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 988,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3467,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 416
+       }
+      },
+      {
+       "category": "monument",
+       "duration_minutes": 15,
+       "end_minute": 1025,
+       "lat": 48.224274,
+       "lon": 16.402157,
+       "name": "Synthetic sight 063",
+       "place_id": "00000000-0000-4000-8000-000000000063",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1010,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2691,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 323
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 1076,
+       "lat": 48.217461,
+       "lon": 16.428157,
+       "name": "Synthetic sight 069",
+       "place_id": "00000000-0000-4000-8000-000000000069",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1031,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2937,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 352
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 1127,
+       "lat": 48.198743,
+       "lon": 16.41632,
+       "name": "Synthetic sight 142",
+       "place_id": "00000000-0000-4000-8000-000000000142",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1082,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": null,
+     "day_index": 7,
+     "visits": [
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 570,
+       "lat": 48.160477,
+       "lon": 16.333297,
+       "name": "Synthetic sight 073",
+       "place_id": "00000000-0000-4000-8000-000000000073",
+       "reasons": [
+        "HERITAGE_LISTED"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 5277,
+        "minutes": 11,
+        "mode": "drive",
+        "seconds": 633
+       }
+      },
+      {
+       "category": "attraction",
+       "duration_minutes": 45,
+       "end_minute": 626,
+       "lat": 48.196977,
+       "lon": 16.334231,
+       "name": "Synthetic sight 023",
+       "place_id": "00000000-0000-4000-8000-000000000023",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE"
+       ],
+       "start_minute": 581,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3658,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 439
+       }
+      },
+      {
+       "category": "castle",
+       "duration_minutes": 75,
+       "end_minute": 709,
+       "lat": 48.20402,
+       "lon": 16.370698,
+       "name": "Synthetic sight 014",
+       "place_id": "00000000-0000-4000-8000-000000000014",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 634,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3281,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 394
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 806,
+       "lat": 48.226715,
+       "lon": 16.37051,
+       "name": "Synthetic sight 149",
+       "place_id": "00000000-0000-4000-8000-000000000149",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 716,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3143,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 377
+       }
+      },
+      {
+       "category": "fountain",
+       "duration_minutes": 15,
+       "end_minute": 828,
+       "lat": 48.225648,
+       "lon": 16.403113,
+       "name": "Synthetic sight 086",
+       "place_id": "00000000-0000-4000-8000-000000000086",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 813,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3057,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 367
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 855,
+       "lat": 48.206709,
+       "lon": 16.388986,
+       "name": "Synthetic sight 170",
+       "place_id": "00000000-0000-4000-8000-000000000170",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 835,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2665,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 320
+       }
+      },
+      {
+       "category": "palace",
+       "duration_minutes": 75,
+       "end_minute": 936,
+       "lat": 48.21781,
+       "lon": 16.411081,
+       "name": "Synthetic sight 024",
+       "place_id": "00000000-0000-4000-8000-000000000024",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 861,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3302,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 396
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 963,
+       "lat": 48.206396,
+       "lon": 16.381383,
+       "name": "Synthetic sight 147",
+       "place_id": "00000000-0000-4000-8000-000000000147",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 943,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2767,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 332
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 999,
+       "lat": 48.224558,
+       "lon": 16.372303,
+       "name": "Synthetic sight 072",
+       "place_id": "00000000-0000-4000-8000-000000000072",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 969,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2766,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 332
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "duration_minutes": 60,
+       "end_minute": 1065,
+       "lat": 48.241195,
+       "lon": 16.358124,
+       "name": "Synthetic sight 135",
+       "place_id": "00000000-0000-4000-8000-000000000135",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1005,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3499,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 420
+       }
+      },
+      {
+       "category": "city_gate",
+       "duration_minutes": 15,
+       "end_minute": 1087,
+       "lat": 48.249484,
+       "lon": 16.323968,
+       "name": "Synthetic sight 159",
+       "place_id": "00000000-0000-4000-8000-000000000159",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1072,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4298,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 516
+       }
+      },
+      {
+       "category": "tower",
+       "duration_minutes": 30,
+       "end_minute": 1126,
+       "lat": 48.267567,
+       "lon": 16.288532,
+       "name": "Synthetic sight 052",
+       "place_id": "00000000-0000-4000-8000-000000000052",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1096,
+       "transfer": null
+      }
+     ]
+    }
+   ],
+   "notes": [
+    {
+     "code": "PROFILE_WIDER",
+     "params": {
+      "radius_km": 15
+     }
+    },
+    {
+     "code": "DIVERSITY_ADJUSTED",
+     "params": {
+      "kept_percent": 50
+     }
+    },
+    {
+     "code": "ESTIMATED_TRANSFERS",
+     "params": {
+      "estimated": 79,
+      "transfers": 79
+     }
+    }
+   ],
+   "profile": "wider",
+   "stats": {
+    "day_utilisation_permille": 818,
+    "days_with_visits": 7,
+    "estimated_transfers": 79,
+    "routed_transfers": 0,
+    "travel_minutes": 543,
+    "travel_seconds": 30578,
+    "travel_share_permille": 131,
+    "visit_minutes": 3580,
+    "visits": 86
+   }
+  }
+ ],
+ "seed": 0
+}

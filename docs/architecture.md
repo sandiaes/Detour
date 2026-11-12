@@ -4,9 +4,11 @@ Status: **accepted** on 2026-11-12 through
 [`decisions/001-technology-stack.md`](decisions/001-technology-stack.md) and
 [`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is decided in ADR 005.
 Phase 1 (the foundation: section 4.2.1) and Phase 2 (data and search: section 4.2.2, the import
-pipeline in 4.4, the search service in 4.6) are implemented, and Phase 3 (the travel-time service,
-section 4.5, [ADR 013](decisions/013-phase-3-travel-time-service.md)) is built and awaits
-acceptance; the planning engine and the FX job described below are not built yet.
+pipeline in 4.4, the search service in 4.6) are implemented. Phase 3 (the travel-time service,
+section 4.5, [ADR 013](decisions/013-phase-3-travel-time-service.md)) and Phase 4 (planner v1 for
+attractions and days, section 5, [ADR 014](decisions/014-phase-4-planner-v1.md)) are built and
+await acceptance. Meals, area destinations, recalculation (section 5.4) and the FX job are not
+built yet.
 
 ## 1. Principles
 
@@ -159,6 +161,17 @@ The layers are routers (`routers/`), Pydantic models (`models/`), repositories (
 bound parameters, no ORM) and one adapter (`adapters/photon.py`). Each request commits its
 transaction before the response is sent.
 
+#### 4.2.3 Phase 4 API
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /v1/trips/{id}/itineraries/generate` | Plan a city trip: one generation of two itineraries (Essentials, Wider), or one with the reason; replaces earlier unselected proposals. `422 area_not_supported`, `422 planning_impossible` (with `issues`), `409` for a past trip, an unavailable region or the limit of 5 |
+| `GET /v1/itineraries/{id}`, `GET /v1/trips/{id}/itineraries` | Now also the generation id, seed, diversity score, plan notes and statistics; per item the rendered reasons and the transfer to the next item (mode, seconds, metres, `routed` or `estimated`) |
+
+The engine is `detour_api/planner/` (section 5); its reads and writes are `repo/planning.py`. Hand
+edits of items delete transfers that no longer join neighbours (they are not recomputed before
+Phase 7).
+
 ### 4.3 Data stores
 
 - **PostgreSQL + PostGIS**, two schemas kept deliberately separate (both exist and are empty
@@ -247,7 +260,19 @@ ADR 013.
 
 ## 5. Planning engine
 
-The engine is a pure function of `(request, data version, engine version)`.
+The engine is a pure function of `(request, data version, engine version)`, plus the travel times
+the travel-time service returns (each transfer records whether its time was routed or estimated).
+
+**Built in Phase 4 (v1, [ADR 014](decisions/014-phase-4-planner-v1.md)):** city destinations;
+steps 2, 3, 4, 6, 7 and 8 below, the two profiles and the diversity gate of section 5.3, and the
+determinism rules of section 5.6. Not built: step 1 for areas, step 5 (meals, Phase 6) and
+section 5.4 (Phase 7 and 8). What v1 does differently from the outline below: the only time
+windows are the day (09:00 to 18:00 for Essentials, 19:00 for Wider, inside the 09:00–21:00
+window), because opening hours are out of scope (ADR 003) and meals come in Phase 6; planning uses
+cached travel times and labelled estimates for a sparse cell set, and only the transfers of the
+finished plans are asked of the provider, within 3 s; days whose routed transfers no longer fit
+drop their lowest-value visit. Code: `planner/engine.py` (pipeline), `scoring.py`, `durations.py`,
+`sequencer.py`, `travel.py`, `validator.py`, `reasons.py`, `config.py`.
 
 ### 5.1 Inputs
 
@@ -264,8 +289,8 @@ has added or locked. Defaults that the user does not see as features: day window
 3. **Durations.** Assign an estimated visit duration from a category rule table (for example
    museum, viewpoint, park, place of worship). No free source provides visit durations, so the
    table is ours, versioned, and each item's duration is editable by the user.
-4. **Day construction.** Group candidates geographically, then solve the multi-day ordering
-   with opening-hour time windows; visits that do not fit are dropped by priority.
+4. **Day construction.** Solve the multi-day selection and ordering within the day window;
+   visits that do not fit are dropped by priority. (Opening hours are out of scope, ADR 003.)
 5. **Meals.** Reserve lunch and dinner slots. For each, choose a restaurant near the route
    position at that time, open or unknown at that time, varying cuisine across the trip, and
    respecting the user's budget where a price record exists.
@@ -290,6 +315,11 @@ similarity of their visit sets is at most 0.6, or that their city/day allocation
 gate fails, shared lower-priority visits are penalised in the second profile and it is solved
 again. If the destination is too small to support two distinct plans, the response says so
 rather than presenting near-duplicates. The threshold is tuned in Phase 4 against fixtures.
+
+**As built (ADR 014):** threshold 0.6; Wider is solved again with the shared visits worth 50 %,
+20 %, then 0 % of their value; a second plan with fewer than half the first plan's visits does not
+count as an alternative; the single-plan response carries the note `SINGLE_PLAN`. For one city
+the "different allocation" alternative cannot apply.
 
 ### 5.4 Edits and recalculation
 

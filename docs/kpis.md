@@ -79,7 +79,18 @@ Measurement sources:
 | Platform-specific code | Share of app source files with Android-only code paths | ≤ 5% | Repository scan |
 | Android-only native dependencies | Dependencies without iOS support | 0 | Dependency review |
 
-## 8. Review cadence
+## 8. Measurements
+
+**Phase 4 (2026-11-12, synthetic fixtures, Claude Code cloud container; ADR 014):** two plans on
+every fixture that can support them, each passing the validator; Jaccard 0.46 to 0.59; travel share
+(Essentials) 10.6 to 11.0 %; day utilisation 74 % (Essentials) and 82 % (Wider) for 3 and 7 days,
+63 % and 52 % for 14 days in one city (below the band: the city runs out of distinct sights);
+engine time for two variants 54 ms (3 days), 176 ms (7 days), 610 ms (14 days); 0.37 s for a 7-day
+plan through the API, without the routing provider. The routed-share KPI is not met on a cold cache
+(provider time is capped at 3 s per generation). Golden tests pin the output. Planner line coverage
+is 92 to 100 % per module. Not yet measured on real data or on Render.
+
+## 9. Review cadence
 
 - Fixture and golden KPIs: every CI run.
 - Latency, routed share and quota headroom: at the end of each phase from Phase 4 onward.

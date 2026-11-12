@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     # Ask /route for no turn-by-turn maneuvers (directions_type none; checked by hand, ADR 013).
     routing_slim_route_requests: bool = True
 
+    # Plan generation (Phase 4, ADR 014). Whether it may ask the routing provider for the
+    # transfers a plan uses (cached times are always read), and the total time it may spend
+    # waiting on the provider; transfers not reached are estimated and labelled. Our own limits.
+    planner_use_provider: bool = True
+    planner_provider_max_seconds: float = Field(default=3.0, ge=0, le=30)
+
     # Client configuration served by GET /v1/config. The app holds none of these as constants.
     config_version: str = "1"
     map_style_url: str = "https://tiles.openfreemap.org/styles/liberty"

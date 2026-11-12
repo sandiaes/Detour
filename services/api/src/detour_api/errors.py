@@ -1,15 +1,21 @@
 """Domain errors with a stable machine-readable code, rendered as ``{"detail", "code"}``."""
 
+from typing import Any
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 
 class ApiError(Exception):
-    def __init__(self, status_code: int, code: str, detail: str) -> None:
+    def __init__(
+        self, status_code: int, code: str, detail: str, extra: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(detail)
         self.status_code = status_code
         self.code = code
         self.detail = detail
+        # Additional fields of the error body (documented by the endpoint's response model).
+        self.extra = extra or {}
 
 
 def not_found(what: str) -> ApiError:
@@ -28,5 +34,6 @@ def install_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def _handle(_: Request, exc: ApiError) -> JSONResponse:
         return JSONResponse(
-            status_code=exc.status_code, content={"detail": exc.detail, "code": exc.code}
+            status_code=exc.status_code,
+            content={**exc.extra, "detail": exc.detail, "code": exc.code},
         )

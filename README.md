@@ -17,8 +17,9 @@ deployment configuration.
 database schemas, a region import (manually started GitHub Actions workflow: Geofabrik extract,
 selection rule, data quality report and readiness gates), a GeoNames gazetteer import, destination
 and place search with Photon as the only external fallback, a seed trip, and endpoints for trips,
-user places and itinerary items. No region has been imported into the real database yet. There is
-no itinerary planning or routing yet; those follow the phases in
+user places and itinerary items. **Phase 3 (travel times) and Phase 4 (planner v1: two itineraries
+of attractions for a city) are built and await acceptance** (ADR 013, ADR 014). There are no meals,
+no area destinations and no map screen yet; those follow the phases in
 [`docs/app-plan.md`](docs/app-plan.md). The architecture, API strategy,
 hosting, licence and distribution are decided (see below).
 

@@ -1,7 +1,8 @@
 # Data model
 
 Status: **implemented in Phase 2** (Alembic migrations `0002_geo_schema` and `0003_app_schema`);
-`geo.travel_time` was rebuilt in Phase 3 (`0005_travel_time_cache`, ADR 013).
+`geo.travel_time` was rebuilt in Phase 3 (`0005_travel_time_cache`, ADR 013). Phase 4 (ADR 014)
+fills the engine columns of `app.itinerary` and `app.transfer` without a schema change.
 Where the built schema differs from the earlier proposal, the difference is listed in section 9
 and decided in [ADR 012](decisions/012-phase-2-data-and-search-choices.md). Photos (section 8) are
 still reserved, not built.
@@ -123,7 +124,7 @@ about 100 m): areas scope a destination, they are not for drawing borders.
 | `geom` | Representative point; areas are reduced to a point on their surface |
 | `address` | jsonb from `addr:*` (street, housenumber, postcode, city, country); null if none |
 | `city_id` | The nearest gazetteer city of the region's countries (planar distance picks five candidates, great-circle distance and then id decide); null until the gazetteer is loaded |
-| `default_visit_minutes` | **Always null in Phase 2**: the category rule table is Phase 4; never a guess |
+| `default_visit_minutes` | **Always null.** Visit durations come from the planner's category rule table (`planner/durations.py`, ADR 014), which is configuration, so changing it needs no re-import. A non-null value here would take precedence for hand-added items |
 | `is_active` | False only for a place that is gone from the latest extract **but still named by an itinerary item or price record** in `app`; any other missing place is deleted (section 5) |
 | `first_import_run_id`, `last_changed_import_run_id` | The run that created the row; the run that last wrote it (rows that did not change are not rewritten, so this is not "last seen") |
 
@@ -225,9 +226,9 @@ A proposed or selected plan. Variants of one generation share a `generation_id`.
 | `profile` | `essentials`, `wider`, or `manual` (an empty plan filled by hand; the only kind before Phase 4) |
 | `status` | `proposed`, `selected`, `superseded`; at most one `selected` per trip (kept by the API when the selection changes) |
 | `version` | Starts at 1; incremented by every accepted item edit |
-| `engine_version`, `config_version` | `manual` for manual itineraries |
+| `engine_version`, `config_version` | `manual` for manual itineraries; for engine itineraries for example `planner-1.0.0` and `2026-11-12.2+durations-2026-11-12.1` |
 | `import_run_id` | The data version used; null for manual itineraries; not a foreign key |
-| `seed`, `diversity_score`, `summary` | For the engine (Phase 4) |
+| `seed`, `diversity_score`, `summary` | Engine itineraries (Phase 4, ADR 014): `seed` 0 (no randomness is used); `diversity_score` the Jaccard similarity of the generation's two variants (null with one); `summary` holds `stats` (visits, minutes, transfers by label, day utilisation and travel share in permille), `notes` (codes with parameters, rendered by fixed templates when read), `sequencer`, `estimate_version`, `currency_code`, `jaccard_permille`. `{}` for manual itineraries |
 
 `itinerary_day`: `day_index` (1-based, unique per itinerary), `date` (null without a start date),
 `base_city_id` (a `geo.city.id`, null).
@@ -239,11 +240,15 @@ A proposed or selected plan. Variants of one generation share a `generation_id`.
 | `place_id`, `user_place_id` | Exactly one for a visit or meal, neither for free time. A meal needs a restaurant; a visit must not be one. `user_place_id` is `ON DELETE RESTRICT` |
 | `display_name`, `display_point` | Snapshot at creation (name or, for an unnamed place, its category); user-place renames are propagated |
 | `start_time`, `end_time` | Local time at the destination; both null or both set, `end > start`, same day. Unscheduled is allowed. Timed items of a day may touch but not overlap |
-| `duration_minutes`, `duration_source` | 1 to 1440; `user` or `category_default`. A duration must be given unless the place has a default (none does yet) |
-| `origin`, `locked`, `reasons` | `engine` or `user`; locked items are never moved by recalculation; reason codes (`SEED_DATA` on seed items) |
+| `duration_minutes`, `duration_source` | 1 to 1440; `user` or `category_default`. Engine items and imported attractions added without a duration take the category default (ADR 014); a meal or a user place needs a duration |
+| `origin`, `locked`, `reasons` | `engine` or `user`; locked items are never moved by recalculation; reason codes from the fixed template table (`planner/reasons.py`; `SEED_DATA` on seed items) |
 
 `transfer`: `from_item_id` (unique: one outgoing transfer per item), `to_item_id`, `mode`,
-`seconds`, `meters`, `confidence` (`routed`, `estimated`), `geometry`. Filled by Phase 3 and 4.
+`seconds`, `meters`, `confidence` (`routed`, `estimated`), `geometry`. Written by the planner for
+every pair of consecutive visits (Phase 4), with the values and label the travel-time service
+returned; `geometry` stays null (route lines are fetched for the selected itinerary only, ADR 013).
+A hand edit deletes the transfers that no longer join an item to the next one; they are not
+recomputed before Phase 7.
 
 ### 3.4 `app.user_place`
 A place the user added that is not in `geo.place`: `kind` (`city`, `location`, `restaurant`),
@@ -366,7 +371,7 @@ In the first photo phase the files and this table live on the device only (D9).
 | Native enum types | `text` with CHECK | ADR 012, decision 1 |
 | `app.installation.token_hash` | No token column | ADR 010 |
 | `geo.region.status` set by the operator | Set by the gates | ADR 009 |
-| `default_visit_minutes` from a category rule table | Always null | Table is Phase 4 |
+| `default_visit_minutes` from a category rule table | Always null; the table is planner configuration | ADR 014: changing a duration needs no re-import |
 | `geo.place_signal.sitelink_count` from Wikidata | Always null | Wikidata not fetched |
 | Region `geom` from the extract | From Geofabrik's `.poly` file, nullable | |
 | (new) `geo.licence`, `geo.admin_code`, `geo.import_run.report`, place `*_norm` columns, `first/last_changed_import_run_id` | | Licence handling, names for codes, report, search, deactivation |

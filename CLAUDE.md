@@ -10,7 +10,7 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Phases 1, 2 and 3 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
+**Phases 1 to 4 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
 service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment
 configuration (ADR 010). Phase 2 (ADR 011, ADR 012; `docs/data-model.md`): the `geo` and `app`
 schemas, the region import and GeoNames gazetteer commands and the "Import region" workflow, the
@@ -18,9 +18,13 @@ data quality report with the ADR 009 gates, destination and place search, the Ph
 seed trip, and CRUD for trips, user places and itinerary items. No region has been imported into
 the real database yet. **Phase 3 is built and awaits acceptance** (ADR 013, proposed): the
 travel-time service behind a FOSSGIS Valhalla adapter, with the `geo.travel_time` cache and the
-labelled estimate fallback; no endpoint, and it is not yet used by anything. The owner's
+labelled estimate fallback; it has no endpoint of its own and is used by the planner. The owner's
 request-shape check is done (`docs/spikes/fossgis-request-shape-check.md`): the fixed 1 x N shape
-agrees with the plain route. There is no planning and no map screen. The decisions in `docs/app-plan.md`
+agrees with the plain route. **Phase 4 is built and awaits acceptance** (ADR 014, proposed): the
+planning engine v1 in `detour_api/planner/` (two strategy profiles, heuristic sequencer, category
+duration table, diversity gate, independent validator, reason templates) and
+`POST /v1/trips/{id}/itineraries/generate`, for city destinations, without meals; tried on
+synthetic fixtures only. There is no map screen. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),
 and the app is not distributed through app stores (ADR 008). Do not start the next phase until the
 owner asks for it.
@@ -116,6 +120,8 @@ From `services/api` (Python 3.13, `pip install -e ".[dev]"`):
 - `pytest`: set `DETOUR_TEST_DATABASE_URL` to run the four database tests (CI always does)
 - `python scripts/export_openapi.py`: rewrite `packages/shared/openapi.json`; run it, then
   `npm run generate`, whenever endpoints or models change (CI fails on drift)
+- `pytest tests/test_planner_engine.py --update-golden`: rewrite the planner's golden files after
+  an intended engine or configuration change (bump `CONFIG_VERSION`), then review the diff
 
 Other:
 

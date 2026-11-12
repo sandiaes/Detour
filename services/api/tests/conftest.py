@@ -172,3 +172,12 @@ def api_env(imported_template_name: str) -> Iterator[ApiEnv]:
 
 
 PHOTON_BUDGET = 3
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--update-golden",
+        action="store_true",
+        default=False,
+        help="rewrite the planner's golden files instead of comparing with them",
+    )

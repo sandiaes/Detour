@@ -1,6 +1,6 @@
 # App plan
 
-Status: **Phase 0, 1 and 2 are done; Phase 3 is built and awaits the owner's acceptance**; Phase 4 onward is proposed. Each phase is small enough to review on its own
+Status: **Phase 0, 1 and 2 are done; Phases 3 and 4 are built and await the owner's acceptance**; Phase 5 onward is proposed. Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
 ## 1. Decisions
@@ -162,6 +162,15 @@ symmetry is not asserted: walking times were 523 s one way and 622 s back.
 
 ### Phase 4 — Planner v1: attractions and days
 
+**Status: built on 2026-11-12, not yet accepted** (ADR 014, proposed). The engine
+(`detour_api/planner/`), the generation endpoint `POST /v1/trips/{id}/itineraries/generate`, the
+extended itinerary reads, and tests: golden files for five fixture trips, the validator against
+each kind of broken plan, 3-, 7- and 14-day trips, incomplete data, impossible requests, routed
+transfers, and latency. **Tried on synthetic fixtures only:** no real region is imported yet, so
+the weights are untuned (the risk below). Known gaps: notability rests on OSM tags (Wikidata
+sitelinks are not imported); first plans of a city have mostly estimated transfers until the
+cache warms; 14 days in one city run out of distinct sights.
+
 **Goal:** two different, valid itineraries of attractions for a city destination.
 
 - **Deliverables:** candidate selection and scoring; visit-duration rule table; day
@@ -296,8 +305,10 @@ to reconsider later. Ideas discussed, none decided or built:
 
 ## 7. Recommended next task
 
-**Accept Phase 3, then Phase 4 (planner v1), when the owner asks for it (CLAUDE.md).** Phase 2 is accepted.
-For Phase 3: confirm or change the numbers in ADR 013 (especially the walking detour factor). Phase 4 must plan sparse cell sets and bound provider time with `max_seconds` (ADR 013, decision 1).
+**Accept Phases 3 and 4, then Phase 5 (mobile shell), when the owner asks for it (CLAUDE.md).**
+Phase 2 is accepted. For Phase 3: confirm or change the numbers in ADR 013 (especially the walking
+detour factor). For Phase 4: import Austria, generate plans for two or three Austrian cities, and
+confirm or change the weights, the duration table and the open items of ADR 014.
 
 Carried forward from Phase 2 (the owner accepted it; these items were not reported as resolved):
 Acceptance meant: deploy the new migrations (Render runs them at start), add the repository

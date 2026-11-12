@@ -1,0 +1,240 @@
+{
+ "config_version": "2026-11-12.2+durations-2026-11-12.1",
+ "data_version": "run-fixture",
+ "distinct": false,
+ "engine_version": "planner-1.0.0",
+ "jaccard_permille": null,
+ "notes": [
+  {
+   "code": "SINGLE_PLAN",
+   "params": {
+    "candidates": 8,
+    "jaccard_percent": 100,
+    "max_percent": 60,
+    "radius_km": 15
+   }
+  },
+  {
+   "code": "NOTABILITY_FROM_TAGS",
+   "params": {}
+  },
+  {
+   "code": "DURATIONS_ARE_DEFAULTS",
+   "params": {}
+  },
+  {
+   "code": "NO_OPENING_HOURS",
+   "params": {}
+  },
+  {
+   "code": "NO_MEALS_YET",
+   "params": {}
+  }
+ ],
+ "plans": [
+  {
+   "days": [
+    {
+     "date": "2026-05-04",
+     "day_index": 1,
+     "visits": [
+      {
+       "category": "chapel",
+       "duration_minutes": 15,
+       "end_minute": 555,
+       "lat": 48.211773,
+       "lon": 16.354432,
+       "name": "Sparse synthetic sight 5",
+       "place_id": "00000000-0000-4000-9000-000000000005",
+       "reasons": [
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2998,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 360
+       }
+      },
+      {
+       "category": "theme_park",
+       "duration_minutes": 240,
+       "end_minute": 801,
+       "lat": 48.223583,
+       "lon": 16.380018,
+       "name": "Sparse synthetic sight 8",
+       "place_id": "00000000-0000-4000-9000-000000000008",
+       "reasons": [
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 561,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2694,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 323
+       }
+      },
+      {
+       "category": "museum",
+       "duration_minutes": 90,
+       "end_minute": 897,
+       "lat": 48.205457,
+       "lon": 16.373491,
+       "name": "Sparse synthetic sight 4",
+       "place_id": "00000000-0000-4000-9000-000000000004",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIDATA_SITELINKS",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 807,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": "2026-05-05",
+     "day_index": 2,
+     "visits": [
+      {
+       "category": "historic_tomb",
+       "duration_minutes": 15,
+       "end_minute": 555,
+       "lat": 48.174245,
+       "lon": 16.384971,
+       "name": "Sparse synthetic sight 2",
+       "place_id": "00000000-0000-4000-9000-000000000002",
+       "reasons": [
+        "NAMED_SIGHT"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4141,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 497
+       }
+      },
+      {
+       "category": "unlisted_category",
+       "duration_minutes": 30,
+       "end_minute": 594,
+       "lat": 48.200051,
+       "lon": 16.366319,
+       "name": "Sparse synthetic sight 3",
+       "place_id": "00000000-0000-4000-9000-000000000003",
+       "reasons": [
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 564,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 419,
+        "minutes": 6,
+        "mode": "walk",
+        "seconds": 335
+       }
+      },
+      {
+       "category": "church",
+       "duration_minutes": 30,
+       "end_minute": 630,
+       "lat": 48.200651,
+       "lon": 16.369334,
+       "name": "Sparse synthetic sight 1",
+       "place_id": "00000000-0000-4000-9000-000000000001",
+       "reasons": [
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 600,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "date": "2026-05-06",
+     "day_index": 3,
+     "visits": [
+      {
+       "category": "statue",
+       "duration_minutes": 10,
+       "end_minute": 550,
+       "lat": 48.207761,
+       "lon": 16.375687,
+       "name": "Sparse synthetic sight 6",
+       "place_id": "00000000-0000-4000-9000-000000000006",
+       "reasons": [
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 524,
+        "minutes": 7,
+        "mode": "walk",
+        "seconds": 419
+       }
+      },
+      {
+       "category": "viewpoint",
+       "duration_minutes": 20,
+       "end_minute": 577,
+       "lat": 48.208669,
+       "lon": 16.372012,
+       "name": "Sparse synthetic sight 7",
+       "place_id": "00000000-0000-4000-9000-000000000007",
+       "reasons": [
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 557,
+       "transfer": null
+      }
+     ]
+    }
+   ],
+   "notes": [
+    {
+     "code": "PROFILE_ESSENTIALS",
+     "params": {
+      "radius_km": 5
+     }
+    },
+    {
+     "code": "ESTIMATED_TRANSFERS",
+     "params": {
+      "estimated": 5,
+      "transfers": 5
+     }
+    }
+   ],
+   "profile": "essentials",
+   "stats": {
+    "day_utilisation_permille": 224,
+    "days_with_visits": 3,
+    "estimated_transfers": 5,
+    "routed_transfers": 0,
+    "travel_minutes": 34,
+    "travel_seconds": 1934,
+    "travel_share_permille": 70,
+    "visit_minutes": 450,
+    "visits": 8
+   }
+  }
+ ],
+ "seed": 0
+}
