@@ -256,3 +256,16 @@ def test_recorded_route_without_maneuvers_is_smaller_and_parses_the_same() -> No
     assert parse_route(RECORDED_ROUTE_SLIM, with_geometry=True) == parse_route(
         RECORDED_ROUTE, with_geometry=True
     )
+
+
+def test_walking_estimate_matches_the_owners_real_walks_on_average() -> None:
+    """The walking factor (1.8, the owner's choice) against the nine recorded 1 x 10 cells:
+    with 1.3 the median estimate was 0.72 of the real time; it should now be close to 1."""
+    cells, _ = parse_matrix(RECORDED_1X10, 10)
+    points = [Coord.from_degrees(t["lat"], t["lon"]) for t in RECORDED_1X10["targets"]]
+    ratios = sorted(
+        estimate(points[0], points[i], "walk")[0] / cells[i].seconds  # type: ignore[operator]
+        for i in range(1, 10)
+    )
+    assert RULES["walk"].detour_factor == 1.8 and RULES["drive"].detour_factor == 1.3
+    assert 0.9 <= ratios[4] <= 1.1  # the median of nine

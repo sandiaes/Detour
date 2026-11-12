@@ -216,7 +216,7 @@ interface, on `app.state.travel_time`: `cells(pairs, mode)` (sparse, the one Pha
 |---|---|---|
 | 1 | Cache (`geo.travel_time`): routed rows, and "no route" rows until they expire | as stored |
 | 2 | FOSSGIS Valhalla through the adapter, for misses only | `routed` |
-| 3 | Straight-line distance x 1.3, converted at a mode speed | `estimated` |
+| 3 | Straight-line distance x a detour factor (walking 1.8, driving 1.3), converted at a mode speed | `estimated` |
 
 - **Request shape (fixed, `matrix-v1`):** one source and up to 100 targets per matrix request;
   cells farther apart than about 150 km are one route request each. A pair always takes the same

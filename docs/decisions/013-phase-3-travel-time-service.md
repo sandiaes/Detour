@@ -107,8 +107,8 @@ The cache can therefore be trusted for 1 x N rows to the extent of this evidence
    realistic rows: 20.7 MB (207 bytes a row: 13.4 MB table, 7.2 MB index)**, 8% of the 250 MB
    gate. Austria alone is about 33 MB (owner's figure), so five regions plus a full cache stay
    inside the gate. The cap is a setting (`DETOUR_ROUTING_CACHE_MAX_ROWS`, at least 1,000).
-6. **Estimate fallback** (`travel/estimate.py`, version `2026-11-12.1`): straight-line distance
-   times a detour factor of 1.3, then a speed: walking 4.5 km/h; driving 30 km/h for the first
+6. **Estimate fallback** (`travel/estimate.py`, version `2026-11-12.2`): straight-line distance
+   times a detour factor (**walking 1.8**, set by the owner on 2026-11-12 after the comparison below; driving 1.3, no data yet), then a speed: walking 4.5 km/h; driving 30 km/h for the first
    25 km of path and 80 km/h beyond. **These are our assumptions, not measured or provider data;**
    they are always labelled `estimated` with a reason code. **Compared with the owner's real
    walking times (nine cells of the 1 x 10 request, 370 m to 1.6 km straight-line, one part of
@@ -177,8 +177,9 @@ recordings; the `*-recorded.json` ones are real
 
 ## Open items (owner)
 
-1. Confirm or change the numbers in decisions 3, 5 and 6, in particular the walking detour
-   factor (1.3), which the first real data says is low.
+1. Confirm or change the numbers in decisions 3, 5 and 6. The walking detour factor was
+   raised from 1.3 to 1.8 by the owner on 2026-11-12 (the comparison above used 1.3). The
+   driving factor (1.3) has no data behind it: compare it with real driving times when available.
 2. Optional: one 1 x 50 request against three plain routes, to extend the shape check to a larger
    batch.
 3. ~~Notify FOSSGIS~~ Not needed: the owner decided on 2026-11-12 that the app is for the owner and

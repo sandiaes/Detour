@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from detour_api.travel.types import Coord, EstimateReason, Mode, TravelTime, distance_m
 
-ESTIMATE_VERSION = "2026-11-12.1"
+ESTIMATE_VERSION = "2026-11-12.2"
 
 
 @dataclass(frozen=True)
@@ -30,8 +30,10 @@ class ModeRule:
 KMH = 1000 / 3600
 
 RULES: dict[Mode, ModeRule] = {
-    # Walking: a single speed (4.5 km/h) over any distance.
-    "walk": ModeRule(1.3, 4.5 * KMH, 4.5 * KMH, 0.0),
+    # Walking: a single speed (4.5 km/h) over any distance. The factor 1.8 is the owner's choice
+    # (2026-11-12) after the first real data: routed walks were 1.66 to 4.29 times the straight
+    # line (median 1.97, nine cells in Florence; ADR 013). Driving has no data yet: still 1.3.
+    "walk": ModeRule(1.8, 4.5 * KMH, 4.5 * KMH, 0.0),
     # Driving: 30 km/h for the first 25 km of path (streets, junctions), 80 km/h beyond.
     "drive": ModeRule(1.3, 30 * KMH, 80 * KMH, 25_000.0),
 }
