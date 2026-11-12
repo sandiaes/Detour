@@ -126,6 +126,10 @@ PLACE_FIXTURES = [
     ({"q": "tree shrine"}, [], ["Tree shrine"]),
     ({"q": "heritage thing"}, [], ["Heritage thing"]),
     ({"q": "city wall"}, ["Old city wall"], ["City wall bit"]),
+    # ADR 011: restaurants and cafes only near attractions or towns
+    ({"q": "remote gasthaus"}, [], ["Remote Gasthaus"]),
+    ({"q": "remote cafe"}, [], ["Remote Cafe"]),
+    ({"q": "neustadt gasthaus"}, ["Neustadt Gasthaus"], []),  # near a town of 8,000 only
 ]
 
 
@@ -233,7 +237,7 @@ def test_regions_and_attributions(api_env: ApiEnv) -> None:
     regions = api_env.client.get("/v1/regions").json()
     (region,) = regions
     assert region["id"] == "test-region" and region["status"] == "available"
-    assert region["counts"] == {"attraction": 10, "restaurant": 4}
+    assert region["counts"] == {"attraction": 11, "restaurant": 5}
     assert region["data_version"]["import_run_id"]
     credits = api_env.client.get("/v1/attributions").json()
     by_name = {c["name"]: c for c in credits}

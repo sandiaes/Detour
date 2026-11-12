@@ -1,6 +1,6 @@
 # ADR 011 — Attraction selection rule, version 2
 
-- **Status:** **Proposed**, implemented in Phase 2 (rules version `2026-11-12.3`). The first
+- **Status:** **Proposed**, implemented in Phase 2 (rules version `2026-11-12.4`). The first
   real import (Austria, 2026-11-12) has been read; the owner decided on three more excluded
   classes (see "Update after the first real import"). The rest of the rule is not yet confirmed.
 - **Date:** 2026-11-12
@@ -117,11 +117,41 @@ churches) were never imported; that is a gap for Italy and Japan, not decided he
 Gate 4 (ADR 009) asks for 40 % of attractions to be named; with this rule it is always 100 %.
 The count gate (5,000 named attractions) is the one that can now fail.
 
-**Restaurants and cafes (decided in principle, not built):** the owner wants them kept **only near
-attractions or towns**, cafes included, instead of every one in the country. The size effect is
-measured on the Austria database first (distance to a kept attraction, distance to a town of a
-given size) and the rule is added once the radii are chosen. Until then all restaurants and cafes
-are imported.
+**Restaurants and cafes: kept only near attractions or towns (rules version 2026-11-12.4).**
+Restaurants and cafes were 59 % of Austria's places. They are now kept only when within **500 m**
+of an attraction the rules keep, or within **1,500 m** of the centre of a gazetteer town with at
+least **5,000** inhabitants (`RESTAURANT_RADIUS_M`, `TOWN_RADIUS_M`, `TOWN_MIN_POPULATION` in
+`importer/selection.py`; the check is `importer/proximity.py`, great-circle distance on a grid).
+Cafes follow the same rule. Everything else is counted in the report as
+`restaurant_not_near_attraction_or_town`, and the report states the rule and the number of
+attractions and towns it used.
+
+The radii come from a measurement on the Austria database (2026-11-12), counting the restaurants
+and cafes that were then in it:
+
+| Radius to an attraction | Restaurants kept (of 21,038) | Cafes kept (of 5,466) |
+|---|---|---|
+| 300 m | 9,298 (44 %) | 3,755 (69 %) |
+| 500 m | 10,827 (51 %) | 4,093 (75 %) |
+| 1,000 m | 13,580 (65 %) | 4,588 (84 %) |
+
+(each figure includes the town rule). The town rule adds about 1,100 restaurants and 390 cafes to
+what the attraction rule keeps at 500 m. Leaving viewpoints out as anchors changes the counts by
+only 3 to 8 %, so they stay anchors. 500 m is about a six-minute walk, enough for the planner to
+find several candidates near a sight; at 300 m the pool gets thin. Expected effect on Austria:
+about 14,900 restaurants and cafes instead of 26,500, and about 26,200 places in all instead of
+45,000 (an estimate of about 40 MB instead of 71 MB, to be confirmed by re-importing).
+
+Consequences:
+
+- **The import depends on the gazetteer.** Towns come from `geo.city`, so import the gazetteer
+  first (the workflow does). Without it the rule uses attractions only, the report says so in its
+  warnings, and the result differs from a run with the gazetteer; run the import again after
+  loading it.
+- **A remote restaurant is not in the data.** A user can still add it: search through Photon, or a
+  manual pin, saved as a user place (`docs/data-model.md`). The planner (Phase 6) will propose meal
+  stops only from the imported ones.
+- **Gate 3 (5,000 restaurants) and gate 2 (30 % with a cuisine) are now measured after this rule.**
 
 ## What this does not prove
 

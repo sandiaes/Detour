@@ -21,7 +21,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 # Bump when any rule below changes: the version is stored on every import run.
-RULES_VERSION = "2026-11-12.3"
+RULES_VERSION = "2026-11-12.4"
 
 ATTRACTION_TOURISM = frozenset(
     {"attraction", "museum", "gallery", "viewpoint", "zoo", "theme_park", "aquarium"}
@@ -94,6 +94,14 @@ REASON_MEMORIAL_SUBTYPE = "memorial_excluded_subtype"
 REASON_UNQUALIFIED = "generic_class_without_name_and_notability"
 REASON_NO_GEOMETRY = "no_geometry"
 REASON_ATTRACTION_UNNAMED = "attraction_without_name"
+REASON_NOT_NEAR = "restaurant_not_near_attraction_or_town"
+
+# ADR 011, owner decision of 2026-11-12: restaurants and cafes are kept only near attractions or
+# towns (importer/proximity.py). Radii and town size chosen from a measurement on the Austria
+# database: 500 m keeps 51 % of its restaurants and 75 % of its cafes.
+RESTAURANT_RADIUS_M = 500
+TOWN_MIN_POPULATION = 5000
+TOWN_RADIUS_M = 1500
 REASON_NOT_TOURIST = "historic_class_not_tourist"
 
 

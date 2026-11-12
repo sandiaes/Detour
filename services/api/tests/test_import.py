@@ -61,7 +61,7 @@ def test_report_counts_match_the_database(pipeline_dbs: tuple[str, str], tmp_pat
         signals = conn.execute("SELECT count(*) FROM geo.place_signal").fetchone()
         profiles = conn.execute("SELECT count(*) FROM geo.restaurant_profile").fetchone()
 
-    assert rows == {"attraction": 10, "restaurant": 4}
+    assert rows == {"attraction": 11, "restaurant": 4}
     assert {k: v["total"] for k, v in report["kinds"].items()} == rows
     assert {k: v["named"] for k, v in report["kinds"].items()} == dict(named)
     assert areas is not None and areas[0] == report["admin_areas"] == 2
@@ -71,8 +71,8 @@ def test_report_counts_match_the_database(pipeline_dbs: tuple[str, str], tmp_pat
     assert run is not None
     status, counts, stored_report = run
     assert status == "succeeded"
-    assert counts["places_total"] == 14
-    assert stored_report["excluded"]["total"] == report["excluded"]["total"] == 19
+    assert counts["places_total"] == 15
+    assert stored_report["excluded"]["total"] == report["excluded"]["total"] == 22
     # Excluded objects are counted per class, with a reason.
     by_class = {(r["class"], r["reason"]): r["count"] for r in report["excluded"]["by_class"]}
     assert by_class[("historic=wayside_shrine", "adr003_excluded_class")] == 1
@@ -88,7 +88,10 @@ def test_report_counts_match_the_database(pipeline_dbs: tuple[str, str], tmp_pat
     assert by_class[("historic=tree_shrine", "adr003_excluded_class")] == 1
     assert by_class[("historic=heritage", "adr003_excluded_class")] == 1
     assert by_class[("historic=citywalls", "generic_class_without_name_and_notability")] == 1
-    assert sum(by_class.values()) == 19
+    # no gazetteer in this test: the town-only restaurant is dropped with the remote ones
+    assert by_class[("amenity=restaurant", "restaurant_not_near_attraction_or_town")] == 2
+    assert by_class[("amenity=cafe", "restaurant_not_near_attraction_or_town")] == 1
+    assert sum(by_class.values()) == 22
 
 
 def test_importing_twice_gives_identical_results(
@@ -149,7 +152,7 @@ def test_a_place_missing_from_a_later_extract_is_deactivated_not_deleted(
         ).fetchone()
         active = conn.execute("SELECT count(*) FROM geo.place WHERE is_active").fetchone()
     assert row == (False,)
-    assert active == (13,)
+    assert active == (14,)
     assert second["kinds"]["restaurant"]["total"] == 3
     with psycopg.connect(target) as conn:
         counts = conn.execute(
@@ -347,3 +350,74 @@ def test_review_sample_is_deterministic_and_limited(
     refs = [e["ref"] for entries in json.loads(sample_a).values() for e in entries]
     assert refs and all(re.fullmatch(r"(node|way|relation)/\d+", r) for r in refs), refs
     assert "historic=memorial / excluded:memorial_without_wikidata" in sample_a
+
+
+def test_restaurants_and_cafes_are_kept_only_near_attractions_or_towns(
+    pipeline_dbs: tuple[str, str], tmp_path: Path
+) -> None:
+    from detour_api.importer.selection import (
+        RESTAURANT_RADIUS_M,
+        TOWN_MIN_POPULATION,
+        TOWN_RADIUS_M,
+    )
+
+    target, staging = pipeline_dbs
+    import_fixture_gazetteer(target, ["AT"])
+    report = import_fixture_region(target, staging, tmp_path)
+
+    with psycopg.connect(target) as conn:
+        food: dict[str, str] = dict(
+            conn.execute(
+                "SELECT COALESCE(name, '(unnamed)'), category FROM geo.place WHERE kind = 'restaurant'"
+            ).fetchall()
+        )
+    assert food == {
+        "東京ラーメン": "restaurant",  # about 345 m from the museum
+        "(unnamed)": "cafe",  # 200 m from Östertal Heimatmuseum
+        "Zur Alten Post": "restaurant",
+        "Café Östertal": "cafe",
+        "Neustadt Gasthaus": "restaurant",  # no attraction near, but 60 m from a town of 8,000
+    }
+    assert "Remote Gasthaus" not in food and "Remote Cafe" not in food
+
+    by_class = {(r["class"], r["reason"]): r["count"] for r in report["excluded"]["by_class"]}
+    assert by_class[("amenity=restaurant", "restaurant_not_near_attraction_or_town")] == 1
+    assert by_class[("amenity=cafe", "restaurant_not_near_attraction_or_town")] == 1
+    assert report["excluded"]["total"] == 21
+    rule = report["proximity_rule"]
+    assert rule == {
+        "radius_m": RESTAURANT_RADIUS_M,
+        "town_min_population": TOWN_MIN_POPULATION,
+        "town_radius_m": TOWN_RADIUS_M,
+        "attraction_anchors": 11,
+        "town_anchors": 2,  # Testburg (120,000) and Testburg-Neustadt (8,000); the rest are smaller
+    }
+    assert not any("No gazetteer" in w for w in report["warnings"])
+    from detour_api.importer.report import render_markdown
+
+    assert "kept within 500 m of one of 11 attractions" in render_markdown(report)
+
+
+def test_without_a_gazetteer_the_rule_uses_attractions_only_and_says_so(
+    pipeline_dbs: tuple[str, str], tmp_path: Path
+) -> None:
+    target, staging = pipeline_dbs
+    report = import_fixture_region(target, staging, tmp_path)
+    assert report["proximity_rule"]["town_anchors"] == 0
+    assert any("only near attractions" in w for w in report["warnings"])
+    with psycopg.connect(target) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM geo.place WHERE name = 'Neustadt Gasthaus'"
+        ).fetchone() == (0,)
+
+
+def test_the_proximity_rule_leaves_the_import_repeatable(
+    pipeline_dbs: tuple[str, str], tmp_path: Path
+) -> None:
+    target, staging = pipeline_dbs
+    import_fixture_gazetteer(target, ["AT"])
+    import_fixture_region(target, staging, tmp_path / "a")
+    first = canonical_geo_dump(target, TEST_REGION.id)
+    second_report = import_fixture_region(target, staging, tmp_path / "b")
+    assert canonical_geo_dump(target, TEST_REGION.id) == first
+    assert second_report["excluded"]["total"] == 21

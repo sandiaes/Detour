@@ -33,6 +33,10 @@
   <node id="53" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2433" lon="16.4000"><tag k="historic" v="castle"/></node>
   <node id="54" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2434" lon="16.4000"><tag k="historic" v="citywalls"/><tag k="name" v="City wall bit"/></node>
   <node id="55" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2435" lon="16.4000"><tag k="historic" v="citywalls"/><tag k="name" v="Old city wall"/><tag k="wikipedia" v="de:Stadtmauer"/></node>
+  <node id="56" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2215" lon="16.3815"><tag k="tourism" v="museum"/><tag k="name" v="Östertal Heimatmuseum"/></node>
+  <node id="60" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.4" lon="16.6"><tag k="amenity" v="restaurant"/><tag k="name" v="Remote Gasthaus"/></node>
+  <node id="61" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.401" lon="16.601"><tag k="amenity" v="cafe"/><tag k="name" v="Remote Cafe"/></node>
+  <node id="62" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2505" lon="16.4205"><tag k="amenity" v="restaurant"/><tag k="name" v="Neustadt Gasthaus"/></node>
   <node id="1001" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.3" lon="16.4"/>
   <node id="1002" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.3" lon="16.41"/>
   <node id="1003" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.31" lon="16.41"/>

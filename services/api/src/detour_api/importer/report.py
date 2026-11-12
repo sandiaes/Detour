@@ -273,6 +273,14 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"| {kind} | {stats['total']} | {stats['named']} | {stats['named_pct']} | "
             f"{stats['latin_name_pct']} | {stats['cuisine_pct']} | {stats['wikidata_pct']} |"
         )
+    rule = report.get("proximity_rule")
+    if rule:
+        out += [
+            "",
+            f"Restaurants and cafes are kept within {rule['radius_m']} m of one of "
+            f"{rule['attraction_anchors']} attractions, or within {rule['town_radius_m']} m of one of "
+            f"{rule['town_anchors']} towns of {rule['town_min_population']} or more inhabitants.",
+        ]
     out += ["", f"Administrative areas imported: {report['admin_areas']}", ""]
     out += ["## Excluded objects by class", "", "| Class | Reason | Count |", "|---|---|---:|"]
     for row in report["excluded"]["by_class"]:

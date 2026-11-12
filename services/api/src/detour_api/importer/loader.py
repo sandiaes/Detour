@@ -30,6 +30,7 @@ from detour_api.db import SEARCH_PATH
 from detour_api.importer import IMPORTER_VERSION
 from detour_api.importer.derive import OSM_LICENCE, PlaceRow, build_place, source_ref
 from detour_api.importer.pipeline import Candidate, iter_boundaries, iter_candidates, libpq_url
+from detour_api.importer.proximity import ProximityIndex
 from detour_api.importer.regions import RegionDef
 from detour_api.importer.report import (
     Counters,
@@ -37,7 +38,15 @@ from detour_api.importer.report import (
     pct,
     render_markdown,
 )
-from detour_api.importer.selection import REASON_NO_GEOMETRY, RULES_VERSION, decide
+from detour_api.importer.selection import (
+    REASON_NO_GEOMETRY,
+    REASON_NOT_NEAR,
+    RESTAURANT_RADIUS_M,
+    RULES_VERSION,
+    TOWN_MIN_POPULATION,
+    TOWN_RADIUS_M,
+    decide,
+)
 from detour_api.textnorm import normalize_text, stable_uuid
 
 log = structlog.get_logger("detour.import")
@@ -168,8 +177,57 @@ def _place_values(place: PlaceRow) -> tuple[object, ...]:
     )
 
 
+@dataclass(frozen=True)
+class Proximity:
+    """What the "restaurants near attractions or towns" rule used (also written to the report)."""
+
+    attractions: ProximityIndex
+    towns: ProximityIndex
+
+    def near(self, lat: float, lon: float) -> bool:
+        return self.attractions.near(lat, lon) or self.towns.near(lat, lon)
+
+    def describe(self) -> dict[str, int]:
+        return {
+            "radius_m": RESTAURANT_RADIUS_M,
+            "town_min_population": TOWN_MIN_POPULATION,
+            "town_radius_m": TOWN_RADIUS_M,
+            "attraction_anchors": self.attractions.count,
+            "town_anchors": self.towns.count,
+        }
+
+
+def build_proximity(
+    conn: psycopg.Connection[Any], staging: psycopg.Connection[Any], region: RegionDef
+) -> Proximity:
+    """First pass: the points of every attraction the rules keep, and the gazetteer's towns."""
+    anchors: list[tuple[float, float]] = []
+    for cand in iter_candidates(staging):
+        decision = decide(cand.tags)
+        if (
+            decision is not None
+            and decision.kept
+            and decision.kind == "attraction"
+            and cand.lat is not None
+            and cand.lon is not None
+        ):
+            anchors.append((cand.lat, cand.lon))
+    towns = conn.execute(
+        "SELECT ST_Y(geom), ST_X(geom) FROM geo.city"
+        " WHERE country_iso2 = ANY (%s) AND population >= %s ORDER BY id",
+        (list(region.countries), TOWN_MIN_POPULATION),
+    ).fetchall()
+    return Proximity(
+        ProximityIndex(anchors, RESTAURANT_RADIUS_M),
+        ProximityIndex([(lat, lon) for lat, lon in towns], TOWN_RADIUS_M),
+    )
+
+
 def classify_candidates(
-    region: RegionDef, candidates: Iterable[Candidate], counters: Counters
+    region: RegionDef,
+    candidates: Iterable[Candidate],
+    counters: Counters,
+    proximity: Proximity | None = None,
 ) -> Iterable[PlaceRow]:
     """Apply the selection rule, count everything, and yield the places to keep."""
     for cand in candidates:
@@ -177,13 +235,19 @@ def classify_candidates(
         if decision is None:
             counters.not_candidates += 1
             continue
+        ref = source_ref(cand.osm_type, cand.osm_id)
         if not decision.kept:
-            counters.exclude(decision, source_ref(cand.osm_type, cand.osm_id), cand.tags)
+            counters.exclude(decision, ref, cand.tags)
             continue
         if cand.lon is None or cand.lat is None:
-            counters.exclude(
-                decision, source_ref(cand.osm_type, cand.osm_id), cand.tags, REASON_NO_GEOMETRY
-            )
+            counters.exclude(decision, ref, cand.tags, REASON_NO_GEOMETRY)
+            continue
+        if (
+            proximity is not None
+            and decision.kind == "restaurant"
+            and not proximity.near(cand.lat, cand.lon)
+        ):
+            counters.exclude(decision, ref, cand.tags, REASON_NOT_NEAR)
             continue
         place = build_place(
             region.id, cand.osm_type, cand.osm_id, decision, cand.tags, cand.lon, cand.lat
@@ -410,7 +474,8 @@ def load_region(
         conn.execute("SELECT pg_advisory_xact_lock(%s)", (IMPORT_LOCK_KEY,))
         conn.execute(_STAGE_PLACE)
         conn.execute(_STAGE_AREA)
-        places = classify_candidates(region, iter_candidates(staging), counters)
+        proximity = build_proximity(conn, staging, region)
+        places = classify_candidates(region, iter_candidates(staging), counters, proximity)
         _copy_places(conn, places)
         counters.areas = _copy_areas(conn, region, staging)
         merge_counts = _merge(conn, region, run_id)
@@ -432,6 +497,11 @@ def load_region(
         assert area_count is not None  # noqa: S101
         if area_count[0] != counters.areas:
             raise ImportError_(f"admin areas: loaded {counters.areas}, database {area_count[0]}")
+        if proximity.towns.count == 0:
+            warnings.append(
+                "No gazetteer towns for this region's countries: restaurants and cafes were kept"
+                " only near attractions. Import the gazetteer first and run this import again."
+            )
         if source.osm_snapshot_date is None:
             warnings.append("The extract has no replication timestamp: snapshot date unknown.")
 
@@ -456,6 +526,7 @@ def load_region(
                 else None,
             },
             "kinds": {k: v.as_dict() for k, v in sorted(counters.kinds.items())},
+            "proximity_rule": proximity.describe(),
             "admin_areas": counters.areas,
             "excluded": {
                 "total": sum(counters.excluded.values()),
