@@ -157,12 +157,13 @@ Cache of travel times between places.
 ## 3. `app` schema — user data
 
 ### `app.installation`
-Anonymous identity for the MVP (open decision D5).
+Anonymous identity for the MVP (D5). In Phase 1 the table does not exist: the `app` schema is empty and
+the token check needs no row (ADR 010). Phase 4 creates it when trips first refer to it.
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid | |
-| `token_hash` | text | Bearer token, stored hashed |
+| `token_hash` | text | **Dropped (ADR 010).** Tokens are HMAC-signed and carry the installation id, so no hash is stored |
 | `home_currency_code` | fk | Default for budgets |
 | `created_at`, `last_seen_at` | timestamptz | |
 

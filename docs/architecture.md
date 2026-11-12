@@ -3,7 +3,8 @@
 Status: **accepted** on 2026-11-12 through
 [`decisions/001-technology-stack.md`](decisions/001-technology-stack.md) and
 [`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is decided in ADR 005.
-No code exists yet.
+Phase 1 (the foundation: section 4.2.1) is implemented; the planning engine, the import pipeline
+and the provider adapters described below are not built yet.
 
 ## 1. Principles
 
@@ -71,6 +72,12 @@ All services except the tile host run from one Docker Compose file in developmen
 
 - Expo SDK 58, TypeScript, Continuous Native Generation with config plugins; no hand-edited
   native projects. This keeps the iOS build a configuration task, not a port.
+- **Built in Phase 1:** `apps/mobile` with six placeholder screens (Trips, Create Trip, Itinerary,
+  Map, Saved Places, Settings), a tab bar held in React state (no navigation library until the
+  Phase 5 ADR), a backend connection layer (health, then config, then anonymous registration;
+  token kept in `expo-secure-store`) that shows a "waking the server" state during the Render cold
+  start, and the attribution rule with a component test. The only build-time value is
+  `EXPO_PUBLIC_DETOUR_API_URL`.
 - Android builds run in GitHub Actions: `expo prebuild` then Gradle `assembleRelease` on a
   GitHub-hosted runner, about 14 minutes, APK downloaded from the run's artifacts (spike S1,
   `docs/spikes/s1-map-findings.md`). They are release-variant builds with the JavaScript bundled,
@@ -112,9 +119,28 @@ list without an ADR.
   - price records: add expected or actual price
   - config: map style URL, attribution list, data versions
 
+#### 4.2.1 Phase 1 API
+
+Implemented in `services/api` (FastAPI, Python 3.13), all under `/v1`, described by
+`packages/shared/openapi.json`:
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /v1/health` | Liveness: status, version, deployed commit. No database access |
+| `GET /v1/health/ready` | Readiness: database reachable, `geo` and `app` present, PostGIS version if enabled; 503 otherwise |
+| `GET /v1/config` | Map style URL and attribution lines (shape from spike S1) plus a config version |
+| `POST /v1/installations` | Register an anonymous installation; returns the id and a bearer token |
+| `GET /v1/installations/me` | Token check; 401 with `WWW-Authenticate: Bearer` if invalid |
+
+Settings come from `DETOUR_*` environment variables; logs are JSON with redaction; the token is an
+HMAC-signed string that needs no database row in Phase 1 (ADR 010). The interactive documentation
+is at `/v1/docs`. The typed client for the app is generated from the contract, and CI fails on
+drift.
+
 ### 4.3 Data stores
 
-- **PostgreSQL + PostGIS**, two schemas kept deliberately separate:
+- **PostgreSQL + PostGIS**, two schemas kept deliberately separate (both exist and are empty
+  after the first Alembic migration; PostGIS is enabled where first needed, ADR 010):
   - `geo`: imported open data (OSM-derived places, GeoNames gazetteer, Wikidata signals,
     countries, currencies, FX rates, travel-time cache). Rebuildable from sources.
   - `app`: user data (installations, trips, itineraries, items, price records, later photos).
@@ -300,7 +326,7 @@ falling short, and then only behind the same interface with the heuristic as fal
 
 | Environment | Composition | Recurring cost |
 |---|---|---|
-| Local development | Docker Compose: `db`, `api`, `valhalla` | none |
+| Development and tests | GitHub Actions (CI-first, `docs/development.md`); Docker Compose (`db`, `api`) optional | none |
 | Personal production | Supabase Free database, Render free web service, GitHub Actions import (ADR 005); OpenFreeMap; Photon and Frankfurter public instances | $0 per month at the limits read on 2026-11-12 |
 | Public commercial | Self-hosted or contracted tiles, self-hosted Photon and Frankfurter, legal review of ODbL use | to be estimated |
 
