@@ -240,6 +240,22 @@ past trips.
 
 GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 
+### Note: which regions are loaded (2026-11-12, owner)
+
+The five pilot regions are loaded ahead of time by the operator (workflow "Import region"); the
+app offers only regions that are `available`. The owner chose to **keep it like this for now** and
+to reconsider later. Ideas discussed, none decided or built:
+
+- **On-demand import** (Phase 13) does not fit the current hosting: an extract such as Italy's is a
+  2 GB download and a long job, the import needs a temporary PostGIS and `osm2pgsql` (not possible
+  on Render's free plan, 512 MB), and Supabase Free holds 500 MB. It would need a background import
+  with a "preparing this region" state, and probably an ADR.
+- **Load only the regions of upcoming trips** and remove the others to stay under the database
+  limit. Past trips and itineraries keep their own name and point snapshots and no foreign key
+  crosses `app` and `geo` (ADR 006, ADR 012), so removing a region's `geo` data does not break
+  them. Missing: a "remove region" operation (delete a region's places and areas, mark it
+  `disabled`), for example as a small workflow.
+
 ## 5. MVP exclusions
 
 - Public transport and real-time transit data
