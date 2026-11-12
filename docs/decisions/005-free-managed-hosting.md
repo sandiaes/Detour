@@ -1,6 +1,7 @@
 # ADR 005 — Free, managed hosting without a server of the owner's
 
-- **Status:** **Proposed.** Not in force until the owner approves. Decides D3.
+- **Status:** **Accepted** on 2026-11-12 (owner approval), including a roughly one-minute cold start
+  and no automatic backups of `app` data. Decides D3.
 - **Date:** 2026-11-12
 - **Related:** [`004-fossgis-valhalla-demo-server.md`](004-fossgis-valhalla-demo-server.md),
   [`001-technology-stack.md`](001-technology-stack.md), [`../app-plan.md`](../app-plan.md) (D3, D14),

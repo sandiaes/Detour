@@ -11,7 +11,7 @@ Recorded on 2026-11-12 from the owner's answers.
 |---|---|---|---|
 | D1 | Licence and commercial posture | **Open source and non-commercial.** Free non-commercial services (Open-Meteo, Transitous) become permissible, subject to their other conditions. | Decided |
 | D2 | MVP coverage | **Pilot regions: Japan, Italy, and Central Europe (Austria, Czechia and Hungary at least).** | Decided |
-| D3 | Backend hosting: where the API server, the database and the routing engine run when not on a local machine | Open. S2 measured about 145 MB of imported data for five countries (before ADR 003), so Supabase Free could hold the `geo` data. ADR 005 proposes Supabase Free for the database, a Render free web service for the API and a GitHub Actions import job (not approved). | **Open** |
+| D3 | Backend hosting: where the API server, the database and the routing engine run when not on a local machine | Open. S2 measured about 145 MB of imported data for five countries (before ADR 003), so Supabase Free could hold the `geo` data. ADR 005 (accepted): Supabase Free for the database, a Render free web service for the API, a GitHub Actions import job. | **Decided** |
 | D4 | Public transport after the MVP (Phase 10) | Approved. See the note on Japan below. | Approved |
 | D5 | Anonymous installation token, no accounts | Approved. | Approved |
 | D6 | Weather excluded from the MVP | Approved. | Approved |
@@ -22,6 +22,7 @@ Recorded on 2026-11-12 from the owner's answers.
 | D11 | Which open-source licence, and when the repository becomes public | New, follows from D1. Transitous requires published source under an open-source licence. | **Open** |
 | D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
 | D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
+| D15 | Past trips archive | Past trips are kept as a map and list of visited cities and attractions, without routing. See ADR 006. Release timing open. | Decided |
 | D14 | Hosting constraint | Owner has no server and wants free, managed services. Travel times come from the FOSSGIS Valhalla server through a cached adapter (ADR 004, approved); S3 stays the reference for self-hosting. | Constraint |
 
 ### Notes on the decided items
@@ -255,6 +256,5 @@ GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 `docs/spikes/s2-data-findings.md` and `docs/spikes/s3-routing-findings.md`. Routing no longer
 needs a server of ours (ADR 004). What remains is where the small API server runs and how the
 region data gets into the database without a server of the owner's, under the free, managed
-constraint (D14). Free-tier terms were read on 2026-11-12; see ADR 005, which awaits the
-owner's approval.
+constraint (D14). Free-tier terms were read on 2026-11-12; ADR 005 is accepted.
 Region readiness thresholds are still to be set by the owner.

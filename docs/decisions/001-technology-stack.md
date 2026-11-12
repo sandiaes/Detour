@@ -1,6 +1,6 @@
 # ADR 001 — Technology stack
 
-- **Status:** Accepted on 2026-11-12, except hosting (D3), which is open.
+- **Status:** Accepted on 2026-11-12. Hosting (D3) is decided in ADR 005.
 - **Date:** 2026-11-12
 - **Related:** [`../architecture.md`](../architecture.md), [`002-api-strategy.md`](002-api-strategy.md)
 
@@ -84,7 +84,7 @@ All planning logic lives in the backend so that Android and iOS share it complet
 
 | ID | Decision | Status |
 |---|---|---|
-| D3 | Backend hosting beyond a local machine | **Open.** Supabase is a candidate for the database only; the API server and Valhalla need a separate host. Owner constraint: free, managed services (app-plan D14). Decide after S3. Details in `../app-plan.md`, section 1. |
+| D3 | Backend hosting beyond a local machine | **Decided** in [`005-free-managed-hosting.md`](005-free-managed-hosting.md): Supabase Free (database), Render free web service (API), GitHub Actions (import). Routing per ADR 004. |
 | D5 | Anonymous installation identity, no accounts | Approved 2026-11-12 |
 | D7 | OR-Tools adopted only if the spike shows better plans within the latency budget | Approved 2026-11-12 |
 

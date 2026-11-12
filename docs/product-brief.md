@@ -31,6 +31,7 @@ plan quickly, expects to adjust it, and cares about what things cost.
 | 10 | Store travel photos linked to trip, day, city or item | Data model reserved; on-device first | Future |
 | 11 | No LLM at runtime | Deterministic engine, reason codes, fixed templates | Always |
 | 12 | Free or open APIs preferred | Open data imported and self-hosted; a few free public services behind adapters | Always |
+| 13 | See past trips on a map | Archive of visited cities and attractions, no routing (ADR 006) | Release to be set |
 
 ## 4. Core user flows
 

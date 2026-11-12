@@ -239,6 +239,23 @@ The movement from one item to the next.
 | `confidence` | enum | `routed`, `estimated` |
 | `geometry` | linestring, nullable | For drawing on the map |
 
+### `app.trip_visit` (archive, ADR 006)
+One row per city or attraction of a past trip's selected itinerary. Written when a trip becomes
+past; transfers, route geometry and other itineraries are deleted at the same time.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | uuid | |
+| `trip_id` | fk | |
+| `kind` | enum | `city`, `attraction` |
+| `name` | text | Snapshot |
+| `point` | point | Snapshot |
+| `geo_place_ref` | text, nullable | The `geo` identifier it came from; may no longer exist |
+| `day_number` | smallint | |
+| `confirmed` | boolean | Default true; the user can clear it for skipped visits |
+
+`app.trip` gains `status` (`active`, `past`) and `archived_at` (timestamptz, nullable).
+
 ### `app.user_place`
 A place the user added that is not in `geo.place`.
 
