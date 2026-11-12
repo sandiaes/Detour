@@ -99,8 +99,8 @@ throwaway and is not merged into the product.
 
 **Status: built and accepted on 2026-11-12.** The owner followed `docs/deployment.md`, deployed to
 Render and Supabase, installed the APK, and reported that the app opens, Settings shows
-"connected", and the map is visible. Not reported, so still unconfirmed: the idle cold-start check
-(deployment step 9) and whether PostGIS can be enabled on Supabase Free (step 3). Choices and pinned versions: ADR 010. Not done and
+"connected", and the map is visible. PostGIS was enabled on Supabase Free (step 3, reported 2026-11-12). Still
+unconfirmed: the idle cold-start check (deployment step 9), which the owner is running. Choices and pinned versions: ADR 010. Not done and
 carried forward: the project's own APK signing key (before any build is kept for real use), the
 `app.installation` table (Phase 4), the navigation ADR (Phase 5), Supabase PostGIS availability on
 the Free plan (confirm in `deployment.md` step 3).
@@ -263,8 +263,8 @@ GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 ## 7. Recommended next task
 
 **Phase 2 (geo data foundation) when the owner gives the go-ahead (CLAUDE.md).** Phase 1 is built
-and accepted (ADR 010). Before Phase 2 the owner should report the PostGIS result from
-`docs/deployment.md` step 3, because the `geo` schema needs it. Background: all Phase 0 spikes are
+and accepted (ADR 010). PostGIS is available on Supabase Free (confirmed by the owner), so the
+`geo` schema can rely on it; Phase 2 creates the extension in its own migration. Background: all Phase 0 spikes are
 done or removed: S1 (map and APK build in GitHub Actions), S2, S3, S5 (heuristic only, D7); S4 was
 removed. D2, D3 and D7 are decided. One Phase 0 exit item remains open: the Geofabrik terms and
 update cadence (`docs/api-evaluation.md` section 15). Items S1 hands to Phase 1: the project's own

@@ -33,8 +33,9 @@ does not match what you see, trust the screen and tell the project owner's assis
 
 **Not confirmed** (check while you follow the steps, and report what you see):
 
-- Whether PostGIS can be enabled on the Supabase **Free** plan. The page does not mention plans.
-  Phase 1 does not need PostGIS; Phase 2 does.
+- ~~Whether PostGIS can be enabled on the Supabase **Free** plan.~~ **Confirmed by the owner on
+  2026-11-12:** it could be enabled on a Free project (step 3). The Supabase page itself does not
+  mention plans. Phase 2 needs it.
 - Whether Render can reach Supabase over IPv6. The Render pages do not say. This guide avoids the
   question by using the IPv4 pooler.
 - The exact wording of Render's prompt for secret values when a Blueprint is created. The
