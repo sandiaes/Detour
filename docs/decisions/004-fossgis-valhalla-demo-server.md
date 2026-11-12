@@ -91,6 +91,11 @@ Rules this would amend, if approved:
   meters"). Matrices therefore serve walking and driving inside a city or region only. Legs
   between distant cities need either the single-route request (limit not yet known; test in
   `docs/spikes/fossgis-matrix-check.md`) or labelled estimates.
+- **Single-route limit measured (owner, 2026-11-12):** the single-route request accepted both
+  long legs tested: Florence to Rome 282.885 km, 11,505 s; Rome to Milan 580.594 km, 22,188 s
+  (driving, tolls on the route). Legs between distant cities therefore use one route request
+  each. The response is large (turn-by-turn directions); whether a request option can shrink it
+  is to be checked in Phase 3.
 - **Times can differ between request shapes.** The same pair returned 523 s in two requests and
   653 s in a 20 x 5 request, with the same distance (cause unknown). Phase 3 must therefore
   request cells in one fixed chunk shape, store the provider response with each cached cell,
