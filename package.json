@@ -1,0 +1,23 @@
+{
+  "name": "detour",
+  "private": true,
+  "license": "Apache-2.0",
+  "workspaces": [
+    "apps/mobile",
+    "packages/shared"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "generate": "npm run generate -w @detour/shared",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "lint": "npm run lint -ws --if-present",
+    "test": "npm run test -ws --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.10.1"
+  }
+}
