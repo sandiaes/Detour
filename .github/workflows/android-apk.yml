@@ -1,0 +1,85 @@
+# Builds an installable Android APK of the Detour app and uploads it as an artifact.
+#
+# This is the release variant with the JavaScript bundled in, signed with the public React Native
+# debug key (ADR 008 addendum, spike S1): an expo-dev-client development build would need a
+# development server on a computer, which the owner does not have. The native code is the same.
+# The native Android project is generated here by `expo prebuild`; none is committed or edited.
+#
+# Run by hand: Actions tab -> "Android APK" -> Run workflow. Costs about 14 runner minutes.
+name: Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Backend base URL baked into the app, e.g. https://detour-api.onrender.com (empty: the repository variable DETOUR_API_URL)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_DETOUR_API_URL: ${{ inputs.api_url || vars.DETOUR_API_URL || '' }}
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      # Do NOT free disk by deleting /usr/local/lib/android here: that is the Android SDK.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Backend URL
+        run: |
+          if [ -z "$EXPO_PUBLIC_DETOUR_API_URL" ]; then
+            echo "::warning::No backend URL (input api_url or repository variable DETOUR_API_URL). The app will start but show that this build has no backend."
+          else
+            echo "Backend URL: $EXPO_PUBLIC_DETOUR_API_URL"
+          fi
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Type check
+        run: npm run typecheck -w @detour/mobile
+      - name: Generate the Android project (Continuous Native Generation)
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install --clean
+      - name: Build release APK (JavaScript bundled, arm64-v8a only)
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon --console=plain
+      - name: Inspect APK
+        run: |
+          mkdir -p out
+          apk=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          bt="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          cp "$apk" out/detour.apk
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "api_url=${EXPO_PUBLIC_DETOUR_API_URL:-<none>}"
+            echo "apk_bytes=$(stat -c %s "$apk")"
+            echo "apk_sha256=$(sha256sum "$apk" | cut -d' ' -f1)"
+            echo "--- aapt2 dump badging (selected lines)"
+            "$bt/aapt2" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|native-code|application-label):"
+            echo "--- apksigner verify --print-certs"
+            "$bt/apksigner" verify --print-certs "$apk"
+          } | tee out/build-info.txt
+          {
+            echo '### Detour APK'
+            echo '```'
+            cat out/build-info.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: detour-android-apk
+          path: out/
+          # Artifact storage on GitHub Free is 500 MB, shared with Packages; keep it short.
+          retention-days: 14
+          if-no-files-found: error

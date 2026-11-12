@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "detour-api"
+version = "0.1.0"
+description = "Detour backend API (FastAPI). Foundation only: health, config, anonymous installations."
+requires-python = ">=3.13,<3.14"
+license = { text = "Apache-2.0" }
+# Exact pins (ADR 001 follow-up, recorded in ADR 010). Upgrade as a planned task.
+dependencies = [
+  "fastapi==0.162.5",
+  "uvicorn==0.54.0",
+  "pydantic==2.14.3",
+  "pydantic-settings==2.16.2",
+  "sqlalchemy==2.1.8",
+  "alembic==1.20.1",
+  "psycopg[binary]==3.3.9",
+  "structlog==26.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.2.0",
+  "pytest-cov==7.1.0",
+  "httpx==0.28.1",
+  "ruff==0.17.4",
+  "mypy==2.4.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = ["db: needs the PostgreSQL service named by DETOUR_TEST_DATABASE_URL"]
+filterwarnings = [
+  "error",
+  # Starlette 1.x prefers a package named httpx2 for its TestClient. Not adopted without vetting
+  # that package (see docs/development.md); httpx 0.28.1 works.
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests", "scripts", "migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src", "tests", "scripts", "migrations"]
+plugins = ["pydantic.mypy"]
+
+[tool.coverage.run]
+source = ["detour_api"]

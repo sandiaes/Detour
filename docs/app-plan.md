@@ -1,6 +1,6 @@
 # App plan
 
-Status: **proposed**. Nothing is implemented. Each phase is small enough to review on its own
+Status: **Phase 0 and Phase 1 are done**; Phase 2 onward is proposed. Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
 ## 1. Decisions
@@ -96,6 +96,12 @@ throwaway and is not merged into the product.
 - **Risks:** a pilot region with poor data; mitigation is to pick another region.
 
 ### Phase 1 — Project scaffolding and continuous integration
+
+**Status: built on 2026-11-12; acceptance by the owner pending** (Render and Supabase accounts, then
+the phone check in `docs/deployment.md`). Choices and pinned versions: ADR 010. Not done and
+carried forward: the project's own APK signing key (before any build is kept for real use), the
+`app.installation` table (Phase 4), the navigation ADR (Phase 5), Supabase PostGIS availability on
+the Free plan (confirm in `deployment.md` step 3).
 
 **Goal:** an empty but complete skeleton that builds, tests and runs.
 
@@ -254,8 +260,11 @@ GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 
 ## 7. Recommended next task
 
-**Phase 1, when the owner gives the go-ahead (CLAUDE.md).** All Phase 0 spikes are done or
-removed: S1 (map and APK build in GitHub Actions), S2, S3, S5 (heuristic only, D7); S4 was
+**Owner acceptance of Phase 1, then Phase 2 when the owner gives the go-ahead (CLAUDE.md).**
+Phase 1 is built (ADR 010): follow `docs/deployment.md` to create the Supabase and Render
+accounts, deploy, and confirm on the phone that Settings shows "connected". Phase 2 (geo data
+foundation) starts only after that and the owner's go-ahead. Background: all Phase 0 spikes are
+done or removed: S1 (map and APK build in GitHub Actions), S2, S3, S5 (heuristic only, D7); S4 was
 removed. D2, D3 and D7 are decided. One Phase 0 exit item remains open: the Geofabrik terms and
 update cadence (`docs/api-evaluation.md` section 15). Items S1 hands to Phase 1: the project's own
 signing key, the config endpoint that replaces the bundled stand-in, and the attribution rule with

@@ -1,0 +1,13 @@
+# Prettier covers the JavaScript/TypeScript workspaces only.
+docs/
+spikes/
+services/
+infrastructure/
+.github/
+*.md
+LICENSE
+package-lock.json
+packages/shared/openapi.json
+**/android/
+**/ios/
+**/.expo/

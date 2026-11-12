@@ -1,0 +1,51 @@
+# Local development stack: PostgreSQL with PostGIS, and the API. Optional: the project is also
+# developed in GitHub Actions and Claude Code cloud sessions (docs/development.md).
+#
+#   cp .env.example .env
+#   docker compose --env-file .env -f infrastructure/docker-compose.yml up --build --wait
+#
+# The image tag is the one ADR 001 records. PostgreSQL 18 images keep their data under
+# /var/lib/postgresql (not /var/lib/postgresql/data), hence the volume path.
+name: detour
+
+services:
+  db:
+    image: postgis/postgis:18-3.7
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-detour}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.example to .env and pass --env-file .env}
+      POSTGRES_DB: ${POSTGRES_DB:-detour}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432" # local only: never expose this port
+    volumes:
+      - detour-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ../services/api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DETOUR_ENVIRONMENT: local
+      DETOUR_DATABASE_URL: postgresql://${POSTGRES_USER:-detour}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-detour}
+      DETOUR_TOKEN_SECRET: ${DETOUR_TOKEN_SECRET:-}
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/v1/health', timeout=3).status == 200 else 1)"
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  detour-db:

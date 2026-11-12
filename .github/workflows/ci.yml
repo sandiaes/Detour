@@ -1,0 +1,117 @@
+# Continuous integration: formatting, linting, type checks and tests for every part of the
+# monorepo. Nothing here needs a local toolchain: it all runs on GitHub-hosted runners.
+# No job calls a third-party service; the only network use is installing packages and pulling
+# the PostGIS image.
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (Python, PostGIS)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/api
+    services:
+      postgres:
+        image: postgis/postgis:18-3.7
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DETOUR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      DETOUR_REQUIRE_DB_TESTS: "1" # the database tests fail instead of skipping
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: services/api/pyproject.toml
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Lint (ruff)
+        run: ruff check . ../../tools
+      - name: Format check (ruff)
+        run: ruff format --check . ../../tools
+      - name: Type check (mypy, strict)
+        run: mypy
+      - name: Test (includes migrations and database connectivity)
+        run: pytest --cov=detour_api --cov-report=term-missing
+
+  javascript:
+    name: App and shared client (Node)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install
+        run: npm ci --no-audit --no-fund
+      - name: Format check (prettier)
+        run: npm run format:check
+      - name: Contract drift check (generated types match packages/shared/openapi.json)
+        run: |
+          npm run generate
+          git diff --exit-code -- packages/shared
+      - name: Type check (tsc)
+        run: npm run typecheck
+      - name: Lint (eslint)
+        run: npm run lint
+      - name: Test (jest)
+        run: npm test
+
+  policy:
+    name: Dependency policy (no LLM libraries)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python tools/check_dependencies.py
+
+  compose:
+    name: Docker Compose stack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start database and API
+        run: docker compose --env-file .env.example -f infrastructure/docker-compose.yml up --build --wait --wait-timeout 300
+      - name: Health and readiness
+        run: |
+          curl --fail --silent --show-error http://127.0.0.1:8000/v1/health
+          echo
+          curl --fail --silent --show-error http://127.0.0.1:8000/v1/health/ready | tee ready.json
+          echo
+          grep -q '"schemas":\["app","geo"\]' ready.json
+      - name: Logs on failure
+        if: failure()
+        run: docker compose --env-file .env.example -f infrastructure/docker-compose.yml logs --no-color
+      - name: Stop
+        if: always()
+        run: docker compose --env-file .env.example -f infrastructure/docker-compose.yml down --volumes

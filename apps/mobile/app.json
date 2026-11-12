@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Detour",
+    "slug": "detour",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "io.github.sandiaes.detour"
+    },
+    "plugins": ["@maplibre/maplibre-react-native"]
+  }
+}

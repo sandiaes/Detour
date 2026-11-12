@@ -9,8 +9,27 @@ task, not a rewrite.
 
 ## Status
 
-**Planning and documentation only.** No application code, no project scaffolding. The
-architecture, API strategy, hosting, licence and distribution are decided (see below).
+**Phase 1 (foundation) is built:** a monorepo with a placeholder Android-first app, a FastAPI
+backend (health, config, anonymous installations), empty `geo` and `app` database schemas, a
+generated typed API client, CI, an APK build workflow, and Render and Supabase deployment
+configuration. There is no itinerary planning, imported data or provider integration yet; those
+follow the phases in [`docs/app-plan.md`](docs/app-plan.md). The architecture, API strategy,
+hosting, licence and distribution are decided (see below).
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `apps/mobile` | Expo SDK 58 + TypeScript app, MapLibre React Native |
+| `services/api` | Python + FastAPI backend, Alembic migrations, tests |
+| `packages/shared` | OpenAPI contract and the generated typed client |
+| `infrastructure` | Docker Compose with PostgreSQL and PostGIS (optional, for a capable machine) |
+| `render.yaml` | Render Blueprint for the API |
+| `docs` | Product, architecture and decision documents |
+
+Everything is built and tested in GitHub Actions; no local toolchain is required
+([`docs/development.md`](docs/development.md)). To deploy and try the app on a phone, follow
+[`docs/deployment.md`](docs/deployment.md).
 
 ## Documents
 
@@ -24,6 +43,9 @@ architecture, API strategy, hosting, licence and distribution are decided (see b
 | [`docs/kpis.md`](docs/kpis.md) | Proposed targets and how each is measured |
 | [`docs/decisions/001-technology-stack.md`](docs/decisions/001-technology-stack.md) | ADR: technology stack |
 | [`docs/decisions/002-api-strategy.md`](docs/decisions/002-api-strategy.md) | ADR: API and data-source strategy |
+| [`docs/development.md`](docs/development.md) | CI-first development, commands, optional local Docker Compose |
+| [`docs/deployment.md`](docs/deployment.md) | Step-by-step Render, Supabase and phone setup |
+| [`docs/decisions/010-phase-1-foundation-choices.md`](docs/decisions/010-phase-1-foundation-choices.md) | ADR: Phase 1 choices and pinned versions |
 | [`CLAUDE.md`](CLAUDE.md) | Working rules for AI-assisted development in this repository |
 
 ## Proposed architecture in brief
@@ -33,8 +55,9 @@ architecture, API strategy, hosting, licence and distribution are decided (see b
 | Mobile app | React Native, Expo, TypeScript; MapLibre React Native for maps |
 | Backend | Python, FastAPI; deterministic planning engine |
 | Data | PostgreSQL with PostGIS; open data imported per region |
-| Routing | Self-hosted Valhalla |
-| Local development | Docker Compose |
+| Routing | FOSSGIS Valhalla server through a cached adapter (ADR 004), from Phase 3 |
+| Hosting | Supabase Free (database), Render free web service (API), GitHub Actions (ADR 005) |
+| Local development | GitHub Actions first; Docker Compose optional |
 
 Open data (OpenStreetMap, GeoNames, Wikidata) is imported into the project's own database, so
 generating an itinerary makes no third-party API calls. The few external services (map tiles,

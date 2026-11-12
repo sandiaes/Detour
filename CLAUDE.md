@@ -10,10 +10,13 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Documentation only.** There is no application code, no build, and no commands to run. The
-decisions in `docs/app-plan.md` section 1 are recorded; hosting (D3) is decided in ADR 005, the
-licence is Apache-2.0 (ADR 007), and the app is not distributed through app stores (ADR 008). Do not scaffold a project or write production code until the owner asks for
-implementation.
+**Phase 1 (foundation) is implemented**: a monorepo with a placeholder mobile app, a FastAPI service
+(health, config, anonymous installations), empty `geo` and `app` schemas, a generated API client,
+CI, an Android APK workflow and Render/Supabase deployment configuration (ADR 010). There is no
+planning, no imported data and no provider adapter yet. The decisions in `docs/app-plan.md`
+section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),
+and the app is not distributed through app stores (ADR 008). Do not start the next phase until the
+owner asks for it.
 
 ## Read first
 
@@ -26,6 +29,8 @@ implementation.
 | Phases, dependencies, exclusions | `docs/app-plan.md` |
 | Targets | `docs/kpis.md` |
 | Recorded decisions | `docs/decisions/` |
+| Working on the code, CI | `docs/development.md` |
+| Deploying | `docs/deployment.md` |
 
 ## Hard constraints
 
@@ -86,4 +91,31 @@ found the heuristic sequencer sufficient (D7). Exact versions are pinned in Phas
 
 ## Commands
 
-None yet. This section is filled in when Phase 1 creates the project.
+CI-first: everything below runs in GitHub Actions (`.github/workflows/ci.yml`) and in Claude Code
+cloud sessions; nothing needs a local Windows toolchain. Details: `docs/development.md`.
+
+From the repository root (Node 22):
+
+- `npm ci`: install the JavaScript workspaces (`apps/mobile`, `packages/shared`)
+- `npm run format:check` / `npm run format`: prettier
+- `npm run typecheck`, `npm run lint`, `npm test`: tsc, eslint, jest
+- `npm run generate`: regenerate `packages/shared/src/schema.d.ts` from `packages/shared/openapi.json`
+
+From `services/api` (Python 3.13, `pip install -e ".[dev]"`):
+
+- `ruff check . ../../tools` and `ruff format --check . ../../tools`
+- `mypy` (strict)
+- `pytest`: set `DETOUR_TEST_DATABASE_URL` to run the four database tests (CI always does)
+- `python scripts/export_openapi.py`: rewrite `packages/shared/openapi.json`; run it, then
+  `npm run generate`, whenever endpoints or models change (CI fails on drift)
+
+Other:
+
+- `python tools/check_dependencies.py`: fails if an LLM or generative-AI library is listed
+- `docker compose --env-file .env -f infrastructure/docker-compose.yml up --build --wait`:
+  optional local database and API (`cp .env.example .env` first)
+- Android APK: run the "Android APK" workflow by hand (`docs/deployment.md`, steps 7 to 9)
+
+Rules for this phase's code: no secrets in the repository (`.env.example` only; secrets live in
+Render, Supabase and GitHub settings); pin exact versions; the app reads the map style URL from
+`GET /v1/config`, never from a constant.
