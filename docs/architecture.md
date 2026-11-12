@@ -71,10 +71,18 @@ All services except the tile host run from one Docker Compose file in developmen
 
 - Expo SDK 58, TypeScript, Continuous Native Generation with config plugins; no hand-edited
   native projects. This keeps the iOS build a configuration task, not a port.
-- Development builds from the start. Android builds can run locally or on the EAS free plan
-  (15 Android and 15 iOS builds per month, low-priority queue).
-- MapLibre React Native for all map rendering. The style URL is read from a backend config
-  endpoint, so the tile provider can change without a release.
+- Android builds run in GitHub Actions: `expo prebuild` then Gradle `assembleRelease` on a
+  GitHub-hosted runner, about 14 minutes, APK downloaded from the run's artifacts (spike S1,
+  `docs/spikes/s1-map-findings.md`). They are release-variant builds with the JavaScript bundled,
+  not `expo-dev-client` builds, because the owner has no computer to run a development server
+  (ADR 008 addendum). Expo's cloud build (free plan: 15 Android and 15 iOS builds per month,
+  low-priority queue, read 2026-11-12) is the fallback. The project's own signing key is needed
+  before a build is kept for real use.
+- MapLibre React Native for all map rendering. The style URL and the attribution lines are read
+  from the backend config endpoint (`GET /v1/config`, shape recorded in the S1 findings), so the
+  tile provider can change without a release. The only build-time value is the backend's base
+  URL. Attribution is visible in a map corner at start and may collapse to an "i" button after
+  five seconds or on map interaction (OSMF attribution guidelines).
 - `expo-sqlite` holds a read cache of the user's trips so that an accepted itinerary is viewable
   without a connection. Planning and recalculation always need the backend.
 - No direct calls to any third-party API other than the tile host.
