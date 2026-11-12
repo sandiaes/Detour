@@ -10,13 +10,17 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Phases 1 and 2 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
+**Phases 1, 2 and 3 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
 service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment
 configuration (ADR 010). Phase 2 (ADR 011, ADR 012; `docs/data-model.md`): the `geo` and `app`
 schemas, the region import and GeoNames gazetteer commands and the "Import region" workflow, the
 data quality report with the ADR 009 gates, destination and place search, the Photon adapter, a
 seed trip, and CRUD for trips, user places and itinerary items. No region has been imported into
-the real database yet. There is no planning, no routing and no map screen. The decisions in `docs/app-plan.md`
+the real database yet. **Phase 3 is built and awaits acceptance** (ADR 013, proposed): the
+travel-time service behind a FOSSGIS Valhalla adapter, with the `geo.travel_time` cache and the
+labelled estimate fallback; no endpoint, and it is not yet used by anything. The owner's
+request-shape check is done (`docs/spikes/fossgis-request-shape-check.md`): the fixed 1 x N shape
+agrees with the plain route. There is no planning and no map screen. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),
 and the app is not distributed through app stores (ADR 008). Do not start the next phase until the
 owner asks for it.

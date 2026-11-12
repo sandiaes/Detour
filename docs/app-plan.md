@@ -1,6 +1,6 @@
 # App plan
 
-Status: **Phase 0 and Phase 1 are done; Phase 2 is built and awaits the owner's acceptance**; Phase 3 onward is proposed. Each phase is small enough to review on its own
+Status: **Phase 0, 1 and 2 are done; Phase 3 is built and awaits the owner's acceptance**; Phase 4 onward is proposed. Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
 ## 1. Decisions
@@ -118,7 +118,7 @@ the Free plan (confirm in `deployment.md` step 3).
 
 ### Phase 2 — Geo data foundation
 
-**Status: built on 2026-11-12, not yet accepted.** Everything below is implemented and tested
+**Status: built on 2026-11-12; accepted by the owner (reported 2026-11-12).** Everything below is implemented and tested
 against a synthetic extract (ADR 011, ADR 012, `docs/data-model.md`). **No real extract has been
 imported yet**: that is the owner's first acceptance step (`docs/deployment.md`, "Importing a
 region"). Not done and carried forward: Wikidata sitelink counts, the category visit-duration
@@ -137,6 +137,17 @@ past trips.
   category list.
 
 ### Phase 3 — Travel-time service
+
+**Status: built on 2026-11-12, not yet accepted** (ADR 013, proposed). Implemented and tested
+against a stub server: the adapter, the cache, chunking, the rate limiter and circuit breaker, the
+daily budget, the estimate fallback, null-cell handling and route geometry. The build
+environment cannot reach the server, so the owner ran a check by hand
+(`docs/spikes/fossgis-request-shape-check.md`): the 523 s / 653 s difference is deterministic and
+not caused by the algorithm, its cause is unknown, and the adapter's 1 x N shape agrees with the
+plain route; `directions_type: none` shrinks route responses by 60% and is on. **Not done:**
+latency was not measured; the null-cell format and `POST` are unconfirmed against the real
+server; the estimate's detour factor looks low against the first real data (ADR 013). Matrix
+symmetry is not asserted: walking times were 523 s one way and 622 s back.
 
 **Goal:** routed walking and driving times, with a safe fallback.
 
@@ -285,8 +296,11 @@ to reconsider later. Ideas discussed, none decided or built:
 
 ## 7. Recommended next task
 
-**Accept Phase 2, then Phase 3 (travel-time service), when the owner asks for it (CLAUDE.md).**
-Acceptance means: deploy the new migrations (Render runs them at start), add the repository
+**Accept Phase 3, then Phase 4 (planner v1), when the owner asks for it (CLAUDE.md).** Phase 2 is accepted.
+For Phase 3: confirm or change the numbers in ADR 013 (especially the walking detour factor). Phase 4 must plan sparse cell sets and bound provider time with `max_seconds` (ADR 013, decision 1).
+
+Carried forward from Phase 2 (the owner accepted it; these items were not reported as resolved):
+Acceptance meant: deploy the new migrations (Render runs them at start), add the repository
 secret `DETOUR_IMPORT_DATABASE_URL`, run the "Import region" workflow for **Austria** first, and
 read the report and `review-sample.json` (ADR 011). Open items that need the owner:
 

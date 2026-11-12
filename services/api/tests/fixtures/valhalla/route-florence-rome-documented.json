@@ -1,0 +1,32 @@
+{
+  "trip": {
+    "status": 0,
+    "status_message": "Found route between points",
+    "units": "kilometers",
+    "locations": [
+      {
+        "lat": 43.7696,
+        "lon": 11.2558,
+        "type": "break"
+      },
+      {
+        "lat": 41.9028,
+        "lon": 12.4964,
+        "type": "break"
+      }
+    ],
+    "legs": [
+      {
+        "summary": {
+          "time": 11505.0,
+          "length": 282.885
+        },
+        "shape": "_onnrAo~~mT~nwa@oeif@~qdnA_zkc@"
+      }
+    ],
+    "summary": {
+      "time": 11505.0,
+      "length": 282.885
+    }
+  }
+}

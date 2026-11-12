@@ -107,3 +107,20 @@ Rules this would amend, if approved:
 - Phase 3 builds the adapter, cache and estimate fallback instead of a Valhalla container.
 - S3 results (`docs/spikes/s3-routing-findings.md`) are the reference for a later move to
   self-hosting: Italy needs about 2.4 GB of tiles and roughly 8 GB of RAM to build.
+
+## Addendum (2026-11-12): Phase 3 outcome
+
+The adapter, cache and fallback are built ([ADR 013](013-phase-3-travel-time-service.md)). Of the
+items left open above: the request shape is fixed (one source, up to 100 targets) and the owner's
+check of 2026-11-12 found it agrees with the plain route; the 523 s / 653 s difference was
+reproduced, is deterministic and is **not caused by the algorithm**, but its cause is unknown (it
+comes from the 20 x 5 shape, which is not used); `directions_type: none` shrinks a route response
+(-60% on the sample) and `no_shape` has no effect. Results:
+[`../spikes/fossgis-request-shape-check.md`](../spikes/fossgis-request-shape-check.md). Request
+volume: a dense matrix of n places needs n matrix requests (up to 100 targets each); Phase 4 must
+plan sparse sets.
+
+**Owner decision, 2026-11-12: condition 6 (notify FOSSGIS) is not needed.** The app is for the
+owner and one other person, is not distributed (ADR 008) and is not "published to end users". The
+other conditions stand. If the app is ever shared beyond that, condition 6 applies again before it
+is.
