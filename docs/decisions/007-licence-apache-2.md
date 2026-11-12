@@ -17,9 +17,9 @@ free-only project.
 ## Decision
 
 1. The Detour source code is licensed under the **Apache License 2.0**.
-2. The `LICENSE` file is added to the repository root, copied from the official text
-   (<https://www.apache.org/licenses/LICENSE-2.0.txt>), when the owner decides to make the
-   repository public. Until then the repository stays private.
+2. The `LICENSE` file was added to the repository root on 2026-11-12, copied unchanged from the
+   official text (<https://www.apache.org/licenses/LICENSE-2.0.txt>, 11,358 bytes). The
+   repository stays private until the owner decides to publish it.
 3. Licence of the code is separate from the licence of the data. OpenStreetMap data stays under
    ODbL and remains stored as separate source records (data model, section 5).
 4. This is not legal advice. A legal review stays on the list for any commercial release
