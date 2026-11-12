@@ -1,0 +1,47 @@
+# Phase 0, spike S3 (throwaway): what does a Valhalla instance for one country need?
+# Builds routing tiles from a Geofabrik extract and benchmarks 50 x 50 matrices.
+name: Spike S3 routing
+
+on:
+  # Temporary: the "Run workflow" button only shows for workflows on the default branch,
+  # so a push to this branch that changes this file starts a run (Italy).
+  push:
+    branches: [claude/zealous-ramanujan-klexg7]
+    paths: [".github/workflows/spike-s3-routing.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  routing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/boost
+          df -h /
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends time
+          python3 -m pip install pyvalhalla==3.9.1
+      - name: Build tiles and benchmark (Italy)
+        run: bash spikes/s3-routing/run.sh italy europe/italy 43.7696 11.2558
+      - name: Report
+        if: ${{ !cancelled() }}
+        run: |
+          python3 -I spikes/s3-routing/report.py out/italy > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: s3-italy
+          path: |
+            out/italy
+            report.md
