@@ -219,7 +219,7 @@ extract, so start with the smallest country and read the report before importing
 | `Repository secret DETOUR_IMPORT_DATABASE_URL is not set` | Step 2 |
 | `The import needs a session-mode connection` | The string uses port 6543; use the Session pooler on 5432 |
 | `cities file line N: M columns, expected 19` or `countryInfo.txt ...` | The GeoNames file layout differs from what the importer expects (ADR 012: unverified); report it |
-| `could not download ...` for the extract | Geofabrik refused or was unreachable; the terms were never read (ADR 012). Do not retry in a loop |
+| `could not download ...` for the extract | Geofabrik refused or was unreachable (terms: `api-evaluation.md` 4.1). Do not retry in a loop |
 | `report and database disagree` | The import found an inconsistency and rolled back; nothing was changed. Report it |
 | `type "geometry" does not exist` | PostGIS is not enabled, or not on the search path (the code puts `public, extensions` on it); check step 3 |
 | A warning that the coverage polygon was not loaded | Geofabrik's `.poly` file could not be fetched; the region's boundary stays unknown, nothing else is affected |
