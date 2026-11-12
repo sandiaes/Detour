@@ -64,3 +64,35 @@ needed (ADR 003).
   API server and Valhalla still need a host (spike S3).
 - Region readiness thresholds are the owner's decision; the numbers above are the input.
 - Extract sizes (6.9 GB in total, Italy 2.25 GB, Japan 2.57 GB) are the inputs for S3.
+
+## Rerun with the ADR 003 selection rule (spike S2 v2, 2026-11-12)
+
+Same method; the import now leaves out wayside shrines and crosses, boundary stones, bomb
+craters, and memorials without a `wikidata` tag, and counts what it excludes. Figures copied from
+the run summary by the owner.
+
+| Country | Rows | Table + indexes (MB) | Attractions | Named attractions | Restaurants | Excluded |
+|---|---:|---:|---:|---:|---:|---:|
+| Austria | 48,827 | 9.2 | 22,323 | 13,694 (61%) | 26,504 | 58,327 |
+| Czechia | 65,328 | 12.0 | 47,502 | 22,058 (46%) | 17,826 | 76,034 |
+| Hungary | 22,411 | 4.1 | 13,251 | 8,966 (68%) | 9,160 | 22,038 |
+| Italy | 243,970 | 42.3 | 125,405 | 57,876 (46%) | 118,565 | 57,327 |
+| Japan | 180,141 | 32.4 | 39,138 | 30,370 (78%) | 141,003 | 54,369 |
+| **Total** | | **100.0** | | | | |
+
+- **Size:** 100.0 MB in the spike schema (145.1 MB before the rule), against Supabase Free's 500
+  MB.
+- **Restaurant quality** is unchanged: named 91–98%, cuisine 35–54%.
+- **Attraction names:** Name EN 1–4% outside Japan, 26% in Japan; Japan 73% of attraction names
+  and 79% of restaurant names have no Latin letters.
+- **The rule works except for Czechia's memorials.** Memorials kept because of a `wikidata` tag:
+  Czechia 22,822 (7,515 excluded), Austria 1,135 (7,822 excluded); in Hungary, Italy and Japan
+  the kept memorials no longer appear among the ten most common subclasses. In Czechia the
+  `wikidata` tag is common on memorials, so the proxy keeps about three quarters of them and they
+  make up roughly half of Czech attractions.
+- **Remaining noise:** `historic=yes` (759 to 9,158), `historic=building` (Italy 25,110, Japan
+  1,128), `historic=railway` (Austria 1,608), `historic=stone` (Czechia 687) and `historic=tomb`
+  are still imported.
+- **Core sightseeing counts (lower bounds, from the three `tourism` classes shown among the ten
+  most common subclasses):** Austria 10,395, Czechia 10,446, Hungary 6,920, Italy 31,141, Japan
+  22,369.

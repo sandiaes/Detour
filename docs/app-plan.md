@@ -23,6 +23,7 @@ Recorded on 2026-11-12 from the owner's answers.
 | D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
 | D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
 | D15 | Past trips archive | Past trips are kept as a map and list of visited cities and attractions, without routing. See ADR 006. Release timing open. | Decided |
+| D17 | Region readiness thresholds | Proposed in ADR 009 (not approved): Austria, Czechia and Hungary first, then Italy, then Japan. | **Proposed** |
 | D16 | Distribution | No app stores. Android by sideloaded APK; iPhone built on the owner's Mac. See ADR 008. | Decided |
 | D14 | Hosting constraint | Owner has no server and wants free, managed services. Travel times come from the FOSSGIS Valhalla server through a cached adapter (ADR 004, approved); S3 stays the reference for self-hosting. | Constraint |
 

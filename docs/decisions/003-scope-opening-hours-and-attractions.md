@@ -65,3 +65,13 @@ other `historic=*` values. Open question for Phase 2: whether `historic=yes` and
 - If opening hours are wanted later, a new ADR must reintroduce the table, the parser and the
   validator rule together.
 - The Phase 2 import report counts excluded objects per class so the rule can be reviewed.
+
+## Result of applying the rule (spike S2 v2, 2026-11-12)
+
+See [`../spikes/s2-data-findings.md`](../spikes/s2-data-findings.md). The rule removed 22,038 to
+76,034 objects per country and cut the imported data from 145.1 MB to 100.0 MB. It does not do
+what was intended for Czechia: 22,822 memorials survive because they carry a `wikidata` tag
+(about half of the country's attractions). The proxy "memorial with a Wikidata tag" therefore
+needs a stricter test before Phase 2 (for example, also requiring a name and excluding Czech
+war-grave and local-memorial classes by a sample review). Still open from this ADR:
+`historic=yes`, `historic=building`, `historic=railway`, `historic=stone` and `historic=tomb`.
