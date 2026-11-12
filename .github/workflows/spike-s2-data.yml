@@ -1,5 +1,6 @@
 # Phase 0, spike S2 (throwaway): data quality and size report for the pilot countries.
 # Run by hand: Actions tab -> "Spike S2 data quality" -> Run workflow.
+# v2 (2026-11-12): applies the ADR 003 selection rule and reports what it excludes.
 name: Spike S2 data quality
 
 on:

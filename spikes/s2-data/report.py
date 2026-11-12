@@ -47,20 +47,26 @@ def main(root):
 
     for cls in ("attraction", "restaurant"):
         out += [f"## Quality: {cls}", "",
-                "| Country | Total | Named | Name EN | Name Latin | Name w/o Latin | Opening hours | Cuisine | Wikidata | Website |",
-                "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+                "| Country | Total | Named | Name EN | Name Latin | Name w/o Latin | Cuisine | Wikidata | Website |",
+                "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
         for c in countries:
             r = next((x for x in rows(c / "quality.csv") if x["class"] == cls), None)
             if r is None:
-                out.append(f"| {c.name} | 0 | | | | | | | | |")
+                out.append(f"| {c.name} | 0 | | | | | | | |")
                 continue
             t = r["total"]
-            out.append(f"| {c.name} | {int(t):,} | {pct(r['with_name'], t)} | {pct(r['with_name_en'], t)} | "
+            out.append(f"| {c.name} | {int(t):,} | {int(r['with_name']):,} ({pct(r['with_name'], t)}) | {pct(r['with_name_en'], t)} | "
                        f"{pct(r['with_name_latin'], t)} | {pct(r['name_without_latin_letters'], t)} | "
-                       f"{pct(r['with_opening_hours'], t)} | {pct(r['with_cuisine'], t)} | "
+                       f"{pct(r['with_cuisine'], t)} | "
                        f"{pct(r['with_wikidata'], t)} | {pct(r['with_website'], t)} |")
         out.append("")
 
+    out += ["## Excluded by the ADR 003 selection rule", ""]
+    for c in countries:
+        ex = rows(c / "excluded.csv")
+        total = sum(int(r["total"]) for r in ex)
+        out.append(f"**{c.name}:** {total:,} excluded; " + ", ".join(f"{r['subclass']} {int(r['total']):,}" for r in ex[:6]))
+        out.append("")
     out += ["## Most common subclasses", ""]
     for c in countries:
         top = rows(c / "subclass.csv")[:10]

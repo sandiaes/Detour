@@ -1,5 +1,6 @@
 -- Spike S2 (throwaway): osm2pgsql flex import of the objects Detour cares about.
 -- The class lists below must match the osmium filter in run.sh.
+-- v2: applies the ADR 003 selection rule and counts what it excludes.
 
 local poi = osm2pgsql.define_table({
     name = 'poi',
@@ -18,6 +19,17 @@ local poi = osm2pgsql.define_table({
     },
 })
 
+-- Objects the selection rule leaves out, counted in the `excluded` table (no geometry).
+local excluded = osm2pgsql.define_table({
+    name = 'excluded',
+    ids = { type = 'any', id_column = 'osm_id', type_column = 'osm_type' },
+    columns = { { column = 'subclass', type = 'text', not_null = true } },
+})
+
+local EXCLUDED_HISTORIC = {
+    wayside_shrine = true, wayside_cross = true, boundary_stone = true, bomb_crater = true,
+}
+
 local ATTRACTION_TOURISM = {
     attraction = true, museum = true, gallery = true, viewpoint = true,
     zoo = true, theme_park = true, aquarium = true,
@@ -32,7 +44,12 @@ local function classify(tags)
         return 'attraction', tags.tourism
     end
     if tags.historic then
-        return 'attraction', 'historic:' .. tags.historic
+        local h = tags.historic
+        -- memorials are excluded unless they carry a wikidata tag (ADR 003)
+        if EXCLUDED_HISTORIC[h] or (h == 'memorial' and not tags.wikidata) then
+            return nil, nil, 'historic:' .. h
+        end
+        return 'attraction', 'historic:' .. h
     end
     return nil
 end
@@ -61,14 +78,20 @@ local function insert_with(object, geom, cls, sub)
 end
 
 function osm2pgsql.process_node(object)
-    local cls, sub = classify(object.tags)
-    if cls then
+    local cls, sub, skipped = classify(object.tags)
+    if skipped then
+        excluded:insert({ subclass = skipped })
+    elseif cls then
         insert_with(object, object:as_point(), cls, sub)
     end
 end
 
 function osm2pgsql.process_way(object)
-    local cls, sub = classify(object.tags)
+    local cls, sub, skipped = classify(object.tags)
+    if skipped then
+        excluded:insert({ subclass = skipped })
+        return
+    end
     if not cls then
         return
     end
@@ -85,8 +108,10 @@ function osm2pgsql.process_relation(object)
     if object.tags.type ~= 'multipolygon' then
         return
     end
-    local cls, sub = classify(object.tags)
-    if cls then
+    local cls, sub, skipped = classify(object.tags)
+    if skipped then
+        excluded:insert({ subclass = skipped })
+    elseif cls then
         insert_with(object, object:as_multipolygon():centroid(), cls, sub)
     end
 end

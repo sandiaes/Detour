@@ -11,8 +11,8 @@ different itineraries and recalculates when the user adds places or restaurants.
 ## Current state
 
 **Documentation only.** There is no application code, no build, and no commands to run. The
-decisions in `docs/app-plan.md` section 1 are recorded; hosting (D3) is decided in ADR 005 and
-the licence (D11) is still open. Do not scaffold a project or write production code until the owner asks for
+decisions in `docs/app-plan.md` section 1 are recorded; hosting (D3) is decided in ADR 005, the
+licence is Apache-2.0 (ADR 007), and the app is not distributed through app stores (ADR 008). Do not scaffold a project or write production code until the owner asks for
 implementation.
 
 ## Read first

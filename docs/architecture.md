@@ -2,7 +2,7 @@
 
 Status: **accepted** on 2026-11-12 through
 [`decisions/001-technology-stack.md`](decisions/001-technology-stack.md) and
-[`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is still open.
+[`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is decided in ADR 005.
 No code exists yet.
 
 ## 1. Principles
@@ -28,7 +28,7 @@ No code exists yet.
 | MapLibre + OSM-compatible data | **Confirmed** | `@maplibre/maplibre-react-native` v11 (MIT), Android and iOS. `expo-maps` is rejected: alpha, Google Maps on Android, Apple Maps on iOS. |
 | Python + FastAPI | **Confirmed** | MIT. Pin the Python version in Phase 1 to one supported by both FastAPI and the OR-Tools wheels. |
 | PostgreSQL + PostGIS | **Confirmed** | Image `postgis/postgis:18-3.7`. The `-3.5` and `-3.6` tags are no longer updated. PostgreSQL 18 changed the data volume path to `/var/lib/postgresql`. |
-| Docker Compose | **Confirmed** for local development | Production hosting is an open decision. |
+| Docker Compose | **Confirmed** for local development | Production hosting: ADR 005. |
 | Deterministic planning engine | **Confirmed** | Section 5. |
 | OR-Tools | **Conditionally justified** | Useful for the multi-day, time-windowed, optional-visit problem. Introduced behind an interface after a Phase 0 spike; a simple heuristic remains as baseline and fallback. Section 5.5. |
 
@@ -82,8 +82,10 @@ All services except the tile host run from one Docker Compose file in developmen
 - Navigation, server-state and form libraries are chosen in Phase 5 and recorded in an ADR.
 
 **iOS readiness.** Minimum iOS for SDK 58 is 16.4. MapLibre's config plugin is required on iOS.
-Building for the App Store needs an Apple Developer Program membership ($99 per year). No
-Android-only native module is allowed into the dependency list without an ADR.
+The app is not distributed through app stores (ADR 008): iPhone builds are compiled on the
+owner's Mac. Whether a free Apple ID suffices or the paid Apple Developer Program ($99 per year)
+is needed is decided in Phase 11. No Android-only native module is allowed into the dependency
+list without an ADR.
 
 ### 4.2 Backend API
 
@@ -269,13 +271,14 @@ wall-clock limit only as a safety cap. This determinism approach must be validat
 | Environment | Composition | Recurring cost |
 |---|---|---|
 | Local development | Docker Compose: `db`, `api`, `valhalla` | none |
-| Personal production | Same containers on one host; OpenFreeMap; Photon and Frankfurter public instances | hosting (not yet evaluated) |
+| Personal production | Supabase Free database, Render free web service, GitHub Actions import (ADR 005); OpenFreeMap; Photon and Frankfurter public instances | $0 per month at the limits read on 2026-11-12 |
 | Public commercial | Self-hosted or contracted tiles, self-hosted Photon and Frankfurter, legal review of ODbL use | to be estimated |
 
-Known one-off and platform costs: Google Play registration $25 once; new personal Play accounts
-must run a closed test with at least 12 testers for 14 days before production access; Apple
-Developer Program $99 per year for the iOS phase. **Backend hosting options were not evaluated
-in this round** and are an open decision.
+Known platform costs: none while the app is not distributed through app stores (ADR 008). An
+Apple Developer Program membership ($99 per year) is optional for the iOS phase. Google Play
+registration ($25 once, plus a closed test with 12 testers for 14 days for new personal
+accounts) would apply only if the owner later chose Google Play. Backend hosting is decided in
+ADR 005.
 
 ## 9. Architecture risks
 

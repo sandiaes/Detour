@@ -49,6 +49,7 @@ psql -d "$db" -v ON_ERROR_STOP=1 -qc "VACUUM ANALYZE poi"
 psql -d "$db" -v ON_ERROR_STOP=1 --csv -f "$here/quality.sql" > "$out/quality.csv"
 psql -d "$db" -v ON_ERROR_STOP=1 --csv -f "$here/subclass.sql" > "$out/subclass.csv"
 psql -d "$db" -v ON_ERROR_STOP=1 --csv -f "$here/size.sql" > "$out/size.csv"
+psql -d "$db" -v ON_ERROR_STOP=1 --csv -f "$here/excluded.sql" > "$out/excluded.csv"
 
 {
     echo "slug,source_url,source_bytes,filtered_bytes,download_s,filter_s,import_s"

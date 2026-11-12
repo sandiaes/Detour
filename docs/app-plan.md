@@ -19,10 +19,11 @@ Recorded on 2026-11-12 from the owner's answers.
 | D8 | OpenFreeMap tiles now, self-hosted PMTiles as rehearsed fallback | Approved. | Approved |
 | D9 | Photos on-device first; cloud backup decided in the photo phase | Approved. | Approved |
 | D10 | Restaurant prices from users only; default band limits set in Phase 8 | Approved. | Approved |
-| D11 | Which open-source licence, and when the repository becomes public | New, follows from D1. Transitous requires published source under an open-source licence. | **Open** |
+| D11 | Which open-source licence, and when the repository becomes public | **Apache-2.0** (ADR 007). The repository stays private until the owner decides to publish it. | Decided |
 | D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
 | D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
 | D15 | Past trips archive | Past trips are kept as a map and list of visited cities and attractions, without routing. See ADR 006. Release timing open. | Decided |
+| D16 | Distribution | No app stores. Android by sideloaded APK; iPhone built on the owner's Mac. See ADR 008. | Decided |
 | D14 | Hosting constraint | Owner has no server and wants free, managed services. Travel times come from the FOSSGIS Valhalla server through a cached adapter (ADR 004, approved); S3 stays the reference for self-hosting. | Constraint |
 
 ### Notes on the decided items
@@ -82,7 +83,7 @@ throwaway and is not merged into the product.
 
 | Spike | Question | Evidence to produce |
 |---|---|---|
-| S1 Map | Does MapLibre React Native render OpenFreeMap in an Expo development build on Android? | Running build; notes on configuration |
+| S1 Map | Does MapLibre React Native render OpenFreeMap in an Expo development build on Android? Can the APK be built in GitHub Actions (ADR 008)? | Running build on the owner's phone; notes on configuration |
 | S2 Data | Is OSM data in the candidate pilot regions good enough? | Data quality report: attractions, restaurants, cuisine, Wikidata link |
 | S3 Routing | What does a regional Valhalla instance need? | Tile build time, memory, matrix latency for 50 points |
 | S4 | Removed: opening hours are out of scope (ADR 003) | none |
@@ -216,7 +217,7 @@ throwaway and is not merged into the product.
 | Phase | Content | Preconditions |
 |---|---|---|
 | 10 Public transport | Transit legs from schedule data through self-hosted MOTIS or Transitous; mode choice between walk, drive and transit; feed attribution | D1, D4; feed licences reviewed for each pilot region |
-| 11 iOS | Build configuration, permissions, platform testing, App Store submission | Apple Developer Program ($99 per year) |
+| 11 iOS | Build configuration, permissions, platform testing, build on the owner's Mac and install by cable (no App Store; ADR 008) | The owner's Mac; Apple Developer Program ($99 per year) only if the free route proves unusable |
 | 12 Photos | Pick photos, link to trip, day, city or item; on-device storage; later optional backup | D9; Play photo-permission policy respected |
 | 13 More coverage | On-demand region import; supplementary places from Overture and Foursquare OS Places | Hosting capacity; matching rules |
 | 14 Weather | Informational forecast overlay | D6 approved; D1 decides the provider |

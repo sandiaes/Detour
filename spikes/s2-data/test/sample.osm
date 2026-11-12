@@ -23,6 +23,10 @@
     <tag k="shop" v="bakery"/>
     <tag k="name" v="Ignored bakery"/>
   </node>
+  <node id="30" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2400" lon="16.4000"><tag k="historic" v="wayside_shrine"/></node>
+  <node id="31" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2410" lon="16.4000"><tag k="historic" v="memorial"/><tag k="name" v="Plain memorial"/></node>
+  <node id="32" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2420" lon="16.4000"><tag k="historic" v="memorial"/><tag k="name" v="Notable memorial"/><tag k="wikidata" v="Q3"/></node>
+  <node id="33" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2430" lon="16.4000"><tag k="historic" v="boundary_stone"/></node>
   <way id="10" version="1" timestamp="2026-01-01T00:00:00Z">
     <nd ref="4"/><nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="4"/>
     <tag k="historic" v="castle"/>
