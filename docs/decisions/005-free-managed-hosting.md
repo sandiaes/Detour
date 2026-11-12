@@ -107,4 +107,7 @@ Verification marks: ✅ read on the official page on 2026-11-12; ◐ partly read
   not found on the pages read.
 - **IPv4 assumption:** that GitHub-hosted runners are IPv4-only was not verified; the pooler works
   either way.
-- PostGIS availability on the Free plan is unconfirmed.
+- ~~PostGIS availability on the Free plan is unconfirmed.~~ **Confirmed 2026-11-12:** the owner
+  enabled the PostGIS extension from the dashboard on a Supabase Free project while following
+  `../deployment.md` step 3. (Reported by the owner; the `/v1/health/ready` version string was not
+  reported.)
