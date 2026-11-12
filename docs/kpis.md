@@ -46,8 +46,6 @@ Measurement sources:
 
 | KPI | Definition | Target | Source |
 |---|---|---|---|
-| Opening-hours coverage | Scheduled visits and meals with known hours | Reported per region; no fixed target | Import report, logs |
-| Opening-hours parse rate | Tagged values parsed fully | ≥ 90% of tagged values | Import report |
 | Routed travel share | Transfers with `routed` rather than `estimated` confidence | ≥ 95% | Backend logs |
 | Cuisine coverage | Restaurants with a normalised cuisine | Reported per region | Import report |
 | Price provenance | Displayed prices backed by a price record with kind, basis and currency | 100% | Tests |

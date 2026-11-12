@@ -58,7 +58,7 @@ says happens above the free allowance.
 | Cities and admin areas | GeoNames dump | ANY | Overture divisions (polygons) | GeoNames web services |
 | Attractions and POIs | OSM regional extract in PostGIS + Wikidata notability | ANY | Overture Places, FSQ OS Places (later) | Overpass at runtime, OpenTripMap |
 | Restaurants | OSM regional extract | ANY | Overture Places, FSQ OS Places (later) | Google Places, Yelp, Foursquare Places API |
-| Opening hours | OSM `opening_hours` tag, parsed in backend | ANY | "unknown" state + user override | Google hours |
+| Opening hours | Not used (out of scope, ADR 003) | n/a | n/a | n/a |
 | Walking and driving routes, matrices | Self-hosted Valhalla per region | ANY | Straight-line estimate with confidence flag | FOSSGIS demo, GraphHopper free, ORS hosted (unverified) |
 | Public transport | **Not in MVP** | n/a | Phase 10: self-hosted MOTIS or Transitous (if eligible) | Transitland free, Google Routes |
 | GTFS / GTFS-Realtime | **Not in MVP** | n/a | Mobility Database catalog for feeds (Phase 10) | n/a |
@@ -286,13 +286,14 @@ resolve, always through the backend, with cached results.
 
 ### 4.1 OpenStreetMap regional extracts (Geofabrik) — ◐ Partly verified (ODbL and tag documentation read; Geofabrik's own page not reachable)
 
-- **Use:** the primary source of attractions, restaurants, opening hours, cuisine tags and the street network, imported per region into PostGIS.
+- **Use:** the primary source of attractions, restaurants, cuisine tags and the street network, imported per region into PostGIS.
 - **Type:** open data, ODbL. Geofabrik publishes regional `.osm.pbf` extracts.
 - **Quota / card:** none. Search results indicate daily-updated free extracts; **not confirmed on Geofabrik's page**.
 - **Commercial use:** "The ODbL allows you to use the OSM data for any purpose you like. This includes personal, community, educational, commercial or governmental."
 - **Caching / storage:** allowed. If an adapted OSM database is used publicly, it is a Derivative Database and must be offered under ODbL on request. Independent data kept alongside (user trips, prices, notes, photos) forms a Collective Database and is not affected. See `docs/data-model.md`.
 - **Attribution:** "© OpenStreetMap contributors" with a link to the copyright page, visible without interaction; a splash screen or a corner of the map are both acceptable.
 - **Coverage / quality:** global. Attractions are well mapped in tourist areas. Restaurants: presence is good in cities, `cuisine` is common, `opening_hours` is patchy and can be stale. There is no popularity or rating signal.
+- **Measured (spike S2, 2026-11-12):** extract sizes for Austria, Czechia, Hungary, Italy and Japan are 0.33–2.57 GB (6.9 GB together); see `docs/spikes/s2-data-findings.md`. Downloads from `download.geofabrik.de` worked with an identifying User-Agent; the terms and cadence pages were still not read.
 - **Risks:** data quality varies by country; tags are free-form; the import pipeline is ours to maintain.
 - **Exceeded:** n/a.
 - **Fallback:** Overture Places and FSQ OS Places to fill coverage gaps.
@@ -415,12 +416,15 @@ resolve, always through the backend, with cached results.
 - **MVP:** **No. Rejected**: a trial is not a basis for an MVP.
 - Sources: <https://docs.developer.yelp.com/docs/places-intro>, <https://docs.developer.yelp.com/docs/getting-started>
 
-**Conclusion for restaurants:** the MVP uses OSM for restaurant existence, location, cuisine and
-(where tagged) opening hours. Price comes from the user; see section 13.
+**Conclusion for restaurants:** the MVP uses OSM for restaurant existence, location and cuisine.
+Opening hours are out of scope (ADR 003). Price comes from the user; see section 13.
 
 ---
 
 ## 6. Opening hours
+
+> **Not used.** Out of scope since ADR 003 (2026-11-12). This section is kept only as a record of
+> what was read; its MVP verdict no longer applies.
 
 ### 6.1 OSM `opening_hours` tag — ✅ Verified (tag documentation)
 
@@ -821,4 +825,3 @@ mledoze/countries; ECB reference rates. ODbL share-alike and attribution obligat
 | Geoapify commercial-use wording | Pricing FAQ and terms disagree | Before commercial use |
 | Cloudflare R2 payment-method requirement | Photo phase | Photo phase |
 | MapLibre React Native offline packs | Offline maps, if ever wanted | Post-MVP |
-| Opening-hours parser choice | Scheduling correctness | Phase 0 spike |

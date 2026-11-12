@@ -3,10 +3,11 @@
 - **Status:** Accepted on 2026-11-12.
 - **Date:** 2026-11-12
 - **Related:** [`../api-evaluation.md`](../api-evaluation.md), [`001-technology-stack.md`](001-technology-stack.md)
+- **Amended by:** [`003-scope-opening-hours-and-attractions.md`](003-scope-opening-hours-and-attractions.md) (opening hours removed)
 
 ## Context
 
-The product needs maps, destination and place search, attractions, restaurants, opening hours,
+The product needs maps, destination and place search, attractions, restaurants,
 travel times, and currency conversion, with a strong preference for free and open sources and
 no LLM at runtime. Public transport, weather and photo storage had to be assessed as well.
 
@@ -32,7 +33,7 @@ What the official terms say, in short (details and sources in `api-evaluation.md
 
 ### 1. Strategy
 
-1. **Import, do not call.** Places, restaurants, opening hours, the gazetteer and the street
+1. **Import, do not call.** Places, restaurants, the gazetteer and the street
    network are imported per region into our own database and routing engine. Plan generation
    makes no third-party calls.
 2. **Backend-only access.** The app calls our API and the tile host, nothing else.
@@ -53,7 +54,6 @@ What the official terms say, in short (details and sources in `api-evaluation.md
 | Reverse geocoding | Nearest-place query on own data | Photon reverse |
 | Attractions and restaurants | OpenStreetMap regional extract | Overture Places and Foursquare OS Places after the MVP |
 | Notability signal | Wikidata, joined by the OSM `wikidata` tag, fetched at import | OSM tag signals only |
-| Opening hours | OSM `opening_hours`, parsed in the backend, three states | Unknown state and user override |
 | Walking and driving times | Self-hosted Valhalla | Straight-line estimate labelled as estimated |
 | Countries and currencies | Static seed from GeoNames country data and mledoze/countries | none needed |
 | Exchange rates | Frankfurter, fetched daily and stored | ECB daily reference rates; then fawazahmed0/exchange-api |

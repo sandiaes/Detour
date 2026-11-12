@@ -17,7 +17,7 @@ No code exists yet.
    mobile app renders and edits.
 5. **Deterministic and explainable.** The same inputs and data version produce the same
    itineraries, and every placement carries the reasons for it.
-6. **Honest data.** Missing opening hours, estimated travel times and absent prices are shown as
+6. **Honest data.** Estimated travel times and absent prices are shown as
    unknown or estimated, never guessed silently.
 
 ## 2. Stack verdict
@@ -47,7 +47,7 @@ Additions the provisional stack did not name: **Valhalla** (self-hosted routing 
 ┌──────────────────────── Backend (FastAPI) ────────────────────────┐   OpenFreeMap public instance
 │  API layer        trips · itineraries · places · prices · config  │   (fallback: self-hosted PMTiles)
 │  Planning engine  candidates → scoring → days → sequence → meals  │
-│  Services         travel time · opening hours · FX · search       │
+│  Services         travel time · FX · search                       │
 │  Provider adapters (one interface per capability)                 │
 └────┬───────────────────┬──────────────────────┬───────────────────┘
      │                   │                      │
@@ -118,12 +118,13 @@ A command-line job, run by the operator, that makes a region usable:
 1. Download the region's OSM extract.
 2. Filter and load attractions, restaurants and other relevant features into `geo.place` with
    their source tags preserved.
-3. Parse `opening_hours` values and store the parse status.
+3. Apply the attraction selection rule (ADR 003): wayside shrines and crosses, boundary stones,
+   bomb craters and memorials without a `wikidata` tag are not imported. Count what was excluded.
 4. Load the gazetteer rows (GeoNames) covering the region.
 5. Fetch Wikidata signals for places that carry a `wikidata` tag.
 6. Build Valhalla tiles from the same extract.
 7. Record an `import_run` with source dates and counts, and publish a **data quality report**
-   (how many places, share with opening hours, share with cuisine, share with Wikidata link).
+   (how many places, share with cuisine, share with Wikidata link, objects excluded per class).
 
 The MVP supports operator-imported **pilot regions**: Japan, Italy, Austria, Czechia and
 Hungary (D2). A
@@ -145,8 +146,6 @@ shown to the user carries its confidence label. Modes in the MVP: walking and dr
 
 ### 4.6 Other services
 
-- **Opening-hours service:** given a place and a time interval, returns `open`, `closed` or
-  `unknown`, using the stored parse result.
 - **Search service:** local trigram search over the gazetteer and the region's places; if
   nothing suitable is found, a Photon query through the backend, cached; finally a manual
   entry (name plus map pin).
@@ -179,11 +178,10 @@ has added or locked. Defaults that the user does not see as features: day window
    respecting the user's budget where a price record exists.
 6. **Transfers.** Insert a transfer between consecutive items with mode, duration and
    confidence.
-7. **Validation.** An independent checker verifies every produced itinerary: no overlaps, no
-   visit while known-closed, day length respected, locked items untouched. A failed check is a
+7. **Validation.** An independent checker verifies every produced itinerary: no overlaps, day length respected, locked items untouched. A failed check is a
    bug, not a user-visible itinerary.
 8. **Explanation.** Each item carries reason codes such as `HIGH_NOTABILITY`,
-   `NEAR_PREVIOUS_ITEM`, `OPEN_AT_SLOT`, `HOURS_UNKNOWN`, `FITS_BUDGET`.
+   `NEAR_PREVIOUS_ITEM`, `FITS_BUDGET`.
 
 ### 5.3 Two meaningfully different itineraries
 
@@ -216,8 +214,8 @@ rather than presenting near-duplicates. The threshold is tuned in Phase 4 agains
 ### 5.5 Is OR-Tools justified?
 
 The core problem is selecting and ordering optional visits across several days, each with
-opening-hour windows and a day-length limit. This maps onto OR-Tools' routing solver: days are
-vehicles, opening hours are time windows, and optional visits are disjunctions with penalties,
+meal windows and a day-length limit. This maps onto OR-Tools' routing solver: days are
+vehicles, meal windows are time windows, and optional visits are disjunctions with penalties,
 all of which its documentation covers.
 
 | Option | For | Against |
@@ -284,7 +282,7 @@ in this round** and are an open decision.
 | Risk | Effect | Mitigation |
 |---|---|---|
 | OSM data is thin in a chosen region | Poor itineraries | Data quality report gates a region; Overture and Foursquare OS Places as supplements |
-| Opening hours missing or wrong | Infeasible visits | Three-state model, user override, validator |
+| Many mapped "attractions" are not sightseeing (shrines, stones) | Noisy candidates | Selection rule (ADR 003), Wikidata signal |
 | Region-pack model limits "any destination" | Product feels narrow | Explicit pilot regions; on-demand import after MVP |
 | Routing container sizing unknown | Hosting cost or latency | Phase 0 spike measures memory and build time |
 | OpenFreeMap discontinued | No map | Style URL from backend; PMTiles fallback rehearsed in Phase 9 |

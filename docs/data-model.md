@@ -9,7 +9,7 @@ Two PostgreSQL schemas with different owners and different licence positions:
 
 | Schema | Contents | Origin | Rebuildable |
 |---|---|---|---|
-| `geo` | Regions, places, opening hours, gazetteer, countries, currencies, FX rates, travel times | Imported open data | Yes, from sources |
+| `geo` | Regions, places, gazetteer, countries, currencies, FX rates, travel times | Imported open data | Yes, from sources |
 | `app` | Installations, trips, itineraries, items, price records, photos (future) | Created by users and by the planning engine | No |
 
 `app` rows refer to `geo` rows by identifier and never copy their attributes. An itinerary item
@@ -20,7 +20,6 @@ plan.
 geo.region ──< geo.import_run
 geo.country ──< geo.city            geo.currency ──< geo.fx_rate
 geo.place ──< geo.place_source
-geo.place ──1 geo.place_hours
 geo.place ──1 geo.restaurant_profile
 geo.place ──1 geo.place_signal
 geo.travel_time (place pair, mode)
@@ -54,7 +53,7 @@ One execution of the import pipeline. Itineraries record the run they were built
 | `region_id` | fk | |
 | `osm_snapshot_date` | date | From the extract |
 | `geonames_date`, `wikidata_date` | date | |
-| `counts` | jsonb | Places by kind; share with hours, cuisine, Wikidata link |
+| `counts` | jsonb | Places by kind; share with cuisine, Wikidata link |
 | `started_at`, `finished_at` | timestamptz | |
 
 ### `geo.country` and `geo.currency`
@@ -75,7 +74,7 @@ The destination gazetteer (from GeoNames).
 | `country_iso2` | fk | |
 | `admin1_code`, `admin2_code` | text | With a lookup table for names |
 | `population` | integer | Ranking signal for search and base-city selection |
-| `timezone` | text | IANA name; used to evaluate opening hours |
+| `timezone` | text | IANA name; used for local meal times and day boundaries |
 | `geom` | point | |
 
 Administrative **areas** used as destinations (a province or region) are stored in
@@ -111,16 +110,6 @@ Provenance. One row per source record that contributed to a place.
 | `tags` | jsonb | Raw source attributes, unmodified |
 | `import_run_id` | fk | |
 
-### `geo.place_hours`
-
-| Field | Type | Notes |
-|---|---|---|
-| `place_id` | pk, fk | |
-| `raw` | text | The `opening_hours` value as tagged |
-| `parsed` | jsonb, nullable | Normalised weekly intervals |
-| `parse_status` | enum | `ok`, `partial`, `unsupported`, `absent` |
-| `has_holiday_rules` | boolean | Public-holiday rules are not evaluated in the MVP |
-
 ### `geo.restaurant_profile`
 
 | Field | Type | Notes |
@@ -128,7 +117,7 @@ Provenance. One row per source record that contributed to a place.
 | `place_id` | pk, fk | |
 | `cuisines` | text[] | Normalised from the semicolon-separated `cuisine` tag |
 | `venue_type` | enum | `restaurant`, `cafe`, `fast_food`, `bar`, `pub`, `food_court`, `other` |
-| `meal_types` | text[] | `breakfast`, `lunch`, `dinner`, `snack`; derived from venue type and hours |
+| `meal_types` | text[] | `breakfast`, `lunch`, `dinner`, `snack`; derived from venue type |
 | `diet_flags` | text[] | From `diet:*` tags where present |
 | `provider_price_level` | smallint, nullable | 1–4. **Null in the MVP**: no licensed source |
 | `provider_price_source` | text, nullable | |
@@ -187,7 +176,7 @@ Anonymous identity for the MVP (open decision D5).
 | `destination_kind` | enum | `city`, `area` |
 | `destination_ref` | text | `geo.city.id` or `geo.admin_area.id` |
 | `duration_days` | smallint | |
-| `start_date` | date, nullable | Without a date, opening hours are evaluated for a generic week |
+| `start_date` | date, nullable | Optional; used for display and meal-day labels |
 | `currency_code` | fk | Trip currency for budgets |
 | `meal_budget_per_person` | numeric, nullable | |
 | `price_band_thresholds` | jsonb | Upper bounds of the price bands, in trip currency |
@@ -235,7 +224,6 @@ A proposed or selected plan. Variants of one generation share a `generation_id`.
 | `start_time`, `end_time` | time | Local time of the destination |
 | `duration_minutes` | integer | |
 | `duration_source` | enum | `category_default`, `user` |
-| `hours_status` | enum | `open`, `unknown`, `user_confirmed` |
 | `origin` | enum | `engine`, `user` |
 | `locked` | boolean | Locked items are never moved by recalculation |
 | `reasons` | text[] | Reason codes |
@@ -262,7 +250,6 @@ A place the user added that is not in `geo.place`.
 | `name` | text | |
 | `geom` | point | |
 | `cuisines`, `meal_types` | text[] | For restaurants |
-| `hours_note` | text, nullable | User-entered hours |
 | `source` | enum | `manual_pin`, `search_result` |
 | `search_provider`, `search_ref` | text, nullable | Provenance of a search result |
 

@@ -84,7 +84,7 @@ All planning logic lives in the backend so that Android and iOS share it complet
 
 | ID | Decision | Status |
 |---|---|---|
-| D3 | Backend hosting beyond a local machine | **Open.** Supabase is a candidate for the database only; the API server and Valhalla need a separate host. Decide after the Phase 0 sizing spikes. Details in `../app-plan.md`, section 1. |
+| D3 | Backend hosting beyond a local machine | **Open.** Supabase is a candidate for the database only; the API server and Valhalla need a separate host. Owner constraint: free, managed services (app-plan D14). Decide after S3. Details in `../app-plan.md`, section 1. |
 | D5 | Anonymous installation identity, no accounts | Approved 2026-11-12 |
 | D7 | OR-Tools adopted only if the spike shows better plans within the latency budget | Approved 2026-11-12 |
 

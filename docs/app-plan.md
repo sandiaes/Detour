@@ -11,7 +11,7 @@ Recorded on 2026-11-12 from the owner's answers.
 |---|---|---|---|
 | D1 | Licence and commercial posture | **Open source and non-commercial.** Free non-commercial services (Open-Meteo, Transitous) become permissible, subject to their other conditions. | Decided |
 | D2 | MVP coverage | **Pilot regions: Japan, Italy, and Central Europe (Austria, Czechia and Hungary at least).** | Decided |
-| D3 | Backend hosting: where the API server, the database and the routing engine run when not on a local machine | Open. Supabase is a candidate for the database only; see below. Decide after spikes S2 and S3 give real sizes. | **Open** |
+| D3 | Backend hosting: where the API server, the database and the routing engine run when not on a local machine | Open. S2 measured about 145 MB of imported data for five countries (before ADR 003), so Supabase Free could hold the `geo` data. The API server and Valhalla still need a host; S3 (Italy) measures Valhalla. | **Open** |
 | D4 | Public transport after the MVP (Phase 10) | Approved. See the note on Japan below. | Approved |
 | D5 | Anonymous installation token, no accounts | Approved. | Approved |
 | D6 | Weather excluded from the MVP | Approved. | Approved |
@@ -20,6 +20,9 @@ Recorded on 2026-11-12 from the owner's answers.
 | D9 | Photos on-device first; cloud backup decided in the photo phase | Approved. | Approved |
 | D10 | Restaurant prices from users only; default band limits set in Phase 8 | Approved. | Approved |
 | D11 | Which open-source licence, and when the repository becomes public | New, follows from D1. Transitous requires published source under an open-source licence. | **Open** |
+| D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
+| D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
+| D14 | Hosting constraint | Owner has no server and wants free, managed services. Compatibility with Valhalla is being measured in S3. | Constraint |
 
 ### Notes on the decided items
 
@@ -61,7 +64,7 @@ option if the measured size fits or a paid plan is acceptable.
 ## 2. Phase overview
 
 ```
-0 Spikes ─► 1 Scaffold ─► 2 Geo data ─► 3 Travel time ─► 4 Planner v1 ─┬─► 6 Hours + restaurants ─► 7 Add place ─► 8 Add restaurant + prices ─► 9 MVP release
+0 Spikes ─► 1 Scaffold ─► 2 Geo data ─► 3 Travel time ─► 4 Planner v1 ─┬─► 6 Restaurants ─► 7 Add place ─► 8 Add restaurant + prices ─► 9 MVP release
                                    └──────────────────────────────────► 5 Mobile shell ────────────┘
 After MVP: 10 Public transport · 11 iOS · 12 Photos · 13 More coverage · 14 Weather (if approved)
 ```
@@ -79,9 +82,9 @@ throwaway and is not merged into the product.
 | Spike | Question | Evidence to produce |
 |---|---|---|
 | S1 Map | Does MapLibre React Native render OpenFreeMap in an Expo development build on Android? | Running build; notes on configuration |
-| S2 Data | Is OSM data in the candidate pilot regions good enough? | Data quality report: attractions, restaurants, share with opening hours, cuisine, Wikidata link |
+| S2 Data | Is OSM data in the candidate pilot regions good enough? | Data quality report: attractions, restaurants, cuisine, Wikidata link |
 | S3 Routing | What does a regional Valhalla instance need? | Tile build time, memory, matrix latency for 50 points |
-| S4 Hours | Which opening-hours parser handles real values from S2? | Parse success rate by library on a sample |
+| S4 | Removed: opening hours are out of scope (ADR 003) | none |
 | S5 Sequencing | Heuristic versus OR-Tools on three fixture trips | Plan quality, latency, repeatability across runs |
 
 - **Dependencies:** none; D2 is decided.
@@ -106,8 +109,8 @@ throwaway and is not merged into the product.
 
 **Goal:** a pilot region's data is in the database and destinations can be searched.
 
-- **Deliverables:** `geo` schema; region import command (places, restaurants, raw opening
-  hours, Wikidata signals); gazetteer import; country and currency seed; import-run record and
+- **Deliverables:** `geo` schema; region import command (places, restaurants, Wikidata
+  signals, attraction selection rule from ADR 003); gazetteer import; country and currency seed; import-run record and
   data quality report; destination search endpoint; place search endpoint (local only).
 - **Tests:** import runs twice with identical results; counts match the report; search returns
   expected results for a fixture list; spatial queries use indexes.
@@ -154,19 +157,18 @@ throwaway and is not merged into the product.
 - **Risks:** map performance on low-end devices; mitigation is marker clustering and simplified
   geometry.
 
-### Phase 6 — Opening hours and restaurants in itineraries
+### Phase 6 — Restaurants in itineraries
 
-**Goal:** plans respect opening hours and include meals.
+**Goal:** plans include meals.
 
-- **Deliverables:** opening-hours parsing and the three-state service; time windows in
-  sequencing (OR-Tools here if D7 says so); area destinations with base cities and day
-  allocation; meal slots with restaurant selection by proximity, hours, cuisine variety and
-  venue type; restaurant attributes in the API and app.
-- **Tests:** no visit scheduled while known-closed; unknown hours flagged; meals inside meal
-  windows; area fixtures produce sensible day allocation; golden tests updated.
-- **Dependencies:** Phases 4 and 5, S4, S5.
-- **Risks:** sparse opening hours make time windows weak; mitigation is the unknown state and
-  user override.
+- **Deliverables:** meal windows in sequencing (OR-Tools here if D7 says so); area
+  destinations with base cities and day allocation; meal slots with restaurant selection by
+  proximity, cuisine variety and venue type; restaurant attributes in the API and app.
+- **Tests:** meals inside meal windows; area fixtures produce sensible day allocation; golden
+  tests updated.
+- **Dependencies:** Phases 4 and 5, S5.
+- **Risks:** restaurant data is uneven between countries; mitigation is the data quality
+  report and cuisine-unknown handling.
 
 ### Phase 7 — Add a city or location, with recalculation
 
@@ -188,7 +190,7 @@ throwaway and is not merged into the product.
   entry); slot scoring and alternatives with reasons; price records (expected and actual, per
   person or total, any currency); trip meal budget and price bands; daily FX job and stored
   rates; conversions labelled approximate.
-- **Tests:** closed slots never proposed; scoring fixtures; per-person derivation; band and
+- **Tests:** scoring fixtures; per-person derivation; band and
   budget-fit calculations; FX fallback order; provider budget counter stops calls at the limit.
 - **Dependencies:** Phase 7, D10.
 - **Risks:** external search unavailable; mitigation is manual entry always being possible.
@@ -247,7 +249,8 @@ GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 
 ## 7. Recommended next task
 
-**Phase 0, spike S2:** produce the data quality report for Japan, Italy, Austria, Czechia and
-Hungary from OSM extracts, including the database size of the imported data. Its result decides
-which regions are enabled, whether Supabase's free database is large enough (D3), and it feeds
-every later phase.
+**Phase 0, spike S3 (Italy), then the hosting decision (D3).** S2 is done; see
+`docs/spikes/s2-data-findings.md`. S3 measures tile build time, memory and 50 x 50 matrix
+latency for Italy. With those figures and the free-tier terms read from the providers' official
+pages, D3 can be decided under the owner's constraint of free, managed hosting (D14).
+Region readiness thresholds are still to be set by the owner.

@@ -25,7 +25,7 @@ plan quickly, expects to adjust it, and cares about what things cost.
 | 4 | Add a city or location not in the proposal | Search or map pin; becomes a mandatory visit | MVP |
 | 5 | Automatic recalculation around the addition | Re-plan with minimal disruption; user reviews a diff | MVP |
 | 6 | Add a restaurant manually | Search local data, then external search, then manual entry | MVP |
-| 7 | Best day and time for that restaurant | Scored over every day and meal slot: location, opening hours, neighbouring activities, meal time, travel impact | MVP |
+| 7 | Best day and time for that restaurant | Scored over every day and meal slot: location, neighbouring activities, meal time, travel impact | MVP |
 | 8 | Restaurants categorised by cuisine, price level, meal type, location, suitability | Cuisine, venue and meal type from open data; price from the user; suitability computed | MVP |
 | 9 | User-defined expected price or budget | Price records per restaurant; trip meal budget | MVP |
 | 10 | Store travel photos linked to trip, day, city or item | Data model reserved; on-device first | Future |
@@ -40,7 +40,7 @@ plan quickly, expects to adjust it, and cares about what things cost.
    how they differ (cities covered, number of visits, total travel time). Open either on the
    map or as a day list. Select one.
 3. **Review a day.** Ordered items with start times, visit durations, transfers with mode and
-   duration, and markers for unknown opening hours or estimated travel times.
+   duration, and markers for estimated travel times.
 4. **Add a place.** Search or drop a pin. The app shows what would change. Accept or discard.
 5. **Add a restaurant.** Search or enter manually, optionally with an expected price. The app
    proposes the best day and meal slot with reasons, and lists alternatives. Accept, pick an
@@ -63,9 +63,8 @@ When a destination cannot support two distinct plans, the app says so and shows 
 | Attribute | Source | Shown when missing |
 |---|---|---|
 | Cuisine | OpenStreetMap `cuisine` tag, normalised | "Cuisine not specified" |
-| Venue and meal type | Venue tag and opening hours | Derived from venue type alone |
+| Venue and meal type | Venue tag | Derived from venue type alone |
 | Location | Coordinates | Always present |
-| Opening hours | OpenStreetMap `opening_hours`, parsed | "Hours unknown" |
 | Price level | **User only** in the MVP | "No price data" |
 | Suitability for the itinerary | Computed | Always present, with reasons |
 | Rating | **Not provided** | Not shown |
@@ -82,7 +81,8 @@ from any provider.
 
 - Every travel time is labelled routed or estimated.
 - Every visit duration is a default that the user can change.
-- Opening hours are open, closed or unknown; unknown is never presented as closed or open.
+- Opening hours are not used (ADR 003). The app does not know whether a place is open and does
+  not warn about closed places.
 - Every price shows its kind (expected or actual), basis, currency and, if converted, that it is
   approximate and the date of the rate.
 - Every placement decision can show its reasons.
