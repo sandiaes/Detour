@@ -1,6 +1,6 @@
 # ADR 001 — Technology stack
 
-- **Status:** Accepted on 2026-11-12, except hosting (D3), which is open.
+- **Status:** Accepted on 2026-11-12. Hosting (D3) is decided in ADR 005.
 - **Date:** 2026-11-12
 - **Related:** [`../architecture.md`](../architecture.md), [`002-api-strategy.md`](002-api-strategy.md)
 
@@ -76,7 +76,7 @@ All planning logic lives in the backend so that Android and iOS share it complet
 
 **Risks**
 
-- Resource needs of a regional Valhalla instance are unmeasured.
+- Resource needs of Valhalla for Italy are measured (S3: about 8 GB RAM to build, 2.4 GB of tiles); the other countries are not.
 - MapLibre React Native is community-maintained and outside the Expo SDK.
 - OR-Tools searches bounded by wall-clock time may not be reproducible across machines.
 
@@ -84,7 +84,7 @@ All planning logic lives in the backend so that Android and iOS share it complet
 
 | ID | Decision | Status |
 |---|---|---|
-| D3 | Backend hosting beyond a local machine | **Open.** Supabase is a candidate for the database only; the API server and Valhalla need a separate host. Decide after the Phase 0 sizing spikes. Details in `../app-plan.md`, section 1. |
+| D3 | Backend hosting beyond a local machine | **Decided** in [`005-free-managed-hosting.md`](005-free-managed-hosting.md): Supabase Free (database), Render free web service (API), GitHub Actions (import). Routing per ADR 004. |
 | D5 | Anonymous installation identity, no accounts | Approved 2026-11-12 |
 | D7 | OR-Tools adopted only if the spike shows better plans within the latency budget | Approved 2026-11-12 |
 

@@ -2,7 +2,7 @@
 
 Status: **accepted** on 2026-11-12 through
 [`decisions/001-technology-stack.md`](decisions/001-technology-stack.md) and
-[`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is still open.
+[`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is decided in ADR 005.
 No code exists yet.
 
 ## 1. Principles
@@ -17,7 +17,7 @@ No code exists yet.
    mobile app renders and edits.
 5. **Deterministic and explainable.** The same inputs and data version produce the same
    itineraries, and every placement carries the reasons for it.
-6. **Honest data.** Missing opening hours, estimated travel times and absent prices are shown as
+6. **Honest data.** Estimated travel times and absent prices are shown as
    unknown or estimated, never guessed silently.
 
 ## 2. Stack verdict
@@ -28,7 +28,7 @@ No code exists yet.
 | MapLibre + OSM-compatible data | **Confirmed** | `@maplibre/maplibre-react-native` v11 (MIT), Android and iOS. `expo-maps` is rejected: alpha, Google Maps on Android, Apple Maps on iOS. |
 | Python + FastAPI | **Confirmed** | MIT. Pin the Python version in Phase 1 to one supported by both FastAPI and the OR-Tools wheels. |
 | PostgreSQL + PostGIS | **Confirmed** | Image `postgis/postgis:18-3.7`. The `-3.5` and `-3.6` tags are no longer updated. PostgreSQL 18 changed the data volume path to `/var/lib/postgresql`. |
-| Docker Compose | **Confirmed** for local development | Production hosting is an open decision. |
+| Docker Compose | **Confirmed** for local development | Production hosting: ADR 005. |
 | Deterministic planning engine | **Confirmed** | Section 5. |
 | OR-Tools | **Conditionally justified** | Useful for the multi-day, time-windowed, optional-visit problem. Introduced behind an interface after a Phase 0 spike; a simple heuristic remains as baseline and fallback. Section 5.5. |
 
@@ -47,7 +47,7 @@ Additions the provisional stack did not name: **Valhalla** (self-hosted routing 
 ┌──────────────────────── Backend (FastAPI) ────────────────────────┐   OpenFreeMap public instance
 │  API layer        trips · itineraries · places · prices · config  │   (fallback: self-hosted PMTiles)
 │  Planning engine  candidates → scoring → days → sequence → meals  │
-│  Services         travel time · opening hours · FX · search       │
+│  Services         travel time · FX · search                       │
 │  Provider adapters (one interface per capability)                 │
 └────┬───────────────────┬──────────────────────┬───────────────────┘
      │                   │                      │
@@ -82,8 +82,10 @@ All services except the tile host run from one Docker Compose file in developmen
 - Navigation, server-state and form libraries are chosen in Phase 5 and recorded in an ADR.
 
 **iOS readiness.** Minimum iOS for SDK 58 is 16.4. MapLibre's config plugin is required on iOS.
-Building for the App Store needs an Apple Developer Program membership ($99 per year). No
-Android-only native module is allowed into the dependency list without an ADR.
+The app is not distributed through app stores (ADR 008): iPhone builds are compiled on the
+owner's Mac. Whether a free Apple ID suffices or the paid Apple Developer Program ($99 per year)
+is needed is decided in Phase 11. No Android-only native module is allowed into the dependency
+list without an ADR.
 
 ### 4.2 Backend API
 
@@ -118,12 +120,13 @@ A command-line job, run by the operator, that makes a region usable:
 1. Download the region's OSM extract.
 2. Filter and load attractions, restaurants and other relevant features into `geo.place` with
    their source tags preserved.
-3. Parse `opening_hours` values and store the parse status.
+3. Apply the attraction selection rule (ADR 003): wayside shrines and crosses, boundary stones,
+   bomb craters and memorials without a `wikidata` tag are not imported. Count what was excluded.
 4. Load the gazetteer rows (GeoNames) covering the region.
 5. Fetch Wikidata signals for places that carry a `wikidata` tag.
 6. Build Valhalla tiles from the same extract.
 7. Record an `import_run` with source dates and counts, and publish a **data quality report**
-   (how many places, share with opening hours, share with cuisine, share with Wikidata link).
+   (how many places, share with cuisine, share with Wikidata link, objects excluded per class).
 
 The MVP supports operator-imported **pilot regions**: Japan, Italy, Austria, Czechia and
 Hungary (D2). A
@@ -145,8 +148,6 @@ shown to the user carries its confidence label. Modes in the MVP: walking and dr
 
 ### 4.6 Other services
 
-- **Opening-hours service:** given a place and a time interval, returns `open`, `closed` or
-  `unknown`, using the stored parse result.
 - **Search service:** local trigram search over the gazetteer and the region's places; if
   nothing suitable is found, a Photon query through the backend, cached; finally a manual
   entry (name plus map pin).
@@ -179,11 +180,10 @@ has added or locked. Defaults that the user does not see as features: day window
    respecting the user's budget where a price record exists.
 6. **Transfers.** Insert a transfer between consecutive items with mode, duration and
    confidence.
-7. **Validation.** An independent checker verifies every produced itinerary: no overlaps, no
-   visit while known-closed, day length respected, locked items untouched. A failed check is a
+7. **Validation.** An independent checker verifies every produced itinerary: no overlaps, day length respected, locked items untouched. A failed check is a
    bug, not a user-visible itinerary.
 8. **Explanation.** Each item carries reason codes such as `HIGH_NOTABILITY`,
-   `NEAR_PREVIOUS_ITEM`, `OPEN_AT_SLOT`, `HOURS_UNKNOWN`, `FITS_BUDGET`.
+   `NEAR_PREVIOUS_ITEM`, `FITS_BUDGET`.
 
 ### 5.3 Two meaningfully different itineraries
 
@@ -216,8 +216,8 @@ rather than presenting near-duplicates. The threshold is tuned in Phase 4 agains
 ### 5.5 Is OR-Tools justified?
 
 The core problem is selecting and ordering optional visits across several days, each with
-opening-hour windows and a day-length limit. This maps onto OR-Tools' routing solver: days are
-vehicles, opening hours are time windows, and optional visits are disjunctions with penalties,
+meal windows and a day-length limit. This maps onto OR-Tools' routing solver: days are
+vehicles, meal windows are time windows, and optional visits are disjunctions with penalties,
 all of which its documentation covers.
 
 | Option | For | Against |
@@ -271,22 +271,23 @@ wall-clock limit only as a safety cap. This determinism approach must be validat
 | Environment | Composition | Recurring cost |
 |---|---|---|
 | Local development | Docker Compose: `db`, `api`, `valhalla` | none |
-| Personal production | Same containers on one host; OpenFreeMap; Photon and Frankfurter public instances | hosting (not yet evaluated) |
+| Personal production | Supabase Free database, Render free web service, GitHub Actions import (ADR 005); OpenFreeMap; Photon and Frankfurter public instances | $0 per month at the limits read on 2026-11-12 |
 | Public commercial | Self-hosted or contracted tiles, self-hosted Photon and Frankfurter, legal review of ODbL use | to be estimated |
 
-Known one-off and platform costs: Google Play registration $25 once; new personal Play accounts
-must run a closed test with at least 12 testers for 14 days before production access; Apple
-Developer Program $99 per year for the iOS phase. **Backend hosting options were not evaluated
-in this round** and are an open decision.
+Known platform costs: none while the app is not distributed through app stores (ADR 008). An
+Apple Developer Program membership ($99 per year) is optional for the iOS phase. Google Play
+registration ($25 once, plus a closed test with 12 testers for 14 days for new personal
+accounts) would apply only if the owner later chose Google Play. Backend hosting is decided in
+ADR 005.
 
 ## 9. Architecture risks
 
 | Risk | Effect | Mitigation |
 |---|---|---|
 | OSM data is thin in a chosen region | Poor itineraries | Data quality report gates a region; Overture and Foursquare OS Places as supplements |
-| Opening hours missing or wrong | Infeasible visits | Three-state model, user override, validator |
+| Many mapped "attractions" are not sightseeing (shrines, stones) | Noisy candidates | Selection rule (ADR 003), Wikidata signal |
 | Region-pack model limits "any destination" | Product feels narrow | Explicit pilot regions; on-demand import after MVP |
-| Routing container sizing unknown | Hosting cost or latency | Phase 0 spike measures memory and build time |
+| Routing capacity: FOSSGIS limits (100 cells, 150 km per matrix, about 1 request per second) and no availability promise | Slow first plans, or blocking | Chunked matrices, route requests for long legs, cache, labelled estimates; self-hosting fallback sized in S3 |
 | OpenFreeMap discontinued | No map | Style URL from backend; PMTiles fallback rehearsed in Phase 9 |
 | Two variants look alike | Core goal missed | Diversity gate and KPI |
 | MapLibre React Native breaking changes | App build breaks | Pin versions; upgrade only with the Expo SDK |

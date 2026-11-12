@@ -10,7 +10,7 @@ task, not a rewrite.
 ## Status
 
 **Planning and documentation only.** No application code, no project scaffolding. The
-architecture and API strategy are accepted; two decisions remain open (see below).
+architecture, API strategy, hosting, licence and distribution are decided (see below).
 
 ## Documents
 
@@ -46,12 +46,11 @@ Decided on 2026-11-12: the project is open source and non-commercial (D1); the M
 Japan, Italy and Central Europe (Austria, Czechia and Hungary at least) (D2); D4 to D10 are
 approved as recommended.
 
-Still open:
-
-| ID | Decision |
-|---|---|
-| D3 | Backend hosting for the API server, database and routing engine |
-| D11 | Open-source licence and when the repository becomes public |
+Since then: opening hours are out of scope (ADR 003); travel times come from the FOSSGIS Valhalla
+server through a cached adapter (ADR 004); hosting is Supabase Free, a Render free web service
+and a GitHub Actions import job (ADR 005); past trips are kept as an archive (ADR 006); the
+licence is Apache-2.0 (ADR 007); there are no app stores (ADR 008); region readiness gates are
+set (ADR 009). The repository stays private until the owner decides to publish it.
 
 Details: [`docs/app-plan.md`](docs/app-plan.md), section 1.
 
@@ -65,3 +64,8 @@ any LLM or generative-AI dependency.
 The planned data sources require attribution, including "© OpenStreetMap contributors"
 (ODbL) and GeoNames (CC BY 4.0). The full list is maintained in
 [`docs/api-evaluation.md`](docs/api-evaluation.md).
+
+## Licence
+
+The Detour source code is licensed under the Apache License 2.0; see [`LICENSE`](LICENSE).
+Imported map data keeps its own licence (for example ODbL for OpenStreetMap).

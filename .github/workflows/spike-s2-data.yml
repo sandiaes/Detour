@@ -1,0 +1,109 @@
+# Phase 0, spike S2 (throwaway): data quality and size report for the pilot countries.
+# Run by hand: Actions tab -> "Spike S2 data quality" -> Run workflow.
+# v2 (2026-11-12): applies the ADR 003 selection rule and reports what it excludes.
+name: Spike S2 data quality
+
+on:
+  # Temporary: the "Run workflow" button only shows for workflows on the default branch,
+  # so a push to this branch that changes this file starts a run with all five countries.
+  push:
+    branches: [claude/zealous-ramanujan-klexg7]
+    paths: [".github/workflows/spike-s2-data.yml"]
+  workflow_dispatch:
+    inputs:
+      countries:
+        description: "Space-separated list: austria czech-republic hungary italy japan"
+        required: true
+        default: "austria czech-republic hungary italy japan"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        env:
+          COUNTRIES: ${{ inputs.countries || 'austria czech-republic hungary italy japan' }}
+        run: |
+          items=""
+          for c in $COUNTRIES; do
+            case "$c" in
+              austria)        p="europe/austria" ;;
+              czech-republic) p="europe/czech-republic" ;;
+              hungary)        p="europe/hungary" ;;
+              italy)          p="europe/italy" ;;
+              japan)          p="asia/japan" ;;
+              *) echo "Unknown country: $c" >&2; exit 1 ;;
+            esac
+            items="$items{\"slug\":\"$c\",\"path\":\"$p\"},"
+          done
+          echo "matrix={\"include\":[${items%,}]}" >> "$GITHUB_OUTPUT"
+
+  import:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_PASSWORD: spike
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: spike
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/boost
+          df -h /
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends osm2pgsql osmium-tool postgresql-client
+          osm2pgsql --version
+          osmium --version
+      - name: Run spike for ${{ matrix.slug }}
+        run: bash spikes/s2-data/run.sh "${{ matrix.slug }}" "${{ matrix.path }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: s2-${{ matrix.slug }}
+          path: out/${{ matrix.slug }}
+
+  report:
+    needs: import
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: s2-*
+          path: results
+      - name: Build report
+        run: |
+          # each artifact folder is s2-<slug>/ and holds the CSV files
+          mkdir -p merged
+          for d in results/s2-*; do cp -r "$d" "merged/${d#results/s2-}"; done
+          python3 -I spikes/s2-data/report.py merged > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: s2-report
+          path: report.md
