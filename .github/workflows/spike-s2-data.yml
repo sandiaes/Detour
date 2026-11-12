@@ -3,6 +3,11 @@
 name: Spike S2 data quality
 
 on:
+  # Temporary: the "Run workflow" button only shows for workflows on the default branch,
+  # so a push to this branch that changes this file starts a run with all five countries.
+  push:
+    branches: [claude/zealous-ramanujan-klexg7]
+    paths: [".github/workflows/spike-s2-data.yml"]
   workflow_dispatch:
     inputs:
       countries:
@@ -21,7 +26,7 @@ jobs:
     steps:
       - id: m
         env:
-          COUNTRIES: ${{ inputs.countries }}
+          COUNTRIES: ${{ inputs.countries || 'austria czech-republic hungary italy japan' }}
         run: |
           items=""
           for c in $COUNTRIES; do
