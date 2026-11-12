@@ -10,10 +10,13 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Phase 1 (foundation) is implemented**: a monorepo with a placeholder mobile app, a FastAPI service
-(health, config, anonymous installations), empty `geo` and `app` schemas, a generated API client,
-CI, an Android APK workflow and Render/Supabase deployment configuration (ADR 010). There is no
-planning, no imported data and no provider adapter yet. The decisions in `docs/app-plan.md`
+**Phases 1 and 2 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
+service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment
+configuration (ADR 010). Phase 2 (ADR 011, ADR 012; `docs/data-model.md`): the `geo` and `app`
+schemas, the region import and GeoNames gazetteer commands and the "Import region" workflow, the
+data quality report with the ADR 009 gates, destination and place search, the Photon adapter, a
+seed trip, and CRUD for trips, user places and itinerary items. No region has been imported into
+the real database yet. There is no planning, no routing and no map screen. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),
 and the app is not distributed through app stores (ADR 008). Do not start the next phase until the
 owner asks for it.
@@ -61,7 +64,8 @@ owner asks for it.
 - Provider URLs, keys and the map style URL are configuration served by the backend, never
   constants in the app.
 - Keep the two database schemas separate: `geo` for imported open data, `app` for user data.
-  `app` refers to `geo` by identifier and does not copy its attributes. Data from different
+  `app` refers to `geo` by identifier and does not copy its attributes. No foreign key may cross
+  the schemas (a test enforces it). Data from different
   sources is stored as separate source records with their licence.
 - The planning engine is deterministic: stable ordering, ties broken by identifier, fixed seeds,
   and the engine, configuration and data versions stored on every itinerary.
@@ -112,6 +116,11 @@ From `services/api` (Python 3.13, `pip install -e ".[dev]"`):
 Other:
 
 - `python tools/check_dependencies.py`: fails if an LLM or generative-AI library is listed
+- `python -m detour_api.importer region <id>` / `gazetteer <ISO2>...`: the imports (in CI they run
+  through the "Import region" workflow; `osm2pgsql` and `osmium-tool` are needed locally)
+- `python -m detour_api.seed`: build the labelled seed trip from imported data
+- The database tests also need `osm2pgsql` and `osmium` (CI installs them; locally the import
+  tests are skipped without them)
 - `docker compose --env-file .env -f infrastructure/docker-compose.yml up --build --wait`:
   optional local database and API (`cp .env.example .env` first)
 - Android APK: run the "Android APK" workflow by hand (`docs/deployment.md`, steps 7 to 9)

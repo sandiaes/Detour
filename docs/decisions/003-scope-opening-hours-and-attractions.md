@@ -66,6 +66,13 @@ other `historic=*` values. Open question for Phase 2: whether `historic=yes` and
   validator rule together.
 - The Phase 2 import report counts excluded objects per class so the rule can be reviewed.
 
+## Update (Phase 2)
+
+The open questions below are answered, provisionally, by
+[`011-attraction-selection-rule-v2.md`](011-attraction-selection-rule-v2.md): a stricter memorial
+test and a two-signal test for `historic=yes|building|railway|stone|tomb`. The Phase 2 import
+counts excluded objects per class and reason, as this ADR required.
+
 ## Result of applying the rule (spike S2 v2, 2026-11-12)
 
 See [`../spikes/s2-data-findings.md`](../spikes/s2-data-findings.md). The rule removed 22,038 to

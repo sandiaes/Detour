@@ -24,12 +24,14 @@ def _signature(secret: bytes, installation_hex: str) -> str:
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
 
 
+def sign_token(secret: bytes, installation_id: uuid.UUID) -> str:
+    """The token of a known installation (used by the seed command; registration uses issue)."""
+    return f"{PREFIX}.{installation_id.hex}.{_signature(secret, installation_id.hex)}"
+
+
 def issue_token(secret: bytes) -> tuple[uuid.UUID, str]:
     installation_id = uuid.uuid4()
-    return (
-        installation_id,
-        f"{PREFIX}.{installation_id.hex}.{_signature(secret, installation_id.hex)}",
-    )
+    return installation_id, sign_token(secret, installation_id)
 
 
 def verify_token(secret: bytes, token: str) -> uuid.UUID | None:

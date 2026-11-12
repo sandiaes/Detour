@@ -1,0 +1,33 @@
+"""The regions the project knows how to import (decision D2, ADR 009)."""
+
+from dataclasses import dataclass
+
+GEOFABRIK_BASE = "https://download.geofabrik.de"
+
+
+@dataclass(frozen=True)
+class RegionDef:
+    id: str  # slug; also the Geofabrik file name
+    name: str
+    geofabrik_path: str  # for example europe/austria
+    countries: tuple[str, ...]  # ISO 3166-1 alpha-2
+
+    @property
+    def extract_url(self) -> str:
+        return f"{GEOFABRIK_BASE}/{self.geofabrik_path}-latest.osm.pbf"
+
+    @property
+    def poly_url(self) -> str:
+        return f"{GEOFABRIK_BASE}/{self.geofabrik_path}.poly"
+
+
+REGIONS: dict[str, RegionDef] = {
+    r.id: r
+    for r in (
+        RegionDef("austria", "Austria", "europe/austria", ("AT",)),
+        RegionDef("czech-republic", "Czechia", "europe/czech-republic", ("CZ",)),
+        RegionDef("hungary", "Hungary", "europe/hungary", ("HU",)),
+        RegionDef("italy", "Italy", "europe/italy", ("IT",)),
+        RegionDef("japan", "Japan", "asia/japan", ("JP",)),
+    )
+}

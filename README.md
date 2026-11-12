@@ -10,10 +10,16 @@ task, not a rewrite.
 ## Status
 
 **Phase 1 (foundation) is built:** a monorepo with a placeholder Android-first app, a FastAPI
-backend (health, config, anonymous installations), empty `geo` and `app` database schemas, a
-generated typed API client, CI, an APK build workflow, and Render and Supabase deployment
-configuration. There is no itinerary planning, imported data or provider integration yet; those
-follow the phases in [`docs/app-plan.md`](docs/app-plan.md). The architecture, API strategy,
+backend, a generated typed API client, CI, an APK build workflow, and Render and Supabase
+deployment configuration.
+
+**Phase 2 (data and search) is built, awaiting the owner's acceptance:** the `geo` and `app`
+database schemas, a region import (manually started GitHub Actions workflow: Geofabrik extract,
+selection rule, data quality report and readiness gates), a GeoNames gazetteer import, destination
+and place search with Photon as the only external fallback, a seed trip, and endpoints for trips,
+user places and itinerary items. No region has been imported into the real database yet. There is
+no itinerary planning or routing yet; those follow the phases in
+[`docs/app-plan.md`](docs/app-plan.md). The architecture, API strategy,
 hosting, licence and distribution are decided (see below).
 
 ## Repository layout
@@ -46,6 +52,9 @@ Everything is built and tested in GitHub Actions; no local toolchain is required
 | [`docs/development.md`](docs/development.md) | CI-first development, commands, optional local Docker Compose |
 | [`docs/deployment.md`](docs/deployment.md) | Step-by-step Render, Supabase and phone setup |
 | [`docs/decisions/010-phase-1-foundation-choices.md`](docs/decisions/010-phase-1-foundation-choices.md) | ADR: Phase 1 choices and pinned versions |
+| [`docs/data-model.md`](docs/data-model.md) | The `geo` and `app` schemas, lifecycle, deletion and licence rules |
+| [`docs/decisions/011-attraction-selection-rule-v2.md`](docs/decisions/011-attraction-selection-rule-v2.md) | ADR: stricter memorial test and generic `historic=*` classes |
+| [`docs/decisions/012-phase-2-data-and-search-choices.md`](docs/decisions/012-phase-2-data-and-search-choices.md) | ADR: Phase 2 choices, terms read, open items |
 | [`CLAUDE.md`](CLAUDE.md) | Working rules for AI-assisted development in this repository |
 
 ## Proposed architecture in brief

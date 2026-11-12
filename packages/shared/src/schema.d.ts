@@ -89,10 +89,305 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/regions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Import regions, their status and the data version in use. */
+    get: operations["list_regions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/attributions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Credits the app must show for the data in use (OpenStreetMap, GeoNames, map tiles). */
+    get: operations["list_attributions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/destinations/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search cities and areas (provinces, regions) in the imported data. */
+    get: operations["search_destinations"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/places/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search places by name and/or around a point in the imported data. */
+    get: operations["search_places"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/places/{place_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One imported place with its provenance (source records and licences). */
+    get: operations["get_place"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The caller's trips, newest first. */
+    get: operations["list_trips"];
+    put?: never;
+    /** Create a trip. */
+    post: operations["create_trip"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One trip. */
+    get: operations["get_trip"];
+    put?: never;
+    post?: never;
+    /** Delete a trip with its itineraries, days, items, transfers and archive rows. */
+    delete: operations["delete_trip"];
+    options?: never;
+    head?: never;
+    /** Change a trip. Only the fields sent are changed; null clears the optional ones. */
+    patch: operations["update_trip"];
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Make the trip a past trip (ADR 006): keep a snapshot of its visits, delete the plans. */
+    post: operations["archive_trip"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/visits": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The archived visits of a past trip. */
+    get: operations["list_trip_visits"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/visits/{visit_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Confirm or clear one archived visit (the app cannot know what was really visited). */
+    patch: operations["update_trip_visit"];
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/itineraries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The trip's itineraries. */
+    get: operations["list_itineraries"];
+    put?: never;
+    /** Create an empty itinerary (one day per trip day) to fill by hand. */
+    post: operations["create_itinerary"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/itineraries/{itinerary_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** An itinerary with its days and items. */
+    get: operations["get_itinerary"];
+    put?: never;
+    post?: never;
+    /** Delete an itinerary with its days, items and transfers. */
+    delete: operations["delete_itinerary"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/itineraries/{itinerary_id}/days/{day_index}/items": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add a visit, meal or free-time block to a day (1-based). */
+    post: operations["create_item"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/items/{item_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One itinerary item. */
+    get: operations["get_item"];
+    put?: never;
+    post?: never;
+    /** Remove an item from its day. */
+    delete: operations["delete_item"];
+    options?: never;
+    head?: never;
+    /** Change time, duration, lock, meal type, day or position of an item. */
+    patch: operations["update_item"];
+    trace?: never;
+  };
+  "/v1/user-places": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The caller's own places. */
+    get: operations["list_user_places"];
+    put?: never;
+    /** Save a place that is not in the imported data (a pin or an external search result). */
+    post: operations["create_user_place"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/user-places/{place_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One of the caller's places. */
+    get: operations["get_user_place"];
+    put?: never;
+    post?: never;
+    /** Delete a place that no itinerary item uses. */
+    delete: operations["delete_user_place"];
+    options?: never;
+    head?: never;
+    /** Rename, move or re-describe a place. */
+    patch: operations["update_user_place"];
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AttributionEntry */
+    AttributionEntry: {
+      /** Name */
+      name: string;
+      /** Text */
+      text: string;
+      /** Url */
+      url: string;
+      /** Licence */
+      licence: string | null;
+      /** Applies To */
+      applies_to: string;
+    };
     /** AttributionLine */
     AttributionLine: {
       /** Text */
@@ -105,6 +400,21 @@ export interface components {
       /** Config Version */
       config_version: string;
       map: components["schemas"]["MapConfig"];
+    };
+    /** DataVersion */
+    DataVersion: {
+      /**
+       * Import Run Id
+       * Format: uuid
+       */
+      import_run_id: string;
+      /**
+       * Osm Snapshot Date
+       * @description Replication date of the OpenStreetMap extract; null if the file had none
+       */
+      osm_snapshot_date: string | null;
+      /** Finished At */
+      finished_at: string | null;
     };
     /** DatabaseStatus */
     DatabaseStatus: {
@@ -124,10 +434,186 @@ export interface components {
        */
       postgis?: string | null;
     };
+    /** Day */
+    Day: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Day Index */
+      day_index: number;
+      /** Date */
+      date: string | null;
+      /** Base City Id */
+      base_city_id: number | null;
+      /** Items */
+      items: components["schemas"]["Item"][];
+    };
+    /** Destination */
+    Destination: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "city" | "area";
+      /** Ref */
+      ref: string;
+      /** Name */
+      name: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+    };
+    /** DestinationResult */
+    DestinationResult: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "city" | "area";
+      /**
+       * Ref
+       * @description geo.city id (kind city) or geo.admin_area id (kind area)
+       */
+      ref: string;
+      /** Name */
+      name: string;
+      /** Country Iso2 */
+      country_iso2: string | null;
+      /** Country Name */
+      country_name: string | null;
+      /**
+       * Admin1 Name
+       * @description Name of the first-level division, if known
+       */
+      admin1_name: string | null;
+      /**
+       * Population
+       * @description Null when unknown
+       */
+      population: number | null;
+      /**
+       * Admin Level
+       * @description OSM admin_level, areas only
+       */
+      admin_level: number | null;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /**
+       * Region Id
+       * @description The import region that covers this destination
+       */
+      region_id: string | null;
+      /**
+       * Planning Available
+       * @description True only if the covering region is available (passed its readiness gates)
+       */
+      planning_available: boolean;
+      /**
+       * Match
+       * @enum {string}
+       */
+      match: "exact" | "prefix" | "word_prefix" | "contains" | "similar";
+    };
+    /** DestinationSearchResponse */
+    DestinationSearchResponse: {
+      /** Query */
+      query: string;
+      /** Results */
+      results: components["schemas"]["DestinationResult"][];
+      external: components["schemas"]["ExternalStatus"];
+    };
+    /** ErrorBody */
+    ErrorBody: {
+      /** Detail */
+      detail: string;
+      /**
+       * Code
+       * @description Stable machine-readable reason, for example region_not_available
+       */
+      code?: string | null;
+    };
     /** ErrorResponse */
     ErrorResponse: {
       /** Detail */
       detail: string;
+    };
+    /**
+     * ExternalPlace
+     * @description A result from the external provider (Photon). Not part of our data: use it to create a
+     *     user place with ``source = search_result``.
+     */
+    ExternalPlace: {
+      /**
+       * Provider
+       * @default photon
+       * @constant
+       */
+      provider: "photon";
+      /**
+       * Ref
+       * @description Provider reference, for example N123 (OSM node 123)
+       */
+      ref: string | null;
+      /** Name */
+      name: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** Osm Key */
+      osm_key: string | null;
+      /** Osm Value */
+      osm_value: string | null;
+      /** Country Code */
+      country_code: string | null;
+      /** Country */
+      country: string | null;
+      /** State */
+      state: string | null;
+      /** City */
+      city: string | null;
+      /** Street */
+      street: string | null;
+      /** Housenumber */
+      housenumber: string | null;
+      /** Postcode */
+      postcode: string | null;
+      /**
+       * Licence
+       * @default ODbL-1.0
+       * @constant
+       */
+      licence: "ODbL-1.0";
+    };
+    /** ExternalStatus */
+    ExternalStatus: {
+      /**
+       * State
+       * @description not_requested: include_external was false. not_needed: local results exist. unavailable, budget_exhausted and disabled: no external results, local results unchanged.
+       * @enum {string}
+       */
+      state:
+        | "not_requested"
+        | "not_needed"
+        | "ok"
+        | "cached"
+        | "unavailable"
+        | "budget_exhausted"
+        | "disabled";
+      /** Provider */
+      provider?: "photon" | null;
+      /** Results */
+      results?: components["schemas"]["ExternalPlace"][];
+    };
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components["schemas"]["ValidationError"][];
     };
     /** HealthResponse */
     HealthResponse: {
@@ -171,12 +657,326 @@ export interface components {
        */
       token: string;
     };
+    /** Item */
+    Item: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Day Id
+       * Format: uuid
+       */
+      day_id: string;
+      /** Position */
+      position: number;
+      /**
+       * Type
+       * @enum {string}
+       */
+      type: "visit" | "meal" | "free_time";
+      /** Meal Type */
+      meal_type: ("breakfast" | "lunch" | "dinner") | null;
+      /** Place Id */
+      place_id: string | null;
+      /** User Place Id */
+      user_place_id: string | null;
+      /** Display Name */
+      display_name: string;
+      /** Lat */
+      lat: number | null;
+      /** Lon */
+      lon: number | null;
+      /** Start Time */
+      start_time: string | null;
+      /** End Time */
+      end_time: string | null;
+      /** Duration Minutes */
+      duration_minutes: number;
+      /**
+       * Duration Source
+       * @enum {string}
+       */
+      duration_source: "category_default" | "user";
+      /**
+       * Origin
+       * @enum {string}
+       */
+      origin: "engine" | "user";
+      /** Locked */
+      locked: boolean;
+      /** Reasons */
+      reasons: string[];
+    };
+    /** ItemCreate */
+    ItemCreate: {
+      /**
+       * Type
+       * @enum {string}
+       */
+      type: "visit" | "meal" | "free_time";
+      /** Meal Type */
+      meal_type?: ("breakfast" | "lunch" | "dinner") | null;
+      /**
+       * Place Id
+       * @description A geo.place
+       */
+      place_id?: string | null;
+      /** User Place Id */
+      user_place_id?: string | null;
+      /**
+       * Start Time
+       * @description Local time at the destination
+       */
+      start_time?: string | null;
+      /**
+       * Duration Minutes
+       * @description Required unless the place has a known default (none exists yet)
+       */
+      duration_minutes?: number | null;
+      /**
+       * Position
+       * @description Defaults to the end of the day
+       */
+      position?: number | null;
+      /**
+       * Locked
+       * @default false
+       */
+      locked: boolean;
+    };
+    /**
+     * ItemUpdate
+     * @description Only the fields present are changed; ``start_time: null`` clears the schedule.
+     */
+    ItemUpdate: {
+      /** Start Time */
+      start_time?: string | null;
+      /** Duration Minutes */
+      duration_minutes?: number | null;
+      /** Locked */
+      locked?: boolean | null;
+      /** Position */
+      position?: number | null;
+      /**
+       * Day Index
+       * @description Move to another day
+       */
+      day_index?: number | null;
+      /** Meal Type */
+      meal_type?: ("breakfast" | "lunch" | "dinner") | null;
+    };
+    /** Itinerary */
+    Itinerary: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Trip Id
+       * Format: uuid
+       */
+      trip_id: string;
+      /**
+       * Profile
+       * @enum {string}
+       */
+      profile: "essentials" | "wider" | "manual";
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "proposed" | "selected" | "superseded";
+      /** Version */
+      version: number;
+      /** Engine Version */
+      engine_version: string;
+      /** Config Version */
+      config_version: string;
+      /** Import Run Id */
+      import_run_id: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Days */
+      days: components["schemas"]["Day"][];
+    };
+    /** ItinerarySummary */
+    ItinerarySummary: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Trip Id
+       * Format: uuid
+       */
+      trip_id: string;
+      /**
+       * Profile
+       * @enum {string}
+       */
+      profile: "essentials" | "wider" | "manual";
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "proposed" | "selected" | "superseded";
+      /** Version */
+      version: number;
+      /** Engine Version */
+      engine_version: string;
+      /** Config Version */
+      config_version: string;
+      /** Import Run Id */
+      import_run_id: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
     /** MapConfig */
     MapConfig: {
       /** Style Url */
       style_url: string;
       /** Attribution */
       attribution: components["schemas"]["AttributionLine"][];
+    };
+    /** PlaceDetail */
+    PlaceDetail: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Name
+       * @description Null when the source has no name
+       */
+      name: string | null;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "attraction" | "restaurant" | "transport_hub" | "other";
+      /** Category */
+      category: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** Region Id */
+      region_id: string;
+      /** City Id */
+      city_id: number | null;
+      /** City Name */
+      city_name: string | null;
+      /**
+       * Cuisines
+       * @description Restaurants; null = unknown
+       */
+      cuisines?: string[] | null;
+      /** Venue Type */
+      venue_type?: string | null;
+      /**
+       * Distance M
+       * @description From the search point, if given
+       */
+      distance_m?: number | null;
+      /** Match */
+      match?: ("exact" | "prefix" | "word_prefix" | "contains" | "similar") | null;
+      /** Names I18N */
+      names_i18n: {
+        [key: string]: string;
+      } | null;
+      /** Address */
+      address: {
+        [key: string]: string;
+      } | null;
+      /** Meal Types */
+      meal_types: string[] | null;
+      /** Diet Flags */
+      diet_flags: string[] | null;
+      /**
+       * Default Visit Minutes
+       * @description Null: no category rule table exists yet (Phase 4); never a guess
+       */
+      default_visit_minutes: number | null;
+      /** Is Active */
+      is_active: boolean;
+      /** Wikidata Id */
+      wikidata_id: string | null;
+      /** Sources */
+      sources: components["schemas"]["PlaceSource"][];
+    };
+    /** PlaceSearchResponse */
+    PlaceSearchResponse: {
+      /** Query */
+      query: string | null;
+      /** Results */
+      results: components["schemas"]["PlaceSummary"][];
+      external: components["schemas"]["ExternalStatus"];
+    };
+    /** PlaceSource */
+    PlaceSource: {
+      /** Source */
+      source: string;
+      /** Source Ref */
+      source_ref: string;
+      /** Licence */
+      licence: string;
+      /** Attribution */
+      attribution: string;
+    };
+    /** PlaceSummary */
+    PlaceSummary: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Name
+       * @description Null when the source has no name
+       */
+      name: string | null;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "attraction" | "restaurant" | "transport_hub" | "other";
+      /** Category */
+      category: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** Region Id */
+      region_id: string;
+      /** City Id */
+      city_id: number | null;
+      /** City Name */
+      city_name: string | null;
+      /**
+       * Cuisines
+       * @description Restaurants; null = unknown
+       */
+      cuisines?: string[] | null;
+      /** Venue Type */
+      venue_type?: string | null;
+      /**
+       * Distance M
+       * @description From the search point, if given
+       */
+      distance_m?: number | null;
+      /** Match */
+      match?: ("exact" | "prefix" | "word_prefix" | "contains" | "similar") | null;
     };
     /** ReadinessResponse */
     ReadinessResponse: {
@@ -186,6 +986,262 @@ export interface components {
        */
       status: "ok" | "unavailable";
       database: components["schemas"]["DatabaseStatus"];
+    };
+    /** RegionInfo */
+    RegionInfo: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Country Codes */
+      country_codes: string[];
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "available" | "importing" | "disabled";
+      /** @description Null until a first import succeeded */
+      data_version: components["schemas"]["DataVersion"] | null;
+      /**
+       * Counts
+       * @description Places by kind in the current data version
+       */
+      counts: {
+        [key: string]: number;
+      };
+    };
+    /** Trip */
+    Trip: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
+      destination: components["schemas"]["Destination"];
+      /** Duration Days */
+      duration_days: number;
+      /** Start Date */
+      start_date: string | null;
+      /**
+       * End Date
+       * @description start_date + duration_days - 1, if start_date is set
+       */
+      end_date: string | null;
+      /** Currency Code */
+      currency_code: string;
+      /** Meal Budget Per Person */
+      meal_budget_per_person: string | null;
+      /** Price Band Thresholds */
+      price_band_thresholds: string[] | null;
+      /** Selected Itinerary Id */
+      selected_itinerary_id: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "active" | "past";
+      /** Archived At */
+      archived_at: string | null;
+      /**
+       * Is Seed
+       * @description True for the illustrative seed trip; not user data
+       */
+      is_seed: boolean;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /** TripCreate */
+    TripCreate: {
+      /** Title */
+      title: string;
+      /**
+       * Destination Kind
+       * @enum {string}
+       */
+      destination_kind: "city" | "area";
+      /** Destination Ref */
+      destination_ref: string;
+      /** Duration Days */
+      duration_days: number;
+      /** Start Date */
+      start_date?: string | null;
+      /**
+       * Currency Code
+       * @description Defaults to the destination country's currency, if known
+       */
+      currency_code?: string | null;
+      /** Meal Budget Per Person */
+      meal_budget_per_person?: number | string | null;
+      /**
+       * Price Band Thresholds
+       * @description Upper bounds of budget, moderate and upscale, in the trip currency; fine dining is above the third. Null until set.
+       */
+      price_band_thresholds?: (number | string)[] | null;
+    };
+    /**
+     * TripUpdate
+     * @description Only the fields present are changed. Destination and currency are fixed after creation.
+     */
+    TripUpdate: {
+      /** Title */
+      title?: string | null;
+      /** Duration Days */
+      duration_days?: number | null;
+      /** Start Date */
+      start_date?: string | null;
+      /** Meal Budget Per Person */
+      meal_budget_per_person?: number | string | null;
+      /** Price Band Thresholds */
+      price_band_thresholds?: (number | string)[] | null;
+      /** Selected Itinerary Id */
+      selected_itinerary_id?: string | null;
+    };
+    /** TripVisit */
+    TripVisit: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "city" | "attraction";
+      /** Name */
+      name: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** Geo Place Ref */
+      geo_place_ref: string | null;
+      /** Day Number */
+      day_number: number;
+      /** Confirmed */
+      confirmed: boolean;
+    };
+    /** TripVisitUpdate */
+    TripVisitUpdate: {
+      /** Confirmed */
+      confirmed: boolean;
+    };
+    /** UserPlace */
+    UserPlace: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "city" | "location" | "restaurant";
+      /** Name */
+      name: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** Cuisines */
+      cuisines: string[] | null;
+      /** Meal Types */
+      meal_types: string[] | null;
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "manual_pin" | "search_result";
+      /** Search Provider */
+      search_provider: string | null;
+      /** Search Ref */
+      search_ref: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /** UserPlaceCreate */
+    UserPlaceCreate: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "city" | "location" | "restaurant";
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description WGS 84 latitude
+       */
+      lat: number;
+      /**
+       * Lon
+       * @description WGS 84 longitude
+       */
+      lon: number;
+      /**
+       * Cuisines
+       * @description Restaurants only
+       */
+      cuisines?: string[] | null;
+      /**
+       * Meal Types
+       * @description Restaurants only
+       */
+      meal_types?: string[] | null;
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "manual_pin" | "search_result";
+      /** Search Provider */
+      search_provider?: "photon" | null;
+      /** Search Ref */
+      search_ref?: string | null;
+    };
+    /** UserPlaceUpdate */
+    UserPlaceUpdate: {
+      /** Name */
+      name?: string | null;
+      /** Lat */
+      lat?: number | null;
+      /** Lon */
+      lon?: number | null;
+      /** Cuisines */
+      cuisines?: string[] | null;
+      /** Meal Types */
+      meal_types?: string[] | null;
+    };
+    /** ValidationError */
+    ValidationError: {
+      /** Location */
+      loc: (string | number)[];
+      /** Message */
+      msg: string;
+      /** Error Type */
+      type: string;
+      /** Input */
+      input?: unknown;
+      /** Context */
+      ctx?: Record<string, never>;
     };
   };
   responses: never;
@@ -310,6 +1366,1417 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  list_regions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RegionInfo"][];
+        };
+      };
+    };
+  };
+  list_attributions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AttributionEntry"][];
+        };
+      };
+    };
+  };
+  search_destinations: {
+    parameters: {
+      query: {
+        q: string;
+        limit?: number;
+        /** @description If nothing is found locally, ask Photon (through the backend, cached) */
+        include_external?: boolean;
+        /** @description Result language for external search */
+        lang?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DestinationSearchResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  search_places: {
+    parameters: {
+      query?: {
+        q?: string | null;
+        region?: string | null;
+        kind?: string | null;
+        category?: string | null;
+        lat?: number | null;
+        lon?: number | null;
+        radius_m?: number | null;
+        limit?: number;
+        include_external?: boolean;
+        /** @description Result language for external search */
+        lang?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaceSearchResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  get_place: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        place_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaceDetail"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  list_trips: {
+    parameters: {
+      query?: {
+        status?: ("active" | "past") | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_trip: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  get_trip: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  delete_trip: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  update_trip: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  archive_trip: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  list_trip_visits: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripVisit"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  update_trip_visit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+        visit_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripVisitUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripVisit"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  list_itineraries: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ItinerarySummary"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  create_itinerary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Itinerary"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  get_itinerary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Itinerary"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  delete_itinerary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  create_item: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+        day_index: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ItemCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Item"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  get_item: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Item"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  delete_item: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  update_item: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ItemUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Item"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  list_user_places: {
+    parameters: {
+      query?: {
+        kind?: ("city" | "location" | "restaurant") | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserPlace"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_user_place: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UserPlaceCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserPlace"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  get_user_place: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        place_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserPlace"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  delete_user_place: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        place_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  update_user_place: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        place_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UserPlaceUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserPlace"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
         };
       };
     };

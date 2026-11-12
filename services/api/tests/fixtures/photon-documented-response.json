@@ -1,0 +1,48 @@
+{
+  "_note": "Shaped like the example in komoot/photon docs/api-v1.md (read 2026-11-12). Not a live recording: the live API timed out from the development environment. Place names are invented test names.",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [13.3888599, 52.5170365] },
+      "properties": {
+        "name": "Examplestadt",
+        "state": "Exampleland",
+        "country": "Testland",
+        "countrycode": "TL",
+        "osm_key": "place",
+        "osm_value": "city",
+        "osm_type": "N",
+        "osm_id": 240109189
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [13.2395, 52.5146] },
+      "properties": {
+        "name": "Examplestadt Arena",
+        "street": "Teststrasse",
+        "housenumber": "3",
+        "postcode": "14053",
+        "state": "Exampleland",
+        "country": "Testland",
+        "countrycode": "TL",
+        "osm_key": "leisure",
+        "osm_value": "stadium",
+        "osm_type": "W",
+        "osm_id": 38862723,
+        "extent": [13.23727, 52.5157151, 13.241757, 52.5135972]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [200.0, 52.0] },
+      "properties": { "name": "Out of range longitude", "osm_type": "N", "osm_id": 1 }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [13.0, 52.0] },
+      "properties": { "osm_type": "N", "osm_id": 2 }
+    }
+  ]
+}

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "detour-api"
 version = "0.1.0"
-description = "Detour backend API (FastAPI). Foundation only: health, config, anonymous installations."
+description = "Detour backend API (FastAPI): health, config, search, trips, user places, region import."
 requires-python = ">=3.13,<3.14"
 license = { text = "Apache-2.0" }
 # Exact pins (ADR 001 follow-up, recorded in ADR 010). Upgrade as a planned task.
@@ -18,19 +18,22 @@ dependencies = [
   "alembic==1.20.1",
   "psycopg[binary]==3.3.9",
   "structlog==26.1.0",
+  "httpx==0.28.1",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest==9.2.0",
   "pytest-cov==7.1.0",
-  "httpx==0.28.1",
   "ruff==0.17.4",
   "mypy==2.4.1",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+detour_api = ["importer/*.lua"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -52,7 +55,13 @@ src = ["src", "tests", "scripts", "migrations"]
 select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106"]
+"tests/**" = ["S101", "S105", "S106", "E501"]
+# SQL strings read better unwrapped. Every value in them is a bound parameter; the f-strings only
+# join fixed column lists and clauses (reviewed in each file).
+"src/detour_api/repo/*.py" = ["E501", "S608"]
+"src/detour_api/importer/*.py" = ["E501", "S608"]
+"src/detour_api/adapters/*.py" = ["E501"]
+"migrations/**" = ["E501"]
 
 [tool.mypy]
 python_version = "3.13"

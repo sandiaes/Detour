@@ -1,7 +1,7 @@
 # Continuous integration: formatting, linting, type checks and tests for every part of the
 # monorepo. Nothing here needs a local toolchain: it all runs on GitHub-hosted runners.
 # No job calls a third-party service; the only network use is installing packages and pulling
-# the PostGIS image.
+# the PostGIS image. The import tests run the real pipeline on a small synthetic extract.
 name: CI
 
 on:
@@ -47,6 +47,11 @@ jobs:
           python-version: "3.13"
           cache: pip
           cache-dependency-path: services/api/pyproject.toml
+      - name: Install import tools (osm2pgsql, osmium) for the region import tests
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends osm2pgsql osmium-tool
       - name: Install
         run: pip install -e ".[dev]"
       - name: Lint (ruff)
@@ -55,7 +60,7 @@ jobs:
         run: ruff format --check . ../../tools
       - name: Type check (mypy, strict)
         run: mypy
-      - name: Test (includes migrations and database connectivity)
+      - name: Test (migrations, region import, search, trips; needs PostGIS)
         run: pytest --cov=detour_api --cov-report=term-missing
 
   javascript:

@@ -1,0 +1,101 @@
+# Region import (Phase 2, ADR 005): download a Geofabrik extract, filter it, import it into a
+# temporary PostGIS, apply the attraction selection rule (ADR 003, ADR 011), and load the geo
+# tables into Supabase through the session-mode pooler. Run by hand:
+#   Actions tab -> "Import region" -> Run workflow.
+# (GitHub shows the Run workflow button only for workflows on the default branch.)
+#
+# Needs the repository secret DETOUR_IMPORT_DATABASE_URL: the Supabase *session pooler*
+# connection string (port 5432). docs/deployment.md, "Importing a region".
+name: Import region
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "Region to import"
+        required: true
+        type: choice
+        options: [austria, czech-republic, hungary, italy, japan]
+      gazetteer:
+        description: "Import the GeoNames countries, currencies and cities first"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# One import at a time into the one database; never cancel one half way.
+concurrency:
+  group: import-region
+  cancel-in-progress: false
+
+jobs:
+  import:
+    name: Import ${{ inputs.region }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    services:
+      postgis:
+        image: postgis/postgis:18-3.7
+        env:
+          POSTGRES_PASSWORD: staging
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DETOUR_IMPORT_DATABASE_URL: ${{ secrets.DETOUR_IMPORT_DATABASE_URL }}
+      DETOUR_DATABASE_URL: ${{ secrets.DETOUR_IMPORT_DATABASE_URL }} # for the migration step
+      DETOUR_STAGING_DATABASE_URL: postgresql://postgres:staging@localhost:5432/postgres
+      DETOUR_IMPORT_USER_AGENT: "Detour-import/1 (+https://github.com/${{ github.repository }})"
+      REGION: ${{ inputs.region }}
+    steps:
+      - name: Check the database secret
+        run: |
+          if [ -z "$DETOUR_IMPORT_DATABASE_URL" ]; then
+            echo "::error::Repository secret DETOUR_IMPORT_DATABASE_URL is not set (docs/deployment.md)"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/boost
+          df -h /
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends osm2pgsql osmium-tool
+          osm2pgsql --version
+          osmium --version
+          pip install ./services/api
+      - name: Migrate the database
+        working-directory: services/api
+        run: alembic upgrade head
+      - name: Import the gazetteer (GeoNames)
+        if: ${{ inputs.gazetteer }}
+        run: python -m detour_api.importer gazetteer $(python -m detour_api.importer countries "$REGION")
+      - name: Import the region
+        run: |
+          python -m detour_api.importer region "$REGION" --out-dir out --allow-failed-gates
+      - name: Report
+        if: ${{ always() }}
+        run: |
+          if [ -f out/report.md ]; then cat out/report.md >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f out/report.json ] && python -c "import json,sys; sys.exit(0 if json.load(open('out/report.json'))['all_gates_passed'] else 1)"; then
+            echo "All readiness gates passed: the region is available."
+          elif [ -f out/report.json ]; then
+            echo "::warning::A readiness gate failed (ADR 009): the data is loaded but the region stays disabled. See the report."
+          fi
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: import-${{ inputs.region }}
+          path: out/
+          if-no-files-found: ignore

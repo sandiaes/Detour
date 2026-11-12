@@ -1,0 +1,6 @@
+# GeoNames Country Info (synthetic test fixture)
+#ISO	ISO3	ISO-Numeric	fips	Country	Capital	Area(in sq km)	Population	Continent	tld	CurrencyCode	CurrencyName	Phone	Postal Code Format	Postal Code Regex	Languages	geonameid	neighbours	EquivalentFipsCode
+AT	AUT	0	--	Testland	Cap	1	1	EU	.at	EUR	Euro	+0			en	1		
+JP	JPN	0	--	Nihonia	Cap	1	1	EU	.jp	JPY	Yen	+0			en	1		
+CZ	CZE	0	--	Czechtest	Cap	1	1	EU	.cz	CZK	Koruna	+0			en	1		
+AQ	ATA	0	--	Nowhere	Cap	1	1	EU	.aq			+0			en	1		
