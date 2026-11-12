@@ -1,9 +1,8 @@
 # ADR 011 — Attraction selection rule, version 2
 
-- **Status:** **Proposed**, implemented in Phase 2 (rules version `2026-11-12.1`). The owner is
-  asked to confirm it after reading the review sample of the first real import (see "How to
-  review"). It was **not** reviewed against a sample of real data (see "What this does not
-  prove").
+- **Status:** **Proposed**, implemented in Phase 2 (rules version `2026-11-12.4`). The first
+  real import (Austria, 2026-11-12) has been read; the owner decided on three more excluded
+  classes (see "Update after the first real import"). The rest of the rule is not yet confirmed.
 - **Date:** 2026-11-12
 - **Related:** [`003-scope-opening-hours-and-attractions.md`](003-scope-opening-hours-and-attractions.md)
   (the rule and its open questions), [`009-region-readiness-thresholds.md`](009-region-readiness-thresholds.md),
@@ -34,8 +33,12 @@ stored on every import run.
 | `amenity=restaurant`, `amenity=cafe` | Kept as restaurants | n/a |
 | `tourism=attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium` | Kept, named or not | n/a |
 | `historic=wayside_shrine|wayside_cross|boundary_stone|bomb_crater` | Excluded (ADR 003) | `adr003_excluded_class` |
+| `historic=tree_shrine`, `historic=heritage`, `historic=heritage_building` | **Excluded** (owner decision, 2026-11-12, after the Austria import). Matched on the cleaned value (lower case, other characters as `_`), so `Heritage Building` is caught too | `adr003_excluded_class` |
+| Any `tourism` attraction class or allow-listed `historic` value **without a name** | **Excluded** (owner decision, 2026-11-12: "only cities and tourist spots mostly"). An unnamed "viewpoint" cannot be shown in an itinerary | `attraction_without_name` |
+| `historic=*` values **not on the tourist allow-list** | **Excluded and counted by class**. The allow-list (`TOURIST_HISTORIC`): castle, fort, fortress, palace, ruins, archaeological_site, monument, manor, monastery, abbey, church, chapel, temple, city_gate, tower, aqueduct, viaduct, bridge, battlefield, fountain, statue, technical_monument, place_of_worship, cemetery. Examples dropped: milestone, cannon, gallows, mine, quarry, locomotive, hollow_way, military, wayside_chapel, pillory, `railway` (track segments) | `historic_class_not_tourist` |
+| `historic=citywalls` | Kept only with a name and a notability tag (walls are mapped in many short pieces); joins the reviewed generic classes | `generic_class_without_name_and_notability` |
 | `historic=memorial` | **Kept only with `wikidata` and a name, and not of a small-object subtype** (`memorial` = `plaque`, `blue_plaque`, `stolperstein`, `ghost_bike`, `bench`, `grave`, `war_grave`, `cross`, `stone`) | `memorial_without_wikidata`, `memorial_without_name`, `memorial_excluded_subtype` |
-| `historic=yes|building|railway|stone|tomb` | **Kept only with a name and at least one notability tag** (`wikidata`, `wikipedia` or `heritage`) | `generic_class_without_name_and_notability` |
+| `historic=yes|building|stone|tomb|citywalls` | **Kept only with a name and at least one notability tag** (`wikidata`, `wikipedia` or `heritage`) | `generic_class_without_name_and_notability` |
 | Every other `historic=*` value (castle, ruins, archaeological site, monument, fort, ...) | Kept | n/a |
 
 An object that has both `amenity=restaurant|cafe` and a `historic` tag is a restaurant (a cafe in
@@ -66,13 +69,96 @@ reference (so the same objects appear on every run), with their imported tags. T
 excluded counts per class and reason. To change a decision, edit `selection.py`, raise
 `RULES_VERSION`, update this ADR and run the import again; the result is repeatable.
 
+## Update after the first real import
+
+Austria was imported on 2026-11-12 (OSM snapshot 2026-11-11). What the report and the review
+sample showed:
+
+- **The rule reproduces the spike.** The ADR 003 classes, restaurants and `tourism=attraction` match
+  S2 count for count (17,129 shrines, 15,338 crosses, 9,942 boundary stones, 8,096 bomb craters,
+  7,822 memorials without Wikidata). The new rules removed 3,780 more objects: 3,331 from the five
+  generic classes and 449 from the stricter memorial test.
+- **All six gates passed** (named attractions 12,265, 66.1 %; restaurants 26,504).
+- **Owner decision:** remove `tree_shrine` (198 kept), `heritage` (486) and `heritage_building`
+  (115). The categories come from the report; the raw tags behind `heritage` and
+  `heritage_building` were not in the review sample (only the six reviewed classes are sampled), so
+  the matching is on the cleaned value. 799 places leave the data at the next import.
+- **Reading the sample, the two-signal test works as intended** for `historic=building`, `tomb`,
+  `stone` and `railway`: kept objects are named and documented (Neutor, Villa Bader, Mausoleum
+  Dreher, Tauernbahn), excluded ones are mostly unnamed footprints, railway segments called
+  "Landstraße" and the like. A few named objects without a documentation tag are dropped (a
+  building called "Burgpalast", a stone called "Opferstein"); that is the price of the rule.
+- **Memorial subtypes: one point for the owner.** The subtype exclusion also removes memorials that
+  have a name, a Wikidata item and often `heritage=2`, for example a "Kaiser Franz Josef Denkmal"
+  (`memorial=stone`) and several named plaques. Whether to exempt memorials that carry `heritage`
+  from the subtype test is open; it would be a small rule change (rules version bump).
+- **Kept but unreviewed:** the other `historic=*` values (for example `pillory` 132, `citywalls`
+  236, `cannon` 91, `milestone` 60) are kept by default and not sampled.
+- A bug was fixed on the way: excluded objects in `review-sample.json` were named `N/123` while
+  kept ones were `node/123`; both now use `node/123`.
+
+## Update: "only cities and tourist spots" (rules version 2026-11-12.3)
+
+After reading the Austria import the owner asked for a leaner data set: tourist spots rather than
+every small object. Decided and implemented: attractions need a name; `historic=*` is an allow-list
+(`TOURIST_HISTORIC`), not a deny-list; `historic=railway` leaves; `citywalls` need a notability
+tag. Applied to **every** region (one global rule; a "compact" mode per import was considered and
+not built, see ADR 012). From the category table of the Austria database the new rules keep about
+11,300 attractions (of 18,543 before the 2026-11-12.2 change), about 39 % fewer. Restaurants and
+cafes are untouched by these rules and make up about 70 % of what is left, so this alone saves
+roughly 16 % of Austria's places.
+
+Because the allow-list was chosen from Austria's categories only, other countries will have
+`historic=*` values it does not list. They are not lost silently: the import report counts every
+class under `historic_class_not_tourist`, and a class can be added to the list. Places of worship
+mapped only as `amenity=place_of_worship` (most Japanese temples and shrines, most Italian
+churches) were never imported; that is a gap for Italy and Japan, not decided here.
+
+Gate 4 (ADR 009) asks for 40 % of attractions to be named; with this rule it is always 100 %.
+The count gate (5,000 named attractions) is the one that can now fail.
+
+**Restaurants and cafes: kept only near attractions or towns (rules version 2026-11-12.4).**
+Restaurants and cafes were 59 % of Austria's places. They are now kept only when within **500 m**
+of an attraction the rules keep, or within **1,500 m** of the centre of a gazetteer town with at
+least **5,000** inhabitants (`RESTAURANT_RADIUS_M`, `TOWN_RADIUS_M`, `TOWN_MIN_POPULATION` in
+`importer/selection.py`; the check is `importer/proximity.py`, great-circle distance on a grid).
+Cafes follow the same rule. Everything else is counted in the report as
+`restaurant_not_near_attraction_or_town`, and the report states the rule and the number of
+attractions and towns it used.
+
+The radii come from a measurement on the Austria database (2026-11-12), counting the restaurants
+and cafes that were then in it:
+
+| Radius to an attraction | Restaurants kept (of 21,038) | Cafes kept (of 5,466) |
+|---|---|---|
+| 300 m | 9,298 (44 %) | 3,755 (69 %) |
+| 500 m | 10,827 (51 %) | 4,093 (75 %) |
+| 1,000 m | 13,580 (65 %) | 4,588 (84 %) |
+
+(each figure includes the town rule). The town rule adds about 1,100 restaurants and 390 cafes to
+what the attraction rule keeps at 500 m. Leaving viewpoints out as anchors changes the counts by
+only 3 to 8 %, so they stay anchors. 500 m is about a six-minute walk, enough for the planner to
+find several candidates near a sight; at 300 m the pool gets thin. Expected effect on Austria:
+about 14,900 restaurants and cafes instead of 26,500, and about 26,200 places in all instead of
+45,000 (an estimate of about 40 MB instead of 71 MB, to be confirmed by re-importing).
+
+Consequences:
+
+- **The import depends on the gazetteer.** Towns come from `geo.city`, so import the gazetteer
+  first (the workflow does). Without it the rule uses attractions only, the report says so in its
+  warnings, and the result differs from a run with the gazetteer; run the import again after
+  loading it.
+- **A remote restaurant is not in the data.** A user can still add it: search through Photon, or a
+  manual pin, saved as a user place (`docs/data-model.md`). The planner (Phase 6) will propose meal
+  stops only from the imported ones.
+- **Gate 3 (5,000 restaurants) and gate 2 (30 % with a cuisine) are now measured after this rule.**
+
 ## What this does not prove
 
-- **No real extract was inspected for this decision.** The development environment could not
-  reach Geofabrik, so the rule rests on the S2 counts, the ADR 003 addendum's own suggestion and
-  the reasoning above. The memorial subtype list in particular is a list of plausible OSM values
-  (`memorial=*`), not a list checked against the Czech data. Treat the rule as a proposal until
-  the review sample has been read.
+- **The rule was written without seeing a real extract** (the development environment could not
+  reach Geofabrik). Austria has now been read (see the update above); Czechia, where memorials
+  dominate, has not. The memorial subtype list is a list of plausible OSM values (`memorial=*`),
+  not one checked against the Czech data. Read the Czechia sample before enabling it.
 - Whether the rule brings Czechia below the point where memorials dominate is a number the first
   real import will give; it is not known now.
 - Region readiness gate 4 (ADR 009) was measured before this rule. The first real import

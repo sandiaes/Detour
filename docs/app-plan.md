@@ -274,7 +274,12 @@ Acceptance means: deploy the new migrations (Render runs them at start), add the
 secret `DETOUR_IMPORT_DATABASE_URL`, run the "Import region" workflow for **Austria** first, and
 read the report and `review-sample.json` (ADR 011). Open items that need the owner:
 
-- confirm or change ADR 011 (the selection rule) after reading the review sample;
+- confirm or change ADR 011 (the selection rule): Austria is read; three classes were removed, only
+  named tourist classes are kept, and restaurants and cafes are kept only within 500 m of an
+  attraction or near a town (rules version 2026-11-12.4, applied at the next import). Re-import
+  Austria once to see the new counts and size. Open: the memorial-subtype question, the Czechia
+  sample, and temples and churches mapped only as `amenity=place_of_worship` (not imported; a gap
+  for Italy and Japan);
 - confirm the two ADR 012 owner decisions (no foreign keys across the schemas; the manual
   itinerary endpoint and the trip snapshot fields);
 - the Geofabrik terms were checked by the owner on 2026-11-12 (`docs/api-evaluation.md` section

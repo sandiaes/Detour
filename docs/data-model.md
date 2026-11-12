@@ -115,9 +115,9 @@ about 100 m): areas scope a destination, they are not for drawing borders.
 | Field | Notes |
 |---|---|
 | `id` | uuid, derived from the region and the OSM reference: **stable across imports** |
-| `region_id`, `kind` | `attraction` or `restaurant` today; `transport_hub` and `other` are reserved |
-| `category` | Normalised: the `tourism` value, the `historic` value (`historic_building` for the generic classes, `historic` for `historic=yes`), or `restaurant`/`cafe` |
-| `name`, `name_norm` | **Null when the source has no name**; both null or both set |
+| `region_id`, `kind` | `attraction` or `restaurant` today (restaurants and cafes only near attractions or towns, ADR 011); `transport_hub` and `other` are reserved |
+| `category` | Normalised: the `tourism` value, an allow-listed `historic` value (`historic_building` and the other generic classes carry the `historic_` prefix; `historic=yes` is `historic`), or `restaurant`/`cafe` |
+| `name`, `name_norm` | Null when the source has no name; both null or both set. Attractions without a name are not imported (ADR 011), so a null name occurs only for restaurants and cafes |
 | `names_i18n` | jsonb, language to name (`name:*` tags and `int_name` as `int`); null if none |
 | `geom` | Representative point; areas are reduced to a point on their surface |
 | `address` | jsonb from `addr:*` (street, housenumber, postcode, city, country); null if none |
