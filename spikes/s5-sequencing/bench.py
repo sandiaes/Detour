@@ -85,7 +85,7 @@ def main():
             print(f"{fx['name']:16} {method:18} obj={metrics['objective']:6} "
                   f"visits={metrics['visits']:3} travel={metrics['travel_min']:5} "
                   f"med={case['median_ms']:9.1f}ms distinct={case['distinct_hashes']} "
-                  f"valid={case['valid']}", flush=True)
+                  f"valid={case['valid']} hash={hashes[0]}", flush=True)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=1)
