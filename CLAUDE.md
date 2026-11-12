@@ -18,9 +18,9 @@ data quality report with the ADR 009 gates, destination and place search, the Ph
 seed trip, and CRUD for trips, user places and itinerary items. No region has been imported into
 the real database yet. **Phase 3 is built and awaits acceptance** (ADR 013, proposed): the
 travel-time service behind a FOSSGIS Valhalla adapter, with the `geo.travel_time` cache and the
-labelled estimate fallback; no endpoint, and it is not yet used by anything. Two owner checks are
-open before its cache is trusted (`docs/spikes/fossgis-request-shape-check.md`). There is no
-planning and no map screen. The decisions in `docs/app-plan.md`
+labelled estimate fallback; no endpoint, and it is not yet used by anything. The owner's
+request-shape check is done (`docs/spikes/fossgis-request-shape-check.md`): the fixed 1 x N shape
+agrees with the plain route. There is no planning and no map screen. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),
 and the app is not distributed through app stores (ADR 008). Do not start the next phase until the
 owner asks for it.

@@ -1,11 +1,11 @@
 # Valhalla fixtures
 
-**These are not live recordings.** The build environment cannot reach the FOSSGIS server and the
-Valhalla API reference could not be read there (ADR 013). The files follow the response format
-the owner pasted on 2026-11-12 (`sources_to_targets`, `distance` in kilometres, `time` in seconds,
-`trip.summary.length` and `.time`) and the format described in ADR 013. Numbers are those the
-owner reported where one exists (0.662 km in 523 s; Florence to Rome 282.885 km in 11,505 s) and
-otherwise illustrative.
+`*-recorded.json` are **real responses** from the FOSSGIS server, recorded by the owner by hand on
+2026-11-12 (`docs/spikes/fossgis-request-shape-check.md`, requests A, B, G, H): a 1 x 1 and a 1 x 10
+walking matrix, and a plain and a `directions_type: none` walking route, in Florence. Never
+re-recorded by a test or by CI.
 
-Replace them with real recordings after the owner's check
-(`docs/spikes/fossgis-request-shape-check.md`) and rerun the contract tests.
+`*-documented.json` are **not recordings**: they follow the same format for cases the owner has not
+recorded yet (a null cell, and a long driving route; figures are the ones the owner reported in
+`docs/spikes/fossgis-matrix-check.md`, otherwise illustrative). Replace them when a real
+recording exists.

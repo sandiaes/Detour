@@ -25,11 +25,12 @@ enables the adapter when ``environment`` is ``test``.
 * ``route-v1``: ``route`` with two locations and ``costing``, used for legs beyond the matrix
   distance limit and for the geometry of a selected itinerary.
 
-Response formats below follow the sample the owner pasted (``sources_to_targets`` array with
-``distance`` in kilometres and ``time`` in seconds; ``trip.summary.length`` and ``.time`` for a
-route). The Valhalla API reference could not be read from the build environment, so the shape of
-null cells, ``directions_type``/``shape_format`` and the polyline precision are **unverified**; the
-parsers accept the variants described in ADR 013 and refuse anything else.
+Response formats follow real responses the owner recorded on 2026-11-12
+(``tests/fixtures/valhalla/*-recorded.json``): ``sources_to_targets`` with ``distance`` in
+kilometres and integer ``time`` in seconds, ``trip.summary.length`` and a fractional ``.time``, an
+encoded polyline with six decimals. Still **unverified** (ADR 013): the shape of a null cell, and
+that ``POST`` is accepted (the owner's checks used ``GET``). The parsers accept the null variants
+listed in ADR 013 and refuse anything else.
 """
 
 import json
@@ -269,11 +270,10 @@ class ValhallaClient:
             "costing": COSTING[mode],
         }
         if self._settings.routing_slim_route_requests:
-            # ADR 013: documented options that drop the turn-by-turn text, and the shape when
-            # only the time is wanted. Off by default: not yet checked against the server.
+            # Checked by the owner on 2026-11-12 (ADR 013): this drops the turn-by-turn
+            # maneuvers (a 662 m walk went from 2,214 to 896 bytes). ``shape_format: no_shape``
+            # was also tried and did NOT remove the shape, so it is not sent.
             body["directions_type"] = "none"
-            if not geometry:
-                body["shape_format"] = "no_shape"
         outcome = self._post("/route", body)
         if isinstance(outcome, str):
             return RouteResult(outcome)

@@ -60,3 +60,41 @@ Do not share anything else from the pages.
 
 Record the date and the results in ADR 013, section "Open items", and keep the pasted figures here
 under a "Result" heading, as the earlier checks do.
+
+## Result (2026-11-12, by the owner)
+
+The pair is point 0 to point 1 (snapped by the server to 43.763165, 11.229449 and 43.766442,
+11.230159), walking.
+
+| # | Request | Algorithm named | Time, point 0 to 1 | Distance |
+|---|---|---|---:|---:|
+| A | 1 x 1 | `timedistancematrix` | 523 s | 0.662 km |
+| B | 1 x 10 | `timedistancematrix` | 523 s | 0.662 km |
+| C | 2 x 2 | `timedistancematrix` | 523 s (1 to 0: 622 s) | 0.662 km |
+| D | 20 x 5 | `timedistancematrix` | **653 s** | 0.662 km |
+| E | 20 x 5 again | `timedistancematrix` | **653 s**, all 100 cells identical to D | 0.662 km |
+| F | 6 x 6 | `costmatrix` | 523 s | 0.662 km |
+| G | plain route | n/a | 523.995 s | 0.662 km |
+| H | route, `directions_type` none and `shape_format` no_shape | n/a | 523.995 s | 0.662 km |
+
+Other cells, 1 x 10 (B) against the cost matrix (F), the five cells both contain (points 0 to
+1..5): times identical in all five, distances within 2 m. The 20 x 5 request (D) differs from B on
+the same cells in both directions (0 to 2: 1,746 s against 1,806 s; 0 to 4: 2,245 s against
+2,183 s), so it is not just slower.
+
+H: it worked. The `maneuvers` are gone; the `shape` line is **still there**, so `no_shape` had no
+effect on this server. The recorded page went from 2,214 to 896 bytes.
+
+### What this shows
+
+- **The difference persists for that request, and only for that request.** The same 20 x 5 request
+  repeated gives identical numbers: it is deterministic, not drift over time.
+- **It is not the algorithm.** The 20 x 5 request used the same algorithm as the 1 x 1, 1 x 10 and
+  2 x 2 requests that gave 523 s. (The source reading's rule for choosing the algorithm was right:
+  the 6 x 6 used the other one.) Something else about a request with 20 sources changes the
+  numbers; the cause is **not known**.
+- **The shape the adapter uses agrees with the references.** 1 x 1, 1 x 10, 2 x 2, the cost matrix
+  and the plain route all say 523 s for the pair; the matrix gives whole seconds (523) where the
+  route gives 523.995 s (rounded to 524 by the adapter, so a one-second difference between a
+  matrix cell and a route leg is normal).
+- Walking times are **not symmetric** (523 s there, 622 s back), so cells are stored per direction.

@@ -111,10 +111,16 @@ Rules this would amend, if approved:
 ## Addendum (2026-11-12): Phase 3 outcome
 
 The adapter, cache and fallback are built ([ADR 013](013-phase-3-travel-time-service.md)). Of the
-items left open above: the request shape is fixed (one source, up to 100 targets); whether a
-request option shrinks the route response is **unverified** (implemented, off by default); and the
-523 s / 653 s difference is **not explained and not shown to persist or not**, because the build
-environment could not reach the server. The owner's check is in
+items left open above: the request shape is fixed (one source, up to 100 targets) and the owner's
+check of 2026-11-12 found it agrees with the plain route; the 523 s / 653 s difference was
+reproduced, is deterministic and is **not caused by the algorithm**, but its cause is unknown (it
+comes from the 20 x 5 shape, which is not used); `directions_type: none` shrinks a route response
+(-60% on the sample) and `no_shape` has no effect. Results:
 [`../spikes/fossgis-request-shape-check.md`](../spikes/fossgis-request-shape-check.md). Request
 volume: a dense matrix of n places needs n matrix requests (up to 100 targets each); Phase 4 must
 plan sparse sets.
+
+**Owner decision, 2026-11-12: condition 6 (notify FOSSGIS) is not needed.** The app is for the
+owner and one other person, is not distributed (ADR 008) and is not "published to end users". The
+other conditions stand. If the app is ever shared beyond that, condition 6 applies again before it
+is.

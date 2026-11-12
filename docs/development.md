@@ -93,7 +93,7 @@ database for each API test. Nothing in the tests calls a network service: Photon
 stub transport, and `tests/fixtures/photon-documented-response.json` follows the format in
 Photon's API documentation (it is not a live recording). The FOSSGIS Valhalla adapter is the same:
 `tests/valhalla_stub.py` stands in for the server and `tests/fixtures/valhalla/` holds
-documented-format fixtures (not live recordings). The routing adapter stays off in the `test`
+fixtures: real responses the owner recorded by hand (`*-recorded.json`) and a few documented-format ones (`*-documented.json`). The routing adapter stays off in the `test`
 environment unless a transport is injected, so no test or CI run can reach the server.
 
 ## Running an import locally

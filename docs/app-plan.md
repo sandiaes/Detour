@@ -140,12 +140,14 @@ past trips.
 
 **Status: built on 2026-11-12, not yet accepted** (ADR 013, proposed). Implemented and tested
 against a stub server: the adapter, the cache, chunking, the rate limiter and circuit breaker, the
-daily budget, the estimate fallback, null-cell handling and route geometry. **Not done:** no live
-request was made (the build environment cannot reach the server), so the 523 s / 653 s difference
-is **not explained** and whether it persists is **unknown**; the smaller route request is
-implemented but off; contract tests use documented-format fixtures, not live recordings; latency
-was not measured. All three need the owner's check (`docs/spikes/fossgis-request-shape-check.md`).
-Matrix symmetry is not asserted: driving times need not be symmetric.
+daily budget, the estimate fallback, null-cell handling and route geometry. The build
+environment cannot reach the server, so the owner ran a check by hand
+(`docs/spikes/fossgis-request-shape-check.md`): the 523 s / 653 s difference is deterministic and
+not caused by the algorithm, its cause is unknown, and the adapter's 1 x N shape agrees with the
+plain route; `directions_type: none` shrinks route responses by 60% and is on. **Not done:**
+latency was not measured; the null-cell format and `POST` are unconfirmed against the real
+server; the estimate's detour factor looks low against the first real data (ADR 013). Matrix
+symmetry is not asserted: walking times were 523 s one way and 622 s back.
 
 **Goal:** routed walking and driving times, with a safe fallback.
 
@@ -295,7 +297,7 @@ to reconsider later. Ideas discussed, none decided or built:
 ## 7. Recommended next task
 
 **Accept Phase 3, then Phase 4 (planner v1), when the owner asks for it (CLAUDE.md).** Phase 2 is accepted.
-For Phase 3: run the eight-click check in `docs/spikes/fossgis-request-shape-check.md`, record the results in ADR 013, and confirm or change its numbers. Phase 4 must plan sparse cell sets and bound provider time with `max_seconds` (ADR 013, decision 1).
+For Phase 3: confirm or change the numbers in ADR 013 (especially the walking detour factor). Phase 4 must plan sparse cell sets and bound provider time with `max_seconds` (ADR 013, decision 1).
 
 Carried forward from Phase 2 (the owner accepted it; these items were not reported as resolved):
 Acceptance meant: deploy the new migrations (Render runs them at start), add the repository

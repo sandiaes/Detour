@@ -91,8 +91,8 @@ class Settings(BaseSettings):
     routing_cache_max_rows: int = Field(default=100_000, ge=1000)
     # A cell the provider could not route is asked again only after this many days.
     routing_no_route_retry_days: int = Field(default=30, ge=1)
-    # Ask /route for no turn-by-turn text and no shape (ADR 013). Off until checked by hand.
-    routing_slim_route_requests: bool = False
+    # Ask /route for no turn-by-turn maneuvers (directions_type none; checked by hand, ADR 013).
+    routing_slim_route_requests: bool = True
 
     # Client configuration served by GET /v1/config. The app holds none of these as constants.
     config_version: str = "1"

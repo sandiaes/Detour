@@ -1,8 +1,8 @@
 # ADR 013 — Phase 3: the travel-time service, its cache and its request shape
 
 - **Status:** **Proposed** on 2026-11-12. The code is built and tested; the owner confirms or
-  changes the decisions in section "Decision". Two open items (request-shape check, smaller route
-  request) need the owner's browser check before the cache is trusted for planning.
+  changes the decisions in section "Decision". The owner's request-shape check was run on
+  2026-11-12 and is recorded below.
 - **Date:** 2026-11-12
 - **Related:** [`004-fossgis-valhalla-demo-server.md`](004-fossgis-valhalla-demo-server.md),
   [`006-past-trips-archive.md`](006-past-trips-archive.md),
@@ -23,39 +23,42 @@ third.
 
 The build environment's network policy refuses `valhalla1.openstreetmap.de`
 (`connect_rejected`) and the host `valhalla.github.io`. **No request was made to the FOSSGIS
-server and the Valhalla API reference was not read.** What was read:
+server from the build environment and the Valhalla API reference was not read.** The owner then ran
+the eight-request check by hand (`docs/spikes/fossgis-request-shape-check.md`, results there); the
+real responses are the contract-test fixtures (`tests/fixtures/valhalla/*-recorded.json`).
 
-- Valhalla's source on GitHub (raw files `src/thor/matrix_action.cc`, `costmatrix.cc`,
-  `timedistancematrix.cc`, `src/loki/matrix_action.cc`, default branch, read 2026-11-12). The
-  reading was done by a model, and `costmatrix.cc` was truncated; it is a **lead, not a verified
-  fact**. It reports: error 150 compares `sources x targets` with the limit (so 100 cells);
-  error 154 is a straight-line check between each source and target; for walking the server picks
-  the time-distance algorithm if either side has at most 5 locations and the cost-matrix
-  algorithm if both have more; for driving without a start time it uses the cost matrix; no
-  request option selects the algorithm.
+Valhalla's source on GitHub was also read (raw files `src/thor/matrix_action.cc`, `costmatrix.cc`,
+`timedistancematrix.cc`, `src/loki/matrix_action.cc`, default branch, read 2026-11-12). The reading
+was done by a model and `costmatrix.cc` was truncated, so it was a lead. It reported: error 150
+compares `sources x targets` with the limit; error 154 is a straight-line check; for walking the
+server picks the time-distance algorithm if either side has at most 5 locations and the cost
+matrix if both have more; driving without a start time uses the cost matrix; no request option
+selects the algorithm. **The owner's check confirmed the algorithm rule** (6 x 6 used
+`costmatrix`; every request with a side of 5 or fewer used `timedistancematrix`).
 
-The response sample the owner pasted is the only record of response formats. Everything else that
-the adapter assumes is marked **unverified** below.
+## The 523 s / 653 s difference (owner's check, 2026-11-12)
 
-## The 523 s / 653 s difference: not determined
+| Request | Algorithm | Pair 0 to 1 |
+|---|---|---|
+| 1 x 1, 1 x 10, 2 x 2 | `timedistancematrix` | 523 s |
+| 6 x 6 | `costmatrix` | 523 s |
+| plain route | n/a | 523.995 s |
+| **20 x 5**, twice | `timedistancematrix` | **653 s**, both times, all 100 cells identical |
 
-The question was to find the cause and report whether the difference persists. **Neither could be
-done from here.** What can be said:
+- **Does it persist?** Yes, for that request: repeating it gives identical numbers, so it is
+  deterministic, not drift.
+- **Cause:** **not known.** It is not the algorithm (the 20 x 5 request used the same one as the
+  523 s requests). Something about a request with 20 sources changes the numbers, in both
+  directions (0 to 2: 1,746 s against 1,806 s; 0 to 4: 2,245 s against 2,183 s).
+- **What is known:** the 1 x N shape agrees with the plain route and with the cost matrix: five
+  comparable cells between the 1 x 10 and the 6 x 6 had identical times and distances within 2 m.
+  The odd request is the shape the adapter does not use.
+- **Residual risk:** one pair in one part of Florence, and no 1 x 50 or 1 x 100 request was tried.
+  The 20 x 5 result shows that how a request is composed can matter, so the shape stays versioned
+  and the algorithm is stored with every cell. An optional follow-up: one 1 x 50 request against
+  the plain routes of three of its cells.
 
-- The reading above predicts 2 x 2 and 20 x 5 walking requests use the *same* algorithm (each has
-  a side of at most 5), but 10 x 10 a different one. The owner saw 523 s for 2 x 2 **and** 10 x 10
-  and 653 s for 20 x 5, with different algorithm names across the three. So the algorithm choice
-  alone does not explain the numbers, or the reading is wrong, or the server is configured
-  differently from the repository's default. The code reading also lists real reasons two
-  algorithms can differ (partial first and last edges, a snap penalty, different paths on ties),
-  none shown to account for 25% on 662 m.
-- It is unknown whether the difference **persists** (the same request again, hours later).
-
-So the cache is built so that it **cannot silently mix shapes** and the check is prepared for the
-owner (`docs/spikes/fossgis-request-shape-check.md`, eight clicks, with the rule for reading each
-outcome). Until it is done, treat cached routed times as unconfirmed for comparing two itineraries
-by small differences. The adapter does not depend on the answer to be correct and safe; the answer
-decides whether `matrix-v1` is the right shape.
+The cache can therefore be trusted for 1 x N rows to the extent of this evidence.
 
 ## Decision
 
@@ -67,8 +70,9 @@ decides whether `matrix-v1` is the right shape.
    with no waste. **Cost:** a dense matrix needs one request per source, so 50 places need 50
    requests, against about 25 for a 10 x 10 block shape. At 1 call per second, 50 requests take
    about 40 seconds after the burst. Phase 4 must therefore plan **sparse** cell sets and pass a
-   `max_seconds` limit (cells not reached are estimated and labelled). If the owner's check shows
-   a block shape is consistent, the shape changes by version, not by editing rows.
+   `max_seconds` limit (cells not reached are estimated and labelled). A block shape was not
+   tested for consistency (the one tested, 20 x 5, was the outlier); changing shape later is a
+   version change, not an edit of rows.
 2. **Chunking.** At most 100 cells per request (ADR 004). Cells farther apart than 148.5 km go to
    the single-route request, one per leg. The 150 km limit is the server's; the 1.5 km margin
    covers a distance function that was not read. A given pair always takes the same path, so its
@@ -106,35 +110,51 @@ decides whether `matrix-v1` is the right shape.
 6. **Estimate fallback** (`travel/estimate.py`, version `2026-11-12.1`): straight-line distance
    times a detour factor of 1.3, then a speed: walking 4.5 km/h; driving 30 km/h for the first
    25 km of path and 80 km/h beyond. **These are our assumptions, not measured or provider data;**
-   they are always labelled `estimated` with a reason code. Two identical points give 0 s, 0 m,
+   they are always labelled `estimated` with a reason code. **Compared with the owner's real
+   walking times (nine cells of the 1 x 10 request, 370 m to 1.6 km straight-line, one part of
+   Florence): the speed is about right (real 4.4 to 5.2 km/h, estimate 4.5) but the detour factor
+   is too low: real routed distance was 1.66 to 4.29 times the straight line (median 1.97), so
+   the estimate was 0.30 to 0.84 of the real time (median 0.72). A thin sample, not a
+   calibration; see open items.** Two identical points give 0 s, 0 m,
    labelled `estimated` (`same_point`), with no request. A provider answer of 0 s and 0 m for
    points more than 25 m apart is treated as no route.
 7. **Route geometry** is fetched only by `route_geometry()`, for the selected itinerary, returned
    to the caller and **never cached or archived** (ADR 006); it makes one route request and
    counts against the budget. If the provider cannot give it, `None`: no line is invented.
-8. **Response size of the route request.** Documented options (`directions_type: none`, and
-   `shape_format: no_shape` when only the time is wanted) are implemented behind
-   `DETOUR_ROUTING_SLIM_ROUTE_REQUESTS`, **off by default because they are unverified**: I
-   believe from memory that both exist; the API reference could not be read. Request H of the
-   owner's check tests it. The matrix response is small (about 70 bytes a cell, 7 KB at the
-   limit) and no option was looked for.
+8. **Response size of the route request.** `directions_type: none` is sent on every route
+   request (`DETOUR_ROUTING_SLIM_ROUTE_REQUESTS`, on by default). Checked by the owner on
+   2026-11-12: the maneuvers disappear and a 662 m walk went from 2,214 to 896 bytes (-60%); on a
+   long drive the saving is larger because the directions grow with the route. `shape_format:
+   no_shape` was also tried and **did not remove the shape on this server**, so it is not sent;
+   the shape stays in every route answer, and a leg's time request therefore still carries its
+   line. The matrix response is about 70 bytes a cell (about 7 KB at the limit) and no option was
+   looked for.
 9. **No other provider.** No second routing source, no paid fallback; when the adapter cannot
    answer, the estimate is used.
 
-## Unverified assumptions in the adapter
+## Assumptions in the adapter
+
+Checked against the owner's recorded responses on 2026-11-12:
+
+| Assumption | Status |
+|---|---|
+| `units` is `kilometers`; matrix `time` is whole seconds, route `time` fractional | **Confirmed**; extra fields (`cost`, headings) are ignored |
+| Matrix answer is `sources_to_targets` with `from_index` and `to_index` | **Confirmed** |
+| The route `shape` is an encoded polyline with six decimals | **Confirmed**: decoding the recorded shape starts and ends on the snapped points to 1e-6 |
+| `directions_type: none` exists | **Confirmed**; `shape_format: no_shape` is **not honoured** |
+| The matrix distance limit is straight-line | Source reading only (error 154 earlier); the margin absorbs differences |
+
+Still **unverified**:
 
 | Assumption | Where | If wrong |
 |---|---|---|
-| A null cell is JSON `null`, or an object with null `time` and `distance` (or either missing) | `parse_matrix` | A different shape raises, opens the breaker, estimates are used; nothing wrong is stored |
-| `units` is `kilometers` when present | both parsers | Another unit is refused, not converted |
-| `POST` with a JSON body is accepted on `/sources_to_targets` and `/route` (the owner's checks used `GET ?json=`) | `_post` | The first call fails and opens the breaker: **the owner's first real use will show this** |
-| The route `shape` is an encoded polyline with six decimals | `decode_polyline6` | Wrong coordinates would be drawn; out-of-range points are refused. Check with a known route |
-| `directions_type` / `shape_format: no_shape` exist | slim option | Off by default |
-| The matrix distance limit is straight-line (the source reading says so) | chunking | The margin absorbs small differences; a refusal opens the breaker |
+| A null cell is JSON `null`, or an object with null `time` and `distance` (or either missing); no unreachable cell was in the owner's samples | `parse_matrix` | A different shape raises, opens the breaker, estimates are used; nothing wrong is stored |
+| `POST` with a JSON body is accepted on `/sources_to_targets` and `/route` (the owner's checks used `GET ?json=`) | `_post` | The first call fails and opens the breaker: **the first real use will show this** |
+| A 1 x 100 request agrees with the plain route as 1 x 10 did | chunking | A wrong time would be cached for that shape; see the optional follow-up above |
 
-The contract tests use fixtures in the documented format, **not live recordings**
-(`services/api/tests/fixtures/valhalla/README.md`). They must be replaced by real recordings after
-the owner's check.
+The fixtures `*-documented.json` (null cell, long route) are still documented-format, not
+recordings; the `*-recorded.json` ones are real
+(`services/api/tests/fixtures/valhalla/README.md`).
 
 ## Alternatives
 
@@ -157,6 +177,9 @@ the owner's check.
 
 ## Open items (owner)
 
-1. Run `docs/spikes/fossgis-request-shape-check.md` (eight clicks) and record the results here.
-2. Notify FOSSGIS via GitHub Discussions before the app is published to end users (ADR 004).
-3. Confirm or change the numbers in decisions 3, 5 and 6.
+1. Confirm or change the numbers in decisions 3, 5 and 6, in particular the walking detour
+   factor (1.3), which the first real data says is low.
+2. Optional: one 1 x 50 request against three plain routes, to extend the shape check to a larger
+   batch.
+3. ~~Notify FOSSGIS~~ Not needed: the owner decided on 2026-11-12 that the app is for the owner and
+   one other person only (see the addendum in ADR 004). Revisit if it is ever shared more widely.

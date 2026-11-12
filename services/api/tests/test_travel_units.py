@@ -204,3 +204,55 @@ def test_driving_estimate_uses_a_faster_speed_beyond_the_city_tier() -> None:
     flat_urban = meters / RULES["drive"].near_speed
     assert seconds < flat_urban  # not the whole way at city speed
     assert estimate(rome, florence, "drive") == (seconds, meters)  # symmetric
+
+
+# -- real responses recorded by the owner on 2026-11-12 -------------------------------------------
+
+RECORDED_1X10 = json.loads((FIXTURES / "matrix-1x10-recorded.json").read_text())
+RECORDED_1X1 = json.loads((FIXTURES / "matrix-1x1-recorded.json").read_text())
+RECORDED_ROUTE = json.loads((FIXTURES / "route-walk-recorded.json").read_text())
+RECORDED_ROUTE_SLIM = json.loads(
+    (FIXTURES / "route-walk-directions-none-recorded.json").read_text()
+)
+
+
+def test_recorded_1x10_matrix_is_read_cell_by_cell() -> None:
+    cells, algorithm = parse_matrix(RECORDED_1X10, 10)
+    assert algorithm == "timedistancematrix"
+    assert [(c.seconds, c.meters) for c in cells] == [
+        (0, 0),
+        (523, 662),
+        (1806, 2375),
+        (1750, 2502),
+        (2183, 2989),
+        (1568, 1935),
+        (685, 895),
+        (1242, 1726),
+        (1567, 2187),
+        (1963, 2739),
+    ]  # the extra "cost" field in each cell is ignored
+
+
+def test_recorded_1x1_matrix_gives_the_pair_the_owner_measured() -> None:
+    cells, _ = parse_matrix(RECORDED_1X1, 1)
+    assert [(c.seconds, c.meters) for c in cells] == [(523, 662)]
+
+
+def test_recorded_route_gives_the_same_pair_within_a_second() -> None:
+    seconds, meters, points = parse_route(RECORDED_ROUTE, with_geometry=True)
+    # The matrix says 523 (whole seconds); the route says 523.995 and is rounded to 524.
+    assert (seconds, meters) == (524, 662)
+    assert len(points) == 32
+    # the decoded line starts and ends on the snapped points the server reported
+    assert list(points[0]) == pytest.approx([43.763165, 11.229449], abs=1e-6)
+    assert list(points[-1]) == pytest.approx([43.766442, 11.230159], abs=2e-6)
+
+
+def test_recorded_route_without_maneuvers_is_smaller_and_parses_the_same() -> None:
+    full = (FIXTURES / "route-walk-recorded.json").stat().st_size
+    slim = (FIXTURES / "route-walk-directions-none-recorded.json").stat().st_size
+    assert slim < full * 0.5
+    assert "maneuvers" not in RECORDED_ROUTE_SLIM["trip"]["legs"][0]
+    assert parse_route(RECORDED_ROUTE_SLIM, with_geometry=True) == parse_route(
+        RECORDED_ROUTE, with_geometry=True
+    )

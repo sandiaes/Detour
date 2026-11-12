@@ -391,20 +391,21 @@ def test_legs_between_distant_cities_are_one_route_request_each(env: Env) -> Non
     assert len(env.stub.requests) == 2  # cached
 
 
-def test_the_route_request_is_plain_unless_slim_requests_are_switched_on(
+def test_the_route_request_drops_the_maneuvers_unless_slim_requests_are_switched_off(
     env: Env, engine: Engine
 ) -> None:
     a, b = coord(43.7696, 11.2558), coord(41.9028, 12.4964)
     env.service.cells([(a, b)], "drive")
-    assert set(env.stub.bodies[0]) == {"locations", "costing"}
+    # the owner's check showed directions_type none works; no_shape did not remove the shape
+    assert env.stub.bodies[0]["directions_type"] == "none"
+    assert "shape_format" not in env.stub.bodies[0]
+    env.service.route_geometry(b, a, "drive")  # geometry is wanted: the shape is kept
+    assert env.stub.bodies[1]["directions_type"] == "none"
+    assert "shape_format" not in env.stub.bodies[1]
 
-    slim = Env(engine, routing_slim_route_requests=True)
-    slim.service.cells([(b, a)], "drive")  # the other direction: not in the cache yet
-    assert slim.stub.bodies[0]["directions_type"] == "none"
-    assert slim.stub.bodies[0]["shape_format"] == "no_shape"
-    slim.service.route_geometry(a, b, "drive")  # geometry is wanted: the shape is kept
-    assert slim.stub.bodies[1]["directions_type"] == "none"
-    assert "shape_format" not in slim.stub.bodies[1]
+    plain = Env(engine, routing_slim_route_requests=False)
+    plain.service.cells([(a, b)], "walk")  # another mode: not in the cache yet
+    assert set(plain.stub.bodies[0]) == {"locations", "costing"}
 
 
 def test_route_geometry_is_returned_but_never_stored(env: Env) -> None:

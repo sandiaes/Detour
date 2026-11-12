@@ -1,0 +1,1 @@
+{"sources_to_targets":[[{"from_index":0,"to_index":0,"time":523,"distance":0.662,"cost":640.622}]],"sources":[{"lat":43.763165,"lon":11.229449}],"targets":[{"lat":43.766442,"lon":11.230159}],"units":"kilometers","algorithm":"timedistancematrix"}

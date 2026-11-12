@@ -259,4 +259,5 @@ relying on them:
 - A project-owned signing key for the APK (ADR 008). Until then each build is signed with the
   public debug key.
 - Backups of the `app` schema, which is empty now (ADR 005, item 5).
-- Notifying FOSSGIS (ADR 004): the backend makes no outside calls yet.
+- Notifying FOSSGIS (ADR 004): not needed; the owner decided on 2026-11-12 that the app is for the
+  owner and one other person only (addendum to ADR 004).
