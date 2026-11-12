@@ -277,8 +277,10 @@ read the report and `review-sample.json` (ADR 011). Open items that need the own
 - confirm or change ADR 011 (the selection rule) after reading the review sample;
 - confirm the two ADR 012 owner decisions (no foreign keys across the schemas; the manual
   itinerary endpoint and the trip snapshot fields);
-- the Geofabrik terms and update cadence are still unread (`docs/api-evaluation.md` section 15),
-  and the GeoNames dump layouts are unverified until the first gazetteer run;
+- the Geofabrik terms were checked by the owner on 2026-11-12 (`docs/api-evaluation.md` section
+  4.1); the first real run (Austria) confirmed the GeoNames layouts and the `.poly` download;
+- the `geo` data is larger than estimated (71 MB for Austria against about 9 MB in spike S2):
+  find where the space goes before importing Italy (gate 6);
 - the signing key for the APK (Phase 1 carry-over) and the navigation ADR (Phase 5).
 
 Background: all Phase 0 spikes are done or removed (S1, S2, S3, S5; S4 removed). D2, D3 and D7

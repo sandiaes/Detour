@@ -285,16 +285,17 @@ resolve, always through the backend, with cached results.
 
 ## 4. Tourist attractions and points of interest
 
-### 4.1 OpenStreetMap regional extracts (Geofabrik) — ◐ Partly verified (ODbL and tag documentation read; Geofabrik's own page not reachable)
+### 4.1 OpenStreetMap regional extracts (Geofabrik) — ◐ Partly verified (ODbL and tag documentation read; Geofabrik's download-server text reported by the owner on 2026-11-12, not read by the assistant)
 
 - **Use:** the primary source of attractions, restaurants, cuisine tags and the street network, imported per region into PostGIS.
 - **Type:** open data, ODbL. Geofabrik publishes regional `.osm.pbf` extracts.
-- **Quota / card:** none. Search results indicate daily-updated free extracts; **not confirmed on Geofabrik's page**.
+- **Quota / card:** none stated. Owner-reported text from the download server (2026-11-12; the page URL was not given, the assistant could not open it): "Our download server at https://download.geofabrik.de has excerpts and derived data from the OpenStreetMap dataset available for free download. Most of these files are updated every day – any change you upload to OpenStreetMap should be on our download server the next day." The owner found **no limit or request about automated downloads** in the pages read; the pages were not searched exhaustively by the assistant.
+- **Licence statement (owner-reported, same date):** "All OpenStreetMap derived data on the download server is licensed under the Open Database License 1.0. You may use the data for any purpose, but you have to acknowledge OpenStreetMap as the data source. Derived databases have to retain the same license." This matches `docs/data-model.md` section 6.
 - **Commercial use:** "The ODbL allows you to use the OSM data for any purpose you like. This includes personal, community, educational, commercial or governmental."
 - **Caching / storage:** allowed. If an adapted OSM database is used publicly, it is a Derivative Database and must be offered under ODbL on request. Independent data kept alongside (user trips, prices, notes, photos) forms a Collective Database and is not affected. See `docs/data-model.md`.
 - **Attribution:** "© OpenStreetMap contributors" with a link to the copyright page, visible without interaction; a splash screen or a corner of the map are both acceptable.
 - **Coverage / quality:** global. Attractions are well mapped in tourist areas. Restaurants: presence is good in cities, `cuisine` is common, `opening_hours` is patchy and can be stale. There is no popularity or rating signal.
-- **Measured (spike S2, 2026-11-12):** extract sizes for Austria, Czechia, Hungary, Italy and Japan are 0.33–2.57 GB (6.9 GB together); see `docs/spikes/s2-data-findings.md`. Downloads from `download.geofabrik.de` worked with an identifying User-Agent; the terms and cadence pages were still not read.
+- **Measured (spike S2, 2026-11-12):** extract sizes for Austria, Czechia, Hungary, Italy and Japan are 0.33–2.57 GB (6.9 GB together); see `docs/spikes/s2-data-findings.md`. Downloads from `download.geofabrik.de` worked with an identifying User-Agent, and the Phase 2 import workflow downloaded the Austria extract (2026-11-12). Terms and cadence: see the owner-reported text above.
 - **Risks:** data quality varies by country; tags are free-form; the import pipeline is ours to maintain.
 - **Exceeded:** n/a.
 - **Fallback:** Overture Places and FSQ OS Places to fill coverage gaps.
@@ -818,7 +819,7 @@ mledoze/countries; ECB reference rates. ODbL share-alike and attribution obligat
 
 | Item | Why it matters | When |
 |---|---|---|
-| Geofabrik extract terms and cadence | Primary data pipeline | Phase 0. **Still open after Phase 2**: `download.geofabrik.de` is not reachable from the development environment, so the terms were not read; the import workflow downloads one extract per run with an identifying User-Agent |
+| Geofabrik extract terms and cadence | Primary data pipeline | Phase 0. **Closed on 2026-11-12 from the owner's report** (not read by the assistant, which cannot reach the host): free download under ODbL with OSM credit, most files updated daily, no automated-download limit found. Re-check the page before any scheduled or larger-volume use |
 | Valhalla resource needs for Japan, Austria, Czechia and Hungary (Italy measured in S3) | Sizing the routing container if self-hosted | Only if self-hosting is chosen |
 | GeoNames dump readme (file names, columns) | Gazetteer import | Phase 2. **Still open**: `download.geonames.org` is not reachable from the development environment. The importer validates the layouts it reads and stops on a mismatch; the first real run of the workflow confirms or refutes them |
 | openrouteservice plans and terms | Only hosted routing fallback worth having | Before adopting |
