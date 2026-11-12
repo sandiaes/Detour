@@ -330,8 +330,8 @@ Every import stores a report in `geo.import_run.report` (and writes `report.json
 and `review-sample.json` as workflow artifacts): source file and hash, places by kind with the
 share named, with a cuisine, with Wikidata and with Latin letters in the name, administrative
 areas, **excluded objects per class and reason**, the largest categories, the size of the `geo`
-schema, and the six gates of [ADR 009](decisions/009-region-readiness-thresholds.md) with their
-values. A region is `available` only if every gate passes; an unknown value never passes.
+schema (measured after the vacuum that follows the commit, which is the size gate 6 uses), and
+the six gates of [ADR 009](decisions/009-region-readiness-thresholds.md) with their values. A region is `available` only if every gate passes; an unknown value never passes.
 
 ## 8. Future: photos
 

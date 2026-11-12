@@ -48,7 +48,12 @@ Verification marks as in `api-evaluation.md`: ✅ read on 2026-11-12; ◐ partly
    `geo.import_run` row so a failed run is recorded. The report is built from counters while
    streaming and checked against the database before the commit; a mismatch aborts the import.
    It needs a session-mode connection (the CLI refuses port 6543).
-5. **Gates are computed on exact ratios**, not on rounded display values (a test caught 89.98 %
+5. **Gate 6 is judged on the size after the vacuum** (amended 2026-11-12): inside the import
+   transaction the files still hold the dead row versions the import is about to free, and the
+   third Austria report showed 87 MB there against 33 MB after the vacuum. The other five gates
+   are decided in the transaction; after the vacuum gate 6 is recomputed, and the stored report
+   and the region status are updated if the outcome moves.
+   **Gates are computed on exact ratios**, not on rounded display values (a test caught 89.98 %
    rounding to 90.0). A region becomes `available` only if all six gates pass, otherwise
    `disabled`; there is no manual override. **Gate 5 uses the Latin-letter share** because no
    display rule exists yet (`DISPLAY_RULE_IMPLEMENTED = False`), so Japan fails it as ADR 009
