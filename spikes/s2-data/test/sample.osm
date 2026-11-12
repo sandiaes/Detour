@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="hand-made test sample">
+  <node id="1" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2082" lon="16.3738">
+    <tag k="tourism" v="museum"/>
+    <tag k="name" v="Test Museum"/>
+    <tag k="name:en" v="Test Museum"/>
+    <tag k="opening_hours" v="Tu-Su 10:00-18:00"/>
+    <tag k="wikidata" v="Q1"/>
+  </node>
+  <node id="2" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2100" lon="16.3700">
+    <tag k="amenity" v="restaurant"/>
+    <tag k="name" v="東京ラーメン"/>
+    <tag k="cuisine" v="ramen"/>
+  </node>
+  <node id="3" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2200" lon="16.3800">
+    <tag k="amenity" v="cafe"/>
+  </node>
+  <node id="4" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.3000" lon="16.4000"/>
+  <node id="5" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.3000" lon="16.4100"/>
+  <node id="6" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.3100" lon="16.4100"/>
+  <node id="7" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.3100" lon="16.4000"/>
+  <node id="8" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2300" lon="16.3900">
+    <tag k="shop" v="bakery"/>
+    <tag k="name" v="Ignored bakery"/>
+  </node>
+  <way id="10" version="1" timestamp="2026-01-01T00:00:00Z">
+    <nd ref="4"/><nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="4"/>
+    <tag k="historic" v="castle"/>
+    <tag k="name" v="Test Castle"/>
+    <tag k="wikidata" v="Q2"/>
+  </way>
+  <way id="11" version="1" timestamp="2026-01-01T00:00:00Z">
+    <nd ref="4"/><nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="4"/>
+  </way>
+  <relation id="20" version="1" timestamp="2026-01-01T00:00:00Z">
+    <member type="way" ref="11" role="outer"/>
+    <tag k="type" v="multipolygon"/>
+    <tag k="tourism" v="zoo"/>
+    <tag k="name" v="Test Zoo"/>
+  </relation>
+</osm>
