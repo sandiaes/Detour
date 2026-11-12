@@ -72,4 +72,5 @@ the items marked ✗ above and amends decision 2.
 - **Signing:** the spike APK is signed with the public React Native debug key. Before any build
   is kept for real use, the project needs its own keystore, stored as a GitHub Actions secret
   and applied without hand-editing the native project. Switching keys requires one uninstall.
-- Still open: the owner's confirmation that the APK runs on the phone (S1 findings, section 3).
+- **Confirmed on a phone:** the owner installed the APK on a Samsung Galaxy S22 with Android 16
+  on 2026-11-12; the OpenFreeMap map rendered (S1 findings, section 1).

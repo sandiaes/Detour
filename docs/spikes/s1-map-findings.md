@@ -24,12 +24,13 @@ success:
 | Signature | APK Signature Scheme v2, `CN=Android Debug`, certificate SHA-256 `fac61745…91033b9c` (see Signing) |
 | Cost | about 14 runner minutes, about $0.08 at $0.006 per minute, drawn from the $12 monthly allowance (section 7) |
 
-**Not yet proven: the map on a real phone.** No emulator or phone was available to this session
-(the container cannot reach Google's Android download hosts or `tiles.openfreemap.org`). What is
-proven: the native MapLibre module compiled and linked into the APK, the JavaScript bundle
-compiled with the style URL coming from the config object, and the APK is signed and installable
-in form. The owner's install in section 3 closes this; until then S1 is **built, not yet seen
-running**.
+**The map renders on a real phone (confirmed by the owner, 2026-11-12).** The owner installed the
+APK from run 43213779230 by the steps in section 3 on a **Samsung Galaxy S22 with Android 16**.
+The map appeared, and the status box read: `Detour spike S1`, `Map: loaded`,
+`Config: bundled stand-in (spike-s1-2026-11-12)`, `From: spike-config.json`, and the Liberty style
+URL. So MapLibre React Native 11.5.1 renders the OpenFreeMap style in our own build, with the
+style URL taken from the config object. The owner did not report on the attribution line or the
+"i" button; that check is still open (section 8).
 
 Nothing on this path needs an Expo account, Expo's servers or Android Studio. Expo's cloud build
 (section 6) is therefore not needed.
@@ -187,8 +188,8 @@ Actions stops being usable (for example, minutes run out in a private repository
 
 ## 8. Open items
 
-- The owner installs the APK and reports (section 3, step 10). Until then, "renders on a real
-  phone" is unconfirmed; only the build and the APK contents are proven.
+- Confirm on the phone that the credit line shows at start, collapses to "i" after five seconds
+  or on panning, and comes back when "i" is tapped (section 5). Not yet reported.
 - Own signing key before any build that is kept (section 2).
 - Only `arm64-v8a` is built, to keep the APK small. Nearly all current phones use it; an older
   32-bit phone would need `armeabi-v7a` added.
