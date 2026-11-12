@@ -48,3 +48,17 @@ works and the second is refused.
 |---|---|---|
 | 20 sources x 5 targets | 100 cells, 25 locations | [open](https://valhalla1.openstreetmap.de/sources_to_targets?json=%7B%22sources%22%3A%5B%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2402%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2454%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2454%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2454%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2454%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2454%7D%5D%2C%22targets%22%3A%5B%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2298%7D%5D%2C%22costing%22%3A%22pedestrian%22%7D) |
 | 11 sources x 10 targets | 110 cells, 21 locations | [open](https://valhalla1.openstreetmap.de/sources_to_targets?json=%7B%22sources%22%3A%5B%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2402%7D%5D%2C%22targets%22%3A%5B%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.2298%7D%2C%7B%22lat%22%3A43.7624%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.766%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7732%2C%22lon%22%3A11.235%7D%2C%7B%22lat%22%3A43.7768%2C%22lon%22%3A11.235%7D%5D%2C%22costing%22%3A%22pedestrian%22%7D) |
+
+## Result of the follow-up (2026-11-12, by the owner)
+
+| Test | Result |
+|---|---|
+| 20 sources x 5 targets (100 cells, 25 locations) | Worked |
+| 11 sources x 10 targets (110 cells, 21 locations) | Refused: `error_code` 150, "Exceeded max locations: 100.000000" |
+
+Conclusion: the limit is **100 cells (sources x targets) per request**, whatever the number of locations.
+
+**Unexplained observation.** The same pair (point 0 to point 1, 0.662 km) took 523 s in the
+2 x 2 and 10 x 10 requests and 653 s in the 20 x 5 request. The distance was identical. The
+responses named different algorithms (`timedistancematrix`, `costmatrix`) across requests, but the
+cause of the 25% difference is not established.

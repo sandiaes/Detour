@@ -78,14 +78,18 @@ Rules this would amend, if approved:
 - **Matrix limit measured (owner, by hand, 2026-11-12):** 2 x 2 and 10 x 10 pedestrian
   matrices worked (the 10 x 10 took about 1 second); 25 x 25 and 50 x 50 were refused with
   `error_code` 150, "Exceeded max locations: 100.000000". The consistent reading is a limit of
-  100 cells (sources x targets) per request; a follow-up in `docs/spikes/fossgis-matrix-check.md`
-  confirms it. At that size a full 50 x 50 matrix needs 25 requests, so Phase 3 must plan
+  100 cells (sources x targets) per request, confirmed by a follow-up (20 x 5 = 100 cells worked;
+  11 x 10 = 110 cells was refused). At that size a full 50 x 50 matrix needs 25 requests, so Phase 3 must plan
   sparse matrices (each place against a bounded set of neighbours) and cache every cell.
 - **No availability promise.** The operators can throttle or block at any time.
 - **Data versions.** Their OSM snapshot differs from our `geo` extract, so a time can describe a
   road that our data lacks. Determinism then rests on the cache and recorded responses, not on
   our own data version.
 - **Scope of "personal".** Publishing to other users raises load and requires notification.
+- **Times can differ between request shapes.** The same pair returned 523 s in two requests and
+  653 s in a 20 x 5 request, with the same distance (cause unknown). Phase 3 must therefore
+  request cells in one fixed chunk shape, store the provider response with each cached cell,
+  and test whether the difference persists before relying on cached values.
 - **Request volume is unmeasured.** No estimate of calls per itinerary exists yet.
 
 ## Consequences if accepted
