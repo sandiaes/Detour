@@ -143,9 +143,7 @@ jobs:
           target: google_apis
           profile: pixel_6
           disable-animations: true
-          script: |
-            adb install "$RUNNER_TEMP/app-release.apk"
-            maestro test --format junit --output "$RUNNER_TEMP/maestro-report.xml" --debug-output "$RUNNER_TEMP/maestro-debug" apps/mobile/e2e/trip-flow.yaml
+          script: bash apps/mobile/e2e/run-e2e.sh
 
       - name: Upload the report and the API log
         if: always()
@@ -155,6 +153,8 @@ jobs:
           path: |
             ${{ runner.temp }}/maestro-report.xml
             ${{ runner.temp }}/maestro-debug
+            ${{ runner.temp }}/screen.png
+            ${{ runner.temp }}/logcat.txt
             ${{ runner.temp }}/api.log
           retention-days: 7
           if-no-files-found: ignore
