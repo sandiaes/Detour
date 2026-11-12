@@ -15,11 +15,6 @@ on:
         description: "Backend base URL baked into the app, e.g. https://detour-api.onrender.com (empty: the repository variable DETOUR_API_URL)"
         required: false
         default: ""
-  # Temporary, while Phase 1 is on its working branch (a dispatch button only appears once this
-  # file is on the default branch). Removed before the phase is closed.
-  push:
-    branches: [claude/affectionate-faraday-td3c57]
-    paths: [".github/workflows/android-apk.yml", "apps/mobile/**", "packages/shared/**"]
 
 permissions:
   contents: read
