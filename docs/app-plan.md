@@ -22,7 +22,7 @@ Recorded on 2026-11-12 from the owner's answers.
 | D11 | Which open-source licence, and when the repository becomes public | New, follows from D1. Transitous requires published source under an open-source licence. | **Open** |
 | D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
 | D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
-| D14 | Hosting constraint | Owner has no server and wants free, managed services. Compatibility with Valhalla is being measured in S3. | Constraint |
+| D14 | Hosting constraint | Owner has no server and wants free, managed services. Compatibility with Valhalla is being measured in S3. Using the FOSSGIS demo server instead is proposed in ADR 004 (not approved). | Constraint |
 
 ### Notes on the decided items
 
