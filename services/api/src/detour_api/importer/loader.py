@@ -337,13 +337,32 @@ def assign_cities(conn: psycopg.Connection[Any], region_id: str) -> int:
     return cur.rowcount
 
 
+# An import that removes at least this many rows rewrites the tables afterwards (VACUUM FULL), so
+# the database file shrinks. Smaller clean-ups only make the space reusable.
+FULL_VACUUM_THRESHOLD = 1000
+
+# Places and prices in app that name a geo place keep it from being deleted (soft reference, no
+# foreign key: the trip keeps its own snapshot either way).
+_REFERENCED_BY_APP = (
+    "EXISTS (SELECT 1 FROM app.itinerary_item i WHERE i.place_id = p.id)"
+    " OR EXISTS (SELECT 1 FROM app.price_record r WHERE r.place_id = p.id)"
+)
+
+
 def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) -> dict[str, int]:
+    """Bring the region's geo rows in line with the staged ones.
+
+    Rows that did not change are not written at all (``WHERE ... IS DISTINCT FROM``): rewriting
+    them would leave a dead copy of every row behind on each import. Places that are gone from the
+    extract are deleted, unless an itinerary item or price record still names them, in which case
+    they stay with ``is_active = false``.
+    """
     params = {"region": region.id, "run": run_id, "lic": OSM_LICENCE}
     conn.execute(
         """
         INSERT INTO geo.place
             (id, region_id, kind, category, name, name_norm, names_i18n, geom, address,
-             is_active, first_import_run_id, last_seen_import_run_id)
+             is_active, first_import_run_id, last_changed_import_run_id)
         SELECT id, %(region)s, kind, category, name, name_norm, names_i18n,
                ST_SetSRID(ST_MakePoint(lon, lat), 4326), address, true, %(run)s, %(run)s
         FROM stage_place
@@ -351,17 +370,25 @@ def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) 
             kind = EXCLUDED.kind, category = EXCLUDED.category, name = EXCLUDED.name,
             name_norm = EXCLUDED.name_norm, names_i18n = EXCLUDED.names_i18n,
             geom = EXCLUDED.geom, address = EXCLUDED.address, is_active = true,
-            last_seen_import_run_id = EXCLUDED.last_seen_import_run_id
+            last_changed_import_run_id = EXCLUDED.last_changed_import_run_id
+        WHERE (geo.place.kind, geo.place.category, geo.place.name, geo.place.name_norm,
+               geo.place.names_i18n, geo.place.geom, geo.place.address, geo.place.is_active)
+              IS DISTINCT FROM
+              (EXCLUDED.kind, EXCLUDED.category, EXCLUDED.name, EXCLUDED.name_norm,
+               EXCLUDED.names_i18n, EXCLUDED.geom, EXCLUDED.address, true)
         """,
         params,
     )
     conn.execute(
-        "DELETE FROM geo.place_source ps USING stage_place s"
-        " WHERE ps.place_id = s.id AND ps.source = 'osm'"
-    )
-    conn.execute(
-        "INSERT INTO geo.place_source (place_id, source, source_ref, licence_code, tags,"
-        " import_run_id) SELECT id, 'osm', source_ref, %(lic)s, tags, %(run)s FROM stage_place",
+        """
+        INSERT INTO geo.place_source (place_id, source, source_ref, licence_code, tags, import_run_id)
+        SELECT id, 'osm', source_ref, %(lic)s, tags, %(run)s FROM stage_place
+        ON CONFLICT (place_id, source, source_ref) DO UPDATE SET
+            licence_code = EXCLUDED.licence_code, tags = EXCLUDED.tags,
+            import_run_id = EXCLUDED.import_run_id
+        WHERE (geo.place_source.licence_code, geo.place_source.tags)
+              IS DISTINCT FROM (EXCLUDED.licence_code, EXCLUDED.tags)
+        """,
         params,
     )
     conn.execute(
@@ -376,6 +403,10 @@ def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) 
         ON CONFLICT (place_id) DO UPDATE SET
             cuisines = EXCLUDED.cuisines, venue_type = EXCLUDED.venue_type,
             meal_types = EXCLUDED.meal_types, diet_flags = EXCLUDED.diet_flags
+        WHERE (geo.restaurant_profile.cuisines, geo.restaurant_profile.venue_type,
+               geo.restaurant_profile.meal_types, geo.restaurant_profile.diet_flags)
+              IS DISTINCT FROM
+              (EXCLUDED.cuisines, EXCLUDED.venue_type, EXCLUDED.meal_types, EXCLUDED.diet_flags)
         """
     )
     conn.execute(
@@ -385,34 +416,60 @@ def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) 
         ON CONFLICT (place_id) DO UPDATE SET
             wikidata_id = EXCLUDED.wikidata_id, osm_signals = EXCLUDED.osm_signals,
             score = EXCLUDED.score
+        WHERE (geo.place_signal.wikidata_id, geo.place_signal.osm_signals, geo.place_signal.score)
+              IS DISTINCT FROM (EXCLUDED.wikidata_id, EXCLUDED.osm_signals, EXCLUDED.score)
         """
     )
+    # Places of this region that are not in the new extract (this also clears places that an
+    # earlier version of the import only deactivated).
+    purged = conn.execute(
+        f"""
+        DELETE FROM geo.place p
+        WHERE p.region_id = %(region)s
+          AND NOT EXISTS (SELECT 1 FROM stage_place s WHERE s.id = p.id)
+          AND NOT ({_REFERENCED_BY_APP})
+        """,
+        params,
+    ).rowcount
     deactivated = conn.execute(
-        "UPDATE geo.place SET is_active = false"
-        " WHERE region_id = %(region)s AND is_active AND last_seen_import_run_id <> %(run)s",
+        """
+        UPDATE geo.place p SET is_active = false
+        WHERE p.region_id = %(region)s AND p.is_active
+          AND NOT EXISTS (SELECT 1 FROM stage_place s WHERE s.id = p.id)
+        """,
         params,
     ).rowcount
     conn.execute(
         """
         INSERT INTO geo.admin_area
             (id, region_id, name, name_norm, level, country_iso2, geom, source, source_ref,
-             licence_code, is_active, last_seen_import_run_id)
+             licence_code, is_active, last_changed_import_run_id)
         SELECT s.id, %(region)s, s.name, s.name_norm, s.level, c.iso2,
                ST_SetSRID(s.geom, 4326), 'osm', s.source_ref, %(lic)s, true, %(run)s
         FROM stage_area s LEFT JOIN geo.country c ON c.iso2 = s.country_iso2
         ON CONFLICT (source, source_ref) DO UPDATE SET
             name = EXCLUDED.name, name_norm = EXCLUDED.name_norm, level = EXCLUDED.level,
             country_iso2 = EXCLUDED.country_iso2, geom = EXCLUDED.geom, is_active = true,
-            last_seen_import_run_id = EXCLUDED.last_seen_import_run_id
+            last_changed_import_run_id = EXCLUDED.last_changed_import_run_id
+        WHERE (geo.admin_area.name, geo.admin_area.name_norm, geo.admin_area.level,
+               geo.admin_area.country_iso2, geo.admin_area.geom, geo.admin_area.is_active)
+              IS DISTINCT FROM
+              (EXCLUDED.name, EXCLUDED.name_norm, EXCLUDED.level, EXCLUDED.country_iso2,
+               EXCLUDED.geom, true)
         """,
         params,
     )
-    areas_deactivated = conn.execute(
-        "UPDATE geo.admin_area SET is_active = false"
-        " WHERE region_id = %(region)s AND is_active AND last_seen_import_run_id <> %(run)s",
+    # Trips keep their own snapshot of a destination, so an area that is gone can simply go.
+    areas_purged = conn.execute(
+        "DELETE FROM geo.admin_area a WHERE a.region_id = %(region)s"
+        " AND NOT EXISTS (SELECT 1 FROM stage_area s WHERE s.source_ref = a.source_ref)",
         params,
     ).rowcount
-    return {"places_deactivated": deactivated, "admin_areas_deactivated": areas_deactivated}
+    return {
+        "places_purged": purged,
+        "places_deactivated": deactivated,
+        "admin_areas_purged": areas_purged,
+    }
 
 
 def _db_counts(conn: psycopg.Connection[Any], region_id: str) -> dict[str, dict[str, int]]:
@@ -537,6 +594,7 @@ def load_region(
             "gates": [g.as_dict() for g in gates],
             "all_gates_passed": all_passed,
             "region_status": status,
+            "retention": merge_counts,
             "warnings": warnings,
         }
         run_counts = {
@@ -544,8 +602,9 @@ def load_region(
             "places_total": sum(v.total for v in counters.kinds.values()),
             "excluded_total": report["excluded"]["total"],  # type: ignore[index]
             "admin_areas": counters.areas,
+            "places_purged": merge_counts["places_purged"],
             "places_deactivated": merge_counts["places_deactivated"],
-            "admin_areas_deactivated": merge_counts["admin_areas_deactivated"],
+            "admin_areas_purged": merge_counts["admin_areas_purged"],
             "cities_assigned_now": assigned,
         }
         conn.execute(
@@ -560,20 +619,24 @@ def load_region(
     return report, counters
 
 
-def vacuum_and_analyze(conn: psycopg.Connection[Any]) -> None:
-    """After the commit: reclaim the row versions a re-import leaves behind, refresh statistics.
+def vacuum_and_analyze(conn: psycopg.Connection[Any], full: bool = False) -> int | None:
+    """After the commit: reclaim dead row versions and refresh statistics. Returns the new size.
 
-    An import upserts every row, so without this the previous versions stay as dead space until
-    the database's own autovacuum gets to them. Best effort: the data is already committed.
+    A plain VACUUM makes dead space reusable but does not shrink the files; ``full`` rewrites the
+    tables, which is what lowers the size Supabase counts after a large clean-up. Best effort: the
+    data is already committed.
     """
     try:
         conn.autocommit = True
+        options = "FULL, ANALYZE" if full else "ANALYZE"
         conn.execute(
-            "VACUUM (ANALYZE) geo.place, geo.place_source, geo.restaurant_profile,"
+            f"VACUUM ({options}) geo.place, geo.place_source, geo.restaurant_profile,"
             " geo.place_signal, geo.admin_area"
         )
+        return _geo_bytes(conn)
     except psycopg.Error as exc:
         log.warning("vacuum_failed", error=type(exc).__name__)
+        return None
     finally:
         conn.autocommit = False
 
@@ -600,7 +663,11 @@ def import_region(
         except Exception as exc:
             fail_run(conn, run_id, region.id, f"{type(exc).__name__}: {exc}")
             raise
-        vacuum_and_analyze(conn)
+        removed = report["retention"]["places_purged"] + report["retention"]["admin_areas_purged"]
+        report["geo_size_after_vacuum_bytes"] = vacuum_and_analyze(
+            conn, full=removed >= FULL_VACUUM_THRESHOLD
+        )
+        report["vacuum"] = "full" if removed >= FULL_VACUUM_THRESHOLD else "plain"
     log.info("import_done", region=region.id, status=report["region_status"])
     return report, counters
 

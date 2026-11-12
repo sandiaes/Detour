@@ -291,9 +291,21 @@ def render_markdown(report: dict[str, Any]) -> str:
         out.append(f"| {row['kind']} | {row['category']} | {row['count']} |")
     out += [
         "",
-        f"Geo schema size: {report['geo_size_bytes']} bytes (gate 6 limit {GEO_SIZE_LIMIT_BYTES}).",
-        "",
+        f"Geo schema size at commit: {report['geo_size_bytes']} bytes (gate 6 limit "
+        f"{GEO_SIZE_LIMIT_BYTES}); this still counts dead row versions that the vacuum after the "
+        "commit frees.",
     ]
+    retention = report.get("retention")
+    if retention:
+        out.append(
+            f"Rows removed because they are gone from the extract: {retention['places_purged']} "
+            f"places, {retention['admin_areas_purged']} areas; kept inactive because an itinerary "
+            f"item or price still names them: {retention['places_deactivated']}."
+        )
+    after = report.get("geo_size_after_vacuum_bytes")
+    if after is not None:
+        out.append(f"Geo schema size after the {report['vacuum']} vacuum: {after} bytes.")
+    out.append("")
     if report["warnings"]:
         out += ["## Warnings", ""] + [f"- {w}" for w in report["warnings"]] + [""]
     return "\n".join(out)

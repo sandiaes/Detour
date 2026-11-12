@@ -319,7 +319,7 @@ def add_bulk_places(env: ApiEnv, count: int = 20_000) -> None:
         conn.execute(
             """
             INSERT INTO geo.place (id, region_id, kind, category, name, name_norm, geom,
-                                   first_import_run_id, last_seen_import_run_id)
+                                   first_import_run_id, last_changed_import_run_id)
             SELECT md5('bulk' || n)::uuid, 'test-region', 'attraction', 'viewpoint',
                    'Bulk ' || n, 'bulk ' || n || ' ' || md5(n::text),
                    ST_SetSRID(ST_MakePoint(10 + mod(n, 1000) / 100.0, 46 + (n / 1000) / 10.0), 4326),
