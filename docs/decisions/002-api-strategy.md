@@ -3,7 +3,7 @@
 - **Status:** Accepted on 2026-11-12.
 - **Date:** 2026-11-12
 - **Related:** [`../api-evaluation.md`](../api-evaluation.md), [`001-technology-stack.md`](001-technology-stack.md)
-- **Amended by:** [`003-scope-opening-hours-and-attractions.md`](003-scope-opening-hours-and-attractions.md) (opening hours removed)
+- **Amended by:** [`003-scope-opening-hours-and-attractions.md`](003-scope-opening-hours-and-attractions.md) (opening hours removed); [`004-fossgis-valhalla-demo-server.md`](004-fossgis-valhalla-demo-server.md) (uncached travel times may come from the FOSSGIS Valhalla server)
 
 ## Context
 
@@ -54,7 +54,7 @@ What the official terms say, in short (details and sources in `api-evaluation.md
 | Reverse geocoding | Nearest-place query on own data | Photon reverse |
 | Attractions and restaurants | OpenStreetMap regional extract | Overture Places and Foursquare OS Places after the MVP |
 | Notability signal | Wikidata, joined by the OSM `wikidata` tag, fetched at import | OSM tag signals only |
-| Walking and driving times | Self-hosted Valhalla | Straight-line estimate labelled as estimated |
+| Walking and driving times | FOSSGIS Valhalla server through a cached adapter (ADR 004); self-hosted Valhalla if S3 and the owner choose it | Straight-line estimate labelled as estimated |
 | Countries and currencies | Static seed from GeoNames country data and mledoze/countries | none needed |
 | Exchange rates | Frankfurter, fetched daily and stored | ECB daily reference rates; then fawazahmed0/exchange-api |
 | Restaurant prices | User-entered price records | none; "No price data" |

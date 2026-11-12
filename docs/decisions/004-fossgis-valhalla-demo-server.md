@@ -1,7 +1,8 @@
 # ADR 004 — FOSSGIS Valhalla demo server as the MVP travel-time provider
 
-- **Status:** **Proposed.** Not in force until the owner approves. Until then CLAUDE.md applies
-  unchanged: no call to public community servers, and plan generation makes no third-party calls.
+- **Status:** **Accepted** on 2026-11-12 (owner approval). CLAUDE.md and ADR 002 were amended
+  in the same change. Open item before Phase 3: a manual check of the largest matrix the
+  server accepts (`docs/spikes/fossgis-matrix-check.md`).
 - **Date:** 2026-11-12
 - **Related:** [`001-technology-stack.md`](001-technology-stack.md),
   [`002-api-strategy.md`](002-api-strategy.md), [`../app-plan.md`](../app-plan.md) (D3, D14),
