@@ -26,6 +26,13 @@
   <node id="46" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2426" lon="16.4"><tag k="historic" v="stone"/><tag k="name" v="Rune stone"/><tag k="wikidata" v="Q2004"/></node>
   <node id="47" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2427" lon="16.4"><tag k="historic" v="tomb"/></node>
   <node id="48" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2428" lon="16.4"><tag k="historic" v="ruins"/><tag k="name" v="Old ruins"/></node>
+  <node id="49" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2429" lon="16.4000"><tag k="historic" v="milestone"/><tag k="name" v="Old milestone"/></node>
+  <node id="50" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.243" lon="16.4000"><tag k="historic" v="railway"/><tag k="name" v="Old line"/><tag k="wikidata" v="Q2005"/></node>
+  <node id="51" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2431" lon="16.4000"><tag k="historic" v="tree_shrine"/><tag k="name" v="Tree shrine"/><tag k="wikidata" v="Q2006"/></node>
+  <node id="52" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2432" lon="16.4000"><tag k="historic" v="heritage"/><tag k="name" v="Heritage thing"/></node>
+  <node id="53" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2433" lon="16.4000"><tag k="historic" v="castle"/></node>
+  <node id="54" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2434" lon="16.4000"><tag k="historic" v="citywalls"/><tag k="name" v="City wall bit"/></node>
+  <node id="55" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.2435" lon="16.4000"><tag k="historic" v="citywalls"/><tag k="name" v="Old city wall"/><tag k="wikipedia" v="de:Stadtmauer"/></node>
   <node id="1001" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.3" lon="16.4"/>
   <node id="1002" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.3" lon="16.41"/>
   <node id="1003" version="1" timestamp="2026-01-01T00:00:00Z" lat="48.31" lon="16.41"/>

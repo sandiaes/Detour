@@ -121,6 +121,11 @@ PLACE_FIXTURES = [
     ({"q": "named but ordinary"}, [], ["Named but ordinary"]),  # historic=yes, no notability
     ({"q": "heritage house"}, ["Heritage house"], []),
     ({"q": "ignored bakery"}, [], ["Ignored bakery"]),  # not a candidate class
+    ({"q": "old milestone"}, [], ["Old milestone"]),  # not a tourist class
+    ({"q": "old line"}, [], ["Old line"]),  # railway
+    ({"q": "tree shrine"}, [], ["Tree shrine"]),
+    ({"q": "heritage thing"}, [], ["Heritage thing"]),
+    ({"q": "city wall"}, ["Old city wall"], ["City wall bit"]),
 ]
 
 
@@ -145,10 +150,10 @@ def test_near_search_orders_by_distance_and_honours_the_radius(api_env: ApiEnv) 
     museum = (48.2082, 16.3738)
     wide = search(api_env, "/v1/places/search", lat=museum[0], lon=museum[1], radius_m=500)
     got = wide["results"]
-    assert [r["name"] for r in got][:2] == ["Testburg Museum", None]
+    assert [r["name"] for r in got][:2] == ["Testburg Museum", "Mühlbach Aussicht"]
     distances = [r["distance_m"] for r in got]
     assert distances == sorted(distances) and distances[0] == pytest.approx(0, abs=1)
-    assert 250 < distances[1] < 350  # the unnamed viewpoint, about 300 m away
+    assert 250 < distances[1] < 400  # Mühlbach Aussicht, about 325 m away
     narrow = search(api_env, "/v1/places/search", lat=museum[0], lon=museum[1], radius_m=100)
     assert names(narrow) == ["Testburg Museum"]
 

@@ -22,7 +22,10 @@ from detour_api.textnorm import has_latin_letters, normalize_text, stable_uuid
     ("tags", "kept", "cls", "reason"),
     [
         ({"tourism": "museum", "name": "M"}, True, "tourism=museum", "tourism"),
-        ({"tourism": "viewpoint"}, True, "tourism=viewpoint", "tourism"),  # unnamed is kept
+        ({"tourism": "viewpoint", "name": "Lookout"}, True, "tourism=viewpoint", "tourism"),
+        # ADR 011: an unnamed attraction cannot be shown in an itinerary
+        ({"tourism": "viewpoint"}, False, "tourism=viewpoint", "attraction_without_name"),
+        ({"tourism": "museum", "name": " "}, False, "tourism=museum", "attraction_without_name"),
         ({"tourism": "hotel"}, None, None, None),
         ({"shop": "bakery"}, None, None, None),
         ({"amenity": "restaurant"}, True, "amenity=restaurant", "food"),
@@ -134,12 +137,6 @@ from detour_api.textnorm import has_latin_letters, normalize_text, stable_uuid
             "generic_class_qualified",
         ),
         (
-            {"historic": "railway", "name": "n"},
-            False,
-            "historic=railway",
-            "generic_class_without_name_and_notability",
-        ),
-        (
             {"historic": "stone", "name": "n", "wikidata": "Q1"},
             True,
             "historic=stone",
@@ -151,10 +148,38 @@ from detour_api.textnorm import has_latin_letters, normalize_text, stable_uuid
             "historic=tomb",
             "generic_class_without_name_and_notability",
         ),
-        # every other historic value stays
-        ({"historic": "castle"}, True, "historic=castle", "historic"),
+        # the tourist allow-list (named)
+        ({"historic": "castle", "name": "c"}, True, "historic=castle", "historic"),
+        ({"historic": "castle"}, False, "historic=castle", "attraction_without_name"),
         ({"historic": "ruins", "name": "r"}, True, "historic=ruins", "historic"),
-        # amenity wins over historic: a restaurant in a castle is a restaurant
+        ({"historic": "Ruins ", "name": "r"}, True, "historic=Ruins ", "historic"),
+        ({"historic": "city_gate", "name": "g"}, True, "historic=city_gate", "historic"),
+        # everything else is left out, and counted by class
+        (
+            {"historic": "milestone", "name": "m"},
+            False,
+            "historic=milestone",
+            "historic_class_not_tourist",
+        ),
+        (
+            {"historic": "cannon", "name": "c"},
+            False,
+            "historic=cannon",
+            "historic_class_not_tourist",
+        ),
+        (
+            {"historic": "locomotive", "name": "l"},
+            False,
+            "historic=locomotive",
+            "historic_class_not_tourist",
+        ),
+        (
+            {"historic": "something_new", "name": "x", "wikidata": "Q1"},
+            False,
+            "historic=something_new",
+            "historic_class_not_tourist",
+        ),
+        # amenity wins over historic: a cafe in a castle is a cafe
         ({"amenity": "cafe", "historic": "castle"}, True, "amenity=cafe", "food"),
     ],
 )
@@ -168,6 +193,15 @@ def test_selection_rule(
     assert decision is not None
     assert (decision.kept, decision.osm_class, decision.reason) == (kept, cls, reason)
     assert (decision.kind is not None) == kept
+
+
+def test_the_tourist_allow_list_has_no_overlap_with_the_excluded_classes() -> None:
+    from detour_api.importer import selection
+
+    assert not selection.TOURIST_HISTORIC & selection.ALWAYS_EXCLUDED_HISTORIC
+    assert not selection.TOURIST_HISTORIC & selection.QUALIFIED_ONLY_HISTORIC
+    assert "railway" not in selection.TOURIST_HISTORIC | selection.QUALIFIED_ONLY_HISTORIC
+    assert "historic=citywalls" in selection.REVIEW_CLASSES
 
 
 def test_categories_of_generic_historic_classes_are_meaningful() -> None:
@@ -201,9 +235,10 @@ def test_cuisine_and_diet_parsing() -> None:
 
 
 def test_invalid_wikidata_values_are_unknown_not_guessed() -> None:
-    decision = decide({"tourism": "museum", "wikidata": "Q1;Q2"})
+    tags = {"tourism": "museum", "name": "m", "wikidata": "Q1;Q2"}
+    decision = decide(tags)
     assert decision is not None
-    place = build_place("r", "N", 1, decision, {"tourism": "museum", "wikidata": "Q1;Q2"}, 1.0, 2.0)
+    place = build_place("r", "N", 1, decision, tags, 1.0, 2.0)
     assert place.signal.wikidata_id is None
 
 

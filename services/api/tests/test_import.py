@@ -72,7 +72,7 @@ def test_report_counts_match_the_database(pipeline_dbs: tuple[str, str], tmp_pat
     status, counts, stored_report = run
     assert status == "succeeded"
     assert counts["places_total"] == 14
-    assert stored_report["excluded"]["total"] == report["excluded"]["total"] == 12
+    assert stored_report["excluded"]["total"] == report["excluded"]["total"] == 19
     # Excluded objects are counted per class, with a reason.
     by_class = {(r["class"], r["reason"]): r["count"] for r in report["excluded"]["by_class"]}
     assert by_class[("historic=wayside_shrine", "adr003_excluded_class")] == 1
@@ -80,7 +80,15 @@ def test_report_counts_match_the_database(pipeline_dbs: tuple[str, str], tmp_pat
     assert by_class[("historic=memorial", "memorial_without_name")] == 1
     assert by_class[("historic=memorial", "memorial_excluded_subtype")] == 1
     assert by_class[("historic=yes", "generic_class_without_name_and_notability")] == 2
-    assert sum(by_class.values()) == 12
+    # ADR 011 (owner decisions of 2026-11-12)
+    assert by_class[("tourism=viewpoint", "attraction_without_name")] == 1
+    assert by_class[("historic=castle", "attraction_without_name")] == 1
+    assert by_class[("historic=milestone", "historic_class_not_tourist")] == 1
+    assert by_class[("historic=railway", "historic_class_not_tourist")] == 2
+    assert by_class[("historic=tree_shrine", "adr003_excluded_class")] == 1
+    assert by_class[("historic=heritage", "adr003_excluded_class")] == 1
+    assert by_class[("historic=citywalls", "generic_class_without_name_and_notability")] == 1
+    assert sum(by_class.values()) == 19
 
 
 def test_importing_twice_gives_identical_results(

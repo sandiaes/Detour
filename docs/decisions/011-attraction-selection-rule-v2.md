@@ -1,6 +1,6 @@
 # ADR 011 — Attraction selection rule, version 2
 
-- **Status:** **Proposed**, implemented in Phase 2 (rules version `2026-11-12.2`). The first
+- **Status:** **Proposed**, implemented in Phase 2 (rules version `2026-11-12.3`). The first
   real import (Austria, 2026-11-12) has been read; the owner decided on three more excluded
   classes (see "Update after the first real import"). The rest of the rule is not yet confirmed.
 - **Date:** 2026-11-12
@@ -34,8 +34,11 @@ stored on every import run.
 | `tourism=attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium` | Kept, named or not | n/a |
 | `historic=wayside_shrine|wayside_cross|boundary_stone|bomb_crater` | Excluded (ADR 003) | `adr003_excluded_class` |
 | `historic=tree_shrine`, `historic=heritage`, `historic=heritage_building` | **Excluded** (owner decision, 2026-11-12, after the Austria import). Matched on the cleaned value (lower case, other characters as `_`), so `Heritage Building` is caught too | `adr003_excluded_class` |
+| Any `tourism` attraction class or allow-listed `historic` value **without a name** | **Excluded** (owner decision, 2026-11-12: "only cities and tourist spots mostly"). An unnamed "viewpoint" cannot be shown in an itinerary | `attraction_without_name` |
+| `historic=*` values **not on the tourist allow-list** | **Excluded and counted by class**. The allow-list (`TOURIST_HISTORIC`): castle, fort, fortress, palace, ruins, archaeological_site, monument, manor, monastery, abbey, church, chapel, temple, city_gate, tower, aqueduct, viaduct, bridge, battlefield, fountain, statue, technical_monument, place_of_worship, cemetery. Examples dropped: milestone, cannon, gallows, mine, quarry, locomotive, hollow_way, military, wayside_chapel, pillory, `railway` (track segments) | `historic_class_not_tourist` |
+| `historic=citywalls` | Kept only with a name and a notability tag (walls are mapped in many short pieces); joins the reviewed generic classes | `generic_class_without_name_and_notability` |
 | `historic=memorial` | **Kept only with `wikidata` and a name, and not of a small-object subtype** (`memorial` = `plaque`, `blue_plaque`, `stolperstein`, `ghost_bike`, `bench`, `grave`, `war_grave`, `cross`, `stone`) | `memorial_without_wikidata`, `memorial_without_name`, `memorial_excluded_subtype` |
-| `historic=yes|building|railway|stone|tomb` | **Kept only with a name and at least one notability tag** (`wikidata`, `wikipedia` or `heritage`) | `generic_class_without_name_and_notability` |
+| `historic=yes|building|stone|tomb|citywalls` | **Kept only with a name and at least one notability tag** (`wikidata`, `wikipedia` or `heritage`) | `generic_class_without_name_and_notability` |
 | Every other `historic=*` value (castle, ruins, archaeological site, monument, fort, ...) | Kept | n/a |
 
 An object that has both `amenity=restaurant|cafe` and a `historic` tag is a restaurant (a cafe in
@@ -93,6 +96,32 @@ sample showed:
   236, `cannon` 91, `milestone` 60) are kept by default and not sampled.
 - A bug was fixed on the way: excluded objects in `review-sample.json` were named `N/123` while
   kept ones were `node/123`; both now use `node/123`.
+
+## Update: "only cities and tourist spots" (rules version 2026-11-12.3)
+
+After reading the Austria import the owner asked for a leaner data set: tourist spots rather than
+every small object. Decided and implemented: attractions need a name; `historic=*` is an allow-list
+(`TOURIST_HISTORIC`), not a deny-list; `historic=railway` leaves; `citywalls` need a notability
+tag. Applied to **every** region (one global rule; a "compact" mode per import was considered and
+not built, see ADR 012). From the category table of the Austria database the new rules keep about
+11,300 attractions (of 18,543 before the 2026-11-12.2 change), about 39 % fewer. Restaurants and
+cafes are untouched by these rules and make up about 70 % of what is left, so this alone saves
+roughly 16 % of Austria's places.
+
+Because the allow-list was chosen from Austria's categories only, other countries will have
+`historic=*` values it does not list. They are not lost silently: the import report counts every
+class under `historic_class_not_tourist`, and a class can be added to the list. Places of worship
+mapped only as `amenity=place_of_worship` (most Japanese temples and shrines, most Italian
+churches) were never imported; that is a gap for Italy and Japan, not decided here.
+
+Gate 4 (ADR 009) asks for 40 % of attractions to be named; with this rule it is always 100 %.
+The count gate (5,000 named attractions) is the one that can now fail.
+
+**Restaurants and cafes (decided in principle, not built):** the owner wants them kept **only near
+attractions or towns**, cafes included, instead of every one in the country. The size effect is
+measured on the Austria database first (distance to a kept attraction, distance to a town of a
+given size) and the rule is added once the radii are chosen. Until then all restaurants and cafes
+are imported.
 
 ## What this does not prove
 
