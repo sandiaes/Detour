@@ -108,7 +108,7 @@ about 100 m): areas scope a destination, they are not for drawing borders.
 `id` (deterministic uuid), `region_id`, `name`, `name_norm`, `level`, `country_iso2` (from the
 `ISO3166-2` tag, or the region's only country; null if neither), `geom` (multipolygon), `source`
 (`osm`), `source_ref` (`relation/123`), `licence_code` (`ODbL-1.0`), `is_active`,
-`last_seen_import_run_id`.
+`last_changed_import_run_id`.
 
 ### 2.6 `geo.place`: one real-world place that can appear in an itinerary
 
@@ -123,8 +123,8 @@ about 100 m): areas scope a destination, they are not for drawing borders.
 | `address` | jsonb from `addr:*` (street, housenumber, postcode, city, country); null if none |
 | `city_id` | The nearest gazetteer city of the region's countries (planar distance picks five candidates, great-circle distance and then id decide); null until the gazetteer is loaded |
 | `default_visit_minutes` | **Always null in Phase 2**: the category rule table is Phase 4; never a guess |
-| `is_active` | False when the place is missing from a later import; the row is kept |
-| `first_import_run_id`, `last_seen_import_run_id` | |
+| `is_active` | False only for a place that is gone from the latest extract **but still named by an itinerary item or price record** in `app`; any other missing place is deleted (section 5) |
+| `first_import_run_id`, `last_changed_import_run_id` | The run that created the row; the run that last wrote it (rows that did not change are not rewritten, so this is not "last seen") |
 
 Opening hours are not imported, parsed or stored (ADR 003): there is no hours column or table.
 
@@ -281,7 +281,7 @@ and provider from `geo.fx_rate`.
 
 | Event | What happens |
 |---|---|
-| **Import of a region** | Upsert by deterministic id inside one transaction. Places and admin areas missing from the new extract get `is_active = false`; nothing is deleted. Source records of the places seen are replaced. A failed import changes no data and leaves a `failed` import run |
+| **Import of a region** | Upsert by deterministic id inside one transaction; **a row that did not change is not written** (a rewrite leaves a dead copy and would double the database on every re-import). Places missing from the new extract are **deleted with their source, signal and profile rows**, unless an itinerary item or price record in `app` still names them: those stay with `is_active = false` and are cleared by a later import once nothing names them. Administrative areas missing from the extract are deleted (a trip keeps its own destination snapshot). After the commit the tables are vacuumed; after a clean-up of 1,000 rows or more they are rewritten (`VACUUM FULL`) so the file shrinks. A failed import changes no data and leaves a `failed` import run |
 | **Gazetteer import** | Upserts countries, currencies, codes and cities; cities of the imported countries that are gone from the file are deleted (`place.city_id` becomes null); places get their nearest city |
 | **Region status** | Set by each import from the six gates: `available` or `disabled`. There is no manual override |
 | **First API call of an installation** | Creates its `app.installation` row |
@@ -353,5 +353,5 @@ In the first photo phase the files and this table live on the device only (D9).
 | `default_visit_minutes` from a category rule table | Always null | Table is Phase 4 |
 | `geo.place_signal.sitelink_count` from Wikidata | Always null | Wikidata not fetched |
 | Region `geom` from the extract | From Geofabrik's `.poly` file, nullable | |
-| (new) `geo.licence`, `geo.admin_code`, `geo.import_run.report`, place `*_norm` columns, `first/last_seen_import_run_id` | | Licence handling, names for codes, report, search, deactivation |
+| (new) `geo.licence`, `geo.admin_code`, `geo.import_run.report`, place `*_norm` columns, `first/last_changed_import_run_id` | | Licence handling, names for codes, report, search, deactivation |
 | (new) `app.trip.destination_name/point`, `app.installation.is_seed`, `app.trip.is_seed`, `profile = manual`, `app.provider_*` | | ADR 006 snapshot, seed data, manual itineraries, provider rules |

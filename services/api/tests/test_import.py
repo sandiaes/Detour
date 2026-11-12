@@ -6,7 +6,9 @@ the selection rule; it says nothing about any real place.
 
 import json
 import re
+import uuid
 from pathlib import Path
+from typing import Any
 
 import psycopg
 import pytest
@@ -133,32 +135,159 @@ def test_place_ids_are_stable_and_derived_from_the_source_reference(
     assert str(place_id) == str(stable_uuid("place", "test-region/osm/node/1"))
 
 
-def test_a_place_missing_from_a_later_extract_is_deactivated_not_deleted(
+def smaller_extract(tmp_path: Path, drop_node: str = "12") -> Path:
+    original = (FIXTURES / "region-sample.osm").read_text(encoding="utf-8")
+    lines = [line for line in original.splitlines() if f'id="{drop_node}"' not in line]
+    assert len(lines) == len(original.splitlines()) - 1
+    smaller = tmp_path / "smaller.osm"
+    smaller.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return smaller
+
+
+def test_a_place_missing_from_a_later_extract_is_deleted_with_its_rows(
     pipeline_dbs: tuple[str, str], tmp_path: Path
 ) -> None:
     target, staging = pipeline_dbs
     import_fixture_region(target, staging, tmp_path / "a")
-    original = (FIXTURES / "region-sample.osm").read_text(encoding="utf-8")
-    lines = [line for line in original.splitlines() if 'id="12"' not in line]
-    assert len(lines) == len(original.splitlines()) - 1
-    smaller = tmp_path / "smaller.osm"
-    smaller.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    second = import_fixture_region(target, staging, tmp_path / "b", pbf=smaller)
+    second = import_fixture_region(target, staging, tmp_path / "b", pbf=smaller_extract(tmp_path))
 
     with psycopg.connect(target) as conn:
-        row = conn.execute(
-            "SELECT is_active FROM geo.place WHERE name = 'Zur Alten Post'"
+        gone = conn.execute(
+            "SELECT count(*) FROM geo.place WHERE name = 'Zur Alten Post'"
         ).fetchone()
-        active = conn.execute("SELECT count(*) FROM geo.place WHERE is_active").fetchone()
-    assert row == (False,)
-    assert active == (14,)
-    assert second["kinds"]["restaurant"]["total"] == 3
-    with psycopg.connect(target) as conn:
+        totals = conn.execute(
+            "SELECT (SELECT count(*) FROM geo.place), (SELECT count(*) FROM geo.place_source),"
+            " (SELECT count(*) FROM geo.place_signal), (SELECT count(*) FROM geo.restaurant_profile),"
+            " (SELECT count(*) FROM geo.place WHERE NOT is_active)"
+        ).fetchone()
         counts = conn.execute(
             "SELECT counts FROM geo.import_run ORDER BY started_at DESC LIMIT 1"
         ).fetchone()
-    assert counts is not None and counts[0]["places_deactivated"] == 1
+    assert gone == (0,)
+    assert totals == (14, 14, 14, 3, 0)  # nothing of it is left, in any table
+    assert second["kinds"]["restaurant"]["total"] == 3
+    assert counts is not None
+    assert (counts[0]["places_purged"], counts[0]["places_deactivated"]) == (1, 0)
+    assert second["retention"] == {
+        "places_purged": 1,
+        "places_deactivated": 0,
+        "admin_areas_purged": 0,
+    }
+
+
+def _itinerary_item_naming(conn: psycopg.Connection[Any], place_id: object) -> str:
+    inst, trip, itinerary, day, item = (uuid.uuid4() for _ in range(5))
+    conn.execute("INSERT INTO app.installation (id) VALUES (%s)", (inst,))
+    conn.execute(
+        "INSERT INTO app.trip (id, installation_id, title, destination_kind, destination_ref,"
+        " destination_name, destination_point, duration_days, currency_code)"
+        " VALUES (%s, %s, 't', 'city', '1', 'X', ST_MakePoint(1, 2), 1, 'EUR')",
+        (trip, inst),
+    )
+    conn.execute(
+        "INSERT INTO app.itinerary (id, trip_id, generation_id, profile, engine_version,"
+        " config_version) VALUES (%s, %s, %s, 'manual', 'm', 'm')",
+        (itinerary, trip, uuid.uuid4()),
+    )
+    conn.execute(
+        "INSERT INTO app.itinerary_day (id, itinerary_id, day_index) VALUES (%s, %s, 1)",
+        (day, itinerary),
+    )
+    conn.execute(
+        "INSERT INTO app.itinerary_item (id, day_id, position, type, meal_type, place_id,"
+        " display_name, duration_minutes, duration_source, origin)"
+        " VALUES (%s, %s, 1, 'meal', 'lunch', %s, 'Zur Alten Post', 60, 'user', 'user')",
+        (item, day, place_id),
+    )
+    return str(item)
+
+
+def test_a_missing_place_that_an_itinerary_still_names_is_kept_inactive_until_it_is_not(
+    pipeline_dbs: tuple[str, str], tmp_path: Path
+) -> None:
+    target, staging = pipeline_dbs
+    import_fixture_region(target, staging, tmp_path / "a")
+    with psycopg.connect(target, autocommit=True) as conn:
+        row = conn.execute("SELECT id FROM geo.place WHERE name = 'Zur Alten Post'").fetchone()
+        assert row is not None
+        item_id = _itinerary_item_naming(conn, row[0])
+
+    smaller = smaller_extract(tmp_path)
+    report = import_fixture_region(target, staging, tmp_path / "b", pbf=smaller)
+    with psycopg.connect(target) as conn:
+        kept = conn.execute(
+            "SELECT is_active, (SELECT count(*) FROM geo.place_source WHERE place_id = p.id)"
+            " FROM geo.place p WHERE name = 'Zur Alten Post'"
+        ).fetchone()
+    assert kept == (False, 1)  # still there, marked inactive, provenance intact
+    assert report["retention"]["places_deactivated"] == 1
+    assert report["retention"]["places_purged"] == 0
+
+    # Once nothing names it, the next import clears it as well.
+    with psycopg.connect(target, autocommit=True) as conn:
+        conn.execute("DELETE FROM app.itinerary_item WHERE id = %s", (item_id,))
+    report = import_fixture_region(target, staging, tmp_path / "c", pbf=smaller)
+    assert report["retention"]["places_purged"] == 1
+    with psycopg.connect(target) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM geo.place WHERE name = 'Zur Alten Post'"
+        ).fetchone() == (0,)
+
+
+def _row_versions(url: str) -> dict[str, dict[str, str]]:
+    """The physical row version (xmin) of every row: it changes when a row is rewritten."""
+    queries = {
+        "place": "SELECT id::text, xmin::text FROM geo.place",
+        "place_source": "SELECT place_id::text, xmin::text FROM geo.place_source",
+        "place_signal": "SELECT place_id::text, xmin::text FROM geo.place_signal",
+        "restaurant_profile": "SELECT place_id::text, xmin::text FROM geo.restaurant_profile",
+        "admin_area": "SELECT id::text, xmin::text FROM geo.admin_area",
+    }
+    with psycopg.connect(url) as conn:
+        return {t: dict(conn.execute(q).fetchall()) for t, q in queries.items()}
+
+
+def test_rows_that_did_not_change_are_not_rewritten_by_a_re_import(
+    pipeline_dbs: tuple[str, str], tmp_path: Path
+) -> None:
+    """A rewrite leaves a dead copy of the row, so re-importing would double the database."""
+    target, staging = pipeline_dbs
+    import_fixture_region(target, staging, tmp_path / "a")
+    first = _row_versions(target)
+    assert all(first.values())
+
+    import_fixture_region(target, staging, tmp_path / "b")
+    assert _row_versions(target) == first  # not a single row was touched
+
+    # One object changes its name: exactly its own rows are rewritten.
+    original = (FIXTURES / "region-sample.osm").read_text(encoding="utf-8")
+    changed = tmp_path / "changed.osm"
+    changed.write_text(original.replace("Zur Alten Post", "Zur Neuen Post"), encoding="utf-8")
+    import_fixture_region(target, staging, tmp_path / "c", pbf=changed)
+    third = _row_versions(target)
+    for table, versions in third.items():
+        rewritten = {k for k in versions if versions[k] != first[table][k]}
+        # the place itself, and its source record (the name is in the tags the importer stores)
+        expected = 1 if table in ("place", "place_source") else 0
+        assert len(rewritten) == expected, (table, rewritten)
+
+
+def test_the_vacuum_after_an_import_is_reported_and_full_vacuum_works(
+    pipeline_dbs: tuple[str, str], tmp_path: Path
+) -> None:
+    from detour_api.importer import loader
+    from detour_api.importer.report import render_markdown
+
+    target, staging = pipeline_dbs
+    report = import_fixture_region(target, staging, tmp_path)
+    assert report["vacuum"] == "plain"  # far below FULL_VACUUM_THRESHOLD
+    assert isinstance(report["geo_size_after_vacuum_bytes"], int)
+    assert "after the plain vacuum" in render_markdown(report)
+    with psycopg.connect(target) as conn:
+        size = loader.vacuum_and_analyze(conn, full=True)
+        assert isinstance(size, int) and size > 0
+        assert conn.execute("SELECT count(*) FROM geo.place").fetchone() == (15,)
 
 
 def test_unknown_values_stay_unknown_and_opening_hours_are_never_stored(

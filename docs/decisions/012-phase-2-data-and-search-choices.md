@@ -34,9 +34,16 @@ Verification marks as in `api-evaluation.md`: ✅ read on 2026-11-12; ◐ partly
    database and for existence by the API when written; items keep a name and point snapshot. All
    foreign keys inside each schema are real. A test fails if a constraint crosses the schemas.
    **Owner decision:** `data-model.md` drew these as foreign keys.
-3. **Places are never deleted by an import.** A place missing from a later extract gets
-   `is_active = false`; its identifier is a deterministic UUID (RFC 9562 version 8) of the region
-   and the OSM reference, so re-imports keep it stable.
+3. **Place identifiers are stable** (a deterministic UUID, RFC 9562 version 8, of the region and the
+   OSM reference). **Amended 2026-11-12 after the second Austria import:** this decision first said
+   that places are never deleted and only deactivated. That kept the roughly 19,000 places a rules
+   change had removed, and rewriting every row on each import left a dead copy of each, so Austria
+   measured 87 MB where about 40 MB was expected. Now: a place missing from the latest extract is
+   deleted (with its source, signal and profile rows) unless an itinerary item or price record
+   still names it, in which case it stays with `is_active = false` until nothing names it; rows that
+   did not change are not written; the tables are vacuumed after the commit and rewritten after a
+   large clean-up. Migration 0004 renames `last_seen_import_run_id` to
+   `last_changed_import_run_id`, because it no longer records every run that saw a row.
 4. **The import is one transaction per region** into `geo`, preceded by a committed
    `geo.import_run` row so a failed run is recorded. The report is built from counters while
    streaming and checked against the database before the commit; a mismatch aborts the import.
