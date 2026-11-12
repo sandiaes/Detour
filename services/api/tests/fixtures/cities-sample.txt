@@ -1,0 +1,7 @@
+900101	Testburg	Testburg	Testenburg,Testburgo,Testburg City	48.2082	16.3738	P	PPLA	AT		09	901			120000			Europe/Vienna	2026-01-01
+900102	Testburg-Neustadt	Testburg-Neustadt		48.25	16.42	P	PPL	AT		09	901			8000			Europe/Vienna	2026-01-01
+900103	Mühlbach	Muehlbach	Muhlbach,Mulbach	48.2105	16.3711	P	PPL	AT		09	901			2500			Europe/Vienna	2026-01-01
+900104	Östertal	Oestertal		48.222	16.382	P	PPL	AT		09				0			Europe/Vienna	2026-01-01
+900105	Alpenau	Alpenau	Alpenow	48.3	16.4	P	PPL	AT		09	901			1500			Europe/Vienna	2026-01-01
+900201	Kōnan	Konan	Konan-shi,甲南	35.0	135.0	P	PPL	JP		13				45000			Asia/Tokyo	2026-01-01
+900301	Czechville	Czechville		50.0	14.4	P	PPLC	CZ		52				100000			Europe/Prague	2026-01-01

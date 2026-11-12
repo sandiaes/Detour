@@ -3,8 +3,9 @@
 Status: **accepted** on 2026-11-12 through
 [`decisions/001-technology-stack.md`](decisions/001-technology-stack.md) and
 [`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is decided in ADR 005.
-Phase 1 (the foundation: section 4.2.1) is implemented; the planning engine, the import pipeline
-and the provider adapters described below are not built yet.
+Phase 1 (the foundation: section 4.2.1) and Phase 2 (data and search: section 4.2.2, the import
+pipeline in 4.4, the search service in 4.6) are implemented; the planning engine, the routing
+adapter and the FX job described below are not built yet.
 
 ## 1. Principles
 
@@ -137,6 +138,26 @@ HMAC-signed string that needs no database row in Phase 1 (ADR 010). The interact
 is at `/v1/docs`. The typed client for the app is generated from the contract, and CI fails on
 drift.
 
+#### 4.2.2 Phase 2 API
+
+Also under `/v1`, in the contract `packages/shared/openapi.json`. Everything except the first two
+rows needs the installation token. Errors are `{"detail", "code"}` with a stable `code`.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /v1/regions` | Import regions, status (`available` only if every ADR 009 gate passed), data version |
+| `GET /v1/attributions` | Credits to show: OpenStreetMap, GeoNames, map tiles |
+| `GET /v1/destinations/search` | Cities (GeoNames) and areas (OSM boundaries) by name; accents, case and alternate names ignored; each result says whether its region can be planned. `include_external=true` asks Photon only if nothing matches locally |
+| `GET /v1/places/search`, `GET /v1/places/{id}` | Imported places by name and/or around a point; a place with its provenance and licence |
+| `POST/GET/PATCH/DELETE /v1/trips`, `POST /v1/trips/{id}/archive`, `GET/PATCH …/visits` | Trips (city or area destination, days, optional dates, currency, meal budget, price bands) and the past-trip archive (ADR 006) |
+| `POST/GET /v1/trips/{id}/itineraries`, `GET/DELETE /v1/itineraries/{id}` | Manual (empty) itineraries and their days; engine itineraries arrive in Phase 4 |
+| `POST /v1/itineraries/{id}/days/{n}/items`, `GET/PATCH/DELETE /v1/items/{id}` | Visits, meals and free time with validation (place kind, duration, times, overlap, positions) |
+| `POST/GET/PATCH/DELETE /v1/user-places` | Places the user pinned or saved from an external search result |
+
+The layers are routers (`routers/`), Pydantic models (`models/`), repositories (`repo/`, SQL with
+bound parameters, no ORM) and one adapter (`adapters/photon.py`). Each request commits its
+transaction before the response is sent.
+
 ### 4.3 Data stores
 
 - **PostgreSQL + PostGIS**, two schemas kept deliberately separate (both exist and are empty
@@ -148,6 +169,21 @@ drift.
   independent data that references it by identifier. See `docs/data-model.md`, section 5.
 
 ### 4.4 Region import pipeline
+
+**Implemented in Phase 2** as `python -m detour_api.importer` and the manually started workflow
+`.github/workflows/import-region.yml` (ADR 005, ADR 012). Steps 1 to 4 and 7 are built; step 5
+(Wikidata) and step 6 (Valhalla tiles) are not. The sequence as built:
+
+1. download the Geofabrik extract with an identifying User-Agent;
+2. `osmium tags-filter` keeps the candidate objects;
+3. `osm2pgsql` (flex output, `importer/osm.lua`) loads them into a temporary PostGIS;
+4. Python applies the selection rule (`importer/selection.py`, ADR 003 and ADR 011), derives
+   places, restaurant profiles and signals, and counts every exclusion by class and reason;
+5. the rows are loaded into Supabase through the session-mode pooler in one transaction, the
+   report is checked against the database, the six ADR 009 gates are evaluated, and the region
+   becomes `available` or `disabled`.
+
+Run twice on the same extract, it leaves identical data (tested). The original design follows.
 
 A command-line job, run by the operator, that makes a region usable:
 
@@ -182,9 +218,10 @@ shown to the user carries its confidence label. Modes in the MVP: walking and dr
 
 ### 4.6 Other services
 
-- **Search service:** local trigram search over the gazetteer and the region's places; if
-  nothing suitable is found, a Photon query through the backend, cached; finally a manual
-  entry (name plus map pin).
+- **Search service (built in Phase 2):** local trigram search over the gazetteer, the areas and
+  the region's places; if nothing suitable is found and the caller asked for it, a Photon query
+  through the backend (`adapters/photon.py`: User-Agent, timeout, cache, daily budget, pause on
+  failure); finally a manual entry (name plus map pin) saved as a user place.
 - **FX service:** a daily job stores reference rates; conversions read from the table and
   record the rate date used.
 

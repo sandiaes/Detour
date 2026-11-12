@@ -1,6 +1,6 @@
 # App plan
 
-Status: **Phase 0 and Phase 1 are done**; Phase 2 onward is proposed. Each phase is small enough to review on its own
+Status: **Phase 0 and Phase 1 are done; Phase 2 is built and awaits the owner's acceptance**; Phase 3 onward is proposed. Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
 ## 1. Decisions
@@ -117,6 +117,13 @@ the Free plan (confirm in `deployment.md` step 3).
 - **Risks:** toolchain version drift; mitigation is pinned versions recorded in an ADR.
 
 ### Phase 2 — Geo data foundation
+
+**Status: built on 2026-11-12, not yet accepted.** Everything below is implemented and tested
+against a synthetic extract (ADR 011, ADR 012, `docs/data-model.md`). **No real extract has been
+imported yet**: that is the owner's first acceptance step (`docs/deployment.md`, "Importing a
+region"). Not done and carried forward: Wikidata sitelink counts, the category visit-duration
+table (Phase 4), a display rule for non-Latin names (gate 5, Japan), and the automatic archive of
+past trips.
 
 **Goal:** a pilot region's data is in the database and destinations can be searched.
 
@@ -262,11 +269,17 @@ GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 
 ## 7. Recommended next task
 
-**Phase 2 (geo data foundation) when the owner gives the go-ahead (CLAUDE.md).** Phase 1 is built
-and accepted (ADR 010). PostGIS is available on Supabase Free (confirmed by the owner), so the
-`geo` schema can rely on it; Phase 2 creates the extension in its own migration. Background: all Phase 0 spikes are
-done or removed: S1 (map and APK build in GitHub Actions), S2, S3, S5 (heuristic only, D7); S4 was
-removed. D2, D3 and D7 are decided. One Phase 0 exit item remains open: the Geofabrik terms and
-update cadence (`docs/api-evaluation.md` section 15). Items S1 hands to Phase 1: the project's own
-signing key, the config endpoint that replaces the bundled stand-in, and the attribution rule with
-a test (`docs/spikes/s1-map-findings.md` section 8).
+**Accept Phase 2, then Phase 3 (travel-time service), when the owner asks for it (CLAUDE.md).**
+Acceptance means: deploy the new migrations (Render runs them at start), add the repository
+secret `DETOUR_IMPORT_DATABASE_URL`, run the "Import region" workflow for **Austria** first, and
+read the report and `review-sample.json` (ADR 011). Open items that need the owner:
+
+- confirm or change ADR 011 (the selection rule) after reading the review sample;
+- confirm the two ADR 012 owner decisions (no foreign keys across the schemas; the manual
+  itinerary endpoint and the trip snapshot fields);
+- the Geofabrik terms and update cadence are still unread (`docs/api-evaluation.md` section 15),
+  and the GeoNames dump layouts are unverified until the first gazetteer run;
+- the signing key for the APK (Phase 1 carry-over) and the navigation ADR (Phase 5).
+
+Background: all Phase 0 spikes are done or removed (S1, S2, S3, S5; S4 removed). D2, D3 and D7
+are decided.

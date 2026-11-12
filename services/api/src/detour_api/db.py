@@ -1,22 +1,36 @@
 """Database access. Foundation only: connectivity and schema checks, no tables yet."""
 
 from dataclasses import dataclass, field
+from typing import Any
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.exc import SQLAlchemyError
 
 EXPECTED_SCHEMAS = ("app", "geo")
 
 
+# PostGIS lives in the ``extensions`` schema on Supabase and in ``public`` elsewhere. Putting both
+# on the search path makes ``geometry`` and ``ST_*`` resolve either way; a schema that does not
+# exist in the path is ignored by PostgreSQL.
+SEARCH_PATH = "public, extensions"
+
+
 def make_engine(url: str) -> Engine:
     # Small pool: the Supabase Free pooler and the 512 MB Render instance are both tight.
-    return create_engine(
+    engine = create_engine(
         url,
         pool_pre_ping=True,
         pool_size=2,
         max_overflow=0,
         connect_args={"connect_timeout": 5},
     )
+
+    @event.listens_for(engine, "connect")
+    def _set_search_path(dbapi_connection: Any, _: Any) -> None:
+        dbapi_connection.execute(f"SET search_path TO {SEARCH_PATH}")
+        dbapi_connection.commit()  # a SET inside an open transaction would be rolled back
+
+    return engine
 
 
 @dataclass

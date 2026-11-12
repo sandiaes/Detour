@@ -14,7 +14,8 @@ A local Docker Compose stack exists for any machine that can run it, but it is o
 | `infrastructure` | Docker Compose: PostgreSQL with PostGIS, and the API |
 | `tools` | Repository checks (dependency policy) |
 | `render.yaml` | Render Blueprint for the API ([`deployment.md`](deployment.md)) |
-| `.github/workflows` | `ci.yml`, `android-apk.yml`, and the throwaway Phase 0 spike workflows |
+| `services/api/src/detour_api/importer` | Region import, gazetteer import, report and gates (Phase 2) |
+| `.github/workflows` | `ci.yml`, `import-region.yml` (manual), `android-apk.yml`, and the throwaway Phase 0 spike workflows |
 | `spikes`, `docs/spikes` | Phase 0 throwaway code and findings; not part of the product |
 
 ## What CI does
@@ -23,7 +24,7 @@ Workflow `CI` (`.github/workflows/ci.yml`) runs on every push:
 
 | Job | Checks |
 |---|---|
-| API | `ruff check`, `ruff format --check`, `mypy` (strict), `pytest` with coverage against a **PostGIS service** (`postgis/postgis:18-3.7`): migrations, schemas, connectivity. Database tests fail instead of skipping (`DETOUR_REQUIRE_DB_TESTS=1`) |
+| API | `ruff check`, `ruff format --check`, `mypy` (strict), `pytest` with coverage against a **PostGIS service** (`postgis/postgis:18-3.7`) with `osm2pgsql` and `osmium-tool` installed: migrations, the real region import on a synthetic extract, search, trips, constraints, index use. Database tests fail instead of skipping (`DETOUR_REQUIRE_DB_TESTS=1`) |
 | JavaScript | `prettier --check`, contract drift check (regenerate the types, `git diff --exit-code`), `tsc`, `eslint`, `jest` |
 | Policy | `tools/check_dependencies.py`: no LLM or generative-AI library in any manifest or lock file |
 | Compose | Builds and starts the Compose stack, calls `/v1/health` and `/v1/health/ready` |
@@ -74,16 +75,41 @@ step).
 
 ## Database tests
 
-Four tests (migrations, schemas, readiness) need a PostgreSQL server. Without one they are
-skipped locally. To run them, point `DETOUR_TEST_DATABASE_URL` at any server on which the user can
-create databases; each test creates and drops its own scratch database:
+Most of the API tests (migrations, constraints, the import, search, trips) need a PostgreSQL
+server **with PostGIS and pg_trgm** and, for the import tests, `osm2pgsql` and `osmium`
+(`apt-get install postgresql-16-postgis-3 osm2pgsql osmium-tool` on Ubuntu). Without a server they
+are skipped locally. Point `DETOUR_TEST_DATABASE_URL` at a server on which the user can create
+databases and extensions; each test creates and drops its own scratch database:
 
 ```bash
 export DETOUR_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
 pytest services/api
 ```
 
-A plain PostgreSQL works for these; the one test that needs PostGIS runs only in CI.
+The suite runs the real import once per session on `tests/fixtures/region-sample.osm` (invented
+map data that hits every case of the selection rule) and GeoNames-shaped files, then clones that
+database for each API test. Nothing in the tests calls a network service: Photon is replaced by a
+stub transport, and `tests/fixtures/photon-documented-response.json` follows the format in
+Photon's API documentation (it is not a live recording).
+
+## Running an import locally
+
+Needs a PostGIS for the target (migrated: `alembic upgrade head` with `DETOUR_DATABASE_URL`), a
+second throwaway PostGIS database for staging, and the two tools. A downloaded extract can be used
+instead of downloading:
+
+```bash
+export DETOUR_IMPORT_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/detour
+export DETOUR_STAGING_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/staging
+python -m detour_api.importer gazetteer AT
+python -m detour_api.importer region austria --pbf austria-latest.osm.pbf --out-dir out
+python -m detour_api.seed --print-token   # optional: the labelled seed trip, development only
+```
+
+Never point `region` at the staging database as the target, and never import into the production
+database from a laptop: use the workflow ([`deployment.md`](deployment.md), "Importing a region").
+The public community servers are never called by the import except the Geofabrik and GeoNames
+download hosts, which the import workflow uses with an identifying User-Agent.
 
 ## Optional: the local Docker Compose stack
 

@@ -176,6 +176,7 @@ resolve, always through the backend, with cached results.
 
 - **Use:** search-as-you-type geocoding and reverse geocoding on OSM data, for the "add a location or restaurant by name" flow.
 - **Type:** open source (Apache 2.0), self-hostable; komoot runs a public instance at `photon.komoot.io`.
+- **Re-read 2026-11-12 for Phase 2 (ADR 012):** home page terms unchanged ("please be fair - extensive usage will be throttled. We do not guarantee for the availability and usage might be subject of change in the future"); the repository README adds "Extensive usage will be throttled or completely banned" and "reserve the right to implement changes without notice". The API doc (`docs/api-v1.md`) confirms the parameters the adapter uses: `q`, `limit`, `lang`, `lat`/`lon`, `layer`, `countrycode`. A live call to `/api` timed out from the development environment, so the adapter's fixture follows the documented format.
 - **Quota:** no number. "You can use the API for your project, but please be fair - extensive usage will be throttled."
 - **Card:** no.
 - **Commercial use:** not addressed for the public instance. Treat as unsuitable for commercial load.
@@ -817,9 +818,9 @@ mledoze/countries; ECB reference rates. ODbL share-alike and attribution obligat
 
 | Item | Why it matters | When |
 |---|---|---|
-| Geofabrik extract terms and cadence | Primary data pipeline | Phase 0 |
+| Geofabrik extract terms and cadence | Primary data pipeline | Phase 0. **Still open after Phase 2**: `download.geofabrik.de` is not reachable from the development environment, so the terms were not read; the import workflow downloads one extract per run with an identifying User-Agent |
 | Valhalla resource needs for Japan, Austria, Czechia and Hungary (Italy measured in S3) | Sizing the routing container if self-hosted | Only if self-hosting is chosen |
-| GeoNames dump readme (file names, columns) | Gazetteer import | Phase 2 |
+| GeoNames dump readme (file names, columns) | Gazetteer import | Phase 2. **Still open**: `download.geonames.org` is not reachable from the development environment. The importer validates the layouts it reads and stops on a mismatch; the first real run of the workflow confirms or refutes them |
 | openrouteservice plans and terms | Only hosted routing fallback worth having | Before adopting |
 | Foursquare Places API pricing and terms | Only if a provider price source is ever wanted | Before adopting |
 | Geoapify commercial-use wording | Pricing FAQ and terms disagree | Before commercial use |

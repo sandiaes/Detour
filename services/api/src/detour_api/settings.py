@@ -63,6 +63,16 @@ class Settings(BaseSettings):
     database_url: SecretStr | None = None
     token_secret: SecretStr | None = None
 
+    # Photon (komoot's public geocoder) is the only external search provider, backend-side only.
+    # Its terms (read 2026-11-12, ADR 012): "please be fair - extensive usage will be throttled",
+    # no availability guarantee. The daily budget below is our own limit, not a Photon figure.
+    photon_enabled: bool = True
+    photon_base_url: str = "https://photon.komoot.io"
+    photon_user_agent: str = "Detour-backend/0.2 (+https://github.com/sandiaes/Detour)"
+    photon_timeout_seconds: float = 4.0
+    photon_cache_ttl_hours: int = 168
+    photon_daily_budget: int = 300
+
     # Client configuration served by GET /v1/config. The app holds none of these as constants.
     config_version: str = "1"
     map_style_url: str = "https://tiles.openfreemap.org/styles/liberty"
@@ -76,6 +86,13 @@ class Settings(BaseSettings):
         if not value.startswith("https://"):
             raise ValueError("map style url must use https")
         return value
+
+    @field_validator("photon_base_url")
+    @classmethod
+    def _photon_is_https(cls, value: str) -> str:
+        if not value.startswith("https://"):
+            raise ValueError("photon base url must use https")
+        return value.rstrip("/")
 
     @field_validator("map_attribution")
     @classmethod

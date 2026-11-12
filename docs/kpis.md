@@ -50,7 +50,7 @@ Measurement sources:
 | Cuisine coverage | Restaurants with a normalised cuisine | Reported per region | Import report |
 | Price provenance | Displayed prices backed by a price record with kind, basis and currency | 100% | Tests |
 | Unlabelled estimates | Estimated or unknown values shown without a label | 0 | UI review checklist |
-| Region readiness | Pilot regions passing the minimum data thresholds set after spike S2 | 100% of enabled regions | Import report |
+| Region readiness | Pilot regions passing the minimum data thresholds set after spike S2 (ADR 009; computed by every import since Phase 2, a region is `available` only if all six gates pass) | 100% of enabled regions | Import report |
 
 ## 5. Cost and provider dependence
 

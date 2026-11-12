@@ -24,10 +24,14 @@ def tables_in(url: str, schema: str) -> list[str]:
     engine = create_engine(url.replace("postgresql://", "postgresql+psycopg://", 1))
     with engine.connect() as conn:
         rows = conn.execute(
-            text("SELECT table_name FROM information_schema.tables WHERE table_schema = :s"),
+            text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = :s AND table_type = 'BASE TABLE'"
+            ),
             {"s": schema},
         )
-        names = sorted(r[0] for r in rows)
+        # spatial_ref_sys belongs to the PostGIS extension, which may be installed in public.
+        names = sorted(r[0] for r in rows if r[0] != "spatial_ref_sys")
     engine.dispose()
     return names
 
@@ -40,7 +44,38 @@ def test_database_is_reachable(scratch_database_url: str) -> None:
     assert result.schemas == []  # nothing migrated yet
 
 
-def test_migration_creates_two_separate_empty_schemas(
+GEO_TABLES = [
+    "admin_area",
+    "admin_code",
+    "city",
+    "country",
+    "currency",
+    "fx_rate",
+    "import_run",
+    "licence",
+    "place",
+    "place_signal",
+    "place_source",
+    "region",
+    "restaurant_profile",
+    "travel_time",
+]
+APP_TABLES = [
+    "installation",
+    "itinerary",
+    "itinerary_day",
+    "itinerary_item",
+    "price_record",
+    "provider_cache",
+    "provider_usage",
+    "transfer",
+    "trip",
+    "trip_visit",
+    "user_place",
+]
+
+
+def test_migration_creates_the_two_separate_schemas_with_their_tables(
     scratch_database_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("DETOUR_DATABASE_URL", scratch_database_url)
@@ -50,8 +85,8 @@ def test_migration_creates_two_separate_empty_schemas(
     result = check_database(engine)
     engine.dispose()
     assert result.schemas == ["app", "geo"]
-    assert tables_in(scratch_database_url, "geo") == []
-    assert tables_in(scratch_database_url, "app") == []
+    assert tables_in(scratch_database_url, "geo") == GEO_TABLES
+    assert tables_in(scratch_database_url, "app") == APP_TABLES
     # The migration bookkeeping lives outside both schemas.
     assert tables_in(scratch_database_url, "public") == ["alembic_version"]
 
@@ -68,6 +103,17 @@ def test_migration_is_repeatable_and_reversible(
     assert check_database(engine).schemas == []
     engine.dispose()
     command.upgrade(cfg, "head")
+    assert tables_in(scratch_database_url, "geo") == GEO_TABLES
+
+
+def test_connections_find_postgis_in_public_or_in_the_extensions_schema(
+    scratch_database_url: str,
+) -> None:
+    """Supabase installs PostGIS into 'extensions'; both must be on the search path."""
+    engine = make_engine(scratch_database_url.replace("postgresql://", "postgresql+psycopg://", 1))
+    with engine.connect() as conn:
+        assert conn.execute(text("SHOW search_path")).scalar_one() == "public, extensions"
+    engine.dispose()
 
 
 def test_readiness_endpoint_against_a_real_database(

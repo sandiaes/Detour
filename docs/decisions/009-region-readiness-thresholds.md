@@ -41,4 +41,8 @@ after gate 5 is met by a display rule and the rail question (D4) is settled.
 
 - With these gates, four of five countries pass today; the size total is 100.0 MB against the
   250 MB gate.
-- The import report must compute gates 1 to 6 automatically (Phase 2).
+- The import report must compute gates 1 to 6 automatically (Phase 2). **Done in Phase 2**
+  (`detour_api/importer/report.py`, ADR 012): exact ratios, no manual override, and an unknown
+  value never passes. Gate 5 uses the Latin-letter share because no display rule is implemented.
+  Gate 4 and the other figures in the table above come from spike S2 and were measured before the
+  ADR 011 rule: the first real import reports the new values.

@@ -1,7 +1,9 @@
 # Data model
 
-Status: **proposed**. This is a logical model for review, not a migration. Names and types are
-indicative; the physical schema is written in Phase 2.
+Status: **implemented in Phase 2** (Alembic migrations `0002_geo_schema` and `0003_app_schema`).
+Where the built schema differs from the earlier proposal, the difference is listed in section 9
+and decided in [ADR 012](decisions/012-phase-2-data-and-search-choices.md). Photos (section 8) are
+still reserved, not built.
 
 ## 1. Overview
 
@@ -9,349 +11,347 @@ Two PostgreSQL schemas with different owners and different licence positions:
 
 | Schema | Contents | Origin | Rebuildable |
 |---|---|---|---|
-| `geo` | Regions, places, gazetteer, countries, currencies, FX rates, travel times | Imported open data | Yes, from sources |
-| `app` | Installations, trips, itineraries, items, price records, photos (future) | Created by users and by the planning engine | No |
+| `geo` | Regions, import runs, places and their sources, gazetteer, countries, currencies, FX rates, travel times, licences | Imported open data | Yes, from sources |
+| `app` | Installations, trips, itineraries, items, user places, price records, past-trip archive, provider cache | Created by users, the planning engine and the backend | No |
 
-`app` rows refer to `geo` rows by identifier and never copy their attributes. An itinerary item
-keeps a small display snapshot (name, coordinates) so that a re-import cannot break an accepted
-plan.
+`app` rows refer to `geo` rows by identifier and never copy their attributes, with the two
+snapshots the design asks for: an itinerary item keeps a display name and point (so a re-import
+cannot break an accepted plan), and an archived visit keeps a name and point (ADR 006).
+
+**There are no foreign keys between the schemas** (section 6). Inside each schema they are real.
 
 ```
-geo.region ──< geo.import_run
-geo.country ──< geo.city            geo.currency ──< geo.fx_rate
-geo.place ──< geo.place_source
-geo.place ──1 geo.restaurant_profile
-geo.place ──1 geo.place_signal
-geo.travel_time (place pair, mode)
+geo.region ──< geo.import_run          geo.licence ──< geo.place_source, geo.city, ...
+geo.region ──< geo.place ──< geo.place_source
+geo.place ──1 geo.restaurant_profile   geo.place ──1 geo.place_signal
+geo.region ──< geo.admin_area          geo.country ──< geo.city      geo.country >── geo.currency
+geo.currency ──< geo.fx_rate           geo.travel_time (place pair, mode)      geo.admin_code
 
 app.installation ──< app.trip ──< app.itinerary ──< app.itinerary_day ──< app.itinerary_item
-app.itinerary_item >── geo.place | app.user_place
-app.itinerary_item ──< app.transfer (to the next item)
+app.installation ──< app.user_place              app.itinerary_item ──< app.transfer (to the next item)
+app.trip ──< app.trip_visit (past trips)
 app.price_record >── geo.place | app.user_place, optionally >── app.itinerary_item
+app.provider_cache, app.provider_usage (external provider answers and daily call counters)
 app.photo >── trip, day, city, item        (future phase)
 ```
 
-## 2. `geo` schema — imported reference data
+Conventions: enumerations are `text` columns with CHECK constraints; unknown values are `NULL`
+(never an empty string, a zero or a guess); every geometry column is SRID 4326 and has a GiST
+index; text that is searched has a `*_norm` companion (section 2.9).
 
-### `geo.region`
-A unit of import and of routing coverage.
+## 2. `geo` schema: imported reference data
 
-| Field | Type | Notes |
+### 2.1 `geo.licence`
+Every data set in `geo` points to its licence. Seeded by the migration.
+
+| Code | Name | Credit | Share-alike |
+|---|---|---|---|
+| `ODbL-1.0` | Open Database License 1.0 | © OpenStreetMap contributors | yes |
+| `CC-BY-4.0` | Creative Commons Attribution 4.0 | GeoNames (https://www.geonames.org) | no |
+| `CC0-1.0` | Creative Commons Zero 1.0 | Wikidata | no |
+
+### 2.2 `geo.region` and `geo.import_run`
+A region is a unit of import (one Geofabrik extract).
+
+| `geo.region` | Type | Notes |
 |---|---|---|
-| `id` | text | Slug, for example `es-andalucia` |
-| `name` | text | |
-| `geom` | multipolygon | Coverage boundary |
-| `status` | enum | `available`, `importing`, `disabled` |
-| `current_import_run_id` | fk | Data version in use |
+| `id` | text pk | Slug, for example `austria` or `czech-republic` (the Geofabrik name) |
+| `name`, `country_codes` | text, text[] | Countries (ISO 3166-1 alpha-2) the region covers |
+| `geom` | multipolygon, nullable | Coverage polygon from Geofabrik's `.poly` file; null if it could not be loaded |
+| `status` | text | `available` (passed every ADR 009 gate), `importing`, `disabled` (the default) |
+| `current_import_run_id` | fk | The data version in use |
 
-### `geo.import_run`
-One execution of the import pipeline. Itineraries record the run they were built on.
-
-| Field | Type | Notes |
+| `geo.import_run` | Type | Notes |
 |---|---|---|
-| `id` | uuid | |
+| `id` | uuid pk | Itineraries record the run they were built on |
 | `region_id` | fk | |
-| `osm_snapshot_date` | date | From the extract |
-| `geonames_date`, `wikidata_date` | date | |
-| `counts` | jsonb | Places by kind; share with cuisine, Wikidata link |
+| `status` | text | `running`, `succeeded`, `failed` (with `error`) |
+| `importer_version`, `rules_version` | text | `rules_version` is the selection rule version (ADR 011) |
+| `source_url`, `source_sha256`, `source_bytes` | text, text, bigint | The extract that was read; the URL is null for a local file |
+| `osm_snapshot_date` | date, nullable | Replication timestamp of the extract; null if the file has none |
+| `geonames_date`, `wikidata_date` | date, nullable | Not filled in Phase 2: the GeoNames file date is on `geo.city.geonames_date`, and Wikidata is not fetched |
+| `counts` | jsonb | Places by kind, total, excluded total, admin areas, deactivated places |
+| `report` | jsonb | The full data quality report and the gates (section 7) |
 | `started_at`, `finished_at` | timestamptz | |
 
-### `geo.country` and `geo.currency`
+### 2.3 `geo.country`, `geo.currency`, `geo.admin_code`
+From the GeoNames `countryInfo.txt` and the admin code files (all countries and currencies are
+loaded; codes only for the imported countries).
 
 | Table | Fields |
 |---|---|
-| `country` | `iso2` (pk), `iso3`, `name`, `default_currency_code`, `geom` (optional) |
-| `currency` | `code` (ISO 4217, pk), `name`, `symbol`, `minor_units` |
+| `country` | `iso2` pk, `iso3`, `name`, `default_currency_code` (null if none), `geom` (unused), `licence_code` |
+| `currency` | `code` pk (ISO 4217), `name`, `symbol` and `minor_units` (**null: not in the source**), `licence_code` |
+| `admin_code` | `code` pk (`AT.01` or `AT.01.101`), `level` 1 or 2, `country_iso2`, `name`, `ascii_name`, `geoname_id`. Joined to a city by `country_iso2 || '.' || admin1_code` |
 
-### `geo.city`
-The destination gazetteer (from GeoNames).
+### 2.4 `geo.city`: the destination gazetteer (GeoNames, `cities1000`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | bigint | GeoNames identifier |
-| `name`, `ascii_name` | text | Trigram-indexed for search |
-| `alt_names` | text[] | |
-| `country_iso2` | fk | |
-| `admin1_code`, `admin2_code` | text | With a lookup table for names |
-| `population` | integer | Ranking signal for search and base-city selection |
-| `timezone` | text | IANA name; used for local meal times and day boundaries |
-| `geom` | point | |
+| Field | Notes |
+|---|---|
+| `id` | bigint, the GeoNames identifier |
+| `name`, `ascii_name` | |
+| `name_norm` | Lower case, accents removed from Latin letters, punctuation as spaces: what search matches |
+| `alt_names`, `alt_names_norm` | Alternate names: distinct by normalised form, shortest first, **at most 40**. `alt_names_norm` joins the normalised names with `|` |
+| `country_iso2`, `admin1_code`, `admin2_code` | |
+| `population` | **Null when unknown** (GeoNames writes 0) |
+| `timezone`, `feature_code` | IANA name; used for local meal times and day boundaries |
+| `geom` | point |
+| `licence_code`, `geonames_date` | `CC-BY-4.0`; the `Last-Modified` date of the downloaded file |
 
-Administrative **areas** used as destinations (a province or region) are stored in
-`geo.admin_area` (`id`, `name`, `level`, `country_iso2`, `geom` multipolygon, `source`), taken
-from OSM boundaries in the extract or, later, Overture divisions.
+Indexes: GiST on `geom`; trigram on `name_norm`, `ascii_name`, `alt_names_norm`.
 
-### `geo.place`
-One real-world place that can appear in an itinerary.
+### 2.5 `geo.admin_area`: destination areas (OSM boundaries)
+Administrative boundaries of OSM `admin_level` 4 and 6 from the extract, with a name. What the
+levels mean differs by country; the level is stored as mapped. Geometry is simplified (tolerance
+about 100 m): areas scope a destination, they are not for drawing borders.
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | Stable across imports when the source identifier is unchanged |
-| `region_id` | fk | |
-| `kind` | enum | `attraction`, `restaurant`, `transport_hub`, `other` |
-| `category` | text | Our normalised category (for example `museum`, `viewpoint`, `cafe`) |
-| `name` | text | Trigram-indexed |
-| `names_i18n` | jsonb | Language → name |
-| `geom` | point | Representative point; polygons reduced to a point on surface |
-| `address` | jsonb | As available |
-| `city_id` | fk, nullable | Nearest or containing gazetteer city |
-| `default_visit_minutes` | integer, nullable | From the category rule table; null for restaurants |
-| `is_active` | boolean | False when the place disappears from a later import |
+`id` (deterministic uuid), `region_id`, `name`, `name_norm`, `level`, `country_iso2` (from the
+`ISO3166-2` tag, or the region's only country; null if neither), `geom` (multipolygon), `source`
+(`osm`), `source_ref` (`relation/123`), `licence_code` (`ODbL-1.0`), `is_active`,
+`last_seen_import_run_id`.
 
-### `geo.place_source`
-Provenance. One row per source record that contributed to a place.
+### 2.6 `geo.place`: one real-world place that can appear in an itinerary
 
-| Field | Type | Notes |
-|---|---|---|
-| `place_id` | fk | |
-| `source` | enum | `osm`, `wikidata`, `overture`, `fsq_os` |
-| `source_ref` | text | For example `node/123`, `Q9141` |
-| `license` | text | For example `ODbL-1.0`, `CC0-1.0` |
-| `tags` | jsonb | Raw source attributes, unmodified |
-| `import_run_id` | fk | |
+| Field | Notes |
+|---|---|
+| `id` | uuid, derived from the region and the OSM reference: **stable across imports** |
+| `region_id`, `kind` | `attraction` or `restaurant` today; `transport_hub` and `other` are reserved |
+| `category` | Normalised: the `tourism` value, the `historic` value (`historic_building` for the generic classes, `historic` for `historic=yes`), or `restaurant`/`cafe` |
+| `name`, `name_norm` | **Null when the source has no name**; both null or both set |
+| `names_i18n` | jsonb, language to name (`name:*` tags and `int_name` as `int`); null if none |
+| `geom` | Representative point; areas are reduced to a point on their surface |
+| `address` | jsonb from `addr:*` (street, housenumber, postcode, city, country); null if none |
+| `city_id` | The nearest gazetteer city of the region's countries (planar distance picks five candidates, great-circle distance and then id decide); null until the gazetteer is loaded |
+| `default_visit_minutes` | **Always null in Phase 2**: the category rule table is Phase 4; never a guess |
+| `is_active` | False when the place is missing from a later import; the row is kept |
+| `first_import_run_id`, `last_seen_import_run_id` | |
 
-### `geo.restaurant_profile`
+Opening hours are not imported, parsed or stored (ADR 003): there is no hours column or table.
 
-| Field | Type | Notes |
-|---|---|---|
-| `place_id` | pk, fk | |
-| `cuisines` | text[] | Normalised from the semicolon-separated `cuisine` tag |
-| `venue_type` | enum | `restaurant`, `cafe`, `fast_food`, `bar`, `pub`, `food_court`, `other` |
-| `meal_types` | text[] | `breakfast`, `lunch`, `dinner`, `snack`; derived from venue type |
-| `diet_flags` | text[] | From `diet:*` tags where present |
-| `provider_price_level` | smallint, nullable | 1–4. **Null in the MVP**: no licensed source |
-| `provider_price_source` | text, nullable | |
+### 2.7 `geo.place_source`: provenance
+One row per source record that contributed to a place; the primary key is
+`(place_id, source, source_ref)`.
 
-### `geo.place_signal`
-Ranking inputs, kept apart from descriptive data.
+| Field | Notes |
+|---|---|
+| `source` | `osm` today (`wikidata`, `overture`, `fsq_os` are reserved) |
+| `source_ref` | `node/123`, `way/9`, `relation/7` |
+| `licence_code` | `ODbL-1.0` for OSM |
+| `tags` | jsonb: the tags the importer reads, unmodified. Not `name:*` and `addr:*` (own columns) and never `opening_hours` |
+| `import_run_id` | |
 
-| Field | Type | Notes |
-|---|---|---|
-| `place_id` | pk, fk | |
-| `wikidata_id` | text, nullable | |
-| `sitelink_count` | integer, nullable | Notability proxy |
-| `osm_signals` | jsonb | Flags such as heritage, tourism=attraction, has wikipedia tag |
-| `score` | numeric | Deterministic score computed at import |
+### 2.8 `geo.restaurant_profile` and `geo.place_signal`
 
-### `geo.travel_time`
-Cache of travel times between places.
+| `restaurant_profile` | Notes |
+|---|---|
+| `place_id` | pk, fk |
+| `cuisines` | text[] from the `cuisine` tag: split on `;`, lower case, spaces as `_`, sorted, distinct. **Null = no cuisine tag** |
+| `venue_type` | `restaurant` or `cafe` today (`fast_food`, `bar`, `pub`, `food_court`, `other` reserved) |
+| `meal_types` | Derived from the venue type by a fixed rule: restaurant → lunch, dinner; cafe → breakfast, snack |
+| `diet_flags` | From `diet:*`: `yes` → `vegan`, `only` → `vegan_only`. **Null = no `diet:*` tag**; a `no` is not stored |
+| `provider_price_level`, `provider_price_source` | **Null in the MVP**: no licensed source (D10) |
 
-| Field | Type | Notes |
-|---|---|---|
-| `from_ref`, `to_ref` | text | Place identifier or a rounded coordinate key |
-| `mode` | enum | `walk`, `drive` (later `transit`) |
-| `seconds`, `meters` | integer | |
-| `confidence` | enum | `routed`, `estimated` |
-| `engine_version`, `import_run_id` | | Invalidation keys |
+| `place_signal` | Notes |
+|---|---|
+| `place_id` | pk, fk |
+| `wikidata_id` | The OSM `wikidata` tag if it is a single `Q` number; else null |
+| `sitelink_count` | **Null: Wikidata is not fetched in Phase 2** |
+| `osm_signals` | jsonb flags: `has_wikidata`, `has_wikipedia`, `has_heritage`, `tourism_attraction`, `has_name`, `has_website`, and `heritage` (the value) |
+| `score` | Additive count of those signals (weights in `importer/derive.py`); orders places only, tuned in Phase 4 |
 
-### `geo.fx_rate`
+### 2.9 Search columns and indexes
 
-| Field | Type | Notes |
-|---|---|---|
-| `rate_date` | date | |
-| `base_code`, `quote_code` | fk | |
-| `rate` | numeric | Reference rate |
-| `provider` | text | For example `frankfurter`, `ecb` |
-| `fetched_at` | timestamptz | |
+- Normalisation (`detour_api/textnorm.py`) is applied to the stored `name_norm` columns and to the
+  query, so both sides agree. Accents are removed only from Latin letters; Japanese is untouched.
+- GiST on every geometry column; trigram (GIN) on `geo.city.name_norm`, `ascii_name`,
+  `alt_names_norm`, `geo.place.name_norm`, `geo.admin_area.name_norm`.
+- `geo.place`: partial index `(region_id, kind) WHERE is_active`; `city_id`.
 
-## 3. `app` schema — user data
+### 2.10 `geo.travel_time` and `geo.fx_rate`
+Tables only; filled in Phases 3 and 8.
 
-### `app.installation`
-Anonymous identity for the MVP (D5). In Phase 1 the table does not exist: the `app` schema is empty and
-the token check needs no row (ADR 010). Phase 4 creates it when trips first refer to it.
+| `travel_time` | `from_ref`, `to_ref` (place id or rounded coordinate key), `mode` (`walk`, `drive`), `seconds`, `meters`, `confidence` (`routed`, `estimated`), `engine_version`, `import_run_id`; key `(from_ref, to_ref, mode, engine_version)` |
+|---|---|
+| `fx_rate` | `rate_date`, `base_code`, `quote_code`, `rate` > 0, `provider`, `fetched_at`; key `(rate_date, base_code, quote_code, provider)` |
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | |
-| `token_hash` | text | **Dropped (ADR 010).** Tokens are HMAC-signed and carry the installation id, so no hash is stored |
-| `home_currency_code` | fk | Default for budgets |
-| `created_at`, `last_seen_at` | timestamptz | |
+## 3. `app` schema: user data
 
-### `app.trip`
+### 3.1 `app.installation`
+Anonymous identity (D5). The bearer token is an HMAC-signed string carrying the installation id
+(ADR 010); the row is created lazily, on the first authenticated call that touches the database,
+and `last_seen_at` is refreshed at most hourly. No token or hash is stored.
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | |
-| `installation_id` | fk | |
-| `title` | text | |
-| `destination_kind` | enum | `city`, `area` |
-| `destination_ref` | text | `geo.city.id` or `geo.admin_area.id` |
-| `duration_days` | smallint | |
-| `start_date` | date, nullable | Optional; used for display and meal-day labels |
-| `currency_code` | fk | Trip currency for budgets |
-| `meal_budget_per_person` | numeric, nullable | |
-| `price_band_thresholds` | jsonb | Upper bounds of the price bands, in trip currency |
-| `selected_itinerary_id` | fk, nullable | |
+`id`, `home_currency_code` (null), `is_seed` (true only for the seed installation), `created_at`,
+`last_seen_at`.
 
-### `app.itinerary`
+### 3.2 `app.trip`
+
+| Field | Notes |
+|---|---|
+| `id`, `installation_id` | fk, `ON DELETE CASCADE` |
+| `title` | 1 to 120 characters |
+| `destination_kind`, `destination_ref` | `city` (a `geo.city.id`) or `area` (a `geo.admin_area.id`); existence and region availability are checked by the API |
+| `destination_name`, `destination_point` | Snapshot taken at creation |
+| `duration_days` | 1 to 30; cannot change once the trip has itineraries |
+| `start_date` | Optional; when set or changed, itinerary day dates follow |
+| `currency_code` | Fixed at creation; defaults to the destination country's currency, else required |
+| `meal_budget_per_person` | numeric(12,2) ≥ 0, nullable |
+| `price_band_thresholds` | jsonb, **null until set**: exactly three strictly increasing positive upper bounds (budget, moderate, upscale) in the trip currency; fine dining is above the third. Defaults are a Phase 8 decision (D10) |
+| `selected_itinerary_id` | fk, `ON DELETE SET NULL` |
+| `status`, `archived_at` | `active`, `past`; a past trip has `archived_at` (check constraint) |
+| `is_seed`, `created_at`, `updated_at` | |
+
+### 3.3 `app.itinerary`, `app.itinerary_day`, `app.itinerary_item`, `app.transfer`
 A proposed or selected plan. Variants of one generation share a `generation_id`.
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | |
-| `trip_id` | fk | |
-| `generation_id` | uuid | Groups the variants produced together |
-| `profile` | enum | `essentials`, `wider` (extensible) |
-| `status` | enum | `proposed`, `selected`, `superseded` |
-| `version` | integer | Incremented by each accepted edit |
-| `engine_version`, `config_version` | text | Reproducibility |
-| `import_run_id` | fk | Data version used |
-| `seed` | bigint | |
-| `diversity_score` | numeric, nullable | Against the sibling variant |
-| `summary` | jsonb | Totals: visits, travel time, cities |
+| `itinerary` | Notes |
+|---|---|
+| `profile` | `essentials`, `wider`, or `manual` (an empty plan filled by hand; the only kind before Phase 4) |
+| `status` | `proposed`, `selected`, `superseded`; at most one `selected` per trip (kept by the API when the selection changes) |
+| `version` | Starts at 1; incremented by every accepted item edit |
+| `engine_version`, `config_version` | `manual` for manual itineraries |
+| `import_run_id` | The data version used; null for manual itineraries; not a foreign key |
+| `seed`, `diversity_score`, `summary` | For the engine (Phase 4) |
 
-### `app.itinerary_day`
+`itinerary_day`: `day_index` (1-based, unique per itinerary), `date` (null without a start date),
+`base_city_id` (a `geo.city.id`, null).
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | |
-| `itinerary_id` | fk | |
-| `day_index` | smallint | 1-based |
-| `date` | date, nullable | |
-| `base_city_id` | fk, nullable | |
+| `itinerary_item` | Notes |
+|---|---|
+| `position` | Dense and 1-based within a day; unique per day (deferrable, so reorders are atomic) |
+| `type`, `meal_type` | `visit`, `meal`, `free_time`; `meal_type` (`breakfast`, `lunch`, `dinner`) iff `type = meal` |
+| `place_id`, `user_place_id` | Exactly one for a visit or meal, neither for free time. A meal needs a restaurant; a visit must not be one. `user_place_id` is `ON DELETE RESTRICT` |
+| `display_name`, `display_point` | Snapshot at creation (name or, for an unnamed place, its category); user-place renames are propagated |
+| `start_time`, `end_time` | Local time at the destination; both null or both set, `end > start`, same day. Unscheduled is allowed. Timed items of a day may touch but not overlap |
+| `duration_minutes`, `duration_source` | 1 to 1440; `user` or `category_default`. A duration must be given unless the place has a default (none does yet) |
+| `origin`, `locked`, `reasons` | `engine` or `user`; locked items are never moved by recalculation; reason codes (`SEED_DATA` on seed items) |
 
-### `app.itinerary_item`
+`transfer`: `from_item_id` (unique: one outgoing transfer per item), `to_item_id`, `mode`,
+`seconds`, `meters`, `confidence` (`routed`, `estimated`), `geometry`. Filled by Phase 3 and 4.
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | |
-| `day_id` | fk | |
-| `position` | smallint | Order within the day |
-| `type` | enum | `visit`, `meal`, `free_time` |
-| `meal_type` | enum, nullable | `breakfast`, `lunch`, `dinner` |
-| `place_id` | fk to `geo.place`, nullable | |
-| `user_place_id` | fk to `app.user_place`, nullable | Exactly one of the two for visits and meals |
-| `display_name`, `display_point` | text, point | Snapshot |
-| `start_time`, `end_time` | time | Local time of the destination |
-| `duration_minutes` | integer | |
-| `duration_source` | enum | `category_default`, `user` |
-| `origin` | enum | `engine`, `user` |
-| `locked` | boolean | Locked items are never moved by recalculation |
-| `reasons` | text[] | Reason codes |
+### 3.4 `app.user_place`
+A place the user added that is not in `geo.place`: `kind` (`city`, `location`, `restaurant`),
+`name`, `geom`, `cuisines` and `meal_types` (restaurants only; meal types may include `snack`),
+`source` (`manual_pin`, `search_result`), and `search_provider` (`photon`) with `search_ref`
+(for example `N123`, an OSM node) **iff** the source is a search result. At most 500 per
+installation.
 
-### `app.transfer`
-The movement from one item to the next.
+### 3.5 `app.trip_visit`: the past-trip archive (ADR 006)
+One row per city or attraction of the selected itinerary of a past trip: `kind`, `name` and
+`point` (snapshots), `geo_place_ref` (a `geo.place` id for imported places, null for user places
+and cities; may no longer exist), `day_number`, `confirmed` (default true; the user can clear it).
+Restaurants and meals are not archived.
 
-| Field | Type | Notes |
-|---|---|---|
-| `from_item_id`, `to_item_id` | fk | |
-| `mode` | enum | `walk`, `drive` (later `transit`) |
-| `seconds`, `meters` | integer | |
-| `confidence` | enum | `routed`, `estimated` |
-| `geometry` | linestring, nullable | For drawing on the map |
-
-### `app.trip_visit` (archive, ADR 006)
-One row per city or attraction of a past trip's selected itinerary. Written when a trip becomes
-past; transfers, route geometry and other itineraries are deleted at the same time.
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | |
-| `trip_id` | fk | |
-| `kind` | enum | `city`, `attraction` |
-| `name` | text | Snapshot |
-| `point` | point | Snapshot |
-| `geo_place_ref` | text, nullable | The `geo` identifier it came from; may no longer exist |
-| `day_number` | smallint | |
-| `confirmed` | boolean | Default true; the user can clear it for skipped visits |
-
-`app.trip` gains `status` (`active`, `past`) and `archived_at` (timestamptz, nullable).
-
-### `app.user_place`
-A place the user added that is not in `geo.place`.
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | |
-| `installation_id` | fk | |
-| `kind` | enum | `city`, `location`, `restaurant` |
-| `name` | text | |
-| `geom` | point | |
-| `cuisines`, `meal_types` | text[] | For restaurants |
-| `source` | enum | `manual_pin`, `search_result` |
-| `search_provider`, `search_ref` | text, nullable | Provenance of a search result |
+### 3.6 `app.provider_cache` and `app.provider_usage`
+Answers from the one external provider (Photon) and its daily call counter (architecture, section
+6). They live in `app` because an import does not rebuild them. `provider_cache` holds
+`cache_key` (a hash of the normalised question), the provider's `response`, and `expires_at`; it
+never holds an installation identifier. `provider_usage` is `(provider, usage_date, calls)`.
 
 ## 4. Restaurant prices
 
 ### `app.price_record`
 Every price the app shows comes from one of these rows. There is no hidden or inferred price.
+The table and its constraints exist; the endpoints are Phase 8.
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | |
-| `installation_id` | fk | |
-| `place_id` / `user_place_id` | fk | The restaurant |
-| `itinerary_item_id` | fk, nullable | The meal it belongs to, if any |
-| `kind` | enum | `user_expected`, `user_actual`, `provider_level` |
-| `amount` | numeric, nullable | Null for a level-only provider record |
-| `level` | smallint, nullable | 1–4, provider records only |
-| `currency_code` | fk | |
-| `basis` | enum | `per_person`, `total` |
-| `party_size` | smallint, nullable | Required when `basis = total` |
-| `source` | text | `user`, or the provider name |
-| `confidence` | enum | `high`, `medium`, `low` |
-| `recorded_at` | timestamptz | |
-| `note` | text, nullable | |
+| Field | Notes |
+|---|---|
+| `installation_id` | `ON DELETE CASCADE` |
+| `place_id` / `user_place_id` | The restaurant; exactly one. `user_place_id` is `ON DELETE CASCADE` |
+| `itinerary_item_id` | The meal it belongs to, if any; `ON DELETE SET NULL` |
+| `kind` | `user_expected`, `user_actual`, `provider_level` |
+| `amount`, `level` | A user kind has an amount and no level; a provider record has a level (1 to 4) and no amount |
+| `currency_code`, `basis`, `party_size` | `per_person` or `total`; `party_size` is required when `total` |
+| `source`, `confidence`, `recorded_at`, `note` | Confidence is fixed by kind (below) |
 
-**Derived values (computed, not stored):**
+**Derived values (computed, not stored):** per-person amount; effective price (most recent
+`user_actual`, else most recent `user_expected`, else a `provider_level`, else none); price band
+against the trip's thresholds after conversion; budget fit against `meal_budget_per_person`.
 
-- `per_person_amount` = `amount` when per person; `amount / party_size` when total.
-- **Effective price** for a restaurant = the most recent `user_actual`; else the most recent
-  `user_expected`; else a `provider_level`; else none.
-- **Price band** = the band of `per_person_amount` under the trip's `price_band_thresholds`,
-  after conversion to the trip currency when needed.
-- **Budget fit** = `per_person_amount` against `trip.meal_budget_per_person`.
-
-**Confidence rules:**
-
-| Kind | Confidence |
+| Kind | Confidence (enforced by a CHECK) |
 |---|---|
 | `user_actual` | high |
 | `user_expected` | medium |
 | `provider_level` | low |
-| Any record converted between currencies | Unchanged, but flagged `approximate` and shown with the rate date |
 
-When a conversion is displayed, the rate date and provider from `geo.fx_rate` are returned with
-it, so the figure can be explained.
+A converted amount keeps its confidence but is flagged `approximate` and shown with the rate date
+and provider from `geo.fx_rate`.
 
-## 5. Licence boundary
+## 5. Lifecycle and deletion rules
 
-- `geo` holds data derived from OpenStreetMap under ODbL. If such a database is adapted and
-  used publicly, the adapted database must be available under ODbL on request.
-- Data from other sources is stored as separate `geo.place_source` rows with their own licence,
-  not merged into OSM-derived rows.
-- `app` holds independent data: trips, itineraries, user places, prices, photos. It links to
-  `geo` by identifier only. Under OSMF's guidance this is a Collective Database, so share-alike
-  does not extend to it.
-- This reading must be confirmed by legal review before any public commercial release.
+| Event | What happens |
+|---|---|
+| **Import of a region** | Upsert by deterministic id inside one transaction. Places and admin areas missing from the new extract get `is_active = false`; nothing is deleted. Source records of the places seen are replaced. A failed import changes no data and leaves a `failed` import run |
+| **Gazetteer import** | Upserts countries, currencies, codes and cities; cities of the imported countries that are gone from the file are deleted (`place.city_id` becomes null); places get their nearest city |
+| **Region status** | Set by each import from the six gates: `available` or `disabled`. There is no manual override |
+| **First API call of an installation** | Creates its `app.installation` row |
+| **Delete a trip** | Cascades to its itineraries, days, items, transfers and archive rows. Price records stay (they belong to the installation); their `itinerary_item_id` is cleared. User places stay |
+| **Delete an itinerary** | Cascades to days, items and transfers; clears the trip's selection if it was selected |
+| **Delete an item** | Later items of the day move up; the itinerary version increases |
+| **Delete a user place** | Refused (409) while an item uses it; otherwise its price records are deleted with it |
+| **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per city and visit item of the *selected* itinerary (or the destination city if there is none); then **every** itinerary of the trip is deleted (transfers, route geometry, versions, seeds go with them); the trip becomes `past`. One-way. Prices untouched. A past trip is read-only except deletion and clearing visits |
+| **Delete an installation** (no endpoint; operator action) | Cascades to everything it owns. Tokens are stateless, so the app would register a new installation |
+| **Limits** | 100 trips per installation, 5 itineraries per trip, 40 items per day, 500 user places |
 
-## 6. Future: photos
+Not built: archiving a trip automatically after its last day (ADR 006 allows it; it needs a
+scheduled job), and a backup of `app` (ADR 005: Supabase Free has none).
 
-Reserved now so later work needs no restructuring. Not built in the MVP.
+## 6. Provider-data ownership and licence handling
 
-### `app.photo`
+- **`geo` holds data derived from OpenStreetMap under ODbL, and GeoNames data under CC BY 4.0.**
+  Each set carries its licence: `geo.place_source.licence_code` for every place, and
+  `licence_code` on cities, countries, currencies and admin areas. `GET /v1/attributions` lists
+  the credits the app must show.
+- **OSM data is stored as ODbL source records.** A place is the real-world entity; its OSM object
+  is one `geo.place_source` row (source `osm`, the reference, the licence, the tags). A different
+  source (Overture, Foursquare OS Places, Wikidata) would be another row for the same place with
+  its own licence, never merged into the OSM row (CLAUDE.md, architecture rules).
+- **Derived values** (`category`, `cuisines`, `meal_types`, `score`) are computed from source
+  tags by versioned rules (`rules_version` on the import run); they are part of the adapted OSM
+  database.
+- **If an adapted OSM database is used publicly, it must be offered under ODbL on request.**
+  `geo` is that database. Its content is reproducible with the import workflow.
+- **`app` is independent data** (trips, itineraries, user places, prices). It links to `geo` by
+  identifier only and copies only the name and point snapshots. Under OSMF's guidance this is a
+  Collective Database, so share-alike does not extend to it. This reading must be confirmed by
+  legal review before any public commercial release.
+- **No foreign keys cross the schemas.** This keeps the licence boundary in the database as well:
+  `geo` can be dropped and rebuilt, or handed over under ODbL, without touching `app`. A test
+  fails if a constraint ever crosses.
+- **Photon results** (ODbL OSM data) are not stored in `geo`. They are cached for a week in
+  `app.provider_cache` and reach `geo`-independent storage only when the user saves one as a user
+  place (`search_provider`, `search_ref`).
+- **Opening hours and prices from providers are not stored** (ADR 003; ADR 002 rejects the
+  providers that have them).
 
-| Field | Type | Notes |
+## 7. The import report and the gates
+
+Every import stores a report in `geo.import_run.report` (and writes `report.json`, `report.md`
+and `review-sample.json` as workflow artifacts): source file and hash, places by kind with the
+share named, with a cuisine, with Wikidata and with Latin letters in the name, administrative
+areas, **excluded objects per class and reason**, the largest categories, the size of the `geo`
+schema, and the six gates of [ADR 009](decisions/009-region-readiness-thresholds.md) with their
+values. A region is `available` only if every gate passes; an unknown value never passes.
+
+## 8. Future: photos
+
+Reserved so later work needs no restructuring. Not built.
+
+`app.photo`: `id`, `installation_id`, `trip_id` (always), `day_id`, `city_id`, `itinerary_item_id`
+(the most specific association, nullable), `local_uri`, `storage_key` (nullable), `taken_at`,
+`geom` (only with the user's consent to keep location), `checksum`, `width`, `height`, `bytes`.
+In the first photo phase the files and this table live on the device only (D9).
+
+## 9. Differences from the earlier proposal
+
+| Earlier proposal | Built | Why |
 |---|---|---|
-| `id` | uuid | |
-| `installation_id` | fk | |
-| `trip_id` | fk | Always set |
-| `day_id`, `city_id`, `itinerary_item_id` | fk, nullable | The most specific association available |
-| `local_uri` | text | File in app storage on the device |
-| `storage_key` | text, nullable | Object key when cloud backup exists |
-| `taken_at` | timestamptz, nullable | |
-| `geom` | point, nullable | Only with the user's consent to keep location |
-| `checksum` | text | Deduplication and integrity |
-| `width`, `height`, `bytes` | integer | |
-
-In the first photo phase the files and this table live on the device only. Server-side storage
-of files is a later decision (D9).
-
-## 7. Indexes and constraints worth fixing early
-
-- GiST indexes on every geometry column; trigram indexes on `geo.city.name` and `geo.place.name`.
-- `app.itinerary_item`: unique `(day_id, position)`; check that exactly one of `place_id` and
-  `user_place_id` is set for visits and meals.
-- `app.price_record`: check `amount is not null or level is not null`; check `party_size` when
-  `basis = total`.
-- `geo.fx_rate`: unique `(rate_date, base_code, quote_code, provider)`.
+| Foreign keys from `app` to `geo` | Identifiers checked by the API, snapshots on items | ADR 012, decision 2 |
+| Native enum types | `text` with CHECK | ADR 012, decision 1 |
+| `app.installation.token_hash` | No token column | ADR 010 |
+| `geo.region.status` set by the operator | Set by the gates | ADR 009 |
+| `default_visit_minutes` from a category rule table | Always null | Table is Phase 4 |
+| `geo.place_signal.sitelink_count` from Wikidata | Always null | Wikidata not fetched |
+| Region `geom` from the extract | From Geofabrik's `.poly` file, nullable | |
+| (new) `geo.licence`, `geo.admin_code`, `geo.import_run.report`, place `*_norm` columns, `first/last_seen_import_run_id` | | Licence handling, names for codes, report, search, deactivation |
+| (new) `app.trip.destination_name/point`, `app.installation.is_seed`, `app.trip.is_seed`, `profile = manual`, `app.provider_*` | | ADR 006 snapshot, seed data, manual itineraries, provider rules |

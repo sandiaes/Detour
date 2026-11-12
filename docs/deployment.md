@@ -183,6 +183,53 @@ To remove the app: long-press its icon, **Uninstall**.
 
 ---
 
+## Importing a region (Phase 2)
+
+This loads a country's places and the GeoNames gazetteer into the Supabase database, so that
+search and trips have data. It runs in GitHub Actions; nothing is installed on your computer.
+**Nothing is imported until you do this.** The first run is the first time the import meets a real
+extract, so start with the smallest country and read the report before importing the others.
+
+1. **Deploy the Phase 2 code.** Merge the work into `main` (Render redeploys and `start.sh` runs
+   the new migrations; the log shows `migrations: ok`). The import workflow also runs the
+   migrations itself, so this is not a prerequisite.
+2. **Add the database secret.** On GitHub: repository **Settings**, **Secrets and variables**,
+   **Actions**, **Secrets** tab, **New repository secret**: name `DETOUR_IMPORT_DATABASE_URL`, value
+   the same **Session pooler** string as in step 4 (port `5432`, ending `?sslmode=require`). The
+   workflow refuses port `6543`.
+3. **Run the workflow.** **Actions**, **Import region**, **Run workflow** on `main` (the button
+   appears only for workflows on the default branch). Region: `austria`. Leave "Import the GeoNames
+   countries, currencies and cities first" ticked the first time.
+4. **Read the result.** The run page shows the report: the six readiness gates of ADR 009 with
+   their values, places kept per kind, objects excluded per class and reason, and the size of the
+   `geo` data. The artifact `import-austria` has `report.json`, `report.md` and
+   `review-sample.json` (ten kept and ten excluded objects for each reviewed class, ADR 011).
+   Please read the review sample and tell the assistant whether the selection rule is right.
+5. **Check the backend.** Open `https://<your-service>.onrender.com/v1/regions` (no token needed):
+   the region shows `"status": "available"` if every gate passed, `"disabled"` if one failed. A
+   disabled region has its data loaded but cannot be used for trips. Then check **Database** in
+   the Supabase dashboard for the size (limit 500 MB; gate 6 allows 250 MB for all regions).
+6. **Next regions.** Czechia and Hungary, then Italy; Japan stays last and will fail gate 5 until a
+   display rule for non-Latin names exists (ADR 009).
+
+**What can go wrong, and what to report** (copy the exact message):
+
+| Message | Meaning |
+|---|---|
+| `Repository secret DETOUR_IMPORT_DATABASE_URL is not set` | Step 2 |
+| `The import needs a session-mode connection` | The string uses port 6543; use the Session pooler on 5432 |
+| `cities file line N: M columns, expected 19` or `countryInfo.txt ...` | The GeoNames file layout differs from what the importer expects (ADR 012: unverified); report it |
+| `could not download ...` for the extract | Geofabrik refused or was unreachable; the terms were never read (ADR 012). Do not retry in a loop |
+| `report and database disagree` | The import found an inconsistency and rolled back; nothing was changed. Report it |
+| `type "geometry" does not exist` | PostGIS is not enabled, or not on the search path (the code puts `public, extensions` on it); check step 3 |
+| A warning that the coverage polygon was not loaded | Geofabrik's `.poly` file could not be fetched; the region's boundary stays unknown, nothing else is affected |
+| A yellow warning that a gate failed | Expected for a small or thin region; the report says which |
+
+The import takes the database's only write lock for the whole run (a second import waits). The
+data it writes can be rebuilt by running it again; it never touches the `app` schema.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause | What to do |
