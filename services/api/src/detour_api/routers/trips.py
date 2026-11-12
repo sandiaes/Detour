@@ -1,11 +1,13 @@
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Query, Request, Response, status
 
 from detour_api.deps import SessionDep
 from detour_api.errors import ApiError, invalid
+from detour_api.models.common import PlanningErrorBody
 from detour_api.models.trips import (
+    GenerationResult,
     Itinerary,
     ItinerarySummary,
     Trip,
@@ -14,6 +16,7 @@ from detour_api.models.trips import (
     TripVisit,
     TripVisitUpdate,
 )
+from detour_api.planner.service import generate_for_trip
 from detour_api.repo import geo, itineraries, trips
 from detour_api.routers.responses import AUTH, ERRORS
 
@@ -136,3 +139,18 @@ def create_itinerary(session: SessionDep, trip_id: uuid.UUID) -> Itinerary:
 def list_itineraries(session: SessionDep, trip_id: uuid.UUID) -> list[ItinerarySummary]:
     with session.tx() as conn:
         return itineraries.list_for_trip(conn, session.installation_id, trip_id)
+
+
+@router.post(
+    "/{trip_id}/itineraries/generate",
+    status_code=status.HTTP_201_CREATED,
+    summary="Plan the trip: two meaningfully different itineraries of attractions, or one with "
+    "the reason (Phase 4: city destinations, no meals). Replaces earlier unselected proposals.",
+    responses={**ERRORS, 422: {"model": PlanningErrorBody}},
+)
+def generate_itineraries(
+    session: SessionDep, request: Request, trip_id: uuid.UUID
+) -> GenerationResult:
+    return generate_for_trip(
+        session, trip_id, request.app.state.travel_time, request.app.state.settings
+    )

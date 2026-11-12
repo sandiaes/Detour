@@ -1,0 +1,2890 @@
+{
+ "synthetic": true,
+ "note": "Invented test data: not real places. See make_candidates.py.",
+ "centre": {
+  "lat": 48.2082,
+  "lon": 16.3738
+ },
+ "candidates": [
+  {
+   "place_id": "00000000-0000-4000-8000-000000000001",
+   "name": "Synthetic sight 001",
+   "category": "palace",
+   "lat": 48.213984,
+   "lon": 16.380374,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000002",
+   "name": "Synthetic sight 002",
+   "category": "museum",
+   "lat": 48.217388,
+   "lon": 16.372935,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000003",
+   "name": "Synthetic sight 003",
+   "category": "chapel",
+   "lat": 48.21404,
+   "lon": 16.369506,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000004",
+   "name": "Synthetic sight 004",
+   "category": "castle",
+   "lat": 48.205183,
+   "lon": 16.334181,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000005",
+   "name": "Synthetic sight 005",
+   "category": "statue",
+   "lat": 48.222839,
+   "lon": 16.387614,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000006",
+   "name": "Synthetic sight 006",
+   "category": "church",
+   "lat": 48.209161,
+   "lon": 16.35876,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000007",
+   "name": "Synthetic sight 007",
+   "category": "museum",
+   "lat": 48.251671,
+   "lon": 16.391971,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000008",
+   "name": "Synthetic sight 008",
+   "category": "chapel",
+   "lat": 48.228125,
+   "lon": 16.412376,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000009",
+   "name": "Synthetic sight 009",
+   "category": "monument",
+   "lat": 48.207972,
+   "lon": 16.356019,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000010",
+   "name": "Synthetic sight 010",
+   "category": "statue",
+   "lat": 48.202498,
+   "lon": 16.422862,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000011",
+   "name": "Synthetic sight 011",
+   "category": "memorial",
+   "lat": 48.224161,
+   "lon": 16.380403,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000012",
+   "name": "Synthetic sight 012",
+   "category": "church",
+   "lat": 48.203627,
+   "lon": 16.387991,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000013",
+   "name": "Synthetic sight 013",
+   "category": "church",
+   "lat": 48.195834,
+   "lon": 16.440135,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000014",
+   "name": "Synthetic sight 014",
+   "category": "castle",
+   "lat": 48.20402,
+   "lon": 16.370698,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000015",
+   "name": "Synthetic sight 015",
+   "category": "gallery",
+   "lat": 48.210935,
+   "lon": 16.373327,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000016",
+   "name": "Synthetic sight 016",
+   "category": "fountain",
+   "lat": 48.23218,
+   "lon": 16.367081,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000017",
+   "name": "Synthetic sight 017",
+   "category": "gallery",
+   "lat": 48.211224,
+   "lon": 16.343673,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000018",
+   "name": "Synthetic sight 018",
+   "category": "gallery",
+   "lat": 48.211725,
+   "lon": 16.400667,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000019",
+   "name": "Synthetic sight 019",
+   "category": "attraction",
+   "lat": 48.208578,
+   "lon": 16.385657,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000020",
+   "name": "Synthetic sight 020",
+   "category": "church",
+   "lat": 48.184642,
+   "lon": 16.456173,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000021",
+   "name": "Synthetic sight 021",
+   "category": "viewpoint",
+   "lat": 48.206803,
+   "lon": 16.310559,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000022",
+   "name": "Synthetic sight 022",
+   "category": "viewpoint",
+   "lat": 48.206805,
+   "lon": 16.380808,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000023",
+   "name": "Synthetic sight 023",
+   "category": "attraction",
+   "lat": 48.196977,
+   "lon": 16.334231,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000024",
+   "name": "Synthetic sight 024",
+   "category": "palace",
+   "lat": 48.21781,
+   "lon": 16.411081,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000025",
+   "name": "Synthetic sight 025",
+   "category": "chapel",
+   "lat": 48.209035,
+   "lon": 16.37599,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000026",
+   "name": "Synthetic sight 026",
+   "category": "church",
+   "lat": 48.218606,
+   "lon": 16.436571,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000027",
+   "name": "Synthetic sight 027",
+   "category": "church",
+   "lat": 48.154374,
+   "lon": 16.347215,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000028",
+   "name": "Synthetic sight 028",
+   "category": "museum",
+   "lat": 48.146418,
+   "lon": 16.410746,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000029",
+   "name": "Synthetic sight 029",
+   "category": "historic_building",
+   "lat": 48.205584,
+   "lon": 16.378392,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000030",
+   "name": "Synthetic sight 030",
+   "category": "viewpoint",
+   "lat": 48.210227,
+   "lon": 16.373016,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000031",
+   "name": "Synthetic sight 031",
+   "category": "church",
+   "lat": 48.283714,
+   "lon": 16.450931,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000032",
+   "name": "Synthetic sight 032",
+   "category": "gallery",
+   "lat": 48.204705,
+   "lon": 16.352699,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000033",
+   "name": "Synthetic sight 033",
+   "category": "church",
+   "lat": 48.212626,
+   "lon": 16.352616,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000034",
+   "name": "Synthetic sight 034",
+   "category": "museum",
+   "lat": 48.216155,
+   "lon": 16.371814,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000035",
+   "name": "Synthetic sight 035",
+   "category": "viewpoint",
+   "lat": 48.204346,
+   "lon": 16.347475,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000036",
+   "name": "Synthetic sight 036",
+   "category": "fountain",
+   "lat": 48.211171,
+   "lon": 16.383337,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000037",
+   "name": "Synthetic sight 037",
+   "category": "viewpoint",
+   "lat": 48.170825,
+   "lon": 16.348121,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000038",
+   "name": "Synthetic sight 038",
+   "category": "chapel",
+   "lat": 48.182459,
+   "lon": 16.41921,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000039",
+   "name": "Synthetic sight 039",
+   "category": "church",
+   "lat": 48.216609,
+   "lon": 16.368761,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000040",
+   "name": "Synthetic sight 040",
+   "category": "church",
+   "lat": 48.22098,
+   "lon": 16.365671,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000041",
+   "name": "Synthetic sight 041",
+   "category": "museum",
+   "lat": 48.20877,
+   "lon": 16.343799,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000042",
+   "name": "Synthetic sight 042",
+   "category": "statue",
+   "lat": 48.184563,
+   "lon": 16.374861,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000043",
+   "name": "Synthetic sight 043",
+   "category": "archaeological_site",
+   "lat": 48.203157,
+   "lon": 16.374798,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000044",
+   "name": "Synthetic sight 044",
+   "category": "viewpoint",
+   "lat": 48.212725,
+   "lon": 16.459624,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000045",
+   "name": "Synthetic sight 045",
+   "category": "palace",
+   "lat": 48.234756,
+   "lon": 16.372911,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000046",
+   "name": "Synthetic sight 046",
+   "category": "ruins",
+   "lat": 48.208007,
+   "lon": 16.40967,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000047",
+   "name": "Synthetic sight 047",
+   "category": "viewpoint",
+   "lat": 48.221258,
+   "lon": 16.377273,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000048",
+   "name": "Synthetic sight 048",
+   "category": "attraction",
+   "lat": 48.216671,
+   "lon": 16.382018,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000049",
+   "name": "Synthetic sight 049",
+   "category": "museum",
+   "lat": 48.209842,
+   "lon": 16.372525,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000050",
+   "name": "Synthetic sight 050",
+   "category": "attraction",
+   "lat": 48.228854,
+   "lon": 16.365696,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000051",
+   "name": "Synthetic sight 051",
+   "category": "chapel",
+   "lat": 48.207902,
+   "lon": 16.377228,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000052",
+   "name": "Synthetic sight 052",
+   "category": "tower",
+   "lat": 48.267567,
+   "lon": 16.288532,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000053",
+   "name": "Synthetic sight 053",
+   "category": "monument",
+   "lat": 48.211316,
+   "lon": 16.394753,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000054",
+   "name": "Synthetic sight 054",
+   "category": "memorial",
+   "lat": 48.202016,
+   "lon": 16.381348,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000055",
+   "name": "Synthetic sight 055",
+   "category": "monument",
+   "lat": 48.204264,
+   "lon": 16.361988,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000056",
+   "name": "Synthetic sight 056",
+   "category": "statue",
+   "lat": 48.213468,
+   "lon": 16.443468,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000057",
+   "name": "Synthetic sight 057",
+   "category": "memorial",
+   "lat": 48.2324,
+   "lon": 16.334916,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000058",
+   "name": "Synthetic sight 058",
+   "category": "fountain",
+   "lat": 48.226842,
+   "lon": 16.396113,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000059",
+   "name": "Synthetic sight 059",
+   "category": "fountain",
+   "lat": 48.207124,
+   "lon": 16.352289,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000060",
+   "name": "Synthetic sight 060",
+   "category": "museum",
+   "lat": 48.216986,
+   "lon": 16.351103,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000061",
+   "name": "Synthetic sight 061",
+   "category": "ruins",
+   "lat": 48.182613,
+   "lon": 16.344141,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000062",
+   "name": "Synthetic sight 062",
+   "category": "fountain",
+   "lat": 48.20702,
+   "lon": 16.373586,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000063",
+   "name": "Synthetic sight 063",
+   "category": "monument",
+   "lat": 48.224274,
+   "lon": 16.402157,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000064",
+   "name": "Synthetic sight 064",
+   "category": "fountain",
+   "lat": 48.172451,
+   "lon": 16.32125,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000065",
+   "name": "Synthetic sight 065",
+   "category": "attraction",
+   "lat": 48.215599,
+   "lon": 16.420884,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000066",
+   "name": "Synthetic sight 066",
+   "category": "museum",
+   "lat": 48.197718,
+   "lon": 16.36163,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000067",
+   "name": "Synthetic sight 067",
+   "category": "attraction",
+   "lat": 48.203664,
+   "lon": 16.40628,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000068",
+   "name": "Synthetic sight 068",
+   "category": "attraction",
+   "lat": 48.261653,
+   "lon": 16.337179,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000069",
+   "name": "Synthetic sight 069",
+   "category": "attraction",
+   "lat": 48.217461,
+   "lon": 16.428157,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000070",
+   "name": "Synthetic sight 070",
+   "category": "historic_building",
+   "lat": 48.252835,
+   "lon": 16.447315,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000071",
+   "name": "Synthetic sight 071",
+   "category": "attraction",
+   "lat": 48.206539,
+   "lon": 16.483933,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000072",
+   "name": "Synthetic sight 072",
+   "category": "church",
+   "lat": 48.224558,
+   "lon": 16.372303,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000073",
+   "name": "Synthetic sight 073",
+   "category": "church",
+   "lat": 48.160477,
+   "lon": 16.333297,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000074",
+   "name": "Synthetic sight 074",
+   "category": "historic_building",
+   "lat": 48.241843,
+   "lon": 16.382519,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000075",
+   "name": "Synthetic sight 075",
+   "category": "historic_building",
+   "lat": 48.205829,
+   "lon": 16.333601,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000076",
+   "name": "Synthetic sight 076",
+   "category": "church",
+   "lat": 48.214476,
+   "lon": 16.371134,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000077",
+   "name": "Synthetic sight 077",
+   "category": "viewpoint",
+   "lat": 48.192034,
+   "lon": 16.330911,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000078",
+   "name": "Synthetic sight 078",
+   "category": "archaeological_site",
+   "lat": 48.194616,
+   "lon": 16.397759,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000079",
+   "name": "Synthetic sight 079",
+   "category": "church",
+   "lat": 48.201987,
+   "lon": 16.384553,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000080",
+   "name": "Synthetic sight 080",
+   "category": "castle",
+   "lat": 48.20871,
+   "lon": 16.378536,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000081",
+   "name": "Synthetic sight 081",
+   "category": "ruins",
+   "lat": 48.194472,
+   "lon": 16.416446,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000082",
+   "name": "Synthetic sight 082",
+   "category": "palace",
+   "lat": 48.216798,
+   "lon": 16.389313,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000083",
+   "name": "Synthetic sight 083",
+   "category": "tower",
+   "lat": 48.207529,
+   "lon": 16.349833,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000084",
+   "name": "Synthetic sight 084",
+   "category": "church",
+   "lat": 48.209527,
+   "lon": 16.374868,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000085",
+   "name": "Synthetic sight 085",
+   "category": "tower",
+   "lat": 48.188147,
+   "lon": 16.352162,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000086",
+   "name": "Synthetic sight 086",
+   "category": "fountain",
+   "lat": 48.225648,
+   "lon": 16.403113,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000087",
+   "name": "Synthetic sight 087",
+   "category": "ruins",
+   "lat": 48.203061,
+   "lon": 16.358489,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000088",
+   "name": "Synthetic sight 088",
+   "category": "church",
+   "lat": 48.296797,
+   "lon": 16.401011,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000089",
+   "name": "Synthetic sight 089",
+   "category": "church",
+   "lat": 48.160498,
+   "lon": 16.324709,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000090",
+   "name": "Synthetic sight 090",
+   "category": "museum",
+   "lat": 48.257065,
+   "lon": 16.414429,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000091",
+   "name": "Synthetic sight 091",
+   "category": "attraction",
+   "lat": 48.206629,
+   "lon": 16.374166,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000092",
+   "name": "Synthetic sight 092",
+   "category": "gallery",
+   "lat": 48.1943,
+   "lon": 16.459857,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000093",
+   "name": "Synthetic sight 093",
+   "category": "gallery",
+   "lat": 48.205539,
+   "lon": 16.365696,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000094",
+   "name": "Synthetic sight 094",
+   "category": "tower",
+   "lat": 48.210968,
+   "lon": 16.381581,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000095",
+   "name": "Synthetic sight 095",
+   "category": "ruins",
+   "lat": 48.208175,
+   "lon": 16.373941,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000096",
+   "name": "Synthetic sight 096",
+   "category": "memorial",
+   "lat": 48.209735,
+   "lon": 16.380899,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000097",
+   "name": "Synthetic sight 097",
+   "category": "historic_building",
+   "lat": 48.211315,
+   "lon": 16.37738,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000098",
+   "name": "Synthetic sight 098",
+   "category": "fountain",
+   "lat": 48.187414,
+   "lon": 16.35664,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000099",
+   "name": "Synthetic sight 099",
+   "category": "castle",
+   "lat": 48.203218,
+   "lon": 16.394887,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000100",
+   "name": "Synthetic sight 100",
+   "category": "viewpoint",
+   "lat": 48.099055,
+   "lon": 16.424247,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000101",
+   "name": "Synthetic sight 101",
+   "category": "statue",
+   "lat": 48.201574,
+   "lon": 16.511341,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000102",
+   "name": "Synthetic sight 102",
+   "category": "monument",
+   "lat": 48.204569,
+   "lon": 16.389225,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000103",
+   "name": "Synthetic sight 103",
+   "category": "chapel",
+   "lat": 48.205105,
+   "lon": 16.412357,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000104",
+   "name": "Synthetic sight 104",
+   "category": "monument",
+   "lat": 48.202773,
+   "lon": 16.37695,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000105",
+   "name": "Synthetic sight 105",
+   "category": "attraction",
+   "lat": 48.211912,
+   "lon": 16.406141,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000106",
+   "name": "Synthetic sight 106",
+   "category": "monument",
+   "lat": 48.19296,
+   "lon": 16.372679,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000107",
+   "name": "Synthetic sight 107",
+   "category": "statue",
+   "lat": 48.206974,
+   "lon": 16.350845,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000108",
+   "name": "Synthetic sight 108",
+   "category": "palace",
+   "lat": 48.217612,
+   "lon": 16.383613,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000109",
+   "name": "Synthetic sight 109",
+   "category": "museum",
+   "lat": 48.180605,
+   "lon": 16.407008,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000110",
+   "name": "Synthetic sight 110",
+   "category": "castle",
+   "lat": 48.204816,
+   "lon": 16.375892,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000111",
+   "name": "Synthetic sight 111",
+   "category": "tower",
+   "lat": 48.161159,
+   "lon": 16.427921,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000112",
+   "name": "Synthetic sight 112",
+   "category": "tower",
+   "lat": 48.177507,
+   "lon": 16.3937,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000113",
+   "name": "Synthetic sight 113",
+   "category": "ruins",
+   "lat": 48.204723,
+   "lon": 16.37265,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000114",
+   "name": "Synthetic sight 114",
+   "category": "ruins",
+   "lat": 48.202751,
+   "lon": 16.3749,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000115",
+   "name": "Synthetic sight 115",
+   "category": "memorial",
+   "lat": 48.262141,
+   "lon": 16.379784,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000116",
+   "name": "Synthetic sight 116",
+   "category": "ruins",
+   "lat": 48.21446,
+   "lon": 16.387221,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000117",
+   "name": "Synthetic sight 117",
+   "category": "viewpoint",
+   "lat": 48.21853,
+   "lon": 16.315833,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000118",
+   "name": "Synthetic sight 118",
+   "category": "museum",
+   "lat": 48.216879,
+   "lon": 16.318321,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000119",
+   "name": "Synthetic sight 119",
+   "category": "church",
+   "lat": 48.204837,
+   "lon": 16.367124,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000120",
+   "name": "Synthetic sight 120",
+   "category": "attraction",
+   "lat": 48.212028,
+   "lon": 16.373874,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000121",
+   "name": "Synthetic sight 121",
+   "category": "museum",
+   "lat": 48.20476,
+   "lon": 16.407953,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000122",
+   "name": "Synthetic sight 122",
+   "category": "ruins",
+   "lat": 48.200812,
+   "lon": 16.375692,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000123",
+   "name": "Synthetic sight 123",
+   "category": "museum",
+   "lat": 48.21628,
+   "lon": 16.436887,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000124",
+   "name": "Synthetic sight 124",
+   "category": "monument",
+   "lat": 48.208297,
+   "lon": 16.36809,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000125",
+   "name": "Synthetic sight 125",
+   "category": "memorial",
+   "lat": 48.209783,
+   "lon": 16.373475,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000126",
+   "name": "Synthetic sight 126",
+   "category": "historic_building",
+   "lat": 48.184357,
+   "lon": 16.413496,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000127",
+   "name": "Synthetic sight 127",
+   "category": "gallery",
+   "lat": 48.19481,
+   "lon": 16.306475,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000128",
+   "name": "Synthetic sight 128",
+   "category": "ruins",
+   "lat": 48.207553,
+   "lon": 16.372759,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000129",
+   "name": "Synthetic sight 129",
+   "category": "chapel",
+   "lat": 48.208622,
+   "lon": 16.407508,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000130",
+   "name": "Synthetic sight 130",
+   "category": "memorial",
+   "lat": 48.215411,
+   "lon": 16.326221,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000131",
+   "name": "Synthetic sight 131",
+   "category": "palace",
+   "lat": 48.176735,
+   "lon": 16.250216,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000132",
+   "name": "Synthetic sight 132",
+   "category": "archaeological_site",
+   "lat": 48.228235,
+   "lon": 16.388369,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000133",
+   "name": "Synthetic sight 133",
+   "category": "church",
+   "lat": 48.204558,
+   "lon": 16.403813,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000134",
+   "name": "Synthetic sight 134",
+   "category": "museum",
+   "lat": 48.21539,
+   "lon": 16.367065,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000135",
+   "name": "Synthetic sight 135",
+   "category": "archaeological_site",
+   "lat": 48.241195,
+   "lon": 16.358124,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000136",
+   "name": "Synthetic sight 136",
+   "category": "attraction",
+   "lat": 48.218927,
+   "lon": 16.377069,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000137",
+   "name": "Synthetic sight 137",
+   "category": "gallery",
+   "lat": 48.168177,
+   "lon": 16.341663,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000138",
+   "name": "Synthetic sight 138",
+   "category": "viewpoint",
+   "lat": 48.209374,
+   "lon": 16.326428,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000139",
+   "name": "Synthetic sight 139",
+   "category": "fountain",
+   "lat": 48.238599,
+   "lon": 16.34162,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000140",
+   "name": "Synthetic sight 140",
+   "category": "fountain",
+   "lat": 48.196057,
+   "lon": 16.368447,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000141",
+   "name": "Synthetic sight 141",
+   "category": "attraction",
+   "lat": 48.225543,
+   "lon": 16.379272,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000142",
+   "name": "Synthetic sight 142",
+   "category": "attraction",
+   "lat": 48.198743,
+   "lon": 16.41632,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000143",
+   "name": "Synthetic sight 143",
+   "category": "archaeological_site",
+   "lat": 48.169722,
+   "lon": 16.354288,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000144",
+   "name": "Synthetic sight 144",
+   "category": "church",
+   "lat": 48.213509,
+   "lon": 16.313825,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000145",
+   "name": "Synthetic sight 145",
+   "category": "museum",
+   "lat": 48.195739,
+   "lon": 16.387737,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000146",
+   "name": "Synthetic sight 146",
+   "category": "gallery",
+   "lat": 48.238876,
+   "lon": 16.351294,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000147",
+   "name": "Synthetic sight 147",
+   "category": "viewpoint",
+   "lat": 48.206396,
+   "lon": 16.381383,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000148",
+   "name": "Synthetic sight 148",
+   "category": "tower",
+   "lat": 48.226465,
+   "lon": 16.35505,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000149",
+   "name": "Synthetic sight 149",
+   "category": "museum",
+   "lat": 48.226715,
+   "lon": 16.37051,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000150",
+   "name": "Synthetic sight 150",
+   "category": "historic_building",
+   "lat": 48.223568,
+   "lon": 16.36614,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000151",
+   "name": "Synthetic sight 151",
+   "category": "church",
+   "lat": 48.238728,
+   "lon": 16.351481,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000152",
+   "name": "Synthetic sight 152",
+   "category": "church",
+   "lat": 48.198015,
+   "lon": 16.36651,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000153",
+   "name": "Synthetic sight 153",
+   "category": "tower",
+   "lat": 48.199269,
+   "lon": 16.452296,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000154",
+   "name": "Synthetic sight 154",
+   "category": "viewpoint",
+   "lat": 48.237698,
+   "lon": 16.447623,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000155",
+   "name": "Synthetic sight 155",
+   "category": "ruins",
+   "lat": 48.183068,
+   "lon": 16.388525,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000156",
+   "name": "Synthetic sight 156",
+   "category": "city_gate",
+   "lat": 48.175825,
+   "lon": 16.363562,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000157",
+   "name": "Synthetic sight 157",
+   "category": "castle",
+   "lat": 48.189881,
+   "lon": 16.401789,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000158",
+   "name": "Synthetic sight 158",
+   "category": "monument",
+   "lat": 48.244771,
+   "lon": 16.29843,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000159",
+   "name": "Synthetic sight 159",
+   "category": "city_gate",
+   "lat": 48.249484,
+   "lon": 16.323968,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000160",
+   "name": "Synthetic sight 160",
+   "category": "statue",
+   "lat": 48.197495,
+   "lon": 16.352895,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000161",
+   "name": "Synthetic sight 161",
+   "category": "museum",
+   "lat": 48.219733,
+   "lon": 16.367356,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000162",
+   "name": "Synthetic sight 162",
+   "category": "viewpoint",
+   "lat": 48.239985,
+   "lon": 16.402481,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000163",
+   "name": "Synthetic sight 163",
+   "category": "church",
+   "lat": 48.182991,
+   "lon": 16.377434,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000164",
+   "name": "Synthetic sight 164",
+   "category": "viewpoint",
+   "lat": 48.25555,
+   "lon": 16.356247,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000165",
+   "name": "Synthetic sight 165",
+   "category": "gallery",
+   "lat": 48.218979,
+   "lon": 16.480996,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000166",
+   "name": "Synthetic sight 166",
+   "category": "monument",
+   "lat": 48.173404,
+   "lon": 16.336157,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000167",
+   "name": "Synthetic sight 167",
+   "category": "museum",
+   "lat": 48.237509,
+   "lon": 16.319081,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": true,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000168",
+   "name": "Synthetic sight 168",
+   "category": "fountain",
+   "lat": 48.176207,
+   "lon": 16.325025,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000169",
+   "name": "Synthetic sight 169",
+   "category": "museum",
+   "lat": 48.212186,
+   "lon": 16.373433,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000170",
+   "name": "Synthetic sight 170",
+   "category": "viewpoint",
+   "lat": 48.206709,
+   "lon": 16.388986,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000171",
+   "name": "Synthetic sight 171",
+   "category": "museum",
+   "lat": 48.159476,
+   "lon": 16.266715,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000172",
+   "name": "Synthetic sight 172",
+   "category": "museum",
+   "lat": 48.20817,
+   "lon": 16.373793,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000173",
+   "name": "Synthetic sight 173",
+   "category": "city_gate",
+   "lat": 48.141033,
+   "lon": 16.336533,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000174",
+   "name": "Synthetic sight 174",
+   "category": "monument",
+   "lat": 48.208196,
+   "lon": 16.293831,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000175",
+   "name": "Synthetic sight 175",
+   "category": "fountain",
+   "lat": 48.205191,
+   "lon": 16.393646,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000176",
+   "name": "Synthetic sight 176",
+   "category": "attraction",
+   "lat": 48.198236,
+   "lon": 16.389974,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000177",
+   "name": "Synthetic sight 177",
+   "category": "church",
+   "lat": 48.214979,
+   "lon": 16.395452,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000178",
+   "name": "Synthetic sight 178",
+   "category": "palace",
+   "lat": 48.234853,
+   "lon": 16.339292,
+   "signals": {
+    "has_wikidata": false,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000179",
+   "name": "Synthetic sight 179",
+   "category": "church",
+   "lat": 48.209527,
+   "lon": 16.366828,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": true,
+    "has_heritage": false,
+    "tourism_attraction": true,
+    "has_name": true,
+    "has_website": true
+   },
+   "sitelink_count": null
+  },
+  {
+   "place_id": "00000000-0000-4000-8000-000000000180",
+   "name": "Synthetic sight 180",
+   "category": "museum",
+   "lat": 48.19521,
+   "lon": 16.294396,
+   "signals": {
+    "has_wikidata": true,
+    "has_wikipedia": false,
+    "has_heritage": false,
+    "tourism_attraction": false,
+    "has_name": true,
+    "has_website": false
+   },
+   "sitelink_count": null
+  }
+ ]
+}

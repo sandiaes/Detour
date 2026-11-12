@@ -16,6 +16,7 @@ A local Docker Compose stack exists for any machine that can run it, but it is o
 | `render.yaml` | Render Blueprint for the API ([`deployment.md`](deployment.md)) |
 | `services/api/src/detour_api/importer` | Region import, gazetteer import, report and gates (Phase 2) |
 | `services/api/src/detour_api/travel`, `adapters/valhalla.py` | Travel-time service, request planner, estimator and the FOSSGIS Valhalla adapter (Phase 3) |
+| `services/api/src/detour_api/planner`, `repo/planning.py` | Planning engine v1: scoring, duration table, sequencer, validator, reason templates (Phase 4, ADR 014) |
 | `.github/workflows` | `ci.yml`, `import-region.yml` (manual), `android-apk.yml`, and the throwaway Phase 0 spike workflows |
 | `spikes`, `docs/spikes` | Phase 0 throwaway code and findings; not part of the product |
 
@@ -73,6 +74,19 @@ npm run generate                                # writes packages/shared/src/sch
 
 CI fails if either file is stale (`test_committed_contract_matches_the_application` and the drift
 step).
+
+## Planner golden files
+
+`tests/test_planner_engine.py` compares the engine's output for five fixture trips with
+`tests/fixtures/planner/golden/*.json`, byte for byte. The candidates are synthetic
+(`tests/fixtures/planner/make_candidates.py`; invented places, never imported). After an
+intended change to the engine, its configuration or the duration table (bump `CONFIG_VERSION`),
+rewrite them and review the diff:
+
+```bash
+cd services/api
+pytest tests/test_planner_engine.py --update-golden
+```
 
 ## Database tests
 

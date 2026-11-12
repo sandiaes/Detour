@@ -400,10 +400,18 @@ def test_visit_with_an_imported_place_snapshots_name_and_point(api_env: ApiEnv) 
     assert fetched["version"] == 2 and fetched["days"][0]["items"][0]["id"] == item["id"]
 
 
-def test_a_duration_is_required_because_no_default_is_known(api_env: ApiEnv) -> None:
+def test_an_attraction_without_a_duration_gets_its_category_default(api_env: ApiEnv) -> None:
+    # Phase 4: the category rule table (planner/durations.py) gives every attraction a default.
     it = make_itinerary(api_env, make_trip(api_env))
     museum = find_place(api_env, "testburg museum")
-    r = add_item(api_env, it, 1, type="visit", place_id=museum["id"])
+    item = add_item(api_env, it, 1, type="visit", place_id=museum["id"]).json()
+    assert (item["duration_minutes"], item["duration_source"]) == (90, "category_default")
+
+
+def test_a_meal_still_needs_a_duration(api_env: ApiEnv) -> None:
+    it = make_itinerary(api_env, make_trip(api_env))
+    restaurant = find_place(api_env, "alten post")
+    r = add_item(api_env, it, 1, type="meal", meal_type="lunch", place_id=restaurant["id"])
     assert r.status_code == 422 and code(r) == "duration_required"
 
 

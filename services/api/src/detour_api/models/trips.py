@@ -235,6 +235,17 @@ class ItemUpdate(StrictModel):
     meal_type: MealType | None = None
 
 
+class Transfer(BaseModel):
+    to_item_id: uuid.UUID
+    mode: Literal["walk", "drive"]
+    seconds: int
+    meters: int
+    confidence: Literal["routed", "estimated"] = Field(
+        description="routed: from the routing provider; estimated: straight-line distance times "
+        "a detour factor, an assumption and not a measurement"
+    )
+
+
 class Item(BaseModel):
     id: uuid.UUID
     day_id: uuid.UUID
@@ -252,7 +263,15 @@ class Item(BaseModel):
     duration_source: Literal["category_default", "user"]
     origin: Literal["engine", "user"]
     locked: bool
-    reasons: list[str]
+    reasons: list[str] = Field(description="Reason codes")
+    reason_texts: list[str] = Field(
+        description="The reason codes rendered through fixed templates, in the same order"
+    )
+    transfer: Transfer | None = Field(
+        default=None,
+        description="To the next item of the day. Null for the last item, or when no transfer "
+        "has been computed (items added or moved by hand)",
+    )
 
 
 class Day(BaseModel):
@@ -263,17 +282,57 @@ class Day(BaseModel):
     items: list[Item]
 
 
+class PlanNote(BaseModel):
+    code: str = Field(description="Stable code")
+    text: str = Field(description="The code rendered through its fixed template")
+
+
+class PlanStats(BaseModel):
+    visits: int
+    days_with_visits: int
+    visit_minutes: int
+    travel_minutes: int
+    travel_seconds: int
+    routed_transfers: int
+    estimated_transfers: int
+    day_utilisation_permille: int = Field(
+        description="Visits and transfers as permille of the 09:00-21:00 window of all days"
+    )
+    travel_share_permille: int = Field(description="Transfer time as permille of planned time")
+
+
 class ItinerarySummary(BaseModel):
     id: uuid.UUID
     trip_id: uuid.UUID
+    generation_id: uuid.UUID = Field(description="Shared by the variants of one generation")
     profile: Literal["essentials", "wider", "manual"]
     status: Literal["proposed", "selected", "superseded"]
     version: int
     engine_version: str
     config_version: str
-    import_run_id: uuid.UUID | None
+    import_run_id: uuid.UUID | None = Field(description="The data version the plan was built on")
+    seed: int | None
+    diversity_score: float | None = Field(
+        description="Jaccard similarity of the visit sets of the generation's two variants"
+    )
+    notes: list[PlanNote] = Field(description="Plan-level explanations; empty for manual plans")
+    stats: PlanStats | None = Field(description="Null for manual itineraries")
     created_at: datetime
 
 
 class Itinerary(ItinerarySummary):
     days: list[Day]
+
+
+class GenerationResult(BaseModel):
+    generation_id: uuid.UUID
+    distinct: bool = Field(
+        description="True when two meaningfully different itineraries were made; false when the "
+        "destination supports only one (the notes say why)"
+    )
+    jaccard_permille: int | None = Field(
+        description="Overlap of the two variants' visit sets; null with one itinerary"
+    )
+    max_jaccard_permille: int
+    notes: list[PlanNote]
+    itineraries: list[Itinerary]

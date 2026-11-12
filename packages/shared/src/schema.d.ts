@@ -280,6 +280,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/trips/{trip_id}/itineraries/generate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Plan the trip: two meaningfully different itineraries of attractions, or one with the reason (Phase 4: city destinations, no meals). Replaces earlier unselected proposals. */
+    post: operations["generate_itineraries"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/itineraries/{itinerary_id}": {
     parameters: {
       query?: never;
@@ -610,6 +627,30 @@ export interface components {
       /** Results */
       results?: components["schemas"]["ExternalPlace"][];
     };
+    /** GenerationResult */
+    GenerationResult: {
+      /**
+       * Generation Id
+       * Format: uuid
+       */
+      generation_id: string;
+      /**
+       * Distinct
+       * @description True when two meaningfully different itineraries were made; false when the destination supports only one (the notes say why)
+       */
+      distinct: boolean;
+      /**
+       * Jaccard Permille
+       * @description Overlap of the two variants' visit sets; null with one itinerary
+       */
+      jaccard_permille: number | null;
+      /** Max Jaccard Permille */
+      max_jaccard_permille: number;
+      /** Notes */
+      notes: components["schemas"]["PlanNote"][];
+      /** Itineraries */
+      itineraries: components["schemas"]["Itinerary"][];
+    };
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -656,6 +697,13 @@ export interface components {
        * @description Bearer token. Shown once; keep it in secure storage.
        */
       token: string;
+    };
+    /** IssueBody */
+    IssueBody: {
+      /** Code */
+      code: string;
+      /** Text */
+      text: string;
     };
     /** Item */
     Item: {
@@ -706,8 +754,18 @@ export interface components {
       origin: "engine" | "user";
       /** Locked */
       locked: boolean;
-      /** Reasons */
+      /**
+       * Reasons
+       * @description Reason codes
+       */
       reasons: string[];
+      /**
+       * Reason Texts
+       * @description The reason codes rendered through fixed templates, in the same order
+       */
+      reason_texts: string[];
+      /** @description To the next item of the day. Null for the last item, or when no transfer has been computed (items added or moved by hand) */
+      transfer?: components["schemas"]["Transfer"] | null;
     };
     /** ItemCreate */
     ItemCreate: {
@@ -780,6 +838,12 @@ export interface components {
        */
       trip_id: string;
       /**
+       * Generation Id
+       * Format: uuid
+       * @description Shared by the variants of one generation
+       */
+      generation_id: string;
+      /**
        * Profile
        * @enum {string}
        */
@@ -795,8 +859,25 @@ export interface components {
       engine_version: string;
       /** Config Version */
       config_version: string;
-      /** Import Run Id */
+      /**
+       * Import Run Id
+       * @description The data version the plan was built on
+       */
       import_run_id: string | null;
+      /** Seed */
+      seed: number | null;
+      /**
+       * Diversity Score
+       * @description Jaccard similarity of the visit sets of the generation's two variants
+       */
+      diversity_score: number | null;
+      /**
+       * Notes
+       * @description Plan-level explanations; empty for manual plans
+       */
+      notes: components["schemas"]["PlanNote"][];
+      /** @description Null for manual itineraries */
+      stats: components["schemas"]["PlanStats"] | null;
       /**
        * Created At
        * Format: date-time
@@ -818,6 +899,12 @@ export interface components {
        */
       trip_id: string;
       /**
+       * Generation Id
+       * Format: uuid
+       * @description Shared by the variants of one generation
+       */
+      generation_id: string;
+      /**
        * Profile
        * @enum {string}
        */
@@ -833,8 +920,25 @@ export interface components {
       engine_version: string;
       /** Config Version */
       config_version: string;
-      /** Import Run Id */
+      /**
+       * Import Run Id
+       * @description The data version the plan was built on
+       */
       import_run_id: string | null;
+      /** Seed */
+      seed: number | null;
+      /**
+       * Diversity Score
+       * @description Jaccard similarity of the visit sets of the generation's two variants
+       */
+      diversity_score: number | null;
+      /**
+       * Notes
+       * @description Plan-level explanations; empty for manual plans
+       */
+      notes: components["schemas"]["PlanNote"][];
+      /** @description Null for manual itineraries */
+      stats: components["schemas"]["PlanStats"] | null;
       /**
        * Created At
        * Format: date-time
@@ -978,6 +1082,61 @@ export interface components {
       /** Match */
       match?: ("exact" | "prefix" | "word_prefix" | "contains" | "similar") | null;
     };
+    /** PlanNote */
+    PlanNote: {
+      /**
+       * Code
+       * @description Stable code
+       */
+      code: string;
+      /**
+       * Text
+       * @description The code rendered through its fixed template
+       */
+      text: string;
+    };
+    /** PlanStats */
+    PlanStats: {
+      /** Visits */
+      visits: number;
+      /** Days With Visits */
+      days_with_visits: number;
+      /** Visit Minutes */
+      visit_minutes: number;
+      /** Travel Minutes */
+      travel_minutes: number;
+      /** Travel Seconds */
+      travel_seconds: number;
+      /** Routed Transfers */
+      routed_transfers: number;
+      /** Estimated Transfers */
+      estimated_transfers: number;
+      /**
+       * Day Utilisation Permille
+       * @description Visits and transfers as permille of the 09:00-21:00 window of all days
+       */
+      day_utilisation_permille: number;
+      /**
+       * Travel Share Permille
+       * @description Transfer time as permille of planned time
+       */
+      travel_share_permille: number;
+    };
+    /** PlanningErrorBody */
+    PlanningErrorBody: {
+      /** Detail */
+      detail: string;
+      /**
+       * Code
+       * @description Stable machine-readable reason, for example region_not_available
+       */
+      code?: string | null;
+      /**
+       * Issues
+       * @description With code planning_impossible: each reason no plan can be made
+       */
+      issues?: components["schemas"]["IssueBody"][];
+    };
     /** ReadinessResponse */
     ReadinessResponse: {
       /**
@@ -1009,6 +1168,29 @@ export interface components {
       counts: {
         [key: string]: number;
       };
+    };
+    /** Transfer */
+    Transfer: {
+      /**
+       * To Item Id
+       * Format: uuid
+       */
+      to_item_id: string;
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "walk" | "drive";
+      /** Seconds */
+      seconds: number;
+      /** Meters */
+      meters: number;
+      /**
+       * Confidence
+       * @description routed: from the routing provider; estimated: straight-line distance times a detour factor, an assumption and not a measurement
+       * @enum {string}
+       */
+      confidence: "routed" | "estimated";
     };
     /** Trip */
     Trip: {
@@ -2148,6 +2330,64 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  generate_itineraries: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GenerationResult"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanningErrorBody"];
         };
       };
     };

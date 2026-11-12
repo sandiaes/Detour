@@ -356,19 +356,28 @@ def search_places(conn: Connection, **kwargs: Any) -> list[PlaceSummary]:
 
 def place_exists(
     conn: Connection, place_id: uuid.UUID
-) -> tuple[str, str, float, float, bool, int | None] | None:
-    """(kind, display name, lat, lon, is_active, default_visit_minutes) of a geo.place."""
+) -> tuple[str, str, float, float, bool, int | None, str] | None:
+    """(kind, display name, lat, lon, is_active, default_visit_minutes, category) of a
+    geo.place."""
     row = conn.execute(
         text(
             "SELECT kind, COALESCE(name, category) AS name, ST_Y(geom) lat, ST_X(geom) lon,"
-            " is_active, default_visit_minutes FROM geo.place WHERE id = :i"
+            " is_active, default_visit_minutes, category FROM geo.place WHERE id = :i"
         ),
         {"i": place_id},
     ).first()
     return (
         None
         if row is None
-        else (row.kind, row.name, row.lat, row.lon, row.is_active, row.default_visit_minutes)
+        else (
+            row.kind,
+            row.name,
+            row.lat,
+            row.lon,
+            row.is_active,
+            row.default_visit_minutes,
+            row.category,
+        )
     )
 
 

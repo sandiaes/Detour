@@ -1,8 +1,12 @@
 """Itineraries, days and items.
 
-Phase 2 stores and edits these by hand (the planning engine arrives in Phase 4). Every function
-takes the installation id and returns nothing about rows that belong to someone else: a foreign
-or unknown identifier is simply "not found".
+Manual itineraries are stored and edited by hand (Phase 2); engine itineraries are written by
+``repo/planning.py`` (Phase 4) and read here. Every function takes the installation id and returns
+nothing about rows that belong to someone else: a foreign or unknown identifier is simply "not
+found".
+
+Hand edits do not recompute transfers (recalculation is Phase 7). A transfer that no longer joins
+two consecutive items of a day is deleted, so a stale travel time is never shown.
 """
 
 import uuid
@@ -19,7 +23,12 @@ from detour_api.models.trips import (
     ItemUpdate,
     Itinerary,
     ItinerarySummary,
+    PlanNote,
+    PlanStats,
+    Transfer,
 )
+from detour_api.planner.durations import visit_minutes
+from detour_api.planner.reasons import ITEM_TEMPLATES, NOTE_TEMPLATES, item_text, note_text
 from detour_api.repo import geo, trips, user_places
 
 MAX_ITINERARIES_PER_TRIP = 5
@@ -33,21 +42,80 @@ _ITEM_COLUMNS = """
 """
 
 
+_ITINERARY_COLUMNS = """
+    it.id, it.trip_id, it.generation_id, it.profile, it.status, it.version, it.engine_version,
+    it.config_version, it.import_run_id, it.seed, it.diversity_score, it.summary, it.created_at
+"""
+
+
+def render_reason(code: str) -> str:
+    """A stored reason code through its fixed template (an unknown code is shown as itself)."""
+    return item_text(code) if code in ITEM_TEMPLATES else code
+
+
+def render_note(code: str, params: dict[str, Any]) -> PlanNote:
+    text_ = note_text(code, params) if code in NOTE_TEMPLATES else code
+    return PlanNote(code=code, text=text_)
+
+
 def _summary(row: Any) -> ItinerarySummary:
+    summary = row.summary or {}
+    stats = summary.get("stats")
     return ItinerarySummary(
         id=row.id,
         trip_id=row.trip_id,
+        generation_id=row.generation_id,
         profile=row.profile,
         status=row.status,
         version=row.version,
         engine_version=row.engine_version,
         config_version=row.config_version,
         import_run_id=row.import_run_id,
+        seed=row.seed,
+        diversity_score=None if row.diversity_score is None else float(row.diversity_score),
+        notes=[render_note(n["code"], n.get("params", {})) for n in summary.get("notes", [])],
+        stats=None if stats is None else PlanStats(**stats),
         created_at=row.created_at,
     )
 
 
-def _item(row: Any) -> Item:
+def _transfers(conn: Connection, item_ids: list[uuid.UUID]) -> dict[uuid.UUID, Transfer]:
+    if not item_ids:
+        return {}
+    rows = conn.execute(
+        text(
+            "SELECT from_item_id, to_item_id, mode, seconds, meters, confidence FROM app.transfer"
+            " WHERE from_item_id = ANY(:ids)"
+        ),
+        {"ids": item_ids},
+    ).all()
+    return {
+        r.from_item_id: Transfer(
+            to_item_id=r.to_item_id,
+            mode=r.mode,
+            seconds=r.seconds,
+            meters=r.meters,
+            confidence=r.confidence,
+        )
+        for r in rows
+    }
+
+
+def drop_stale_transfers(conn: Connection, day_ids: list[uuid.UUID]) -> None:
+    """Delete transfers of these days that no longer join an item to the next one."""
+    conn.execute(
+        text(
+            """
+            DELETE FROM app.transfer t USING app.itinerary_item f, app.itinerary_item n
+            WHERE t.from_item_id = f.id AND t.to_item_id = n.id AND f.day_id = ANY(:days)
+              AND NOT (n.day_id = f.day_id AND n.position = f.position + 1)
+            """
+        ),
+        {"days": day_ids},
+    )
+
+
+def _item(row: Any, transfer: Transfer | None = None) -> Item:
     return Item(
         id=row.id,
         day_id=row.day_id,
@@ -66,6 +134,8 @@ def _item(row: Any) -> Item:
         origin=row.origin,
         locked=row.locked,
         reasons=list(row.reasons),
+        reason_texts=[render_reason(c) for c in row.reasons],
+        transfer=transfer,
     )
 
 
@@ -108,9 +178,8 @@ def list_for_trip(
     trips.require_trip(conn, installation_id, trip_id)
     rows = conn.execute(
         text(
-            "SELECT id, trip_id, profile, status, version, engine_version, config_version,"
-            " import_run_id, created_at FROM app.itinerary WHERE trip_id = :t"
-            " ORDER BY created_at, id"
+            f"SELECT {_ITINERARY_COLUMNS} FROM app.itinerary it WHERE it.trip_id = :t"
+            " ORDER BY it.created_at, it.id"
         ),
         {"t": trip_id},
     ).all()
@@ -122,8 +191,7 @@ def get_itinerary(
 ) -> Itinerary | None:
     row = conn.execute(
         text(
-            "SELECT it.id, it.trip_id, it.profile, it.status, it.version, it.engine_version,"
-            " it.config_version, it.import_run_id, it.created_at FROM app.itinerary it"
+            f"SELECT {_ITINERARY_COLUMNS} FROM app.itinerary it"
             " JOIN app.trip t ON t.id = it.trip_id WHERE it.id = :i AND t.installation_id = :n"
         ),
         {"i": itinerary_id, "n": installation_id},
@@ -145,9 +213,10 @@ def get_itinerary(
         ),
         {"i": itinerary_id},
     ).all()
+    transfers = _transfers(conn, [it.id for it in items])
     by_day: dict[uuid.UUID, list[Item]] = {}
     for it in items:
-        by_day.setdefault(it.day_id, []).append(_item(it))
+        by_day.setdefault(it.day_id, []).append(_item(it, transfers.get(it.id)))
     summary = _summary(row)
     return Itinerary(
         **summary.model_dump(),
@@ -244,7 +313,8 @@ def _check_overlap(
 def _resolve_place(
     conn: Connection, installation_id: uuid.UUID, body: ItemCreate
 ) -> tuple[str, float | None, float | None, int | None]:
-    """(display name, lat, lon, default minutes) of the item's place, validating its kind."""
+    """(display name, lat, lon, default minutes) of the item's place, validating its kind. An
+    imported attraction's default is its category's visit duration (planner/durations.py)."""
     want_restaurant = body.type == "meal"
     if body.type == "free_time":
         return "Free time", None, None, None
@@ -252,12 +322,14 @@ def _resolve_place(
         found = geo.place_exists(conn, body.place_id)
         if found is None or not found[4]:
             raise invalid("place_not_found", "place_id is not an active place")
-        kind, name, lat, lon, _, default_minutes = found
+        kind, name, lat, lon, _, default_minutes, category = found
         if (kind == "restaurant") != want_restaurant:
             raise invalid(
                 "wrong_place_kind",
                 "a meal needs a restaurant; a visit needs a place that is not a restaurant",
             )
+        if default_minutes is None and kind == "attraction":
+            default_minutes = visit_minutes(category)
         return name, lat, lon, default_minutes
     assert body.user_place_id is not None  # noqa: S101 - guaranteed by ItemCreate
     place = user_places.get(conn, installation_id, body.user_place_id)
@@ -337,6 +409,7 @@ def create_item(
             "locked": body.locked,
         },
     )
+    drop_stale_transfers(conn, [ctx.day_id])
     _bump(conn, itinerary_id)
     return require_item(conn, installation_id, item_id)
 
@@ -350,7 +423,7 @@ def get_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -
         ),
         {"i": item_id, "n": installation_id},
     ).first()
-    return None if row is None else _item(row)
+    return None if row is None else _item(row, _transfers(conn, [row.id]).get(row.id))
 
 
 def require_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -> Item:
@@ -454,6 +527,7 @@ def update_item(
         sets.append("meal_type = :meal")
         params["meal"] = body.meal_type
     conn.execute(text(f"UPDATE app.itinerary_item SET {', '.join(sets)} WHERE id = :i"), params)
+    drop_stale_transfers(conn, [row.day_id, target_day_id])
     _bump(conn, row.itinerary_id)
     return require_item(conn, installation_id, item_id)
 
@@ -479,4 +553,5 @@ def delete_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID
         ),
         {"d": row.day_id, "p": row.position},
     )
+    drop_stale_transfers(conn, [row.day_id])
     _bump(conn, row.itinerary_id)
