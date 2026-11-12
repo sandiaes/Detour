@@ -62,3 +62,14 @@ Conclusion: the limit is **100 cells (sources x targets) per request**, whatever
 2 x 2 and 10 x 10 requests and 653 s in the 20 x 5 request. The distance was identical. The
 responses named different algorithms (`timedistancematrix`, `costmatrix`) across requests, but the
 cause of the 25% difference is not established.
+
+## Distance check between cities (optional, same rules)
+
+Tests whether the server accepts places hundreds of kilometres apart. Points are the centres of
+Rome, Florence, Milan, Naples and Venice; the mainland only (no ferries). Click one at a time, 10
+seconds apart. Send back worked or not, and the full error text if any.
+
+| Test | Link |
+|---|---|
+| 5 x 5 cities, driving (25 cells) | [open](https://valhalla1.openstreetmap.de/sources_to_targets?json=%7B%22sources%22%3A%5B%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2558%7D%2C%7B%22lat%22%3A45.4642%2C%22lon%22%3A9.19%7D%2C%7B%22lat%22%3A40.8518%2C%22lon%22%3A14.2681%7D%2C%7B%22lat%22%3A45.4408%2C%22lon%22%3A12.3155%7D%5D%2C%22targets%22%3A%5B%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%2C%7B%22lat%22%3A43.7696%2C%22lon%22%3A11.2558%7D%2C%7B%22lat%22%3A45.4642%2C%22lon%22%3A9.19%7D%2C%7B%22lat%22%3A40.8518%2C%22lon%22%3A14.2681%7D%2C%7B%22lat%22%3A45.4408%2C%22lon%22%3A12.3155%7D%5D%2C%22costing%22%3A%22auto%22%7D) |
+| Rome to Milan only, driving (1 cell, the longest pair) | [open](https://valhalla1.openstreetmap.de/sources_to_targets?json=%7B%22sources%22%3A%5B%7B%22lat%22%3A41.9028%2C%22lon%22%3A12.4964%7D%5D%2C%22targets%22%3A%5B%7B%22lat%22%3A45.4642%2C%22lon%22%3A9.19%7D%5D%2C%22costing%22%3A%22auto%22%7D) |
