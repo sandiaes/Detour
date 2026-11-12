@@ -1,6 +1,7 @@
 # Data model
 
-Status: **implemented in Phase 2** (Alembic migrations `0002_geo_schema` and `0003_app_schema`).
+Status: **implemented in Phase 2** (Alembic migrations `0002_geo_schema` and `0003_app_schema`);
+`geo.travel_time` was rebuilt in Phase 3 (`0005_travel_time_cache`, ADR 013).
 Where the built schema differs from the earlier proposal, the difference is listed in section 9
 and decided in [ADR 012](decisions/012-phase-2-data-and-search-choices.md). Photos (section 8) are
 still reserved, not built.
@@ -25,7 +26,7 @@ geo.region ──< geo.import_run          geo.licence ──< geo.place_source,
 geo.region ──< geo.place ──< geo.place_source
 geo.place ──1 geo.restaurant_profile   geo.place ──1 geo.place_signal
 geo.region ──< geo.admin_area          geo.country ──< geo.city      geo.country >── geo.currency
-geo.currency ──< geo.fx_rate           geo.travel_time (place pair, mode)      geo.admin_code
+geo.currency ──< geo.fx_rate           geo.travel_time (end points, mode)     geo.admin_code
 
 app.installation ──< app.trip ──< app.itinerary ──< app.itinerary_day ──< app.itinerary_item
 app.installation ──< app.user_place              app.itinerary_item ──< app.transfer (to the next item)
@@ -168,11 +169,26 @@ One row per source record that contributed to a place; the primary key is
 - `geo.place`: partial index `(region_id, kind) WHERE is_active`; `city_id`.
 
 ### 2.10 `geo.travel_time` and `geo.fx_rate`
-Tables only; filled in Phases 3 and 8.
 
-| `travel_time` | `from_ref`, `to_ref` (place id or rounded coordinate key), `mode` (`walk`, `drive`), `seconds`, `meters`, `confidence` (`routed`, `estimated`), `engine_version`, `import_run_id`; key `(from_ref, to_ref, mode, engine_version)` |
+`travel_time` is the Phase 3 cache (migration `0005`, ADR 013); `fx_rate` is filled in Phase 8.
+
+| `travel_time` | Notes |
 |---|---|
+| `from_lat`, `from_lon`, `to_lat`, `to_lon` | The cell's end points as integers of 1e-5 degree (about 1.1 m); not place ids, so a moved place cannot keep a stale time |
+| `mode` | `walk` or `drive` |
+| `request_shape` | `matrix-v1` or `route-v1`: part of the key, so a change of shape never mixes with old rows |
+| `provider`, `response_date` | `fossgis-valhalla`; the server's `Date` header, else our clock |
+| `confidence` | `routed` (has `seconds` and `meters`) or `estimated` (a cell the provider had **no route** for: no numbers, `retry_after` set; the estimate is recomputed on read). A CHECK enforces both |
+| `algorithm` | The matrix algorithm the response named; null for route requests and unknown |
+| `retry_after` | Estimated rows only: the provider is asked again after this time |
+
+Key `(from_lat, from_lon, to_lat, to_lon, mode, request_shape)`. Capped at 100,000 rows (oldest
+`response_date` first), measured at 20.7 MB; it counts toward ADR 009 gate 6 because that gate sums
+the whole `geo` schema. Estimates made because the provider was unavailable are not stored. It is
+not rebuilt by an import.
+
 | `fx_rate` | `rate_date`, `base_code`, `quote_code`, `rate` > 0, `provider`, `fetched_at`; key `(rate_date, base_code, quote_code, provider)` |
+|---|---|
 
 ## 3. `app` schema: user data
 
@@ -354,4 +370,5 @@ In the first photo phase the files and this table live on the device only (D9).
 | `geo.place_signal.sitelink_count` from Wikidata | Always null | Wikidata not fetched |
 | Region `geom` from the extract | From Geofabrik's `.poly` file, nullable | |
 | (new) `geo.licence`, `geo.admin_code`, `geo.import_run.report`, place `*_norm` columns, `first/last_changed_import_run_id` | | Licence handling, names for codes, report, search, deactivation |
+| `geo.travel_time` keyed by two text references, `engine_version`, `import_run_id` | Keyed by end-point coordinates, `request_shape`, `provider`, `response_date`; no `import_run_id` | ADR 013: a provider's answer does not belong to our import; compact; shape and provider recorded |
 | (new) `app.trip.destination_name/point`, `app.installation.is_seed`, `app.trip.is_seed`, `profile = manual`, `app.provider_*` | | ADR 006 snapshot, seed data, manual itineraries, provider rules |

@@ -15,6 +15,7 @@ A local Docker Compose stack exists for any machine that can run it, but it is o
 | `tools` | Repository checks (dependency policy) |
 | `render.yaml` | Render Blueprint for the API ([`deployment.md`](deployment.md)) |
 | `services/api/src/detour_api/importer` | Region import, gazetteer import, report and gates (Phase 2) |
+| `services/api/src/detour_api/travel`, `adapters/valhalla.py` | Travel-time service, request planner, estimator and the FOSSGIS Valhalla adapter (Phase 3) |
 | `.github/workflows` | `ci.yml`, `import-region.yml` (manual), `android-apk.yml`, and the throwaway Phase 0 spike workflows |
 | `spikes`, `docs/spikes` | Phase 0 throwaway code and findings; not part of the product |
 
@@ -90,7 +91,10 @@ The suite runs the real import once per session on `tests/fixtures/region-sample
 map data that hits every case of the selection rule) and GeoNames-shaped files, then clones that
 database for each API test. Nothing in the tests calls a network service: Photon is replaced by a
 stub transport, and `tests/fixtures/photon-documented-response.json` follows the format in
-Photon's API documentation (it is not a live recording).
+Photon's API documentation (it is not a live recording). The FOSSGIS Valhalla adapter is the same:
+`tests/valhalla_stub.py` stands in for the server and `tests/fixtures/valhalla/` holds
+documented-format fixtures (not live recordings). The routing adapter stays off in the `test`
+environment unless a transport is injected, so no test or CI run can reach the server.
 
 ## Running an import locally
 

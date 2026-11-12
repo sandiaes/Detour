@@ -4,8 +4,9 @@ Status: **accepted** on 2026-11-12 through
 [`decisions/001-technology-stack.md`](decisions/001-technology-stack.md) and
 [`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is decided in ADR 005.
 Phase 1 (the foundation: section 4.2.1) and Phase 2 (data and search: section 4.2.2, the import
-pipeline in 4.4, the search service in 4.6) are implemented; the planning engine, the routing
-adapter and the FX job described below are not built yet.
+pipeline in 4.4, the search service in 4.6) are implemented, and Phase 3 (the travel-time service,
+section 4.5, [ADR 013](decisions/013-phase-3-travel-time-service.md)) is built and awaits
+acceptance; the planning engine and the FX job described below are not built yet.
 
 ## 1. Principles
 
@@ -205,16 +206,35 @@ On-demand import is a post-MVP item.
 
 ### 4.5 Travel-time service
 
-One internal interface: `matrix(points, mode)` and `route(from, to, mode)`.
+**Built in Phase 3** (`detour_api/travel/`, `adapters/valhalla.py`, ADR 004 and ADR 013). Internal
+interface, on `app.state.travel_time`: `cells(pairs, mode)` (sparse, the one Phase 4 should use),
+`matrix(points, mode)` (every ordered pair), `travel_time(a, b, mode)` and
+`route_geometry(a, b, mode)`. Modes: walking and driving. Each result carries a confidence label
+(`routed` or `estimated`), a source and, for an estimate, a reason.
 
 | Order | Source | Confidence label |
 |---|---|---|
-| 1 | Cache (`geo.travel_time`) | as stored |
-| 2 | Valhalla for the region | `routed` |
-| 3 | Straight-line distance × detour factor ÷ mode speed | `estimated` |
+| 1 | Cache (`geo.travel_time`): routed rows, and "no route" rows until they expire | as stored |
+| 2 | FOSSGIS Valhalla through the adapter, for misses only | `routed` |
+| 3 | Straight-line distance x 1.3, converted at a mode speed | `estimated` |
 
-The fallback keeps planning available when the routing container is down, and every transfer
-shown to the user carries its confidence label. Modes in the MVP: walking and driving.
+- **Request shape (fixed, `matrix-v1`):** one source and up to 100 targets per matrix request;
+  cells farther apart than about 150 km are one route request each. A pair always takes the same
+  path, so cached times never mix shapes.
+- **Safety:** token bucket (1 per second, burst 10), circuit breaker after any 429 or error, a
+  10 s timeout, a daily budget of 1,500 calls, `User-Agent` and `X-Client-Id` headers. A
+  `max_seconds` argument bounds the time one operation spends waiting on the provider; the cells
+  not reached are estimated.
+- **Estimates made because the provider was unavailable are not stored.** A cell the provider has
+  no route for is stored as `estimated` with no number and asked again after 30 days.
+- **Route geometry** is fetched for the selected itinerary only, returned and never stored.
+- **Size:** the cache is capped at 100,000 rows, measured at 20.7 MB; it counts toward gate 6.
+- Plan generation never calls the provider if asked not to (`use_provider=False`): it then reads
+  the cache and estimates.
+
+Any failure (adapter off, provider down, budget used, rate limit, time limit, unreadable answer)
+gives the labelled estimate, so planning stays available. Details and unverified assumptions:
+ADR 013.
 
 ### 4.6 Other services
 

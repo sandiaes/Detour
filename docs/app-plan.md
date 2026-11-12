@@ -1,6 +1,6 @@
 # App plan
 
-Status: **Phase 0 and Phase 1 are done; Phase 2 is built and awaits the owner's acceptance**; Phase 3 onward is proposed. Each phase is small enough to review on its own
+Status: **Phase 0, 1 and 2 are done; Phase 3 is built and awaits the owner's acceptance**; Phase 4 onward is proposed. Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
 ## 1. Decisions
@@ -118,7 +118,7 @@ the Free plan (confirm in `deployment.md` step 3).
 
 ### Phase 2 — Geo data foundation
 
-**Status: built on 2026-11-12, not yet accepted.** Everything below is implemented and tested
+**Status: built on 2026-11-12; accepted by the owner (reported 2026-11-12).** Everything below is implemented and tested
 against a synthetic extract (ADR 011, ADR 012, `docs/data-model.md`). **No real extract has been
 imported yet**: that is the owner's first acceptance step (`docs/deployment.md`, "Importing a
 region"). Not done and carried forward: Wikidata sitelink counts, the category visit-duration
@@ -137,6 +137,15 @@ past trips.
   category list.
 
 ### Phase 3 — Travel-time service
+
+**Status: built on 2026-11-12, not yet accepted** (ADR 013, proposed). Implemented and tested
+against a stub server: the adapter, the cache, chunking, the rate limiter and circuit breaker, the
+daily budget, the estimate fallback, null-cell handling and route geometry. **Not done:** no live
+request was made (the build environment cannot reach the server), so the 523 s / 653 s difference
+is **not explained** and whether it persists is **unknown**; the smaller route request is
+implemented but off; contract tests use documented-format fixtures, not live recordings; latency
+was not measured. All three need the owner's check (`docs/spikes/fossgis-request-shape-check.md`).
+Matrix symmetry is not asserted: driving times need not be symmetric.
 
 **Goal:** routed walking and driving times, with a safe fallback.
 
@@ -285,8 +294,11 @@ to reconsider later. Ideas discussed, none decided or built:
 
 ## 7. Recommended next task
 
-**Accept Phase 2, then Phase 3 (travel-time service), when the owner asks for it (CLAUDE.md).**
-Acceptance means: deploy the new migrations (Render runs them at start), add the repository
+**Accept Phase 3, then Phase 4 (planner v1), when the owner asks for it (CLAUDE.md).** Phase 2 is accepted.
+For Phase 3: run the eight-click check in `docs/spikes/fossgis-request-shape-check.md`, record the results in ADR 013, and confirm or change its numbers. Phase 4 must plan sparse cell sets and bound provider time with `max_seconds` (ADR 013, decision 1).
+
+Carried forward from Phase 2 (the owner accepted it; these items were not reported as resolved):
+Acceptance meant: deploy the new migrations (Render runs them at start), add the repository
 secret `DETOUR_IMPORT_DATABASE_URL`, run the "Import region" workflow for **Austria** first, and
 read the report and `review-sample.json` (ADR 011). Open items that need the owner:
 

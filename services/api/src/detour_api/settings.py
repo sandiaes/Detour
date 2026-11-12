@@ -73,6 +73,27 @@ class Settings(BaseSettings):
     photon_cache_ttl_hours: int = 168
     photon_daily_budget: int = 300
 
+    # Travel times: the FOSSGIS Valhalla demo server, backend-side only (ADR 004, ADR 013). Its
+    # rate rules come from the server's maintainers (ADR 004): 1 call per second, bursts of 10;
+    # the validators below stop configuration from exceeding them. The daily budget, the cache
+    # cap and the timeouts are our own limits, not figures from FOSSGIS.
+    routing_enabled: bool = True
+    routing_base_url: str = "https://valhalla1.openstreetmap.de"
+    routing_user_agent: str = "Detour-backend/0.3 (+https://github.com/sandiaes/Detour)"
+    routing_client_id: str = "detour-travel-planner"
+    routing_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+    routing_rate_per_second: float = Field(default=1.0, gt=0, le=1.0)
+    routing_burst: int = Field(default=10, ge=1, le=10)
+    # How long one operation may wait for a rate-limit token before it estimates instead.
+    routing_max_wait_seconds: float = Field(default=5.0, ge=0, le=60)
+    routing_daily_budget: int = Field(default=1500, ge=0)
+    # Rows kept in geo.travel_time; the oldest go first. They count toward ADR 009 gate 6.
+    routing_cache_max_rows: int = Field(default=100_000, ge=1000)
+    # A cell the provider could not route is asked again only after this many days.
+    routing_no_route_retry_days: int = Field(default=30, ge=1)
+    # Ask /route for no turn-by-turn text and no shape (ADR 013). Off until checked by hand.
+    routing_slim_route_requests: bool = False
+
     # Client configuration served by GET /v1/config. The app holds none of these as constants.
     config_version: str = "1"
     map_style_url: str = "https://tiles.openfreemap.org/styles/liberty"
@@ -92,6 +113,13 @@ class Settings(BaseSettings):
     def _photon_is_https(cls, value: str) -> str:
         if not value.startswith("https://"):
             raise ValueError("photon base url must use https")
+        return value.rstrip("/")
+
+    @field_validator("routing_base_url")
+    @classmethod
+    def _routing_is_https(cls, value: str) -> str:
+        if not value.startswith("https://"):
+            raise ValueError("routing base url must use https")
         return value.rstrip("/")
 
     @field_validator("map_attribution")

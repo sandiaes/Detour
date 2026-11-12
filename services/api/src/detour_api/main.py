@@ -15,6 +15,7 @@ from sqlalchemy.exc import OperationalError
 
 from detour_api import __version__
 from detour_api.adapters.photon import PhotonClient
+from detour_api.adapters.valhalla import ValhallaClient
 from detour_api.db import make_engine
 from detour_api.errors import install_handlers
 from detour_api.logging import configure_logging, get_logger
@@ -29,6 +30,7 @@ from detour_api.routers import (
     user_places,
 )
 from detour_api.settings import Settings, get_settings
+from detour_api.travel.service import TravelTimeService
 
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 
@@ -38,7 +40,10 @@ def _operation_id(route: APIRoute) -> str:
 
 
 def create_app(
-    settings: Settings | None = None, *, photon_transport: httpx.BaseTransport | None = None
+    settings: Settings | None = None,
+    *,
+    photon_transport: httpx.BaseTransport | None = None,
+    routing_transport: httpx.BaseTransport | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
@@ -49,6 +54,11 @@ def create_app(
         url = settings.sqlalchemy_url
         app.state.engine = make_engine(url) if url else None
         app.state.photon = PhotonClient(settings, app.state.engine, photon_transport)
+        app.state.travel_time = TravelTimeService(
+            settings,
+            app.state.engine,
+            ValhallaClient(settings, app.state.engine, routing_transport),
+        )
         log.info(
             "startup",
             version=__version__,
@@ -72,6 +82,7 @@ def create_app(
     app.state.settings = settings
     app.state.engine = None
     app.state.photon = PhotonClient(settings, None)
+    app.state.travel_time = TravelTimeService(settings, None, ValhallaClient(settings, None))
     install_handlers(app)
 
     @app.exception_handler(OperationalError)

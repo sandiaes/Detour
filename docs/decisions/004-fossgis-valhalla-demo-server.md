@@ -107,3 +107,14 @@ Rules this would amend, if approved:
 - Phase 3 builds the adapter, cache and estimate fallback instead of a Valhalla container.
 - S3 results (`docs/spikes/s3-routing-findings.md`) are the reference for a later move to
   self-hosting: Italy needs about 2.4 GB of tiles and roughly 8 GB of RAM to build.
+
+## Addendum (2026-11-12): Phase 3 outcome
+
+The adapter, cache and fallback are built ([ADR 013](013-phase-3-travel-time-service.md)). Of the
+items left open above: the request shape is fixed (one source, up to 100 targets); whether a
+request option shrinks the route response is **unverified** (implemented, off by default); and the
+523 s / 653 s difference is **not explained and not shown to persist or not**, because the build
+environment could not reach the server. The owner's check is in
+[`../spikes/fossgis-request-shape-check.md`](../spikes/fossgis-request-shape-check.md). Request
+volume: a dense matrix of n places needs n matrix requests (up to 100 targets each); Phase 4 must
+plan sparse sets.
