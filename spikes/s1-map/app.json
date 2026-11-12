@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Detour S1 map spike",
+    "slug": "detour-spike-s1-map",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "detour.spike.s1map"
+    },
+    "plugins": [
+      "@maplibre/maplibre-react-native"
+    ]
+  }
+}
