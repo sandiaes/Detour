@@ -274,7 +274,9 @@ Acceptance means: deploy the new migrations (Render runs them at start), add the
 secret `DETOUR_IMPORT_DATABASE_URL`, run the "Import region" workflow for **Austria** first, and
 read the report and `review-sample.json` (ADR 011). Open items that need the owner:
 
-- confirm or change ADR 011 (the selection rule) after reading the review sample;
+- confirm or change ADR 011 (the selection rule): Austria is read and three classes are removed
+  (rules version 2026-11-12.2, applied at the next import); the memorial-subtype question and the
+  Czechia sample are open;
 - confirm the two ADR 012 owner decisions (no foreign keys across the schemas; the manual
   itinerary endpoint and the trip snapshot fields);
 - the Geofabrik terms were checked by the owner on 2026-11-12 (`docs/api-evaluation.md` section

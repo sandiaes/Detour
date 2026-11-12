@@ -4,6 +4,8 @@ The fixture ``tests/fixtures/region-sample.osm`` is invented map data built to h
 the selection rule; it says nothing about any real place.
 """
 
+import json
+import re
 from pathlib import Path
 
 import psycopg
@@ -333,4 +335,7 @@ def test_review_sample_is_deterministic_and_limited(
     sample_a = (out_a / "review-sample.json").read_text()
     assert sample_a == (out_b / "review-sample.json").read_text()
     assert "historic=memorial / kept" in sample_a
+    # kept and excluded objects are named the same way (node/1, way/2, relation/3)
+    refs = [e["ref"] for entries in json.loads(sample_a).values() for e in entries]
+    assert refs and all(re.fullmatch(r"(node|way|relation)/\d+", r) for r in refs), refs
     assert "historic=memorial / excluded:memorial_without_wikidata" in sample_a

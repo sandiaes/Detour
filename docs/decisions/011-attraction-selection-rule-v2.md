@@ -1,9 +1,8 @@
 # ADR 011 — Attraction selection rule, version 2
 
-- **Status:** **Proposed**, implemented in Phase 2 (rules version `2026-11-12.1`). The owner is
-  asked to confirm it after reading the review sample of the first real import (see "How to
-  review"). It was **not** reviewed against a sample of real data (see "What this does not
-  prove").
+- **Status:** **Proposed**, implemented in Phase 2 (rules version `2026-11-12.2`). The first
+  real import (Austria, 2026-11-12) has been read; the owner decided on three more excluded
+  classes (see "Update after the first real import"). The rest of the rule is not yet confirmed.
 - **Date:** 2026-11-12
 - **Related:** [`003-scope-opening-hours-and-attractions.md`](003-scope-opening-hours-and-attractions.md)
   (the rule and its open questions), [`009-region-readiness-thresholds.md`](009-region-readiness-thresholds.md),
@@ -34,6 +33,7 @@ stored on every import run.
 | `amenity=restaurant`, `amenity=cafe` | Kept as restaurants | n/a |
 | `tourism=attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium` | Kept, named or not | n/a |
 | `historic=wayside_shrine|wayside_cross|boundary_stone|bomb_crater` | Excluded (ADR 003) | `adr003_excluded_class` |
+| `historic=tree_shrine`, `historic=heritage`, `historic=heritage_building` | **Excluded** (owner decision, 2026-11-12, after the Austria import). Matched on the cleaned value (lower case, other characters as `_`), so `Heritage Building` is caught too | `adr003_excluded_class` |
 | `historic=memorial` | **Kept only with `wikidata` and a name, and not of a small-object subtype** (`memorial` = `plaque`, `blue_plaque`, `stolperstein`, `ghost_bike`, `bench`, `grave`, `war_grave`, `cross`, `stone`) | `memorial_without_wikidata`, `memorial_without_name`, `memorial_excluded_subtype` |
 | `historic=yes|building|railway|stone|tomb` | **Kept only with a name and at least one notability tag** (`wikidata`, `wikipedia` or `heritage`) | `generic_class_without_name_and_notability` |
 | Every other `historic=*` value (castle, ruins, archaeological site, monument, fort, ...) | Kept | n/a |
@@ -66,13 +66,40 @@ reference (so the same objects appear on every run), with their imported tags. T
 excluded counts per class and reason. To change a decision, edit `selection.py`, raise
 `RULES_VERSION`, update this ADR and run the import again; the result is repeatable.
 
+## Update after the first real import
+
+Austria was imported on 2026-11-12 (OSM snapshot 2026-11-11). What the report and the review
+sample showed:
+
+- **The rule reproduces the spike.** The ADR 003 classes, restaurants and `tourism=attraction` match
+  S2 count for count (17,129 shrines, 15,338 crosses, 9,942 boundary stones, 8,096 bomb craters,
+  7,822 memorials without Wikidata). The new rules removed 3,780 more objects: 3,331 from the five
+  generic classes and 449 from the stricter memorial test.
+- **All six gates passed** (named attractions 12,265, 66.1 %; restaurants 26,504).
+- **Owner decision:** remove `tree_shrine` (198 kept), `heritage` (486) and `heritage_building`
+  (115). The categories come from the report; the raw tags behind `heritage` and
+  `heritage_building` were not in the review sample (only the six reviewed classes are sampled), so
+  the matching is on the cleaned value. 799 places leave the data at the next import.
+- **Reading the sample, the two-signal test works as intended** for `historic=building`, `tomb`,
+  `stone` and `railway`: kept objects are named and documented (Neutor, Villa Bader, Mausoleum
+  Dreher, Tauernbahn), excluded ones are mostly unnamed footprints, railway segments called
+  "Landstraße" and the like. A few named objects without a documentation tag are dropped (a
+  building called "Burgpalast", a stone called "Opferstein"); that is the price of the rule.
+- **Memorial subtypes: one point for the owner.** The subtype exclusion also removes memorials that
+  have a name, a Wikidata item and often `heritage=2`, for example a "Kaiser Franz Josef Denkmal"
+  (`memorial=stone`) and several named plaques. Whether to exempt memorials that carry `heritage`
+  from the subtype test is open; it would be a small rule change (rules version bump).
+- **Kept but unreviewed:** the other `historic=*` values (for example `pillory` 132, `citywalls`
+  236, `cannon` 91, `milestone` 60) are kept by default and not sampled.
+- A bug was fixed on the way: excluded objects in `review-sample.json` were named `N/123` while
+  kept ones were `node/123`; both now use `node/123`.
+
 ## What this does not prove
 
-- **No real extract was inspected for this decision.** The development environment could not
-  reach Geofabrik, so the rule rests on the S2 counts, the ADR 003 addendum's own suggestion and
-  the reasoning above. The memorial subtype list in particular is a list of plausible OSM values
-  (`memorial=*`), not a list checked against the Czech data. Treat the rule as a proposal until
-  the review sample has been read.
+- **The rule was written without seeing a real extract** (the development environment could not
+  reach Geofabrik). Austria has now been read (see the update above); Czechia, where memorials
+  dominate, has not. The memorial subtype list is a list of plausible OSM values (`memorial=*`),
+  not one checked against the Czech data. Read the Czechia sample before enabling it.
 - Whether the rule brings Czechia below the point where memorials dominate is a number the first
   real import will give; it is not known now.
 - Region readiness gate 4 (ADR 009) was measured before this rule. The first real import

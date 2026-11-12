@@ -28,7 +28,7 @@ from psycopg.types.json import Jsonb
 
 from detour_api.db import SEARCH_PATH
 from detour_api.importer import IMPORTER_VERSION
-from detour_api.importer.derive import OSM_LICENCE, PlaceRow, build_place
+from detour_api.importer.derive import OSM_LICENCE, PlaceRow, build_place, source_ref
 from detour_api.importer.pipeline import Candidate, iter_boundaries, iter_candidates, libpq_url
 from detour_api.importer.regions import RegionDef
 from detour_api.importer.report import (
@@ -178,11 +178,11 @@ def classify_candidates(
             counters.not_candidates += 1
             continue
         if not decision.kept:
-            counters.exclude(decision, f"{cand.osm_type}/{cand.osm_id}", cand.tags)
+            counters.exclude(decision, source_ref(cand.osm_type, cand.osm_id), cand.tags)
             continue
         if cand.lon is None or cand.lat is None:
             counters.exclude(
-                decision, f"{cand.osm_type}/{cand.osm_id}", cand.tags, REASON_NO_GEOMETRY
+                decision, source_ref(cand.osm_type, cand.osm_id), cand.tags, REASON_NO_GEOMETRY
             )
             continue
         place = build_place(
@@ -489,13 +489,22 @@ def load_region(
     return report, counters
 
 
-def analyze(conn: psycopg.Connection[Any]) -> None:
-    conn.autocommit = True
-    conn.execute(
-        "ANALYZE geo.place, geo.place_source, geo.restaurant_profile, geo.place_signal,"
-        " geo.admin_area"
-    )
-    conn.autocommit = False
+def vacuum_and_analyze(conn: psycopg.Connection[Any]) -> None:
+    """After the commit: reclaim the row versions a re-import leaves behind, refresh statistics.
+
+    An import upserts every row, so without this the previous versions stay as dead space until
+    the database's own autovacuum gets to them. Best effort: the data is already committed.
+    """
+    try:
+        conn.autocommit = True
+        conn.execute(
+            "VACUUM (ANALYZE) geo.place, geo.place_source, geo.restaurant_profile,"
+            " geo.place_signal, geo.admin_area"
+        )
+    except psycopg.Error as exc:
+        log.warning("vacuum_failed", error=type(exc).__name__)
+    finally:
+        conn.autocommit = False
 
 
 def import_region(
@@ -520,7 +529,7 @@ def import_region(
         except Exception as exc:
             fail_run(conn, run_id, region.id, f"{type(exc).__name__}: {exc}")
             raise
-        analyze(conn)
+        vacuum_and_analyze(conn)
     log.info("import_done", region=region.id, status=report["region_status"])
     return report, counters
 

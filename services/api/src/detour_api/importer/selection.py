@@ -5,7 +5,8 @@ ADR 003 with the additions of ADR 011:
 
 * kept by default: ``tourism=attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium``, every
   ``historic=*`` value not named below, and ``amenity=restaurant|cafe``;
-* never imported: wayside shrines and crosses, boundary stones, bomb craters;
+* never imported: wayside shrines and crosses, boundary stones, bomb craters (ADR 003), and tree
+  shrines, ``heritage`` and ``heritage_building`` (ADR 011, after the first real import);
 * memorials: kept only with a ``wikidata`` tag **and** a name, and not of a subtype that is a
   plaque, grave marker or similar (the stricter test asked for in ADR 003's addendum);
 * ``historic=yes|building|railway|stone|tomb``: kept only with a name **and** at least one
@@ -15,11 +16,12 @@ Every excluded object gets a class (``historic=wayside_shrine``) and a reason co
 the data quality report counts.
 """
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
 # Bump when any rule below changes: the version is stored on every import run.
-RULES_VERSION = "2026-11-12.1"
+RULES_VERSION = "2026-11-12.2"
 
 ATTRACTION_TOURISM = frozenset(
     {"attraction", "museum", "gallery", "viewpoint", "zoo", "theme_park", "aquarium"}
@@ -28,8 +30,26 @@ FOOD_AMENITY = frozenset({"restaurant", "cafe"})
 
 # ADR 003, section 2.
 ALWAYS_EXCLUDED_HISTORIC = frozenset(
-    {"wayside_shrine", "wayside_cross", "boundary_stone", "bomb_crater"}
+    {
+        "wayside_shrine",
+        "wayside_cross",
+        "boundary_stone",
+        "bomb_crater",
+        # ADR 011, owner decision after reading the first real import (Austria): a shrine on a
+        # tree is a wayside shrine; "heritage" values name a protection status, not a kind of sight.
+        "tree_shrine",
+        "heritage",
+        "heritage_building",
+    }
 )
+_CLEAN_VALUE = re.compile(r"[^a-z0-9_]+")
+
+
+def _normalised(value: str) -> str:
+    """The tag value as the stored category spells it: lower case, other characters as ``_``."""
+    return _CLEAN_VALUE.sub("_", value.strip().lower()).strip("_")
+
+
 # ADR 011: memorial subtypes that mark small local objects rather than sights.
 EXCLUDED_MEMORIAL_SUBTYPES = frozenset(
     {
@@ -89,7 +109,7 @@ def decide(tags: Mapping[str, str]) -> Decision | None:
         return None
     cls = f"historic={historic}"
 
-    if historic in ALWAYS_EXCLUDED_HISTORIC:
+    if _normalised(historic) in ALWAYS_EXCLUDED_HISTORIC:
         return Decision(False, cls, REASON_ALWAYS_EXCLUDED)
 
     if historic == "memorial":

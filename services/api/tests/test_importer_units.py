@@ -81,6 +81,32 @@ from detour_api.textnorm import has_latin_letters, normalize_text, stable_uuid
             "historic=memorial",
             "memorial_with_wikidata_and_name",
         ),
+        # ADR 011, owner decision after the first real import: never imported, however notable
+        (
+            {"historic": "tree_shrine", "name": "n", "wikidata": "Q1"},
+            False,
+            "historic=tree_shrine",
+            "adr003_excluded_class",
+        ),
+        (
+            {"historic": "heritage", "name": "n", "wikidata": "Q1"},
+            False,
+            "historic=heritage",
+            "adr003_excluded_class",
+        ),
+        (
+            {"historic": "heritage_building", "name": "n"},
+            False,
+            "historic=heritage_building",
+            "adr003_excluded_class",
+        ),
+        (
+            {"historic": "Heritage Building"},
+            False,
+            "historic=Heritage Building",
+            "adr003_excluded_class",
+        ),
+        ({"historic": " Tree_Shrine "}, False, "historic= Tree_Shrine ", "adr003_excluded_class"),
         # reviewed generic classes: name and a notability tag
         ({"historic": "yes"}, False, "historic=yes", "generic_class_without_name_and_notability"),
         (
