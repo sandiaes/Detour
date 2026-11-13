@@ -13,9 +13,6 @@ export function makeTrip(over: Partial<Trip> = {}): Trip {
     duration_days: 2,
     start_date: "2027-05-01",
     end_date: "2027-05-02",
-    currency_code: "EUR",
-    meal_budget_per_person: "25.00",
-    price_band_thresholds: null,
     selected_itinerary_id: null,
     status: "active",
     archived_at: null,
@@ -37,6 +34,9 @@ const STATS = {
     estimated_transfers: 2,
     day_utilisation_permille: 500,
     travel_share_permille: 90,
+    meals: 1,
+    meal_minutes: 60,
+    intercity_legs: 0,
   },
   wider: {
     visits: 8,
@@ -48,6 +48,9 @@ const STATS = {
     estimated_transfers: 4,
     day_utilisation_permille: 750,
     travel_share_permille: 140,
+    meals: 3,
+    meal_minutes: 180,
+    intercity_legs: 1,
   },
 };
 
@@ -62,7 +65,7 @@ export function makeSummary(
     profile,
     status: "proposed",
     version: 1,
-    engine_version: "planner-1.0.0",
+    engine_version: "planner-2.0.0",
     config_version: "test",
     import_run_id: null,
     seed: 0,
@@ -83,7 +86,8 @@ type ItemInit = {
   end?: string | null;
   minutes: number;
   type?: "visit" | "meal" | "free_time";
-  mealType?: "lunch" | null;
+  mealType?: "lunch" | "snack" | "dinner" | null;
+  restaurant?: { venue_type: string | null; cuisines: string[] | null };
   source?: "category_default" | "user";
   reasons?: string[];
   transfer?: {
@@ -124,6 +128,7 @@ function item(day: string, position: number, i: ItemInit) {
           confidence: i.transfer.confidence,
         }
       : null,
+    restaurant: i.restaurant ?? null,
   };
 }
 
@@ -141,7 +146,9 @@ export function makeItinerary(
         id: d1,
         day_index: 1,
         date: "2027-05-01",
-        base_city_id: null,
+        base_city_id: 900101,
+        base_city_name: "Vienna",
+        arrival: null,
         items: [
           item(d1, 1, {
             id: "i1",
@@ -163,16 +170,43 @@ export function makeItinerary(
             end: "12:51:00",
             minutes: 90,
             source: "user",
-            transfer: { to: "i3", mode: "drive", seconds: 600, meters: 4200, confidence: "routed" },
+            transfer: { to: "m1", mode: "drive", seconds: 600, meters: 4200, confidence: "routed" },
           }),
           item(d1, 3, {
+            id: "m1",
+            name: "Gasthaus Zum Test",
+            type: "meal",
+            mealType: "lunch",
+            lat: 48.2079,
+            lon: 16.3725,
+            start: "13:01:00",
+            end: "14:01:00",
+            minutes: 60,
+            reasons: ["Lunch, planned between 12:00 and 14:30."],
+            restaurant: { venue_type: "restaurant", cuisines: ["regional", "coffee_shop"] },
+            transfer: { to: "i3", seconds: 120, meters: 90, confidence: "estimated" },
+          }),
+          item(d1, 4, {
             id: "i3",
             name: "St. Stephen's Cathedral",
             lat: 48.2085,
             lon: 16.3731,
-            start: "13:01:00",
-            end: "14:01:00",
+            start: "14:03:00",
+            end: "15:03:00",
             minutes: 60,
+            transfer: { to: "m2", seconds: 240, meters: 300, confidence: "estimated" },
+          }),
+          item(d1, 5, {
+            id: "m2",
+            name: "Café Ohne Angabe",
+            type: "meal",
+            mealType: "dinner",
+            lat: 48.2091,
+            lon: 16.3711,
+            start: "18:30:00",
+            end: "20:00:00",
+            minutes: 90,
+            restaurant: { venue_type: "restaurant", cuisines: null },
           }),
         ],
       },
@@ -180,15 +214,24 @@ export function makeItinerary(
         id: d2,
         day_index: 2,
         date: "2027-05-02",
-        base_city_id: null,
+        base_city_id: 900102,
+        base_city_name: "Graz",
+        arrival: {
+          from_base_city_id: 900101,
+          from_base_city_name: "Vienna",
+          mode: "drive",
+          seconds: 8400,
+          meters: 191000,
+          confidence: "estimated",
+        },
         items: [
           item(d2, 1, {
             id: "j1",
             name: "Hofburg",
             lat: 48.2065,
             lon: 16.3664,
-            start: "09:00:00",
-            end: "10:30:00",
+            start: "11:20:00",
+            end: "12:50:00",
             minutes: 90,
             transfer: { to: "j2", seconds: 300, meters: 380, confidence: "routed" },
           }),
@@ -197,8 +240,8 @@ export function makeItinerary(
             name: "Albertina",
             lat: 48.2047,
             lon: 16.3686,
-            start: "10:35:00",
-            end: "12:05:00",
+            start: "12:55:00",
+            end: "14:25:00",
             minutes: 90,
           }),
         ],
@@ -222,6 +265,7 @@ export function makeDestination(over: Partial<DestinationResult> = {}): Destinat
     lon: 16.3738,
     region_id: "austria",
     planning_available: true,
+    unavailable_reason: null,
     match: "exact",
     ...over,
   } as DestinationResult;

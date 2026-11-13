@@ -17,6 +17,7 @@ from sqlalchemy import Connection, text
 
 from detour_api.errors import conflict, invalid, not_found
 from detour_api.models.trips import (
+    Arrival,
     Day,
     Item,
     ItemCreate,
@@ -25,6 +26,7 @@ from detour_api.models.trips import (
     ItinerarySummary,
     PlanNote,
     PlanStats,
+    RestaurantInfo,
     Transfer,
 )
 from detour_api.planner.durations import visit_minutes
@@ -38,7 +40,14 @@ MANUAL_VERSION = "manual"
 _ITEM_COLUMNS = """
     i.id, i.day_id, i.position, i.type, i.meal_type, i.place_id, i.user_place_id, i.display_name,
     ST_Y(i.display_point) AS lat, ST_X(i.display_point) AS lon, i.start_time, i.end_time,
-    i.duration_minutes, i.duration_source, i.origin, i.locked, i.reasons
+    i.duration_minutes, i.duration_source, i.origin, i.locked, i.reasons,
+    rp.venue_type AS r_venue, COALESCE(rp.cuisines, up.cuisines) AS r_cuisines
+"""
+# Restaurant attributes are read from geo (or the user's place) by identifier at read time, never
+# copied into app (data model section 1). No foreign key is involved.
+_ITEM_JOINS = """
+    LEFT JOIN geo.restaurant_profile rp ON i.type = 'meal' AND rp.place_id = i.place_id
+    LEFT JOIN app.user_place up ON i.type = 'meal' AND up.id = i.user_place_id
 """
 
 
@@ -136,6 +145,14 @@ def _item(row: Any, transfer: Transfer | None = None) -> Item:
         reasons=list(row.reasons),
         reason_texts=[render_reason(c) for c in row.reasons],
         transfer=transfer,
+        restaurant=(
+            RestaurantInfo(
+                venue_type=row.r_venue,
+                cuisines=None if row.r_cuisines is None else list(row.r_cuisines),
+            )
+            if row.type == "meal"
+            else None
+        ),
     )
 
 
@@ -200,14 +217,15 @@ def get_itinerary(
         return None
     days = conn.execute(
         text(
-            "SELECT id, day_index, date, base_city_id FROM app.itinerary_day"
+            "SELECT id, day_index, date, base_city_id, base_city_name, arrival_mode,"
+            " arrival_seconds, arrival_meters, arrival_confidence FROM app.itinerary_day"
             " WHERE itinerary_id = :i ORDER BY day_index"
         ),
         {"i": itinerary_id},
     ).all()
     items = conn.execute(
         text(
-            f"SELECT {_ITEM_COLUMNS} FROM app.itinerary_item i"
+            f"SELECT {_ITEM_COLUMNS} FROM app.itinerary_item i {_ITEM_JOINS}"
             " JOIN app.itinerary_day d ON d.id = i.day_id WHERE d.itinerary_id = :i"
             " ORDER BY d.day_index, i.position"
         ),
@@ -218,19 +236,31 @@ def get_itinerary(
     for it in items:
         by_day.setdefault(it.day_id, []).append(_item(it, transfers.get(it.id)))
     summary = _summary(row)
-    return Itinerary(
-        **summary.model_dump(),
-        days=[
+    out: list[Day] = []
+    for n, d in enumerate(days):
+        arrival = None
+        if d.arrival_mode is not None:
+            before = days[n - 1] if n > 0 else None
+            arrival = Arrival(
+                from_base_city_id=None if before is None else before.base_city_id,
+                from_base_city_name=None if before is None else before.base_city_name,
+                mode=d.arrival_mode,
+                seconds=d.arrival_seconds,
+                meters=d.arrival_meters,
+                confidence=d.arrival_confidence,
+            )
+        out.append(
             Day(
                 id=d.id,
                 day_index=d.day_index,
                 date=d.date,
                 base_city_id=d.base_city_id,
+                base_city_name=d.base_city_name,
+                arrival=arrival,
                 items=by_day.get(d.id, []),
             )
-            for d in days
-        ],
-    )
+        )
+    return Itinerary(**summary.model_dump(), days=out)
 
 
 def require_itinerary(
@@ -417,7 +447,7 @@ def create_item(
 def get_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -> Item | None:
     row = conn.execute(
         text(
-            f"SELECT {_ITEM_COLUMNS} FROM app.itinerary_item i"
+            f"SELECT {_ITEM_COLUMNS} FROM app.itinerary_item i {_ITEM_JOINS}"
             " JOIN app.itinerary_day d ON d.id = i.day_id JOIN app.itinerary it ON it.id = d.itinerary_id"
             " JOIN app.trip t ON t.id = it.trip_id WHERE i.id = :i AND t.installation_id = :n"
         ),

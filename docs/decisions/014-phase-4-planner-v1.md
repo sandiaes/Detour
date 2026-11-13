@@ -218,3 +218,13 @@ out of sights Essentials does not already have) nor for the 8-sight town.
    this.
 6. Confirm that a new generation may delete unselected proposals, and that hand-added attractions
    take their category's default duration.
+
+## Addendum (2026-11-13): Phase 6
+
+[ADR 016](016-phase-6-meals-and-area-destinations.md) amends this ADR: the profiles' day ends move
+to 20:30 (Essentials) and 21:00 (Wider) because meals are now planned; each profile keeps time for
+its meals and some unplanned time; the diversity gate also accepts plans whose base cities differ;
+`422 area_not_supported` is gone (areas are planned; areas in Japan get `422 area_single_city_only`);
+`NO_MEALS_YET` and `VISITS_REMOVED_AFTER_ROUTING` are replaced by `MEALS_FROM_MAP_DATA` and
+`VISITS_REMOVED_TO_FIT` (the old templates stay so stored plans still render); the engine is
+`planner-2.0.0`. The trip currency is no longer an input ([ADR 017](017-no-budgets-currencies-or-prices.md)).

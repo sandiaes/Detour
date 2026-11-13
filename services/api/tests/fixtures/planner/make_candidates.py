@@ -2,10 +2,13 @@
 
     python tests/fixtures/planner/make_candidates.py
 
-**Synthetic, invented data.** The points, names, categories and signals are drawn with a fixed
-seed around a centre point; they are not real places and must never reach a real database. They
-exist so the engine's golden tests have a fixed, varied input. The JSON files, not this script,
-are the fixtures: the tests never regenerate them.
+**Synthetic, invented data.** The points, names, categories, signals, places to eat and towns are
+drawn with fixed seeds around invented centre points; they are not real places and must never reach
+a real database. They exist so the engine's golden tests have a fixed, varied input. The JSON
+files, not this script, are the fixtures: the tests never regenerate them.
+
+Each kind of data has its own random stream, so adding one (the places to eat and the area of
+Phase 6) left the sights of the city fixtures byte-identical.
 """
 
 import json
@@ -23,15 +26,51 @@ CATEGORIES = [
 ]  # fmt: skip
 
 
-def _point(rng: random.Random, max_km: float, scale_km: float) -> tuple[float, float]:
+CUISINES = ["regional", "italian", "pizza", "asian", "burger", "coffee_shop", "cake",
+            "vegetarian", "seafood", "indian", "greek", "turkish"]  # fmt: skip
+
+
+def _point(
+    rng: random.Random, max_km: float, scale_km: float, centre: tuple[float, float] = CENTRE
+) -> tuple[float, float]:
     while True:
         d = rng.expovariate(1 / scale_km)
         if d <= max_km:
             break
     bearing = rng.uniform(0, 2 * math.pi)
-    lat = CENTRE[0] + (d / 111.32) * math.cos(bearing)
-    lon = CENTRE[1] + (d / (111.32 * math.cos(math.radians(CENTRE[0])))) * math.sin(bearing)
+    lat = centre[0] + (d / 111.32) * math.cos(bearing)
+    lon = centre[1] + (d / (111.32 * math.cos(math.radians(centre[0])))) * math.sin(bearing)
     return round(lat, 6), round(lon, 6)
+
+
+def _eateries(
+    rng: random.Random, count: int, prefix: str, centre: tuple[float, float],
+    max_km: float, scale_km: float,
+) -> list[dict[str, object]]:  # fmt: skip
+    """Places to eat as the import stores them: venue type, meal types derived from it by the
+    import's fixed rule (restaurant: lunch and dinner; cafe: breakfast and snack), cuisines or
+    null when the (invented) data states none."""
+    out = []
+    for i in range(1, count + 1):
+        lat, lon = _point(rng, max_km, scale_km, centre)
+        venue = "restaurant" if rng.random() < 0.7 else "cafe"
+        cuisines = None
+        if rng.random() < 0.65:
+            cuisines = sorted(set(rng.sample(CUISINES, rng.choice([1, 1, 1, 2]))))
+        out.append(
+            {
+                "place_id": f"{prefix}{i:012d}",
+                "name": f"Synthetic {venue} {i:03d}",
+                "venue_type": venue,
+                "lat": lat,
+                "lon": lon,
+                "meal_types": ["dinner", "lunch"]
+                if venue == "restaurant"
+                else ["breakfast", "snack"],
+                "cuisines": cuisines,
+            }
+        )
+    return out
 
 
 def _signals(rng: random.Random) -> dict[str, bool]:
@@ -89,15 +128,70 @@ def sparse() -> list[dict[str, object]]:
     return rows
 
 
+# An invented area: towns (id, name, population or None, centre, sights around it). Town 5 lies
+# 12 km from town 1 (too close to be a second base), town 6 has too few sights to be a base. The
+# distances between towns 2, 3 and 4 exceed 150 km, so their legs are single-route requests.
+AREA_CENTRE = (47.55, 13.9)
+TOWNS = [
+    (990001, "Synthetic Town A", 250_000, (47.80, 13.04), 60),
+    (990002, "Synthetic Town B", 200_000, (48.30, 14.29), 50),
+    (990003, "Synthetic Town C", 120_000, (47.07, 15.44), 40),
+    (990004, "Synthetic Town D", 15_000, (47.26, 11.40), 25),
+    (990005, "Synthetic Town E", 8_000, (47.85, 13.20), 6),
+    (990006, "Synthetic Town F", None, (47.60, 14.60), 2),
+]
+
+
+def area() -> dict[str, object]:
+    rng = random.Random(23)  # noqa: S311 - fixture data, not security
+    eat_rng = random.Random(29)  # noqa: S311 - fixture data, not security
+    names = [c for c, w in CATEGORIES for _ in range(w)]
+    candidates: list[dict[str, object]] = []
+    restaurants: list[dict[str, object]] = []
+    n = 0
+    for t, (_, _, _, centre, sights) in enumerate(TOWNS, start=1):
+        for _ in range(sights):
+            n += 1
+            lat, lon = _point(rng, 9.0, 2.0, centre)
+            candidates.append(
+                {
+                    "place_id": f"00000000-0000-4000-a000-{n:012d}",
+                    "name": f"Area synthetic sight {n:03d}",
+                    "category": rng.choice(names),
+                    "lat": lat,
+                    "lon": lon,
+                    "signals": _signals(rng),
+                    "sitelink_count": None,
+                }
+            )
+        restaurants += _eateries(
+            eat_rng, sights * 2, f"00000000-0000-4000-b{t:03d}-", centre, 8.0, 1.5
+        )
+    towns = [
+        {"city_id": i, "name": nm, "lat": c[0], "lon": c[1], "population": pop}
+        for i, nm, pop, c, _ in TOWNS
+    ]
+    return {"towns": towns, "candidates": candidates, "restaurants": restaurants}
+
+
 def main() -> None:
     meta = {
         "synthetic": True,
         "note": "Invented test data: not real places. See make_candidates.py.",
         "centre": {"lat": CENTRE[0], "lon": CENTRE[1]},
     }
+    large_rng = random.Random(7)  # noqa: S311 - fixture data, not security
+    sparse_rng = random.Random(13)  # noqa: S311 - fixture data, not security
+    eateries = {
+        "city-large": _eateries(large_rng, 260, "00000000-0000-4000-c000-", CENTRE, 14.0, 2.5),
+        "city-sparse": _eateries(sparse_rng, 3, "00000000-0000-4000-d000-", CENTRE, 3.0, 1.0),
+    }
     for name, rows in (("city-large", large()), ("city-sparse", sparse())):
         path = HERE / f"{name}.json"
-        path.write_text(json.dumps({**meta, "candidates": rows}, indent=1) + "\n")
+        body = {**meta, "candidates": rows, "restaurants": eateries[name]}
+        path.write_text(json.dumps(body, indent=1) + "\n")
+    area_meta = {**meta, "centre": {"lat": AREA_CENTRE[0], "lon": AREA_CENTRE[1]}}
+    (HERE / "area.json").write_text(json.dumps({**area_meta, **area()}, indent=1) + "\n")
 
 
 if __name__ == "__main__":

@@ -17,10 +17,10 @@ deployment configuration.
 database schemas, a region import (manually started GitHub Actions workflow: Geofabrik extract,
 selection rule, data quality report and readiness gates), a GeoNames gazetteer import, destination
 and place search with Photon as the only external fallback, a seed trip, and endpoints for trips,
-user places and itinerary items. **Phase 3 (travel times) and Phase 4 (planner v1: two itineraries
-of attractions for a city) are built and await acceptance** (ADR 013, ADR 014). There are no meals,
-no area destinations and no map screen yet; those follow the phases in
-[`docs/app-plan.md`](docs/app-plan.md). The architecture, API strategy,
+user places and itinerary items. **Phases 3 to 6 are built and await acceptance:** travel times
+(ADR 013), the planner (two itineraries for a city, ADR 014), the mobile screens with the day list
+and map (ADR 015), and meals and area destinations (ADR 016). The app has no budgets, currencies or
+prices (ADR 017). Later work follows the phases in [`docs/app-plan.md`](docs/app-plan.md). The architecture, API strategy,
 hosting, licence and distribution are decided (see below).
 
 ## Repository layout
@@ -45,7 +45,7 @@ Everything is built and tested in GitHub Actions; no local toolchain is required
 | [`docs/product-brief.md`](docs/product-brief.md) | Goals, user flows, scope, assumptions |
 | [`docs/architecture.md`](docs/architecture.md) | System design, planning engine, integration rules |
 | [`docs/api-evaluation.md`](docs/api-evaluation.md) | Every candidate API and data source, with verified terms |
-| [`docs/data-model.md`](docs/data-model.md) | Logical data model, restaurant price model, licence boundary |
+| [`docs/data-model.md`](docs/data-model.md) | Logical data model, lifecycle, licence boundary |
 | [`docs/app-plan.md`](docs/app-plan.md) | Phased plan, dependencies, risks, MVP exclusions |
 | [`docs/kpis.md`](docs/kpis.md) | Proposed targets and how each is measured |
 | [`docs/decisions/001-technology-stack.md`](docs/decisions/001-technology-stack.md) | ADR: technology stack |

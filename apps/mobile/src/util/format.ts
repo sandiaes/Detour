@@ -61,9 +61,12 @@ export function formatTripSpan(start: string | null, end: string | null, days: n
   return `${formatDate(start, false)} to ${formatDate(end)} · ${length}`;
 }
 
-export function formatMoney(amount: string | number, currency: string): string {
-  const n = typeof amount === "number" ? amount : Number(amount);
-  return `${Number.isFinite(n) ? n.toFixed(2) : String(amount)} ${currency}`;
+/** "Italian, pizza" from the open data's cuisine values; null when the data states none. */
+export function formatCuisines(cuisines: string[] | null | undefined): string {
+  if (!cuisines || cuisines.length === 0) return "Cuisine not specified";
+  const words = cuisines.map((c) => c.replace(/_/g, " "));
+  const first = words[0] ?? "";
+  return [first.charAt(0).toUpperCase() + first.slice(1), ...words.slice(1)].join(", ");
 }
 
 export function pluralise(n: number, one: string, many = `${one}s`): string {

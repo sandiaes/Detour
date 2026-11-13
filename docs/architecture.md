@@ -5,10 +5,12 @@ Status: **accepted** on 2026-11-12 through
 [`decisions/002-api-strategy.md`](decisions/002-api-strategy.md). Hosting (D3) is decided in ADR 005.
 Phase 1 (the foundation: section 4.2.1) and Phase 2 (data and search: section 4.2.2, the import
 pipeline in 4.4, the search service in 4.6) are implemented. Phase 3 (the travel-time service,
-section 4.5, [ADR 013](decisions/013-phase-3-travel-time-service.md)) and Phase 4 (planner v1 for
-attractions and days, section 5, [ADR 014](decisions/014-phase-4-planner-v1.md)) are built and
-await acceptance. Meals, area destinations, recalculation (section 5.4) and the FX job are not
-built yet.
+section 4.5, [ADR 013](decisions/013-phase-3-travel-time-service.md)), Phase 4 (planner v1 for
+attractions and days, section 5, [ADR 014](decisions/014-phase-4-planner-v1.md)), Phase 5 (the
+mobile shell, [ADR 015](decisions/015-phase-5-mobile-shell.md)) and Phase 6 (meals and area
+destinations, section 5, [ADR 016](decisions/016-phase-6-meals-and-area-destinations.md)) are built
+and await acceptance. Recalculation (section 5.4) is not built yet. Budgets, currencies, prices and
+the FX job are removed for now ([ADR 017](decisions/017-no-budgets-currencies-or-prices.md)).
 
 ## 1. Principles
 
@@ -22,8 +24,8 @@ built yet.
    mobile app renders and edits.
 5. **Deterministic and explainable.** The same inputs and data version produce the same
    itineraries, and every placement carries the reasons for it.
-6. **Honest data.** Estimated travel times and absent prices are shown as
-   unknown or estimated, never guessed silently.
+6. **Honest data.** Estimated travel times and unknown cuisines are shown as
+   estimated or unknown, never guessed silently. The app has no prices (ADR 017).
 
 ## 2. Stack verdict
 
@@ -50,21 +52,21 @@ Additions the provisional stack did not name: **Valhalla** (self-hosted routing 
                 │ HTTPS/JSON (OpenAPI contract)                │ vector tiles (style URL from backend)
                 ▼                                              ▼
 ┌──────────────────────── Backend (FastAPI) ────────────────────────┐   OpenFreeMap public instance
-│  API layer        trips · itineraries · places · prices · config  │   (fallback: self-hosted PMTiles)
-│  Planning engine  candidates → scoring → days → sequence → meals  │
-│  Services         travel time · FX · search                       │
+│  API layer        trips · itineraries · places · config           │   (fallback: self-hosted PMTiles)
+│  Planning engine  scope → candidates → days → sequence → meals    │
+│  Services         travel time · search                            │
 │  Provider adapters (one interface per capability)                 │
 └────┬───────────────────┬──────────────────────┬───────────────────┘
      │                   │                      │
      ▼                   ▼                      ▼
-PostgreSQL + PostGIS   Valhalla (regional    External, backend-only, cached:
- geo schema: open data  tiles, self-hosted)   Photon (search), Frankfurter (daily FX)
+PostgreSQL + PostGIS   Valhalla (FOSSGIS     External, backend-only, cached:
+ geo schema: open data  server, ADR 004)      Photon (search)
  app schema: user data
 
 Offline pipeline (CLI, not request path):
  Geofabrik .osm.pbf ─┬─► POI/restaurant import ─► geo schema
                      └─► Valhalla tile build
- GeoNames dump ─► gazetteer      Wikidata ─► notability      Country/currency seed
+ GeoNames dump ─► gazetteer      Wikidata ─► notability
 ```
 
 All services except the tile host run from one Docker Compose file in development: `db`, `api`,
@@ -121,7 +123,6 @@ list without an ADR.
   - itinerary edits: add place, add restaurant, move, lock, remove; each returns a **preview
     diff** that the user accepts or discards
   - places: search within the trip's region
-  - price records: add expected or actual price
   - config: map style URL, attribution list, data versions
 
 #### 4.2.1 Phase 1 API
@@ -153,7 +154,7 @@ rows needs the installation token. Errors are `{"detail", "code"}` with a stable
 | `GET /v1/attributions` | Credits to show: OpenStreetMap, GeoNames, map tiles |
 | `GET /v1/destinations/search` | Cities (GeoNames) and areas (OSM boundaries) by name; accents, case and alternate names ignored; each result says whether its region can be planned. `include_external=true` asks Photon only if nothing matches locally |
 | `GET /v1/places/search`, `GET /v1/places/{id}` | Imported places by name and/or around a point; a place with its provenance and licence |
-| `POST/GET/PATCH/DELETE /v1/trips`, `POST /v1/trips/{id}/archive`, `GET/PATCH …/visits` | Trips (city or area destination, days, optional dates, currency, meal budget, price bands) and the past-trip archive (ADR 006) |
+| `POST/GET/PATCH/DELETE /v1/trips`, `POST /v1/trips/{id}/archive`, `GET/PATCH …/visits` | Trips (city or area destination, days, optional start date; no currency, budget or price bands since ADR 017) and the past-trip archive (ADR 006) |
 | `POST/GET /v1/trips/{id}/itineraries`, `GET/DELETE /v1/itineraries/{id}` | Manual (empty) itineraries and their days; engine itineraries arrive in Phase 4 |
 | `POST /v1/itineraries/{id}/days/{n}/items`, `GET/PATCH/DELETE /v1/items/{id}` | Visits, meals and free time with validation (place kind, duration, times, overlap, positions) |
 | `POST/GET/PATCH/DELETE /v1/user-places` | Places the user pinned or saved from an external search result |
@@ -166,20 +167,31 @@ transaction before the response is sent.
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /v1/trips/{id}/itineraries/generate` | Plan a city trip: one generation of two itineraries (Essentials, Wider), or one with the reason; replaces earlier unselected proposals. `422 area_not_supported`, `422 planning_impossible` (with `issues`), `409` for a past trip, an unavailable region or the limit of 5 |
+| `POST /v1/trips/{id}/itineraries/generate` | Plan a city or area trip: one generation of two itineraries (Essentials, Wider), or one with the reason; replaces earlier unselected proposals. `422 area_single_city_only` (an area in Japan, D4), `422 planning_impossible` (with `issues`), `409` for a past trip, an unavailable region or the limit of 5 |
 | `GET /v1/itineraries/{id}`, `GET /v1/trips/{id}/itineraries` | Now also the generation id, seed, diversity score, plan notes and statistics; per item the rendered reasons and the transfer to the next item (mode, seconds, metres, `routed` or `estimated`) |
 
 The engine is `detour_api/planner/` (section 5); its reads and writes are `repo/planning.py`. Hand
 edits of items delete transfers that no longer join neighbours (they are not recomputed before
 Phase 7).
 
+#### 4.2.4 Phase 6 API (ADR 016)
+
+- Generated itineraries contain **meals** (`type = meal`, `meal_type` breakfast, lunch, snack or
+  dinner) at imported places to eat; each meal item carries `restaurant: {venue_type, cuisines}`,
+  read from `geo` by identifier (cuisines null when the data states none).
+- Days carry `base_city_name` and, on the first day at a new base city of an area, `arrival`: the
+  drive from the previous base (mode, seconds, metres, `routed` or `estimated`).
+- Statistics add `meals`, `meal_minutes` and `intercity_legs`.
+- Destination search adds `unavailable_reason` (`region_not_available`, `area_single_city_only`).
+
 ### 4.3 Data stores
 
 - **PostgreSQL + PostGIS**, two schemas kept deliberately separate (both exist and are empty
   after the first Alembic migration; PostGIS is enabled where first needed, ADR 010):
   - `geo`: imported open data (OSM-derived places, GeoNames gazetteer, Wikidata signals,
-    countries, currencies, FX rates, travel-time cache). Rebuildable from sources.
-  - `app`: user data (installations, trips, itineraries, items, price records, later photos).
+    countries, currencies (GeoNames reference rows, unused since ADR 017), travel-time cache).
+    Rebuildable from sources.
+  - `app`: user data (installations, trips, itineraries, items, user places, later photos).
 - The separation is also a licence boundary: `geo` contains ODbL-derived data; `app` is
   independent data that references it by identifier. See `docs/data-model.md`, section 5.
 
@@ -256,18 +268,22 @@ ADR 013.
   the region's places; if nothing suitable is found and the caller asked for it, a Photon query
   through the backend (`adapters/photon.py`: User-Agent, timeout, cache, daily budget, pause on
   failure); finally a manual entry (name plus map pin) saved as a user place.
-- **FX service:** a daily job stores reference rates; conversions read from the table and
-  record the rate date used.
+- **FX service:** removed (ADR 017): the app has no currencies or prices.
 
 ## 5. Planning engine
 
 The engine is a pure function of `(request, data version, engine version)`, plus the travel times
 the travel-time service returns (each transfer records whether its time was routed or estimated).
 
+**Built in Phase 6 (v2, [ADR 016](decisions/016-phase-6-meals-and-area-destinations.md)):** step 1
+for areas (base cities, days per base, inter-city legs) and step 5 (meals in fixed windows at
+imported places to eat), with the validator checking meal windows and day length. Code:
+`planner/areas.py`, `planner/meals.py`, and the engine, validator and configuration below. Not
+built: section 5.4 (Phase 7 and 8).
+
 **Built in Phase 4 (v1, [ADR 014](decisions/014-phase-4-planner-v1.md)):** city destinations;
 steps 2, 3, 4, 6, 7 and 8 below, the two profiles and the diversity gate of section 5.3, and the
-determinism rules of section 5.6. Not built: step 1 for areas, step 5 (meals, Phase 6) and
-section 5.4 (Phase 7 and 8). What v1 does differently from the outline below: the only time
+determinism rules of section 5.6. What v1 does differently from the outline below: the only time
 windows are the day (09:00 to 18:00 for Essentials, 19:00 for Wider, inside the 09:00–21:00
 window), because opening hours are out of scope (ADR 003) and meals come in Phase 6; planning uses
 cached travel times and labelled estimates for a sparse cell set, and only the transfers of the
@@ -292,15 +308,17 @@ has added or locked. Defaults that the user does not see as features: day window
    table is ours, versioned, and each item's duration is editable by the user.
 4. **Day construction.** Solve the multi-day selection and ordering within the day window;
    visits that do not fit are dropped by priority. (Opening hours are out of scope, ADR 003.)
-5. **Meals.** Reserve lunch and dinner slots. For each, choose a restaurant near the route
-   position at that time, open or unknown at that time, varying cuisine across the trip, and
-   respecting the user's budget where a price record exists.
+5. **Meals.** Reserve time for each profile's meals (Essentials lunch and dinner, Wider also an
+   afternoon snack) in fixed windows by meal type, with lengths by meal type and venue type. For
+   each, choose an imported place to eat whose venue type serves that meal, near the visits before
+   and after it, varying cuisine across the trip. No opening hours (ADR 003) and no prices
+   (ADR 017).
 6. **Transfers.** Insert a transfer between consecutive items with mode, duration and
    confidence.
 7. **Validation.** An independent checker verifies every produced itinerary: no overlaps, day length respected, locked items untouched. A failed check is a
    bug, not a user-visible itinerary.
-8. **Explanation.** Each item carries reason codes such as `HIGH_NOTABILITY`,
-   `NEAR_PREVIOUS_ITEM`, `FITS_BUDGET`.
+8. **Explanation.** Each item carries reason codes such as `WIKIDATA_LINKED`,
+   `NEAR_PREVIOUS_ITEM`, `LUNCH_WINDOW`, `NEW_CUISINE`, `CUISINE_NOT_SPECIFIED`.
 
 ### 5.3 Two meaningfully different itineraries
 
@@ -320,7 +338,9 @@ rather than presenting near-duplicates. The threshold is tuned in Phase 4 agains
 **As built (ADR 014):** threshold 0.6; Wider is solved again with the shared visits worth 50 %,
 20 %, then 0 % of their value; a second plan with fewer than half the first plan's visits does not
 count as an alternative; the single-plan response carries the note `SINGLE_PLAN`. For one city
-the "different allocation" alternative cannot apply.
+the "different allocation" alternative cannot apply. **Areas (ADR 016):** Essentials uses a base
+city per 4 days and Wider one per 3, so their base cities or days per base usually differ, which
+makes them distinct even when their visits overlap more than 60 %.
 
 ### 5.4 Edits and recalculation
 
@@ -328,10 +348,10 @@ the "different allocation" alternative cannot apply.
   a **stability cost** that penalises moving existing items to another day or reordering them,
   and never moves locked items. If the place is another city, day allocation is recomputed. The
   response is a diff (added, moved, removed, time changes) that the user accepts or discards.
-- **Add a restaurant.** For each day and each meal slot, the engine computes: whether the place
-  is open, closed or unknown in the slot; the extra travel caused by inserting it between the
+- **Add a restaurant.** For each day and each meal slot, the engine computes: the extra travel
+  caused by inserting it between the
   neighbouring items; the shift imposed on later items; whether the slot already has a meal; and
-  how well the venue type suits the meal. Closed slots are excluded. The lowest-cost slot wins,
+  how well the venue type suits the meal (opening hours are out of scope, ADR 003). The lowest-cost slot wins,
   ties are broken by earlier day then earlier slot, and the next-best alternatives are returned
   with their reason codes.
 
@@ -385,7 +405,7 @@ falling short, and then only behind the same interface with the heuristic as fal
 ## 6. External integration rules
 
 1. Every provider is wrapped by an adapter implementing a capability interface (tiles config,
-   search, routing, FX).
+   search, routing).
 2. Every outbound call sends an identifying User-Agent with a contact address, has a timeout,
    and is cached according to the provider's terms.
 3. A per-provider daily budget counter stops calls before a published quota is reached and
@@ -401,9 +421,9 @@ falling short, and then only behind the same interface with the heuristic as fal
   so the provider never sees the user's device. Location permission is not required by any MVP
   feature.
 - **Attribution.** "© OpenStreetMap contributors" and the tile provider's credit on the map;
-  GeoNames, Wikidata (optional) and Frankfurter-related notes on the About screen.
+  GeoNames and Wikidata (optional) on the About screen.
 - **Failure behaviour.** Routing down → estimated times. Search provider down → local results
-  and manual entry. FX missing → amounts shown unconverted. Tiles down → itinerary list still
+  and manual entry. Tiles down → itinerary list still
   works; map shows an error with retry.
 - **Testing.** Engine unit and golden tests; validator property tests; adapter contract tests
   against recorded responses; API tests; app component tests; one end-to-end path on Android.
@@ -415,8 +435,8 @@ falling short, and then only behind the same interface with the heuristic as fal
 | Environment | Composition | Recurring cost |
 |---|---|---|
 | Development and tests | GitHub Actions (CI-first, `docs/development.md`); Docker Compose (`db`, `api`) optional | none |
-| Personal production | Supabase Free database, Render free web service, GitHub Actions import (ADR 005); OpenFreeMap; Photon and Frankfurter public instances | $0 per month at the limits read on 2026-11-12 |
-| Public commercial | Self-hosted or contracted tiles, self-hosted Photon and Frankfurter, legal review of ODbL use | to be estimated |
+| Personal production | Supabase Free database, Render free web service, GitHub Actions import (ADR 005); OpenFreeMap; Photon public instance; FOSSGIS Valhalla (ADR 004) | $0 per month at the limits read on 2026-11-12 |
+| Public commercial | Self-hosted or contracted tiles, self-hosted Photon and routing, legal review of ODbL use | to be estimated |
 
 Known platform costs: none while the app is not distributed through app stores (ADR 008). An
 Apple Developer Program membership ($99 per year) is optional for the iOS phase. Google Play

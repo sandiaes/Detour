@@ -58,6 +58,12 @@ export function buildComparison(a: ItinerarySummary, b: ItinerarySummary): Compa
       b: sb ? String(sb.days_with_visits) : UNKNOWN,
     },
     {
+      key: "meals",
+      label: "Meals",
+      a: sa ? String(sa.meals ?? 0) : UNKNOWN,
+      b: sb ? String(sb.meals ?? 0) : UNKNOWN,
+    },
+    {
       key: "visit-time",
       label: "Time at the sights",
       a: sa ? formatMinutes(sa.visit_minutes) : UNKNOWN,

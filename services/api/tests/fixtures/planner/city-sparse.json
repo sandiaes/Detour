@@ -90,5 +90,47 @@
    },
    "sitelink_count": null
   }
+ ],
+ "restaurants": [
+  {
+   "place_id": "00000000-0000-4000-d000-000000000001",
+   "name": "Synthetic restaurant 001",
+   "venue_type": "restaurant",
+   "lat": 48.207135,
+   "lon": 16.370089,
+   "meal_types": [
+    "dinner",
+    "lunch"
+   ],
+   "cuisines": null
+  },
+  {
+   "place_id": "00000000-0000-4000-d000-000000000002",
+   "name": "Synthetic restaurant 002",
+   "venue_type": "restaurant",
+   "lat": 48.208425,
+   "lon": 16.376549,
+   "meal_types": [
+    "dinner",
+    "lunch"
+   ],
+   "cuisines": [
+    "pizza"
+   ]
+  },
+  {
+   "place_id": "00000000-0000-4000-d000-000000000003",
+   "name": "Synthetic cafe 003",
+   "venue_type": "cafe",
+   "lat": 48.208574,
+   "lon": 16.372984,
+   "meal_types": [
+    "breakfast",
+    "snack"
+   ],
+   "cuisines": [
+    "greek"
+   ]
+  }
  ]
 }

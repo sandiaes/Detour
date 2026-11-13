@@ -4,7 +4,7 @@ import {
   formatDate,
   formatMeters,
   formatMinutes,
-  formatMoney,
+  formatCuisines,
   formatSeconds,
   formatTripSpan,
   isValidIsoDate,
@@ -48,9 +48,11 @@ test("date validation rejects impossible dates", () => {
   expect(isValidIsoDate("")).toBe(false);
 });
 
-test("money keeps the currency code and does not invent a symbol", () => {
-  expect(formatMoney("25.5", "EUR")).toBe("25.50 EUR");
-  expect(formatMoney(12, "JPY")).toBe("12.00 JPY");
+test("cuisines from the open data, and unknown cuisine said plainly", () => {
+  expect(formatCuisines(["italian", "pizza"])).toBe("Italian, pizza");
+  expect(formatCuisines(["coffee_shop"])).toBe("Coffee shop");
+  expect(formatCuisines(null)).toBe("Cuisine not specified");
+  expect(formatCuisines([])).toBe("Cuisine not specified");
 });
 
 test("age of a saved copy", () => {

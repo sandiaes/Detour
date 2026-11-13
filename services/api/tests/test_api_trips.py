@@ -58,11 +58,11 @@ def sql(env: ApiEnv, query: str, *params: Any) -> list[tuple[Any, ...]]:
 # -- trips ---------------------------------------------------------------------------------
 
 
-def test_create_trip_defaults_the_currency_and_computes_the_end_date(api_env: ApiEnv) -> None:
-    trip = make_trip(api_env, start_date="2027-05-01", meal_budget_per_person="25.50")
-    assert trip["currency_code"] == "EUR"  # the destination country's currency
+def test_create_trip_computes_the_end_date_and_has_no_money_fields(api_env: ApiEnv) -> None:
+    trip = make_trip(api_env, start_date="2027-05-01")
     assert trip["end_date"] == "2027-05-03" and trip["status"] == "active"
-    assert trip["meal_budget_per_person"] == "25.50" and trip["price_band_thresholds"] is None
+    # ADR 017: no currency, meal budget or price bands.
+    assert not {"currency_code", "meal_budget_per_person", "price_band_thresholds"} & set(trip)
     assert trip["destination"] == {
         "kind": "city",
         "ref": "900101",
@@ -89,17 +89,13 @@ def test_an_area_can_be_a_destination(api_env: ApiEnv) -> None:
         ({"destination_ref": "not-a-number"}, 422, "destination_not_found"),
         ({"destination_kind": "area", "destination_ref": "nope"}, 422, "destination_not_found"),
         ({"destination_ref": "900201"}, 409, "region_not_available"),  # Japan: not imported
-        ({"currency_code": "ZZZ"}, 422, "unknown_currency"),
-        ({"currency_code": "eur2"}, 422, "None"),
+        ({"currency_code": "EUR"}, 422, "None"),  # ADR 017: no currencies
         ({"duration_days": 0}, 422, "None"),
         ({"duration_days": 31}, 422, "None"),
         ({"title": ""}, 422, "None"),
         ({"title": "x" * 121}, 422, "None"),
-        ({"meal_budget_per_person": "-1"}, 422, "None"),
-        ({"meal_budget_per_person": "1.234"}, 422, "None"),
-        ({"price_band_thresholds": ["10", "20"]}, 422, "None"),
-        ({"price_band_thresholds": ["20", "10", "30"]}, 422, "None"),
-        ({"price_band_thresholds": ["0", "10", "30"]}, 422, "None"),
+        ({"meal_budget_per_person": "25"}, 422, "None"),  # ADR 017: no budgets
+        ({"price_band_thresholds": ["10", "20", "30"]}, 422, "None"),
         ({"start_date": "tomorrow"}, 422, "None"),
         ({"surprise": 1}, 422, "None"),
     ],
@@ -120,11 +116,6 @@ def test_a_destination_in_a_disabled_region_cannot_be_planned(api_env: ApiEnv) -
     assert r.status_code == 409 and code(r) == "region_not_available"
 
 
-def test_price_bands_are_stored_as_given(api_env: ApiEnv) -> None:
-    trip = make_trip(api_env, price_band_thresholds=["10", "20.50", "40"])
-    assert trip["price_band_thresholds"] == ["10", "20.50", "40"]
-
-
 def test_trips_need_a_token_and_belong_to_one_installation(api_env: ApiEnv) -> None:
     assert api_env.client.post("/v1/trips", json=trip_body()).status_code == 401
     trip = make_trip(api_env)
@@ -142,15 +133,14 @@ def test_trips_need_a_token_and_belong_to_one_installation(api_env: ApiEnv) -> N
 
 
 def test_update_changes_only_the_fields_sent_and_null_clears(api_env: ApiEnv) -> None:
-    trip = make_trip(api_env, start_date="2027-05-01", meal_budget_per_person="20")
+    trip = make_trip(api_env, start_date="2027-05-01")
     c, h, url = api_env.client, api_env.headers, f"/v1/trips/{trip['id']}"
     r = c.patch(url, json={"title": "Renamed"}, headers=h).json()
     assert r["title"] == "Renamed" and r["start_date"] == "2027-05-01"
-    assert r["meal_budget_per_person"] == "20.00"
-    r = c.patch(url, json={"start_date": None, "meal_budget_per_person": None}, headers=h).json()
-    assert r["start_date"] is None and r["end_date"] is None and r["meal_budget_per_person"] is None
+    r = c.patch(url, json={"start_date": None}, headers=h).json()
+    assert r["start_date"] is None and r["end_date"] is None
     assert c.patch(url, json={"title": None}, headers=h).status_code == 422
-    assert c.patch(url, json={"currency_code": "USD"}, headers=h).status_code == 422  # fixed
+    assert c.patch(url, json={"meal_budget_per_person": "9"}, headers=h).status_code == 422
     assert c.patch(url, json={"destination_ref": "1"}, headers=h).status_code == 422
 
 
@@ -232,23 +222,13 @@ def test_deleting_a_trip_removes_its_plans_but_not_the_users_places_or_prices(
         user_place_id=place["id"],
         duration_minutes=60,
     ).json()
-    sql(
-        api_env,
-        "INSERT INTO app.price_record (id, installation_id, user_place_id, itinerary_item_id, kind,"
-        " amount, currency_code, basis, source, confidence) VALUES (%s, %s, %s, %s, 'user_actual',"
-        " 12.5, 'EUR', 'per_person', 'user', 'high')",
-        uuid.uuid4(),
-        api_env.installation_id,
-        place["id"],
-        item["id"],
-    )
+    assert item["restaurant"] == {"venue_type": None, "cuisines": None}  # a user place
     assert (
         api_env.client.delete(f"/v1/trips/{trip['id']}", headers=api_env.headers).status_code == 204
     )
     for table in ("trip", "itinerary", "itinerary_day", "itinerary_item"):
         assert sql(api_env, f"SELECT count(*) FROM app.{table}") == [(0,)]  # noqa: S608
     assert sql(api_env, "SELECT count(*) FROM app.user_place") == [(1,)]
-    assert sql(api_env, "SELECT itinerary_item_id FROM app.price_record") == [(None,)]
 
 
 # -- user places ---------------------------------------------------------------------------
@@ -710,15 +690,6 @@ def test_archiving_keeps_snapshots_and_deletes_the_plans(api_env: ApiEnv) -> Non
         json={"selected_itinerary_id": keep["id"]},
         headers=api_env.headers,
     )
-    item_id = sql(api_env, "SELECT id FROM app.itinerary_item LIMIT 1")[0][0]
-    sql(
-        api_env,
-        "INSERT INTO app.price_record (id, installation_id, place_id, itinerary_item_id, kind, amount, currency_code, basis, source, confidence) VALUES (%s, %s, %s, %s, 'user_expected', 15, 'EUR', 'per_person', 'user', 'medium')",
-        uuid.uuid4(),
-        api_env.installation_id,
-        museum["id"],
-        item_id,
-    )
 
     r = api_env.client.post(f"/v1/trips/{trip['id']}/archive", headers=api_env.headers)
     assert r.status_code == 200, r.text
@@ -743,9 +714,6 @@ def test_archiving_keeps_snapshots_and_deletes_the_plans(api_env: ApiEnv) -> Non
 
     for table in ("itinerary", "itinerary_day", "itinerary_item", "transfer"):
         assert sql(api_env, f"SELECT count(*) FROM app.{table}") == [(0,)]  # noqa: S608
-    assert sql(api_env, "SELECT count(*), count(itinerary_item_id) FROM app.price_record") == [
-        (1, 0)
-    ]
 
 
 def test_a_past_trip_is_read_only_and_archiving_is_one_way(api_env: ApiEnv) -> None:

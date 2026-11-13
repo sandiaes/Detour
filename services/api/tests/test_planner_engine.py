@@ -1,5 +1,5 @@
 """The planning engine without a database: golden files, determinism, trip lengths, incomplete
-data, impossible requests, routed times and latency.
+data, impossible requests, routed times, meals, area destinations and latency.
 
 The candidates are synthetic (``tests/fixtures/planner/make_candidates.py``): invented places, so
 the expected output can be fixed. Rewrite the golden files after an intended change with
@@ -11,6 +11,7 @@ import itertools
 import json
 import time
 from datetime import date
+from typing import Any
 
 import pytest
 
@@ -26,7 +27,7 @@ from detour_api.settings import Settings
 from detour_api.travel.estimate import estimate
 from detour_api.travel.types import Coord, Mode, distance_m
 from tests.conftest import TEST_SECRET
-from tests.planner_helpers import GOLDEN, candidates, request
+from tests.planner_helpers import GOLDEN, candidates, request, restaurants, towns
 
 GOLDEN_CASES = [
     ("city3", "city-large", 3, date(2026, 5, 4)),
@@ -34,11 +35,20 @@ GOLDEN_CASES = [
     ("city14", "city-large", 14, date(2026, 7, 1)),
     ("sparse1", "city-sparse", 1, None),
     ("sparse3", "city-sparse", 3, date(2026, 5, 4)),
+    ("area3", "area", 3, None),
+    ("area7", "area", 7, date(2026, 6, 1)),
+    ("area14", "area", 14, None),
 ]
 
 
-def run(name: str, days: int, start: date | None = None, **kw: object) -> Generation:
-    return engine.generate(request(name, days, start), candidates(name), FixedTravelSource(), **kw)  # type: ignore[arg-type]
+def run(name: str, days: int, start: date | None = None, **kw: Any) -> Generation:
+    return engine.generate(
+        request(name, days, start),
+        candidates(name),
+        FixedTravelSource(),
+        restaurants=restaurants(name),
+        **kw,
+    )
 
 
 def canonical(generation: Generation) -> str:
@@ -49,13 +59,17 @@ def assert_valid(generation: Generation, name: str, days: int, start: date | Non
     """The validator, called again from the test (the engine already calls it)."""
     req = request(name, days, start)
     by_id = {c.place_id: c for c in candidates(name)}
+    eat = {r.place_id: r for r in restaurants(name)}
     lookup = TravelLookup(FixedTravelSource(), DEFAULT_CONFIG.walk_max_m)
     for plan in generation.plans:
         for d in plan.days:
-            for a, b in zip(d.visits, d.visits[1:], strict=False):
-                lookup.get(by_id[a.place_id].coord, by_id[b.place_id].coord)
+            for a, b in zip(d.items, d.items[1:], strict=False):
+                lookup.get(Coord.from_degrees(a.lat, a.lon), Coord.from_degrees(b.lat, b.lon))
+    for t1 in towns(name):
+        for t2 in towns(name):
+            lookup.get(t1.coord, t2.coord)
     for plan in generation.plans:
-        assert validate_plan(plan, req, by_id, lookup.known(), DEFAULT_CONFIG) == []
+        assert validate_plan(plan, req, by_id, eat, lookup.known(), DEFAULT_CONFIG) == []
     assert validate_generation(generation, DEFAULT_CONFIG) == []
 
 
@@ -80,7 +94,10 @@ def test_same_input_in_any_order_gives_identical_output() -> None:
     shuffled = list(reversed(candidates("city-large")))
     third = canonical(
         engine.generate(
-            request("city-large", 3), shuffled[60:] + shuffled[:60], FixedTravelSource()
+            request("city-large", 3),
+            shuffled[60:] + shuffled[:60],
+            FixedTravelSource(),
+            restaurants=list(reversed(restaurants("city-large"))),
         )
     )
     assert first == again == third
@@ -88,7 +105,7 @@ def test_same_input_in_any_order_gives_identical_output() -> None:
 
 def test_versions_and_seed_are_on_every_generation() -> None:
     g = run("city-large", 3)
-    assert g.engine_version == "planner-1.0.0"
+    assert g.engine_version == "planner-2.0.0"
     assert g.config_version == DEFAULT_CONFIG.version and "durations-" in g.config_version
     assert g.data_version == "run-fixture" and g.seed == 0
 
@@ -138,11 +155,14 @@ def test_the_schedule_starts_at_nine_and_ends_by_the_profile_end() -> None:
     for plan in run("city-large", 7).plans:
         end = DEFAULT_CONFIG.profile(plan.profile).day_end_minute
         for day in plan.days:
-            assert day.visits[0].start_minute == 9 * 60
-            assert day.visits[-1].end_minute <= end
-            for v, nxt in zip(day.visits, day.visits[1:], strict=False):
+            assert day.items[0].start_minute == 9 * 60
+            assert day.items[-1].end_minute <= end
+            for v, nxt in zip(day.items, day.items[1:], strict=False):
                 assert v.transfer is not None
-                assert nxt.start_minute == v.end_minute + v.transfer.minutes
+                if nxt.kind == "visit":  # a visit follows at once; a meal may wait for its window
+                    assert nxt.start_minute == v.end_minute + v.transfer.minutes
+                else:
+                    assert nxt.start_minute >= v.end_minute + v.transfer.minutes
 
 
 def test_every_visit_is_an_input_candidate_with_its_own_data() -> None:
@@ -157,7 +177,7 @@ def test_every_visit_is_an_input_candidate_with_its_own_data() -> None:
 
 def test_every_transfer_is_labelled_and_without_a_provider_estimated() -> None:
     for plan in run("city-large", 3).plans:
-        legs = [v.transfer for d in plan.days for v in d.visits if v.transfer]
+        legs = [v.transfer for d in plan.days for v in d.items if v.transfer]
         assert legs and all(x.confidence == "estimated" for x in legs)
         assert all(x.estimate_reason == "provider_not_asked" for x in legs)
         assert plan.stats.estimated_transfers == len(legs)
@@ -173,14 +193,21 @@ def test_without_use_provider_the_source_is_never_asked_to_call_out() -> None:
 def test_reasons_and_notes_render_through_their_templates() -> None:
     g = run("city-large", 3)
     texts = [
-        item_text(code) for p in g.plans for d in p.days for v in d.visits for code in v.reasons
+        item_text(code) for p in g.plans for d in p.days for v in d.items for code in v.reasons
     ]
     assert texts and all(t.endswith(".") for t in texts)
     for note in [*g.notes, *(n for p in g.plans for n in p.notes)]:
         assert note_text(note.code, note.params)
     codes = {c for p in g.plans for d in p.days for v in d.visits for c in v.reasons}
     assert {"NEAR_PREVIOUS_ITEM", "WIKIDATA_LINKED", "NEAR_CENTRE", "ADDS_VARIETY"} <= codes
-    assert {n.code for n in g.notes} >= {"DISTINCT_PLANS", "NO_OPENING_HOURS", "NO_MEALS_YET"}
+    meal_codes = {c for p in g.plans for d in p.days for m in d.meals for c in m.reasons}
+    assert {"LUNCH_WINDOW", "DINNER_WINDOW", "SNACK_WINDOW", "VENUE_SUITS_MEAL"} <= meal_codes
+    assert {"NEW_CUISINE", "CUISINE_NOT_SPECIFIED", "ON_THE_WAY"} <= meal_codes
+    assert {n.code for n in g.notes} >= {
+        "DISTINCT_PLANS",
+        "NO_OPENING_HOURS",
+        "MEALS_FROM_MAP_DATA",
+    }
 
 
 # -- incomplete place data -------------------------------------------------------------------------
@@ -218,7 +245,9 @@ def test_a_destination_too_small_for_two_plans_says_so_and_returns_one() -> None
         "Only one plan is shown: 8 sights are available within 15 km, too few for two clearly "
         "different plans (overlap 100 %, at most 60 % allowed)."
     )
-    assert g.plans[0].stats.visits == 8
+    # A 4-hour theme park cannot share a day with lunch: two visits are left out, and said so.
+    removed = next(n for n in g.plans[0].notes if n.code == "VISITS_REMOVED_TO_FIT")
+    assert g.plans[0].stats.visits + int(removed.params["removed"]) == 8  # type: ignore[arg-type]
 
 
 def test_days_without_visits_are_explained() -> None:
@@ -258,7 +287,9 @@ def test_visits_longer_than_any_day_are_explained() -> None:
     short = dataclasses.replace(
         DEFAULT_CONFIG,
         profiles=tuple(
-            dataclasses.replace(p, day_end_minute=DEFAULT_CONFIG.day_start_minute + 180)
+            dataclasses.replace(
+                p, day_end_minute=DEFAULT_CONFIG.day_start_minute + 180, meals=(), free_minutes=0
+            )
             for p in DEFAULT_CONFIG.profiles
         ),
     )
@@ -283,7 +314,7 @@ def test_bad_inputs_are_programming_errors() -> None:
 
 
 def _slow_routed_table() -> dict[tuple[Coord, Coord], tuple[int, int]]:
-    """Synthetic "routed" answers 60 % slower than the estimate, for pairs within 3 km."""
+    """Synthetic "routed" answers three times slower than the estimate, for pairs within 3 km."""
     cs = candidates("city-large")
     table: dict[tuple[Coord, Coord], tuple[int, int]] = {}
     for a in cs:
@@ -292,35 +323,43 @@ def _slow_routed_table() -> dict[tuple[Coord, Coord], tuple[int, int]]:
                 continue
             mode: Mode = "walk" if distance_m(a.coord, b.coord) <= 2000 else "drive"
             seconds, meters = estimate(a.coord, b.coord, mode)
-            table[(a.coord, b.coord)] = (seconds * 16 // 10 + 60, meters * 12 // 10)
+            table[(a.coord, b.coord)] = (seconds * 3 + 120, meters * 12 // 10)
     return table
 
 
 def test_routed_transfers_replace_estimates_and_the_day_still_fits() -> None:
     source = FixedTravelSource(_slow_routed_table(), provider_only=True)
     req = request("city-large", 3)
-    g = engine.generate(req, candidates("city-large"), source, use_provider=True)
+    g = engine.generate(
+        req, candidates("city-large"), source, restaurants=restaurants("city-large"),
+        use_provider=True,
+    )  # fmt: skip
     uses = [use for use, _ in source.calls]
     # The cache read, the provider call for the planned legs, at most two follow-ups for legs
     # joined by fitting a day.
     assert uses[0] is False and all(uses[1:]) and 2 <= len(uses) <= 4
     for plan in g.plans:
-        legs = [v.transfer for d in plan.days for v in d.visits if v.transfer]
+        legs = [v.transfer for d in plan.days for v in d.items if v.transfer]
         routed = [x for x in legs if x.confidence == "routed"]
-        # Only legs over 3 km straight-line are missing from the table: they stay estimates.
+        # The table has sight-to-sight legs within 3 km only: legs to and from places to eat,
+        # and longer ones, stay estimates.
         by_point = {(c.lat, c.lon): c for c in candidates("city-large")}
         for d in plan.days:
             for v, nxt in itertools.pairwise(d.visits):
+                if d.items.index(nxt) != d.items.index(v) + 1:
+                    continue  # a meal lies between them
                 assert v.transfer is not None
                 far = (
                     distance_m(by_point[(v.lat, v.lon)].coord, by_point[(nxt.lat, nxt.lon)].coord)
                     > 3000
                 )
                 assert (v.transfer.confidence == "estimated") == far
-        assert plan.stats.routed_transfers == len(routed)
+            for m in d.meals:
+                assert m.transfer is None or m.transfer.confidence == "estimated"
+        assert routed and plan.stats.routed_transfers == len(routed)
         for d in plan.days:
-            assert d.visits[-1].end_minute <= DEFAULT_CONFIG.profile(plan.profile).day_end_minute
-    removed = [n for p in g.plans for n in p.notes if n.code == "VISITS_REMOVED_AFTER_ROUTING"]
+            assert d.items[-1].end_minute <= DEFAULT_CONFIG.profile(plan.profile).day_end_minute
+    removed = [n for p in g.plans for n in p.notes if n.code == "VISITS_REMOVED_TO_FIT"]
     assert removed, "the slower routed times force visits out of the planned days"
 
 
@@ -332,9 +371,13 @@ def test_service_source_uses_the_travel_service_and_labels_estimates() -> None:
     service = TravelTimeService(settings, None, ValhallaClient(settings, None))
     source = ServiceTravelSource(service, max_seconds=1.0)
     g = engine.generate(
-        request("city-sparse", 1), candidates("city-sparse"), source, use_provider=True
+        request("city-sparse", 1),
+        candidates("city-sparse"),
+        source,
+        restaurants=restaurants("city-sparse"),
+        use_provider=True,
     )
-    legs = [v.transfer for p in g.plans for d in p.days for v in d.visits if v.transfer]
+    legs = [v.transfer for p in g.plans for d in p.days for v in d.items if v.transfer]
     assert legs and {x.estimate_reason for x in legs} == {"adapter_disabled"}
 
 
@@ -343,8 +386,8 @@ def test_service_source_uses_the_travel_service_and_labels_estimates() -> None:
 
 def test_the_gate_penalises_shared_visits_until_the_plans_differ() -> None:
     lenient = dataclasses.replace(DEFAULT_CONFIG, max_jaccard_num=1, max_jaccard_den=1)
-    g_lenient = run("city-large", 7, config=lenient)
-    g = run("city-large", 7)
+    g_lenient = run("city-large", 4, config=lenient)
+    g = run("city-large", 4)
     a, b = (p.place_ids() for p in g_lenient.plans)
     assert len(a & b) * 5 > 3 * len(a | b), "unpenalised, the profiles overlap too much"
     adjusted = [n for n in g.plans[1].notes if n.code == "DIVERSITY_ADJUSTED"]
@@ -356,8 +399,8 @@ def test_the_gate_penalises_shared_visits_until_the_plans_differ() -> None:
 
 def test_a_much_smaller_second_variant_is_not_an_alternative() -> None:
     g = run("city-sparse", 1)
-    assert len(g.plans) == 2  # 7 and 5 visits: 71 %, above the 50 % minimum
-    demanding = dataclasses.replace(DEFAULT_CONFIG, min_second_variant_pct=100)
+    assert [p.stats.visits for p in g.plans] == [4, 7]  # Wider has 175 % of Essentials' visits
+    demanding = dataclasses.replace(DEFAULT_CONFIG, min_second_variant_pct=200)
     g = run("city-sparse", 1, config=demanding)
     assert len(g.plans) == 1 and any(n.code == "SINGLE_PLAN" for n in g.notes)
 

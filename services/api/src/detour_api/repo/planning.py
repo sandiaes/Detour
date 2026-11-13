@@ -1,9 +1,11 @@
 """Database side of plan generation: what the engine reads, and writing its itineraries.
 
-``load_context`` reads the trip, checks it can be planned, and loads the candidate attractions of
-the destination's region around the trip's destination point. ``save_generation`` writes the
-engine's itineraries with their days, items and transfers in one transaction. The engine itself
-runs between the two, outside any transaction, because it may wait on the routing provider.
+``load_context`` reads the trip, checks it can be planned, and loads what the engine plans with:
+for a city, the attractions and places to eat of the destination's region around the trip's
+destination point; for an area, the towns of the area (possible base cities) and the attractions
+and places to eat inside it. ``save_generation`` writes the engine's itineraries with their days
+(base city, inter-city leg), items (visits and meals) and transfers in one transaction. The engine
+itself runs between the two, outside any transaction, because it may wait on the routing provider.
 """
 
 import itertools
@@ -12,6 +14,7 @@ import math
 import uuid
 from dataclasses import dataclass, field
 from datetime import time
+from typing import Any
 
 from sqlalchemy import Connection, text
 
@@ -19,7 +22,14 @@ from detour_api.errors import ApiError, conflict, invalid
 from detour_api.models.trips import GenerationResult
 from detour_api.planner.config import PlannerConfig
 from detour_api.planner.reasons import ITEM_TEMPLATES
-from detour_api.planner.types import Candidate, Generation, Plan, PlanRequest
+from detour_api.planner.types import (
+    BaseCity,
+    Candidate,
+    Generation,
+    Plan,
+    PlanRequest,
+    Restaurant,
+)
 from detour_api.repo import geo, itineraries, trips
 from detour_api.repo.geo import METERS_PER_DEGREE
 from detour_api.travel.estimate import ESTIMATE_VERSION
@@ -28,10 +38,17 @@ from detour_api.travel.estimate import ESTIMATE_VERSION
 @dataclass(frozen=True)
 class PlanningContext:
     trip_id: uuid.UUID
-    city_id: int
     region_id: str
     request: PlanRequest
     candidates: list[Candidate] = field(default_factory=list)
+    restaurants: list[Restaurant] = field(default_factory=list)
+
+
+# At most this many towns of an area are considered as base cities (the most populous first).
+MAX_AREA_TOWNS = 60
+# GeoNames feature codes that are not towns to stay in: sections of a populated place, and
+# historical, abandoned or destroyed places.
+NOT_A_BASE = ("PPLX", "PPLH", "PPLQ", "PPLW")
 
 
 def load_context(
@@ -40,14 +57,14 @@ def load_context(
     trip = trips.require_trip(conn, installation_id, trip_id)
     if trip.status == "past":
         raise conflict("trip_archived", "a past trip cannot get new itineraries")
-    if trip.destination.kind != "city":
-        raise invalid(
-            "area_not_supported",
-            "itineraries for an area destination are not available yet; choose a city",
-        )
-    dest = geo.resolve_destination(conn, "city", trip.destination.ref)
+    kind = trip.destination.kind
+    dest = geo.resolve_destination(conn, kind, trip.destination.ref)
     if dest is None:
-        raise invalid("destination_not_found", "the trip's city is no longer in the imported data")
+        raise invalid(
+            "destination_not_found", f"the trip's {kind} is no longer in the imported data"
+        )
+    if kind == "area" and not geo.area_planning_allowed(dest):
+        raise invalid("area_single_city_only", geo.SINGLE_CITY_MESSAGE)
     if dest.region_id is None or dest.region_status != "available":
         raise ApiError(
             409,
@@ -57,46 +74,86 @@ def load_context(
     import_run = conn.execute(
         text("SELECT current_import_run_id FROM geo.region WHERE id = :r"), {"r": dest.region_id}
     ).scalar_one_or_none()
+    data_version = None if import_run is None else str(import_run)
+    if kind == "city":
+        request = PlanRequest(
+            destination_name=trip.destination.name,
+            lat=trip.destination.lat,
+            lon=trip.destination.lon,
+            days=trip.duration_days,
+            start_date=trip.start_date,
+            data_version=data_version,
+            kind="city",
+            base_cities=(
+                BaseCity(
+                    int(trip.destination.ref),
+                    trip.destination.name,
+                    trip.destination.lat,
+                    trip.destination.lon,
+                ),
+            ),
+        )
+        radius = max(p.radius_m for p in config.profiles)
+        return PlanningContext(
+            trip_id=trip.id,
+            region_id=dest.region_id,
+            request=request,
+            candidates=load_candidates(conn, dest.region_id, request.lat, request.lon, radius),
+            restaurants=load_restaurants(
+                conn, dest.region_id, request.lat, request.lon, radius + config.meal_search_m[-1]
+            ),
+        )
+    area_id = uuid.UUID(trip.destination.ref)
     request = PlanRequest(
         destination_name=trip.destination.name,
         lat=trip.destination.lat,
         lon=trip.destination.lon,
         days=trip.duration_days,
         start_date=trip.start_date,
-        currency_code=trip.currency_code,
-        data_version=None if import_run is None else str(import_run),
+        data_version=data_version,
+        kind="area",
+        base_cities=tuple(load_area_towns(conn, area_id)),
     )
-    radius = max(p.radius_m for p in config.profiles)
     return PlanningContext(
         trip_id=trip.id,
-        city_id=int(trip.destination.ref),
         region_id=dest.region_id,
         request=request,
-        candidates=load_candidates(conn, dest.region_id, request.lat, request.lon, radius),
+        candidates=load_area_candidates(conn, dest.region_id, area_id),
+        restaurants=load_area_restaurants(conn, dest.region_id, area_id),
     )
 
 
-def load_candidates(
-    conn: Connection, region_id: str, lat: float, lon: float, radius_m: int
-) -> list[Candidate]:
-    """Active, named attractions of the region in a box around the point (the engine applies the
-    exact radius). Uses the GiST index on ``geo.place.geom``."""
+def _box(lat: float, lon: float, radius_m: int) -> dict[str, float]:
     dlat = radius_m / METERS_PER_DEGREE
     dlon = radius_m / (METERS_PER_DEGREE * max(math.cos(math.radians(lat)), 0.01))
-    rows = conn.execute(
-        text(
-            """
-            SELECT p.id, p.name, p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
-                   s.osm_signals, s.sitelink_count
-            FROM geo.place p LEFT JOIN geo.place_signal s ON s.place_id = p.id
-            WHERE p.is_active AND p.kind = 'attraction' AND p.name IS NOT NULL
-              AND p.region_id = :r
-              AND p.geom && ST_MakeEnvelope(:x1, :y1, :x2, :y2, 4326)
-            ORDER BY p.id
-            """
-        ),
-        {"r": region_id, "x1": lon - dlon, "y1": lat - dlat, "x2": lon + dlon, "y2": lat + dlat},
-    ).all()
+    return {"x1": lon - dlon, "y1": lat - dlat, "x2": lon + dlon, "y2": lat + dlat}
+
+
+_CANDIDATE_SQL = """
+    SELECT p.id, p.name, p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
+           s.osm_signals, s.sitelink_count
+    FROM geo.place p LEFT JOIN geo.place_signal s ON s.place_id = p.id
+    WHERE p.is_active AND p.kind = 'attraction' AND p.name IS NOT NULL
+      AND p.region_id = :r AND {where}
+    ORDER BY p.id
+"""
+
+# Named places to eat with the meal types the import derived from their venue type. Unnamed ones
+# are not planned: the traveller could not find them.
+_RESTAURANT_SQL = """
+    SELECT p.id, p.name, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
+           rp.venue_type, rp.meal_types, rp.cuisines
+    FROM geo.place p JOIN geo.restaurant_profile rp ON rp.place_id = p.id
+    WHERE p.is_active AND p.kind = 'restaurant' AND p.name IS NOT NULL
+      AND rp.meal_types IS NOT NULL AND p.region_id = :r AND {where}
+    ORDER BY p.id
+"""
+
+_IN_BOX = "p.geom && ST_MakeEnvelope(:x1, :y1, :x2, :y2, 4326)"
+_IN_AREA = "ST_Intersects(p.geom, (SELECT a.geom FROM geo.admin_area a WHERE a.id = :area))"
+
+
+def _candidates(rows: Any) -> list[Candidate]:
     return [
         Candidate(
             place_id=str(r.id),
@@ -109,6 +166,73 @@ def load_candidates(
         )
         for r in rows
     ]
+
+
+def _restaurants(rows: Any) -> list[Restaurant]:
+    return [
+        Restaurant(
+            place_id=str(r.id),
+            name=r.name,
+            venue_type=r.venue_type,
+            lat=r.lat,
+            lon=r.lon,
+            meal_types=tuple(r.meal_types),
+            cuisines=None if r.cuisines is None else tuple(r.cuisines),
+        )
+        for r in rows
+    ]
+
+
+def load_restaurants(
+    conn: Connection, region_id: str, lat: float, lon: float, radius_m: int
+) -> list[Restaurant]:
+    rows = conn.execute(
+        text(_RESTAURANT_SQL.format(where=_IN_BOX)), {"r": region_id, **_box(lat, lon, radius_m)}
+    ).all()
+    return _restaurants(rows)
+
+
+def load_area_candidates(conn: Connection, region_id: str, area_id: uuid.UUID) -> list[Candidate]:
+    rows = conn.execute(
+        text(_CANDIDATE_SQL.format(where=_IN_AREA)), {"r": region_id, "area": area_id}
+    ).all()
+    return _candidates(rows)
+
+
+def load_area_restaurants(conn: Connection, region_id: str, area_id: uuid.UUID) -> list[Restaurant]:
+    rows = conn.execute(
+        text(_RESTAURANT_SQL.format(where=_IN_AREA)), {"r": region_id, "area": area_id}
+    ).all()
+    return _restaurants(rows)
+
+
+def load_area_towns(conn: Connection, area_id: uuid.UUID) -> list[BaseCity]:
+    """Gazetteer towns inside the area: the possible base cities, most populous first."""
+    rows = conn.execute(
+        text(
+            """
+            SELECT c.id, c.name, ST_Y(c.geom) AS lat, ST_X(c.geom) AS lon, c.population
+            FROM geo.city c
+            WHERE ST_Intersects(c.geom, (SELECT a.geom FROM geo.admin_area a WHERE a.id = :area))
+              AND NOT (COALESCE(c.feature_code, '') = ANY (:sections))
+            ORDER BY c.population DESC NULLS LAST, c.id
+            LIMIT :n
+            """
+        ),
+        {"area": area_id, "n": MAX_AREA_TOWNS, "sections": list(NOT_A_BASE)},
+    ).all()
+    return [BaseCity(int(r.id), r.name, r.lat, r.lon, r.population) for r in rows]
+
+
+def load_candidates(
+    conn: Connection, region_id: str, lat: float, lon: float, radius_m: int
+) -> list[Candidate]:
+    """Active, named attractions of the region in a box around the point (the engine applies the
+    exact radius). Uses the GiST index on ``geo.place.geom``."""
+    rows = conn.execute(
+        text(_CANDIDATE_SQL.format(where=_IN_BOX)), {"r": region_id, **_box(lat, lon, radius_m)}
+    ).all()
+    return _candidates(rows)
 
 
 def _time(minute: int) -> time:
@@ -129,11 +253,13 @@ def _summary(plan: Plan, generation: Generation, request: PlanRequest, sequencer
                 "estimated_transfers": stats.estimated_transfers,
                 "day_utilisation_permille": stats.day_utilisation_permille,
                 "travel_share_permille": stats.travel_share_permille,
+                "meals": stats.meals,
+                "meal_minutes": stats.meal_minutes,
+                "intercity_legs": stats.intercity_legs,
             },
             "notes": [{"code": n.code, "params": n.params} for n in plan.notes + generation.notes],
             "sequencer": sequencer,
             "estimate_version": ESTIMATE_VERSION,
-            "currency_code": request.currency_code,
             "jaccard_permille": generation.jaccard_permille,
         },
         sort_keys=True,
@@ -206,7 +332,7 @@ def save_generation(
                 "summary": _summary(plan, generation, context.request, sequencer),
             },
         )
-        _write_days(conn, itinerary_id, plan, context.city_id)
+        _write_days(conn, itinerary_id, plan)
     return GenerationResult(
         generation_id=generation_id,
         distinct=generation.distinct,
@@ -217,26 +343,40 @@ def save_generation(
     )
 
 
-def _write_days(conn: Connection, itinerary_id: uuid.UUID, plan: Plan, city_id: int) -> None:
+def _write_days(conn: Connection, itinerary_id: uuid.UUID, plan: Plan) -> None:
     for day in plan.days:
         day_id = uuid.uuid4()
+        arrival = day.arrival
         conn.execute(
             text(
-                "INSERT INTO app.itinerary_day (id, itinerary_id, day_index, date, base_city_id)"
-                " VALUES (:d, :i, :n, :date, :city)"
+                "INSERT INTO app.itinerary_day (id, itinerary_id, day_index, date, base_city_id,"
+                " base_city_name, arrival_mode, arrival_seconds, arrival_meters,"
+                " arrival_confidence) VALUES (:d, :i, :n, :date, :city, :cname, :am, :asec, :amet,"
+                " :aconf)"
             ),
-            {"d": day_id, "i": itinerary_id, "n": day.day_index, "date": day.date, "city": city_id},
+            {
+                "d": day_id,
+                "i": itinerary_id,
+                "n": day.day_index,
+                "date": day.date,
+                "city": day.base_city_id,
+                "cname": day.base_city_name,
+                "am": None if arrival is None else arrival.mode,
+                "asec": None if arrival is None else arrival.seconds,
+                "amet": None if arrival is None else arrival.meters,
+                "aconf": None if arrival is None else arrival.confidence,
+            },
         )
-        item_ids = [uuid.uuid4() for _ in day.visits]
-        for position, (item_id, visit) in enumerate(zip(item_ids, day.visits, strict=True), 1):
-            assert all(code in ITEM_TEMPLATES for code in visit.reasons)  # noqa: S101
+        item_ids = [uuid.uuid4() for _ in day.items]
+        for position, (item_id, item) in enumerate(zip(item_ids, day.items, strict=True), 1):
+            assert all(code in ITEM_TEMPLATES for code in item.reasons)  # noqa: S101
             conn.execute(
                 text(
                     """
-                    INSERT INTO app.itinerary_item (id, day_id, position, type, place_id,
-                        display_name, display_point, start_time, end_time, duration_minutes,
-                        duration_source, origin, locked, reasons)
-                    VALUES (:id, :d, :pos, 'visit', :place, :name,
+                    INSERT INTO app.itinerary_item (id, day_id, position, type, meal_type,
+                        place_id, display_name, display_point, start_time, end_time,
+                        duration_minutes, duration_source, origin, locked, reasons)
+                    VALUES (:id, :d, :pos, :type, :meal, :place, :name,
                         ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :start, :end, :minutes,
                         'category_default', 'engine', false, :reasons)
                     """
@@ -245,18 +385,20 @@ def _write_days(conn: Connection, itinerary_id: uuid.UUID, plan: Plan, city_id: 
                     "id": item_id,
                     "d": day_id,
                     "pos": position,
-                    "place": uuid.UUID(visit.place_id),
-                    "name": visit.name,
-                    "lat": visit.lat,
-                    "lon": visit.lon,
-                    "start": _time(visit.start_minute),
-                    "end": _time(visit.end_minute),
-                    "minutes": visit.duration_minutes,
-                    "reasons": list(visit.reasons),
+                    "type": item.kind,
+                    "meal": item.meal_type,
+                    "place": uuid.UUID(item.place_id),
+                    "name": item.name,
+                    "lat": item.lat,
+                    "lon": item.lon,
+                    "start": _time(item.start_minute),
+                    "end": _time(item.end_minute),
+                    "minutes": item.duration_minutes,
+                    "reasons": list(item.reasons),
                 },
             )
-        for (from_id, to_id), visit in zip(itertools.pairwise(item_ids), day.visits, strict=False):
-            leg = visit.transfer
+        for (from_id, to_id), item in zip(itertools.pairwise(item_ids), day.items, strict=False):
+            leg = item.transfer
             assert leg is not None  # noqa: S101 - the validator guarantees it
             conn.execute(
                 text(

@@ -10,7 +10,7 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Phases 1 to 4 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
+**Phases 1 to 6 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
 service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment
 configuration (ADR 010). Phase 2 (ADR 011, ADR 012; `docs/data-model.md`): the `geo` and `app`
 schemas, the region import and GeoNames gazetteer commands and the "Import region" workflow, the
@@ -23,8 +23,16 @@ request-shape check is done (`docs/spikes/fossgis-request-shape-check.md`): the 
 agrees with the plain route. **Phase 4 is built and awaits acceptance** (ADR 014, proposed): the
 planning engine v1 in `detour_api/planner/` (two strategy profiles, heuristic sequencer, category
 duration table, diversity gate, independent validator, reason templates) and
-`POST /v1/trips/{id}/itineraries/generate`, for city destinations, without meals; tried on
-synthetic fixtures only. **Phase 5 is built and awaits acceptance** (ADR 015, proposed): the mobile screens in `apps/mobile/src` (trips, create trip, comparison of two proposals, day list, plan map, selection, on-device read cache, offline and "waking the server" states) and an Android end-to-end workflow (`e2e-android.yml`, never yet run). The decisions in `docs/app-plan.md`
+`POST /v1/trips/{id}/itineraries/generate`; tried on synthetic fixtures only. **Phase 5 is built
+and awaits acceptance** (ADR 015, proposed): the mobile screens in `apps/mobile/src` (trips, create
+trip, comparison of two proposals, day list, plan map, selection, on-device read cache, offline and
+"waking the server" states); the owner reported on 2026-11-13 that the app works on the phone. The
+Android end-to-end workflow (`e2e-android.yml`) runs **by hand only**. **Phase 6 is built and
+awaits acceptance** (ADR 016, proposed): meals in fixed windows at imported places to eat
+(`planner/meals.py`), area destinations with base cities and inter-city legs (`planner/areas.py`),
+Japan single-city only, migration `0006`; tried on synthetic fixtures only. **No budgets,
+currencies or prices** (ADR 017, accepted 2026-11-13): none in the app, the API or the database;
+bringing them back needs a new ADR. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),
 and the app is not distributed through app stores (ADR 008). Do not start the next phase until the
 owner asks for it.
@@ -36,7 +44,7 @@ owner asks for it.
 | What the product does and does not do | `docs/product-brief.md` |
 | System design and planning engine | `docs/architecture.md` |
 | Which providers may be used, and on what terms | `docs/api-evaluation.md` |
-| Tables and the restaurant price model | `docs/data-model.md` |
+| Tables, the licence boundary, lifecycle | `docs/data-model.md` |
 | Phases, dependencies, exclusions | `docs/app-plan.md` |
 | Targets | `docs/kpis.md` |
 | Recorded decisions | `docs/decisions/` |
@@ -128,7 +136,8 @@ Other:
 - `python tools/check_dependencies.py`: fails if an LLM or generative-AI library is listed
 - `python -m detour_api.importer region <id>` / `gazetteer <ISO2>...`: the imports (in CI they run
   through the "Import region" workflow; `osm2pgsql` and `osmium-tool` are needed locally)
-- `python -m tests.e2e_seed` (from `services/api`): the fixture database for the Android end-to-end test
+- `python -m tests.e2e_seed` (from `services/api`): the fixture database for the Android end-to-end
+  test (the "E2E Android" workflow, started by hand)
 - `python -m detour_api.seed`: build the labelled seed trip from imported data
 - The database tests also need `osm2pgsql` and `osmium` (CI installs them; locally the import
   tests are skipped without them)

@@ -31,6 +31,7 @@ import { type Route, useNavigation } from "../nav/Navigator";
 import { colors, radius, spacing, type } from "../theme";
 import {
   formatClock,
+  formatCuisines,
   formatDate,
   formatMeters,
   formatMinutes,
@@ -40,7 +41,14 @@ import {
 
 type ItineraryRoute = Extract<Route, { name: "itinerary" }>;
 
-const MEAL_LABEL = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" } as const;
+const MEAL_LABEL = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  snack: "Afternoon snack",
+  dinner: "Dinner",
+} as const;
+
+const VENUE_LABEL: Record<string, string> = { restaurant: "Restaurant", cafe: "Café" };
 
 export function dayTitle(day: Day): string {
   return day.date
@@ -48,27 +56,77 @@ export function dayTitle(day: Day): string {
     : `Day ${day.day_index}`;
 }
 
-function dayTotalsText(day: Day): string {
+export function dayTotalsText(day: Day): string {
   const t = dayTotals(day);
-  if (t.visits === 0) return "Nothing planned";
-  return `${pluralise(t.visits, "visit")} · ${formatMinutes(t.visitMinutes)} at the sights · ${formatSeconds(t.travelSeconds)} travelling`;
+  if (t.visits === 0 && t.meals === 0) return "Nothing planned";
+  const meals = t.meals > 0 ? ` · ${pluralise(t.meals, "meal")}` : "";
+  return `${pluralise(t.visits, "visit")}${meals} · ${formatMinutes(t.visitMinutes)} at the sights · ${formatSeconds(t.travelSeconds)} travelling`;
+}
+
+/** The drive from the previous base city that starts the day, as one line. */
+export function arrivalText(day: Day): string | null {
+  const a = day.arrival;
+  if (!a) return null;
+  const from = a.from_base_city_name ? ` from ${a.from_base_city_name}` : "";
+  return `${a.mode === "walk" ? "Walk" : "Drive"}${from} · ${formatSeconds(a.seconds)} · ${formatMeters(a.meters)}`;
+}
+
+function DayHeader({ day, showBase }: { day: Day; showBase: boolean }) {
+  const base = showBase && day.base_city_name ? `Based in ${day.base_city_name}` : null;
+  const arrival = arrivalText(day);
+  const routed = day.arrival?.confidence === "routed";
+  const spoken =
+    `${dayTitle(day)}. ${base ? `${base}. ` : ""}${dayTotalsText(day)}.` +
+    (arrival
+      ? ` Starts with: ${arrival}, ${routed ? "routed" : "estimated, a straight-line estimate and not a measured route"}.`
+      : "");
+  return (
+    <View
+      style={styles.dayHeader}
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel={spoken}
+    >
+      <Text style={styles.dayTitle}>{dayTitle(day)}</Text>
+      {base ? <Text style={styles.dayBase}>{base}</Text> : null}
+      <Text style={styles.dayMeta}>{dayTotalsText(day)}</Text>
+      {arrival ? (
+        <View style={styles.arrival}>
+          <Text style={styles.transferText}>{arrival}</Text>
+          <Text style={[styles.tag, routed ? styles.tagRouted : styles.tagEstimated]}>
+            {routed ? "Routed" : "Estimated"}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 export function ItemRow({ item, ordinal }: { item: Item; ordinal: number | null }) {
   const start = formatClock(item.start_time);
   const end = formatClock(item.end_time);
   const duration = formatMinutes(item.duration_minutes);
-  const source = item.duration_source === "user" ? "set by you" : "typical visit length";
+  const meal = item.type === "meal";
+  const source =
+    item.duration_source === "user"
+      ? "set by you"
+      : meal
+        ? "typical meal length"
+        : "typical visit length";
+  const venue = item.restaurant?.venue_type ? VENUE_LABEL[item.restaurant.venue_type] : undefined;
   const kind =
-    item.type === "meal" && item.meal_type
-      ? MEAL_LABEL[item.meal_type]
+    meal && item.meal_type
+      ? `${MEAL_LABEL[item.meal_type]}${venue ? ` · ${venue}` : ""}`
       : item.type === "free_time"
         ? "Free time"
         : null;
+  // Cuisine is what the open data says; there is no price or rating (ADR 016, ADR 017).
+  const cuisine = meal ? formatCuisines(item.restaurant?.cuisines) : null;
   const when = start ? (end ? `${start} to ${end}` : start) : "Time not set";
   const reasons = item.reason_texts.join(" ");
   const label =
-    `${ordinal ? `Stop ${ordinal}. ` : ""}${kind ? `${kind}. ` : ""}${item.display_name}. ${when}. ` +
+    `${ordinal ? `Stop ${ordinal}. ` : ""}${kind ? `${kind}. ` : ""}${item.display_name}. ` +
+    `${cuisine ? `${cuisine}. ` : ""}${when}. ` +
     `${duration}, ${source}.${reasons ? ` Why: ${reasons}` : ""}`;
   return (
     <View style={styles.itemRow} accessible accessibilityLabel={label}>
@@ -88,6 +146,7 @@ export function ItemRow({ item, ordinal }: { item: Item; ordinal: number | null 
           <Text style={styles.itemTitle}>{item.display_name}</Text>
         </View>
         {kind ? <Text style={styles.itemMeta}>{kind}</Text> : null}
+        {cuisine ? <Text style={styles.itemMeta}>{cuisine}</Text> : null}
         <Text style={styles.itemMeta}>
           {duration} · {source}
         </Text>
@@ -159,6 +218,11 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
   const data = itinerary.data;
   const sections = useMemo(
     () => (data ? data.days.map((d) => ({ day: d, data: buildDayRows(d) })) : []),
+    [data],
+  );
+  // Base cities are worth naming only when the plan has more than one (an area trip).
+  const showBase = useMemo(
+    () => new Set((data?.days ?? []).map((d) => d.base_city_name ?? "")).size > 1,
     [data],
   );
 
@@ -290,17 +354,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
           />
         </View>
       }
-      renderSectionHeader={({ section }) => (
-        <View
-          style={styles.dayHeader}
-          accessible
-          accessibilityRole="header"
-          accessibilityLabel={`${dayTitle(section.day)}. ${dayTotalsText(section.day)}`}
-        >
-          <Text style={styles.dayTitle}>{dayTitle(section.day)}</Text>
-          <Text style={styles.dayMeta}>{dayTotalsText(section.day)}</Text>
-        </View>
-      )}
+      renderSectionHeader={({ section }) => <DayHeader day={section.day} showBase={showBase} />}
       renderItem={({ item: row }) =>
         row.kind === "item" ? (
           <ItemRow item={row.item} ordinal={row.ordinal} />
@@ -355,6 +409,14 @@ const styles = StyleSheet.create({
   },
   dayTitle: { ...type.title, color: colors.text },
   dayMeta: { ...type.small, color: colors.muted },
+  dayBase: { ...type.small, fontWeight: "700", color: colors.text },
+  arrival: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
   emptyDay: { ...type.small, color: colors.muted, padding: spacing.lg },
   itemRow: {
     flexDirection: "row",

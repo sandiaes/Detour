@@ -30,7 +30,7 @@ import { useResource } from "../data/DataProvider";
 import { PROFILE_EMPHASIS, PROFILE_LABEL, buildComparison, planFacts } from "../domain/compare";
 import { useNavigation } from "../nav/Navigator";
 import { colors, radius, spacing, type } from "../theme";
-import { formatMoney, formatTripSpan } from "../util/format";
+import { formatTripSpan } from "../util/format";
 
 /** Wide enough to put the two plans next to each other instead of swiping. */
 export const SIDE_BY_SIDE_MIN_WIDTH = 720;
@@ -352,15 +352,11 @@ export function TripScreen({ tripId }: { tripId: string }) {
   }
 
   const subtitle = `${trip.destination.name} · ${formatTripSpan(trip.start_date, trip.end_date, trip.duration_days)}`;
-  const budget =
-    trip.meal_budget_per_person !== null && trip.meal_budget_per_person !== undefined
-      ? ` · Meals ${formatMoney(trip.meal_budget_per_person, trip.currency_code)} per person`
-      : "";
 
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <ScreenHeader title={trip.title} subtitle={subtitle + budget} onBack={nav.back} />
+        <ScreenHeader title={trip.title} subtitle={subtitle} onBack={nav.back} />
         <ResourceNotices resource={trips} noun="trips" />
         {announce ? (
           <Notice tone="info" label="Done">

@@ -12,7 +12,7 @@ import {
   makeTrip,
 } from "../testing/fixtures";
 import { Harness } from "../testing/harness";
-import { SEARCH_DEBOUNCE_MS, parseBudget, validateForm } from "./CreateTripScreen";
+import { SEARCH_DEBOUNCE_MS, unavailableReason, validateForm } from "./CreateTripScreen";
 
 beforeEach(() => jest.useFakeTimers());
 afterEach(() => jest.useRealTimers());
@@ -41,6 +41,14 @@ function server(over: Record<string, (c: never) => unknown> = {}) {
           name: "Vienne",
           country_name: "France",
           planning_available: false,
+          unavailable_reason: "region_not_available",
+        }),
+        makeDestination({
+          ref: "a2",
+          name: "Viena Prefecture",
+          kind: "area",
+          country_name: "Japan",
+          unavailable_reason: "area_single_city_only",
         }),
       ],
     }),
@@ -95,13 +103,15 @@ test("a repeated query is answered from memory", async () => {
   expect(client.count("GET /v1/destinations/search")).toBe(1);
 });
 
-test("areas and regions without data cannot be chosen, and the row says why", async () => {
+test("areas can be chosen; Japanese areas and regions without data cannot, and the row says why", async () => {
   await openForm();
   await typeDestination("Vie");
   await screen.findByText("Vienna");
   const area = screen.getByRole("button", { name: /Vienna Woods/ });
-  expect(area.props.accessibilityState).toMatchObject({ disabled: true });
-  expect(screen.getByText("Whole areas cannot be planned yet. Choose a city.")).toBeOnTheScreen();
+  expect(area.props.accessibilityState).toMatchObject({ disabled: false });
+  const japan = screen.getByRole("button", { name: /Viena Prefecture/ });
+  expect(japan.props.accessibilityState).toMatchObject({ disabled: true });
+  expect(screen.getByText(/Areas in Japan cannot be planned yet/)).toBeOnTheScreen();
   const unavailable = screen.getByRole("button", { name: /Vienne/ });
   expect(unavailable.props.accessibilityState).toMatchObject({ disabled: true });
   expect(screen.getByText(/this region's data has not been imported/)).toBeOnTheScreen();
@@ -141,8 +151,9 @@ test("the whole flow: search, choose, set details, plan, land on the two proposa
 
   await fireEvent.press(screen.getByLabelText("More days"));
   await fireEvent.changeText(screen.getByLabelText("Start date (optional)"), "2027-05-01");
-  await fireEvent.changeText(screen.getByLabelText("Currency (optional)"), "eur");
-  await fireEvent.changeText(screen.getByLabelText("Meal budget per person (optional)"), "25,5");
+  // No currency and no meal budget: budgets are not part of the app (ADR 017).
+  expect(screen.queryByLabelText("Currency (optional)")).toBeNull();
+  expect(screen.queryByLabelText("Meal budget per person (optional)")).toBeNull();
   await fireEvent.press(screen.getByRole("button", { name: "Plan trip" }));
 
   expect(await screen.findByText("How they differ")).toBeOnTheScreen();
@@ -153,24 +164,31 @@ test("the whole flow: search, choose, set details, plan, land on the two proposa
     destination_ref: "900101",
     duration_days: 4,
     start_date: "2027-05-01",
-    currency_code: "EUR",
-    meal_budget_per_person: "25.5",
   });
   expect(client.count("POST /v1/trips/{trip_id}/itineraries/generate")).toBe(1);
   // The generated plans were stored, so opening the proposals made no extra plan requests.
   expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBe(0);
 });
 
-test("invalid optional fields block submission and say what is wrong", async () => {
+test("an invalid start date blocks submission and says what is wrong", async () => {
   const client = await openForm();
   await typeDestination("Vie");
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
   await fireEvent.changeText(screen.getByLabelText("Start date (optional)"), "2027-02-31");
-  await fireEvent.changeText(screen.getByLabelText("Meal budget per person (optional)"), "lots");
   await fireEvent.press(screen.getByRole("button", { name: "Plan trip" }));
   expect(await screen.findByText(/Use the form YYYY-MM-DD/)).toBeOnTheScreen();
-  expect(screen.getByText(/Use a number such as 25 or 25.50/)).toBeOnTheScreen();
   expect(client.count("POST /v1/trips")).toBe(0);
+});
+
+test("an area is planned like a city, with its own explanation", async () => {
+  const client = await openForm();
+  await typeDestination("Vie");
+  await fireEvent.press(await screen.findByRole("button", { name: /^Vienna Woods/ }));
+  expect(screen.getByText(/choose base cities in the area/)).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("button", { name: "Plan trip" }));
+  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+  const create = client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips");
+  expect(create?.body).toMatchObject({ destination_kind: "area", destination_ref: "a1" });
 });
 
 test("when planning fails the trip is kept, the reason is shown, and Try again plans without creating a second trip", async () => {
@@ -213,15 +231,13 @@ test("offline, planning is disabled and the form says why", async () => {
 });
 
 test("form helpers", () => {
-  expect(parseBudget("12,5")).toBe("12.5");
-  expect(parseBudget("12.50")).toBe("12.50");
-  expect(parseBudget("-1")).toBeNull();
-  expect(parseBudget("1.234")).toBeNull();
-  expect(validateForm({ startDate: "", currency: "", budget: "" })).toEqual({});
-  expect(validateForm({ startDate: "2027-13-01", currency: "EU", budget: "x" })).toEqual({
-    date: expect.any(String),
-    currency: expect.any(String),
-    budget: expect.any(String),
-  });
+  expect(validateForm({ startDate: "" })).toEqual({});
+  expect(validateForm({ startDate: "2027-13-01" })).toEqual({ date: expect.any(String) });
+  expect(unavailableReason(makeDestination({ kind: "area" }))).toBeNull();
+  expect(
+    unavailableReason(
+      makeDestination({ kind: "area", unavailable_reason: "area_single_city_only" }),
+    ),
+  ).toMatch(/Japan/);
   expect([ESSENTIALS_ID, WIDER_ID, TRIP_ID]).toHaveLength(3);
 });

@@ -94,15 +94,9 @@ def build_seed_trip(conn: Connection, region_id: str | None = None) -> uuid.UUID
         raise SeedError("fewer than two attractions in the chosen city")
     restaurant = _restaurant(conn, city_id)
     city = conn.execute(
-        text("SELECT ST_Y(geom) lat, ST_X(geom) lon, country_iso2 FROM geo.city WHERE id = :i"),
+        text("SELECT ST_Y(geom) lat, ST_X(geom) lon FROM geo.city WHERE id = :i"),
         {"i": city_id},
     ).one()
-    currency = conn.execute(
-        text("SELECT default_currency_code FROM geo.country WHERE iso2 = :c"),
-        {"c": city.country_iso2},
-    ).scalar_one_or_none()
-    if currency is None:
-        raise SeedError("the city's country has no known currency; run the gazetteer import")
 
     conn.execute(
         text(
@@ -123,12 +117,10 @@ def build_seed_trip(conn: Connection, region_id: str | None = None) -> uuid.UUID
             destination_kind="city",
             destination_ref=str(city_id),
             duration_days=2,
-            currency_code=currency,
         ),
         destination_name=city_name,
         lat=city.lat,
         lon=city.lon,
-        currency_code=currency,
         is_seed=True,
     )
     itinerary = itineraries.create_manual(conn, SEED_INSTALLATION_ID, trip.id)

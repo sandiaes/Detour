@@ -8,20 +8,13 @@
 #    http://10.0.2.2:8000 (the runner as seen from the emulator).
 # 4. Maestro (a test tool, not an app dependency) runs apps/mobile/e2e/trip-flow.yaml.
 #
-# Expensive (APK build about 14 minutes plus the emulator), so it runs on pull requests that touch
-# the app, the API or this file, on pushes to main, and by hand.
+# Expensive (APK build about 14 minutes plus the emulator), so it runs only by hand (Actions,
+# "E2E Android", "Run workflow"): the owner confirmed the app works on the phone (2026-11-13) and
+# asked for the workflow to be manual.
 name: E2E Android
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-  pull_request:
-    paths:
-      - "apps/mobile/**"
-      - "packages/shared/**"
-      - "services/api/**"
-      - ".github/workflows/e2e-android.yml"
 
 permissions:
   contents: read

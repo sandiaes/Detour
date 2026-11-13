@@ -160,7 +160,7 @@ test("create a trip, compare the proposals, select one, read its days, see it on
       screen.getByRole("button", { name: "View the days of the Essentials plan" }),
     );
     expect(await screen.findByText("Schönbrunn Palace")).toBeOnTheScreen();
-    expect(screen.getByText("Estimated")).toBeOnTheScreen();
+    expect(screen.getAllByText("Estimated").length).toBeGreaterThan(0);
 
     await fireEvent.press(screen.getByRole("button", { name: "Show the map" }));
     expect(await screen.findByTestId("map")).toBeOnTheScreen();

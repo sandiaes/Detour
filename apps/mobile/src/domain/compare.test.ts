@@ -6,14 +6,16 @@ test("the summary lists the measured differences in fixed wording", () => {
   expect(c.rows.map((r) => r.label)).toEqual([
     "Visits",
     "Days with visits",
+    "Meals",
     "Time at the sights",
     "Travel time",
     "Transfers",
   ]);
   expect(c.rows[0]).toMatchObject({ a: "5", b: "8" });
-  expect(c.rows[2]).toMatchObject({ a: "7 h", b: "10 h" });
-  expect(c.rows[3]).toMatchObject({ a: "40 min", b: "1 h 35 min" });
-  expect(c.rows[4]).toMatchObject({ a: "1 routed, 2 estimated", b: "3 routed, 4 estimated" });
+  expect(c.rows[2]).toMatchObject({ a: "1", b: "3" });
+  expect(c.rows[3]).toMatchObject({ a: "7 h", b: "10 h" });
+  expect(c.rows[4]).toMatchObject({ a: "40 min", b: "1 h 35 min" });
+  expect(c.rows[5]).toMatchObject({ a: "1 routed, 2 estimated", b: "3 routed, 4 estimated" });
   expect(c.differences).toEqual([
     "Wider has 3 visits more than Essentials.",
     "Wider spends 55 min more travelling than Essentials.",

@@ -8,8 +8,9 @@ ends at its last: no accommodation, product brief section 9) to **maximise**
 
     sum of the values of the planned visits  -  travel_weight x total travel minutes
 
-with every day's visits plus transfers fitting in ``day_minutes``. Values, durations and travel
-minutes are integers.
+with every day's visits plus transfers fitting in ``day_minutes`` (or in that day's entry of
+``day_limits``: the first day at a new base city of an area is shorter by the drive). Values,
+durations and travel minutes are integers.
 
 The heuristic (architecture section 5.5): greedy best-gain insertion, then local search in a fixed
 order (2-opt within a day, relocation within and between days, swapping a planned visit for an
@@ -34,6 +35,11 @@ class SequencingProblem:
     days: int
     day_minutes: int
     travel_weight: int
+    # Per-day limits overriding day_minutes (one entry per day), or None.
+    day_limits: tuple[int, ...] | None = None
+
+    def limit(self, k: int) -> int:
+        return self.day_minutes if self.day_limits is None else self.day_limits[k]
 
 
 class Sequencer(Protocol):
@@ -51,8 +57,9 @@ class _State:
         self.routes: list[list[int]] = [[] for _ in range(p.days)]
         self.length = [0] * p.days  # visit minutes + travel minutes of each day
         # Nodes that can fit in a day at all, best value first, then index.
+        longest = max((p.limit(k) for k in range(p.days)), default=0)
         self.order = sorted(
-            (v for v in range(len(p.ids)) if p.duration[v] <= p.day_minutes and p.value[v] > 0),
+            (v for v in range(len(p.ids)) if p.duration[v] <= longest and p.value[v] > 0),
             key=lambda v: (-p.value[v], v),
         )
         self.unplanned = set(self.order)
@@ -86,8 +93,8 @@ class _State:
             return T[r[-2]][r[-1]]
         return T[r[i - 1]][r[i]] + T[r[i]][r[i + 1]] - T[r[i - 1]][r[i + 1]]
 
-    def fits(self, length: int) -> bool:
-        return length <= self.p.day_minutes
+    def fits(self, k: int, length: int) -> bool:
+        return length <= self.p.limit(k)
 
     # -- insertion -----------------------------------------------------------------------------
 
@@ -98,7 +105,7 @@ class _State:
         best: tuple[int, int] | None = None
         for pos in range(len(r) + 1):
             delta = self.ins_delta(r, pos, v)
-            if not self.fits(self.length[k] + p.duration[v] + delta):
+            if not self.fits(k, self.length[k] + p.duration[v] + delta):
                 continue
             gain = p.value[v] - p.travel_weight * delta
             if gain > 0 and (best is None or gain > best[0]):
@@ -144,7 +151,7 @@ class _State:
                     for j in range(i + 1, len(r)):
                         cand = r[:i] + r[i : j + 1][::-1] + r[j + 1 :]
                         t = self.route_travel(cand)
-                        if t < base and self.fits(self.length[k] - base + t):
+                        if t < base and self.fits(k, self.length[k] - base + t):
                             self.length[k] += t - base
                             r[:] = cand
                             changed = again = True
@@ -169,13 +176,13 @@ class _State:
                             continue
                         if k2 == k:
                             new_len = self.length[k] - saved + cost
-                            if not self.fits(new_len):
+                            if not self.fits(k, new_len):
                                 continue
                             self.routes[k] = [*rest[:pos], v, *rest[pos:]]
                             self.length[k] = new_len
                         else:
                             new_len2 = self.length[k2] + p.duration[v] + cost
-                            if not self.fits(new_len2):
+                            if not self.fits(k2, new_len2):
                                 continue
                             self.routes[k] = rest
                             self.length[k] -= p.duration[v] + saved
@@ -203,7 +210,7 @@ class _State:
                     d_travel = self.route_travel(cand) - self.route_travel(r)
                     gain = p.value[v] - p.value[a] - p.travel_weight * d_travel
                     new_len = self.length[k] - p.duration[a] + p.duration[v] + d_travel
-                    if gain > 0 and self.fits(new_len):
+                    if gain > 0 and self.fits(k, new_len):
                         self.routes[k] = cand
                         self.length[k] = new_len
                         self.unplanned.discard(v)

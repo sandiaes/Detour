@@ -82,6 +82,12 @@ class DestinationResult(BaseModel):
     planning_available: bool = Field(
         description="True only if the covering region is available (passed its readiness gates)"
     )
+    unavailable_reason: Literal["region_not_available", "area_single_city_only"] | None = Field(
+        default=None,
+        description="Null when a trip to this destination can be planned. region_not_available: "
+        "the region has not passed its readiness gates. area_single_city_only: an area in a "
+        "country planned as single-city trips only (Japan, for now); choose a city.",
+    )
     match: MatchQuality
 
 

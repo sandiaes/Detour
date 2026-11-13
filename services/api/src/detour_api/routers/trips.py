@@ -35,17 +35,8 @@ def create_trip(session: SessionDep, body: TripCreate) -> Trip:
                 "region_not_available",
                 "this destination is outside the regions that are available for planning",
             )
-        if body.currency_code is not None:
-            if not geo.currency_exists(conn, body.currency_code):
-                raise invalid("unknown_currency", f"unknown currency {body.currency_code}")
-            currency = body.currency_code
-        else:
-            currency = geo.country_currency(conn, dest.country_iso2) or ""
-            if not currency:
-                raise invalid(
-                    "currency_required",
-                    "currency_code is required: the country's currency is unknown",
-                )
+        if body.destination_kind == "area" and not geo.area_planning_allowed(dest):
+            raise invalid("area_single_city_only", geo.SINGLE_CITY_MESSAGE)
         return trips.create_trip(
             conn,
             session.installation_id,
@@ -53,7 +44,6 @@ def create_trip(session: SessionDep, body: TripCreate) -> Trip:
             destination_name=dest.name,
             lat=dest.lat,
             lon=dest.lon,
-            currency_code=currency,
         )
 
 

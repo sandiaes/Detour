@@ -2,30 +2,17 @@
 
 import uuid
 from datetime import date, datetime, time, timedelta
-from decimal import Decimal
-from itertools import pairwise
-from typing import Annotated, Literal, Self
+from typing import Literal, Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
-from detour_api.models.common import CurrencyCode, Latitude, Longitude, StrictModel
+from detour_api.models.common import Latitude, Longitude, StrictModel
 
-MealType = Literal["breakfast", "lunch", "dinner"]
+MealType = Literal["breakfast", "lunch", "dinner", "snack"]
 ALLOWED_MEAL_TYPES = ("breakfast", "lunch", "dinner", "snack")
-Money = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
 
 
 # -- trips -------------------------------------------------------------------------------------
-
-
-def _check_thresholds(value: list[Decimal] | None) -> list[Decimal] | None:
-    if value is None:
-        return None
-    if len(value) != 3:
-        raise ValueError("price_band_thresholds needs exactly three upper bounds")
-    if any(v <= 0 for v in value) or any(a >= b for a, b in pairwise(value)):
-        raise ValueError("price_band_thresholds must be positive and strictly increasing")
-    return value
 
 
 class TripCreate(StrictModel):
@@ -34,36 +21,15 @@ class TripCreate(StrictModel):
     destination_ref: str = Field(min_length=1, max_length=64)
     duration_days: int = Field(ge=1, le=30)
     start_date: date | None = None
-    currency_code: CurrencyCode | None = Field(
-        default=None, description="Defaults to the destination country's currency, if known"
-    )
-    meal_budget_per_person: Money | None = None
-    price_band_thresholds: list[Decimal] | None = Field(
-        default=None,
-        description="Upper bounds of budget, moderate and upscale, in the trip currency; "
-        "fine dining is above the third. Null until set.",
-    )
-
-    @field_validator("price_band_thresholds")
-    @classmethod
-    def _thresholds(cls, value: list[Decimal] | None) -> list[Decimal] | None:
-        return _check_thresholds(value)
 
 
 class TripUpdate(StrictModel):
-    """Only the fields present are changed. Destination and currency are fixed after creation."""
+    """Only the fields present are changed. The destination is fixed after creation."""
 
     title: str | None = Field(default=None, min_length=1, max_length=120)
     duration_days: int | None = Field(default=None, ge=1, le=30)
     start_date: date | None = None
-    meal_budget_per_person: Money | None = None
-    price_band_thresholds: list[Decimal] | None = None
     selected_itinerary_id: uuid.UUID | None = None
-
-    @field_validator("price_band_thresholds")
-    @classmethod
-    def _thresholds(cls, value: list[Decimal] | None) -> list[Decimal] | None:
-        return _check_thresholds(value)
 
 
 class Destination(BaseModel):
@@ -83,9 +49,6 @@ class Trip(BaseModel):
     end_date: date | None = Field(
         description="start_date + duration_days - 1, if start_date is set"
     )
-    currency_code: str
-    meal_budget_per_person: Money | None
-    price_band_thresholds: list[Decimal] | None
     selected_itinerary_id: uuid.UUID | None
     status: Literal["active", "past"]
     archived_at: datetime | None
@@ -246,6 +209,30 @@ class Transfer(BaseModel):
     )
 
 
+class Arrival(BaseModel):
+    """The drive from the previous day's base city that starts the first day at a new one."""
+
+    from_base_city_id: int | None
+    from_base_city_name: str | None
+    mode: Literal["walk", "drive"]
+    seconds: int
+    meters: int
+    confidence: Literal["routed", "estimated"]
+
+
+class RestaurantInfo(BaseModel):
+    """What the open data says about a meal's place to eat. There is no price, rating or opening
+    hours."""
+
+    venue_type: str | None = Field(
+        description="restaurant or cafe (from the OpenStreetMap amenity tag); null when unknown"
+    )
+    cuisines: list[str] | None = Field(
+        description="From the OpenStreetMap cuisine tag; null when the data states no cuisine "
+        "(shown as 'Cuisine not specified')"
+    )
+
+
 class Item(BaseModel):
     id: uuid.UUID
     day_id: uuid.UUID
@@ -272,6 +259,9 @@ class Item(BaseModel):
         description="To the next item of the day. Null for the last item, or when no transfer "
         "has been computed (items added or moved by hand)",
     )
+    restaurant: RestaurantInfo | None = Field(
+        default=None, description="Meals only: the place to eat as the open data describes it"
+    )
 
 
 class Day(BaseModel):
@@ -279,6 +269,14 @@ class Day(BaseModel):
     day_index: int
     date: date | None
     base_city_id: int | None
+    base_city_name: str | None = Field(
+        default=None, description="The city the day is planned from (a snapshot)"
+    )
+    arrival: Arrival | None = Field(
+        default=None,
+        description="Travel from the previous day's base city at the start of the day; null "
+        "when the base does not change",
+    )
     items: list[Item]
 
 
@@ -296,9 +294,14 @@ class PlanStats(BaseModel):
     routed_transfers: int
     estimated_transfers: int
     day_utilisation_permille: int = Field(
-        description="Visits and transfers as permille of the 09:00-21:00 window of all days"
+        description="Visits, meals and transfers as permille of the 09:00-21:00 window of all days"
     )
     travel_share_permille: int = Field(description="Transfer time as permille of planned time")
+    meals: int = 0
+    meal_minutes: int = 0
+    intercity_legs: int = Field(
+        default=0, description="Drives between base cities; included in travel_minutes"
+    )
 
 
 class ItinerarySummary(BaseModel):

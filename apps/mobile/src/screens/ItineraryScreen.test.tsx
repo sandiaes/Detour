@@ -37,7 +37,7 @@ test("days list items with times, durations and what the duration is", async () 
   await openDays();
   expect(await screen.findByText("Day 1 · Sat 1 May")).toBeOnTheScreen();
   expect(
-    screen.getByText("3 visits · 4 h 30 min at the sights · 31 min travelling"),
+    screen.getByText("3 visits · 2 meals · 4 h 30 min at the sights · 37 min travelling"),
   ).toBeOnTheScreen();
   expect(screen.getByText("Schönbrunn Palace")).toBeOnTheScreen();
   expect(screen.getByText("2 h · typical visit length")).toBeOnTheScreen();
@@ -47,12 +47,45 @@ test("days list items with times, durations and what the duration is", async () 
   expect(screen.getByText("Day 2 · Sun 2 May")).toBeOnTheScreen();
 });
 
+test("meals show the meal, the venue type and the cuisine from the open data", async () => {
+  await openDays();
+  expect(await screen.findByText("Gasthaus Zum Test")).toBeOnTheScreen();
+  expect(screen.getByText("Lunch · Restaurant")).toBeOnTheScreen();
+  expect(screen.getByText("Regional, coffee shop")).toBeOnTheScreen();
+  expect(screen.getByText("1 h · typical meal length")).toBeOnTheScreen();
+  expect(screen.getByText("Lunch, planned between 12:00 and 14:30.")).toBeOnTheScreen();
+  // Unknown cuisine is said plainly, never guessed; no price or rating is shown.
+  expect(screen.getByText("Dinner · Restaurant")).toBeOnTheScreen();
+  expect(screen.getByText("Cuisine not specified")).toBeOnTheScreen();
+  expect(screen.queryByText(/€|EUR|price|rating/i)).toBeNull();
+  expect(
+    screen.getByLabelText(
+      "Stop 3. Lunch · Restaurant. Gasthaus Zum Test. Regional, coffee shop. 13:01 to 14:01. " +
+        "1 h, typical meal length. Why: Lunch, planned between 12:00 and 14:30.",
+    ),
+  ).toBeOnTheScreen();
+});
+
+test("an area plan names each day's base city and the drive between them", async () => {
+  await openDays();
+  expect(await screen.findByText("Based in Vienna")).toBeOnTheScreen();
+  expect(screen.getByText("Based in Graz")).toBeOnTheScreen();
+  expect(screen.getByText("Drive from Vienna · 2 h 20 min · 191 km")).toBeOnTheScreen();
+  expect(
+    screen.getByLabelText(
+      "Day 2 · Sun 2 May. Based in Graz. 2 visits · 3 h at the sights · 2 h 25 min travelling. " +
+        "Starts with: Drive from Vienna · 2 h 20 min · 191 km, estimated, a straight-line " +
+        "estimate and not a measured route.",
+    ),
+  ).toBeOnTheScreen();
+});
+
 test("every transfer says its mode, time, distance and whether it is routed or estimated", async () => {
   await openDays();
   await screen.findByText("Schönbrunn Palace");
   expect(screen.getByText("Walk · 21 min · 1.5 km")).toBeOnTheScreen();
   expect(screen.getByText("Drive · 10 min · 4.2 km")).toBeOnTheScreen();
-  expect(screen.getByText("Estimated")).toBeOnTheScreen();
+  expect(screen.getAllByText("Estimated").length).toBeGreaterThan(0);
   expect(screen.getAllByText("Routed").length).toBeGreaterThan(0);
   // A screen reader hears the same, in a sentence, with what "estimated" means.
   expect(
@@ -61,7 +94,7 @@ test("every transfer says its mode, time, distance and whether it is routed or e
     ),
   ).toBeOnTheScreen();
   expect(
-    screen.getByLabelText("Drive to St. Stephen's Cathedral, 10 min, 4.2 km, routed."),
+    screen.getByLabelText("Drive to Gasthaus Zum Test, 10 min, 4.2 km, routed."),
   ).toBeOnTheScreen();
 });
 
