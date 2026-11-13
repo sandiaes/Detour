@@ -12,6 +12,7 @@ import {
   makeDestination,
   makeItinerary,
   makePastTrip,
+  makePlaceSuggestions,
   makeSummary,
   makeTrip,
 } from "./testing/fixtures";
@@ -119,6 +120,47 @@ test("trip overview, each of its tabs, its menu and the Add sheet", async () => 
   await fireEvent.press(screen.getAllByRole("button", { name: "Close" })[1] as Host);
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   await screen.findByRole("header", { name: "Add to this trip" });
+  checkControls();
+});
+
+test("add a place: search results and the suggested days", async () => {
+  await render(
+    <Harness
+      client={createFakeClient({
+        "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
+        "GET /v1/places/search": () => ({
+          query: "Prat",
+          results: [
+            {
+              id: "00000000-0000-4000-8000-00000000ab01",
+              name: "Prater",
+              kind: "attraction",
+              category: "theme_park",
+              lat: 48.2,
+              lon: 16.39,
+              region_id: "austria",
+              city_id: null,
+              city_name: "Vienna",
+              distance_m: 2300,
+            },
+          ],
+          external: { state: "not_requested", provider: null, results: [] },
+        }),
+        "GET /v1/destinations/search": () => ({ query: "Prat", results: [] }),
+        "POST /v1/itineraries/{itinerary_id}/place-suggestions": () => makePlaceSuggestions(),
+      } as never)}
+      initial={{ name: "addPlace", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID }}
+    >
+      <AppContent />
+    </Harness>,
+  );
+  await fireEvent.changeText(screen.getByLabelText("Sight, town or restaurant"), "Prat");
+  await fireEvent.press(await screen.findByLabelText(/^Prater, theme park/, {}, { timeout: 3000 }));
+  checkControls();
+  await fireEvent.press(screen.getByTestId("find-days"));
+  await screen.findByTestId("place-suggestions");
+  checkControls();
+  await fireEvent.press(screen.getByRole("tab", { name: "Address" }));
   checkControls();
 });
 

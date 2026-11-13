@@ -1,4 +1,6 @@
 import type {
+  PlaceSuggestionRequest,
+  PlaceSuggestions,
   ChangeSet,
   ChangeSetApplied,
   ChangeSetCreate,
@@ -54,6 +56,19 @@ export function useChangeActions() {
     async (itineraryId: string, body: SlotRequest): Promise<SlotSuggestions> =>
       call(
         need().POST("/v1/itineraries/{itinerary_id}/restaurant-suggestions", {
+          params: { path: { itinerary_id: itineraryId } },
+          body,
+        }),
+      ),
+    [need],
+  );
+
+  /** Up to three days a place could go on, best first, from the Phase 7 recalculation (ADR 021).
+   * Nothing is stored on the server. */
+  const suggestPlaces = useCallback(
+    async (itineraryId: string, body: PlaceSuggestionRequest): Promise<PlaceSuggestions> =>
+      call(
+        need().POST("/v1/itineraries/{itinerary_id}/place-suggestions", {
           params: { path: { itinerary_id: itineraryId } },
           body,
         }),
@@ -132,6 +147,7 @@ export function useChangeActions() {
     savePlace,
     updatePlace,
     suggestSlots,
+    suggestPlaces,
     preview,
     apply,
     discard,

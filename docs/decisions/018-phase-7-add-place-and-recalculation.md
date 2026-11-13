@@ -194,3 +194,13 @@ latency far under 3 s without the provider (the provider share is capped at 2 s)
 4. Phase 8 (add a restaurant) builds on the same change sets.
 5. Japan stays single-city (D4, ADR 016): a far addition to a trip in Japan is refused with
    `SINGLE_CITY_ONLY` instead of getting a new base city and a driving leg.
+
+## Addendum (2026-11-13, ADR 021 step 4)
+
+- `add_place` takes an optional `day`: the recalculation then tries only that day
+  (`recalc.add_place(..., only_day=...)`), and refuses with `DAY_NOT_NEAR_ADDITION` when that day
+  cannot take the place. Without `day` the behaviour is unchanged.
+- `POST /v1/itineraries/{id}/place-suggestions` runs the recalculation once per day without the
+  routing provider and returns up to three days ranked by its stability cost (now on `Revision`),
+  each with its time, travel and diff. Nothing is stored. See
+  [ADR 021](021-trip-manager-redesign.md), decisions 19 to 24.

@@ -2,8 +2,10 @@
 
 - **Status:** **Proposed** on 2026-11-13, at the owner's request. Steps 1 and 2 are built (mobile
   app only). On 2026-11-13 the owner answered the open questions (see "Owner decisions") and asked
-  for step 3, which is built: see "Step 3" below. Step 3 adds one read-only field pair to the API;
-  there is no database change. Steps 4 and 5 wait for the owner.
+  for step 3, then step 4; both are built: see "Step 3" and "Step 4" below. Step 3 adds one
+  read-only field pair to the API; step 4 adds an optional `day` to the add-place preview, a
+  suggestions endpoint and a day restriction in the recalculation (default behaviour unchanged).
+  There is no database change. Step 5 waits for the owner.
 - **Date:** 2026-11-13
 - **Related:** [`020-trip-centred-app.md`](020-trip-centred-app.md) (extended),
   [`015-phase-5-mobile-shell.md`](015-phase-5-mobile-shell.md) (decision 9, design, superseded),
@@ -152,6 +154,41 @@ not built and are recorded here as references for later (see "Not built" below).
     shown because the data has none. Notes, photos, tickets and (for places to eat) reservation
     details are a "not built yet" card.
 
+## Step 4: add place and suggested placement
+
+19. **One search for sights, towns and places to eat.** Add a place searches the imported sights
+    and places to eat near the destination, and the gazetteer's towns, as before, plus a "Places to
+    eat" group. Choosing a place to eat opens the restaurant flow (Phase 8, ADR 019) with that place
+    already chosen, because a restaurant goes into a meal slot, not a visit slot. "Search more
+    widely" (Photon through the backend) is unchanged.
+20. **Custom places by address or pin.** A new *Address* tab looks an address up through the same
+    backend Photon search (`GET /v1/places/search?include_external=true`; no new provider, ADR 012
+    terms) and shows each result's street, postcode, town and country; the user can rename it
+    ("Town hall square"). *Pin on map* is unchanged. Either is saved as one of the user's places
+    (kind `location`) once, even when the user asks again with another length.
+21. **Up to three suggested days, from the existing recalculation.** "Find the best day" calls
+    the new `POST /v1/itineraries/{id}/place-suggestions` (`PlaceSuggestionRequest`: the place and
+    its length). The backend runs the Phase 7 recalculation (`recalc.add_place`, ADR 018) once per
+    day with the new `only_day` restriction, validates each result with the independent revision
+    validator, and ranks the days by the recalculation's own stability cost (travel, visits moved
+    or left out, retimed items; ties to the earlier day). `Revision` now carries that cost. The
+    unrestricted recalculation and the cheapest single day give the same plan (tested), so the
+    best suggestion is the day the plain preview would have chosen. No routing provider is asked
+    (cached times and labelled estimates), nothing is stored, and the response says how many days
+    were tried. When no day fits, the planner's issues are shown in its fixed wording.
+22. **Each suggestion shows** the day and time, where it sits ("Between St. Stephen's Cathedral and
+    Café Ohne Angabe"), the travel it adds labelled routed or estimated, and what else changes: the
+    visits left out (first, as a warning), visits that change day, days based in another town, and
+    items with a new time. Reasons come from fixed templates over these facts ("Adds the least
+    travel of the days that can take it", "Every planned visit stays in the plan", "Leaves out … to
+    make room"). The best is chosen already and marked "Best" in words.
+23. **Applying.** The chosen day is previewed through the existing change sets: `ChangeSetCreate`
+    accepts `day` for `add_place` (only that day is tried; without it, as before, the cheapest).
+    The preview screen (Phase 7) shows the full diff with the provider's times; nothing changes
+    until the user accepts.
+24. **One card for both flows.** `components/ds/SuggestionCard.tsx` shows place days and
+    restaurant slots the same way (title, place, travel, what else changes, why).
+
 ## Not built (kept as references for later steps)
 
 | Item from the request or screens | Why not now | Where it goes |
@@ -184,6 +221,14 @@ not built and are recorded here as references for later (see "Not built" below).
 - Owner action: build and install a new APK (new native module).
 - The trips list makes one more request per visible trip with a chosen plan (its itinerary) or a
   past trip (its archive figures), once, then served from the cache for 10 minutes and offline.
+- Step 4 tests: backend `test_api_changes.py` (suggestions rank up to three days and store
+  nothing, the best is the plain preview's day, a chosen day is previewed and applied on that day,
+  own places need a length, a place already planned says why, request validation) and
+  `test_planner_recalc.py` (`only_day` places it on that day; the cheapest day equals the
+  unrestricted result at the same cost; a day that cannot take a distant place is explained); app
+  `screens/AddPlace.test.tsx` (suggested days with travel and changes, choosing another day, no
+  day fits, address search and renaming, places to eat open the restaurant flow, no duplicate
+  saved place), `domain/placeSuggestions.test.ts`, and the accessibility test of the add screen.
 - Step 3 tests: `components/ItineraryMap.test.tsx` (selection, camera, transport marker and leg),
   `screens/ItineraryScreen.test.tsx` (one day at a time, shared selection, details),
   `screens/PlaceDetail.test.tsx`, `screens/TripOverview.test.tsx` (Itinerary and Map tabs),

@@ -7,6 +7,7 @@ import {
   TRIP_ID,
   makeChangeSet,
   makeItinerary,
+  makePlaceSuggestions,
   makeTrip,
 } from "../testing/fixtures";
 import { Harness } from "../testing/harness";
@@ -79,11 +80,12 @@ function server(over: Record<string, (c: never) => unknown> = {}) {
   return createFakeClient({
     "GET /v1/trips": () => [makeTrip()],
     "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
-    "GET /v1/places/search": () => ({
+    "GET /v1/places/search": (c: { params: Record<string, unknown> }) => ({
       query: "Prat",
-      results: [SIGHT],
+      results: c.params.kind === "restaurant" ? [] : [SIGHT],
       external: { state: "not_requested", provider: null, results: [] },
     }),
+    "POST /v1/itineraries/{itinerary_id}/place-suggestions": () => makePlaceSuggestions(),
     "GET /v1/destinations/search": () => ({
       query: "Prat",
       results: [],
@@ -115,8 +117,15 @@ async function openPlan(client = server()) {
   return client;
 }
 
+/** Ask for the best days, keep the best one and preview it. */
+async function previewBest() {
+  await fireEvent.press(screen.getByTestId("find-days"));
+  await screen.findByTestId("place-suggestions");
+  await fireEvent.press(screen.getByTestId("preview-change"));
+}
+
 async function search(text: string) {
-  await fireEvent.changeText(screen.getByLabelText("Sight, town or place"), text);
+  await fireEvent.changeText(screen.getByLabelText("Sight, town or restaurant"), text);
   await act(async () => {
     jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS + 10);
   });
@@ -130,10 +139,12 @@ test("search a sight, preview the change, accept it, and see the new plan", asyn
   await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
   // A sight has a typical length unless the user picks one.
   expect(screen.getByLabelText("Typical length")).toBeOnTheScreen();
-  await fireEvent.press(screen.getByTestId("preview-change"));
+  await previewBest();
 
+  const asked = client.calls.find((c) => c.path.endsWith("/place-suggestions"));
+  expect(asked?.body).toEqual({ place_id: SIGHT.id });
   const preview = client.calls.find((c) => c.path.endsWith("/change-sets"));
-  expect(preview?.body).toEqual({ action: "add_place", place_id: SIGHT.id });
+  expect(preview?.body).toEqual({ action: "add_place", place_id: SIGHT.id, day: 1 });
   expect(await screen.findByText("Add Prater?")).toBeOnTheScreen();
   expect(screen.getByText("Nothing changes until you accept.")).toBeOnTheScreen();
   expect(
@@ -164,7 +175,7 @@ test("discarding returns to the plan unchanged", async () => {
   const client = await openPlan();
   await search("Prat");
   await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
-  await fireEvent.press(screen.getByTestId("preview-change"));
+  await previewBest();
   await fireEvent.press(await screen.findByTestId("discard-change"));
   expect(client.count("POST /v1/change-sets/{change_set_id}/discard")).toBe(1);
   expect(client.count("POST /v1/change-sets/{change_set_id}/apply")).toBe(0);
@@ -174,17 +185,17 @@ test("discarding returns to the plan unchanged", async () => {
 
 test("drop a pin, name it and choose how long to stay", async () => {
   const client = await openPlan();
-  await fireEvent.press(screen.getByTestId("pin-mode"));
-  expect(screen.getByTestId("preview-change")).toBeDisabled();
+  await fireEvent.press(screen.getByRole("tab", { name: "Pin on map" }));
+  expect(screen.queryByTestId("find-days")).toBeNull();
   await act(async () => {
     maplibre.map?.onPress({ nativeEvent: { lngLat: [16.4, 48.21] } });
   });
   expect(screen.getByText("Pin at 48.21000, 16.40000")).toBeOnTheScreen();
-  // A pin needs a name before it can be previewed.
-  expect(screen.getByTestId("preview-change")).toBeDisabled();
+  // A pin needs a name before the days can be found.
+  expect(screen.getByTestId("find-days")).toBeDisabled();
   await fireEvent.changeText(screen.getByLabelText("Name of the place"), "Friend's flat");
   await fireEvent.press(screen.getByLabelText("1 h 30 min"));
-  await fireEvent.press(screen.getByTestId("preview-change"));
+  await previewBest();
   const saved = client.calls.find((c) => c.path === "/v1/user-places");
   expect(saved?.body).toEqual({
     kind: "location",
@@ -198,6 +209,7 @@ test("drop a pin, name it and choose how long to stay", async () => {
     action: "add_place",
     user_place_id: "00000000-0000-4000-8000-00000000cc01",
     duration_minutes: 90,
+    day: 1,
   });
   expect(await screen.findByText("Add Prater?")).toBeOnTheScreen();
 });
@@ -220,7 +232,7 @@ test("a town is saved as a place from the gazetteer and staying two hours is the
   await search("Melk");
   await fireEvent.press(await screen.findByLabelText("Melk, Lower Austria, Austria"));
   expect(screen.getByLabelText("2 h")).toBeSelected();
-  await fireEvent.press(screen.getByTestId("preview-change"));
+  await previewBest();
   expect(client.calls.find((c) => c.path === "/v1/user-places")?.body).toEqual({
     kind: "city",
     name: "Melk",
@@ -265,7 +277,7 @@ test("when nothing is found locally, a wider search can be asked for", async () 
   ).toBeOnTheScreen();
   await fireEvent.press(screen.getByText("Search more widely"));
   await fireEvent.press(await screen.findByLabelText("Alm Hütte, Hallstatt, Austria"));
-  await fireEvent.press(screen.getByTestId("preview-change"));
+  await previewBest();
   expect(client.calls.find((c) => c.path === "/v1/user-places")?.body).toMatchObject({
     source: "search_result",
     search_provider: "photon",
@@ -293,7 +305,7 @@ test("an addition that does not fit says which constraints conflict", async () =
   );
   await search("Prat");
   await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
-  await fireEvent.press(screen.getByTestId("preview-change"));
+  await previewBest();
   expect(await screen.findByText(/This change does not fit the plan/)).toBeOnTheScreen();
   expect(screen.getByText(/items that cannot move \(Belvedere\)/)).toBeOnTheScreen();
   expect(screen.getByText("Add a place")).toBeOnTheScreen();
@@ -311,7 +323,7 @@ test("accepting an out-of-date preview says so", async () => {
   );
   await search("Prat");
   await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
-  await fireEvent.press(screen.getByTestId("preview-change"));
+  await previewBest();
   await fireEvent.press(await screen.findByTestId("accept-change"));
   expect(
     await screen.findByText(/The plan changed after this preview. Preview the change again./),
@@ -351,4 +363,173 @@ test("lock and remove items from the plan", async () => {
   const preview = client.calls.find((c) => c.path.endsWith("/change-sets"));
   expect(preview?.body).toEqual({ action: "remove_place", item_id: "i2" });
   expect(await screen.findByText("Remove Belvedere?")).toBeOnTheScreen();
+});
+
+// -- step 4 of the redesign (ADR 021): suggested days ------------------------------------------
+
+test("up to three suggested days show the time, travel and what else changes", async () => {
+  const client = await openPlan();
+  await search("Prat");
+  await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
+  await fireEvent.press(screen.getByTestId("find-days"));
+  expect(
+    await screen.findByRole("header", { name: "The 2 best days for Prater" }),
+  ).toBeOnTheScreen();
+  // The best day: its place in the day, the travel it adds, the item that gets a new time.
+  expect(screen.getByText("Day 1 · 15:10–17:10")).toBeOnTheScreen();
+  expect(screen.getAllByText("Best")).toHaveLength(1);
+  expect(
+    screen.getByText("Between St. Stephen's Cathedral and Café Ohne Angabe"),
+  ).toBeOnTheScreen();
+  expect(screen.getByText("+12 min travel (estimated)")).toBeOnTheScreen();
+  expect(screen.getByText("Dinner at Café Ohne Angabe: 18:30 → 19:00")).toBeOnTheScreen();
+  expect(
+    screen.getByText("• Adds the least travel of the days that can take it."),
+  ).toBeOnTheScreen();
+  // The alternative leaves a visit out, and says so first, as a warning.
+  expect(screen.getByText("Day 2 · 10:05–12:05")).toBeOnTheScreen();
+  expect(screen.getByText("Leaves out Kunsthaus (day 2)")).toBeOnTheScreen();
+  expect(screen.getByText("Belvedere moves from day 1 to day 2")).toBeOnTheScreen();
+  expect(screen.getByText("+35 min travel (routed)")).toBeOnTheScreen();
+  // Asking stores nothing.
+  expect(client.count("POST /v1/itineraries/{itinerary_id}/change-sets")).toBe(0);
+  // The best is chosen already; choose the other and preview it.
+  const best = screen.getByTestId("suggestion-day-1");
+  expect(best.props.accessibilityState).toEqual({ selected: true });
+  expect(best.props.accessibilityLabel).toMatch(/^Best: Day 1 · 15:10–17:10\. Between /);
+  await fireEvent.press(screen.getByTestId("suggestion-day-2"));
+  expect(screen.getByTestId("suggestion-day-2").props.accessibilityState).toEqual({
+    selected: true,
+  });
+  await fireEvent.press(screen.getByTestId("preview-change"));
+  expect(client.calls.find((c) => c.path.endsWith("/change-sets"))?.body).toEqual({
+    action: "add_place",
+    place_id: SIGHT.id,
+    day: 2,
+  });
+  expect(await screen.findByText("Add Prater?")).toBeOnTheScreen();
+});
+
+test("when no day can take the place, the reasons are shown and nothing can be previewed", async () => {
+  await openPlan(
+    server({
+      "POST /v1/itineraries/{itinerary_id}/place-suggestions": () =>
+        makePlaceSuggestions({
+          suggestions: [],
+          issues: [
+            {
+              code: "DAY_TOO_SHORT_FOR_ADDITION",
+              text: "Day 1: Prater (600 min) does not fit with the day's meals.",
+            },
+          ],
+        }),
+    }),
+  );
+  await search("Prat");
+  await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
+  await fireEvent.press(screen.getByTestId("find-days"));
+  expect(await screen.findByText(/does not fit with the day's meals/)).toBeOnTheScreen();
+  expect(screen.getByText(/No day fits/)).toBeOnTheScreen();
+  expect(screen.queryByTestId("preview-change")).toBeNull();
+});
+
+test("a custom place by address: found through the server, renamed, then placed", async () => {
+  const client = await openPlan(
+    server({
+      "GET /v1/places/search": () => ({
+        query: "Hauptplatz 1",
+        results: [],
+        external: {
+          state: "ok",
+          provider: "photon",
+          results: [
+            {
+              provider: "photon",
+              ref: "N77",
+              name: "Hauptplatz 1",
+              lat: 47.07,
+              lon: 15.44,
+              street: "Hauptplatz",
+              housenumber: "1",
+              postcode: "8010",
+              city: "Graz",
+              country: "Austria",
+              licence: "ODbL",
+            },
+          ],
+        },
+      }),
+    }),
+  );
+  await fireEvent.press(screen.getByRole("tab", { name: "Address" }));
+  await fireEvent.changeText(screen.getByLabelText("Street address"), "Hauptplatz 1");
+  await fireEvent.press(screen.getByTestId("find-address"));
+  expect(client.calls.find((c) => c.path === "/v1/places/search")?.params).toMatchObject({
+    q: "Hauptplatz 1",
+    include_external: true,
+  });
+  await fireEvent.press(
+    await screen.findByLabelText("Hauptplatz 1, Hauptplatz 1, 8010 Graz, Austria"),
+  );
+  // The name starts as the search result's, and can be changed.
+  expect(screen.getByLabelText("Name of the place").props.value).toBe("Hauptplatz 1");
+  await fireEvent.changeText(screen.getByLabelText("Name of the place"), "Town hall square");
+  await previewBest();
+  expect(client.calls.find((c) => c.path === "/v1/user-places")?.body).toEqual({
+    kind: "location",
+    name: "Town hall square",
+    lat: 47.07,
+    lon: 15.44,
+    source: "search_result",
+    search_provider: "photon",
+    search_ref: "N77",
+  });
+});
+
+test("a place to eat found in the search opens the restaurant flow, already chosen", async () => {
+  const EAT = {
+    ...SIGHT,
+    id: "00000000-0000-4000-8000-00000000ab09",
+    name: "Schweizerhaus",
+    kind: "restaurant",
+    category: "restaurant",
+    cuisines: ["austrian"],
+    venue_type: "restaurant",
+  };
+  await openPlan(
+    server({
+      "GET /v1/places/search": (c: { params: Record<string, unknown> }) => ({
+        query: "Sch",
+        results: c.params.kind === "restaurant" ? [EAT] : [],
+        external: { state: "not_requested", provider: null, results: [] },
+      }),
+    }),
+  );
+  await search("Sch");
+  expect(await screen.findByText("Places to eat")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByLabelText(/^Schweizerhaus, Austrian/));
+  expect(await screen.findByRole("header", { name: "Add a restaurant" })).toBeOnTheScreen();
+  expect(screen.getByTestId("find-slots")).toBeEnabled();
+});
+
+test("asking again after changing the length does not save the pin twice", async () => {
+  const client = await openPlan();
+  await fireEvent.press(screen.getByRole("tab", { name: "Pin on map" }));
+  await act(async () => {
+    maplibre.map?.onPress({ nativeEvent: { lngLat: [16.4, 48.21] } });
+  });
+  await fireEvent.changeText(screen.getByLabelText("Name of the place"), "Friend's flat");
+  await fireEvent.press(screen.getByTestId("find-days"));
+  await screen.findByTestId("place-suggestions");
+  await fireEvent.press(screen.getByLabelText("2 h"));
+  // A new length asks again, with the same saved place.
+  expect(screen.queryByTestId("place-suggestions")).toBeNull();
+  await fireEvent.press(screen.getByTestId("find-days"));
+  await screen.findByTestId("place-suggestions");
+  expect(client.count("POST /v1/user-places")).toBe(1);
+  const asked = client.calls.filter((c) => c.path.endsWith("/place-suggestions"));
+  expect(asked.map((c) => c.body)).toEqual([
+    { user_place_id: "00000000-0000-4000-8000-00000000cc01", duration_minutes: 60 },
+    { user_place_id: "00000000-0000-4000-8000-00000000cc01", duration_minutes: 120 },
+  ]);
 });

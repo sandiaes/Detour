@@ -1,3 +1,4 @@
+import type { RestaurantResult } from "@detour/shared";
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
 
@@ -34,7 +35,13 @@ export type Route =
     }
   | { name: "placeDetail"; tripId: string; itineraryId: string; itemId: string }
   | { name: "addPlace"; tripId: string; itineraryId: string }
-  | { name: "addRestaurant"; tripId: string; itineraryId: string }
+  | {
+      name: "addRestaurant";
+      tripId: string;
+      itineraryId: string;
+      /** A place to eat already chosen in the add-place search (ADR 021). */
+      preset?: RestaurantResult;
+    }
   | { name: "changePreview"; tripId: string; itineraryId: string; changeSetId: string };
 
 export type Navigation = {

@@ -315,3 +315,89 @@ def test_what_cannot_be_added_or_recalculated(api_env: ApiEnv) -> None:
     assert r.status_code == 404
     r = _preview(api_env, plan["id"], action="remove_place")
     assert r.status_code == 422
+
+
+# -- place suggestions (ADR 021, step 4) -----------------------------------------------------------
+
+
+def _suggest(env: ApiEnv, itinerary_id: str, **body: Any) -> Any:
+    return env.client.post(
+        f"/v1/itineraries/{itinerary_id}/place-suggestions", json=body, headers=env.headers
+    )
+
+
+def test_place_suggestions_rank_up_to_three_days_and_store_nothing(api_env: ApiEnv) -> None:
+    plan = _plan(api_env)
+    sight = _unplanned_sight(api_env, plan)
+    before = _get(api_env, plan["id"])
+    r = _suggest(api_env, plan["id"], place_id=sight)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["days_considered"] == 3 and body["issues"] == []
+    assert body["duration_source"] == "category_default"
+    found = body["suggestions"]
+    assert 1 <= len(found) <= 3
+    assert [s["rank"] for s in found] == list(range(1, len(found) + 1))
+    assert len({s["day"] for s in found}) == len(found)
+    for s in found:
+        assert s["start_time"] < s["end_time"]
+        assert s["diff"]["added"][0]["day"] == s["day"]
+        assert s["travel_minutes_added"] == s["diff"]["travel_minutes_added"]
+        assert s["reasons"] and all(r["text"] for r in s["reasons"])
+    # Nothing is stored: the plan and its change sets are as they were.
+    assert _get(api_env, plan["id"]) == before
+    assert sql(api_env, "SELECT count(*) FROM app.change_set")[0][0] == 0
+
+
+def test_the_best_suggestion_is_the_day_the_plain_preview_chooses(api_env: ApiEnv) -> None:
+    plan = _plan(api_env)
+    sight = _unplanned_sight(api_env, plan)
+    best = _suggest(api_env, plan["id"], place_id=sight).json()["suggestions"][0]
+    change = _preview(api_env, plan["id"], action="add_place", place_id=sight).json()
+    added = next(a for a in change["diff"]["added"] if a["added_by_you"])
+    assert added["day"] == best["day"]
+
+
+def test_a_chosen_day_is_previewed_on_that_day(api_env: ApiEnv) -> None:
+    plan = _plan(api_env)
+    sight = _unplanned_sight(api_env, plan)
+    found = _suggest(api_env, plan["id"], place_id=sight).json()["suggestions"]
+    pick = found[-1]
+    r = _preview(api_env, plan["id"], action="add_place", place_id=sight, day=pick["day"])
+    assert r.status_code == 201, r.text
+    added = next(a for a in r.json()["diff"]["added"] if a["added_by_you"])
+    assert added["day"] == pick["day"]
+    applied = _apply(api_env, r.json()["id"]).json()["itinerary"]
+    day = next(d for d in applied["days"] if d["day_index"] == pick["day"])
+    assert any("ADDED_BY_YOU" in i["reasons"] for i in day["items"])
+
+
+def test_suggestions_for_your_own_place_need_a_duration(api_env: ApiEnv) -> None:
+    plan = _plan(api_env)
+    first = plan["days"][0]["items"][0]
+    pin = _pin(api_env, "Friend's flat", first["lat"] + 0.001, first["lon"] + 0.001)
+    r = _suggest(api_env, plan["id"], user_place_id=pin)
+    assert r.status_code == 422
+    r = _suggest(api_env, plan["id"], user_place_id=pin, duration_minutes=45)
+    assert r.status_code == 200, r.text
+    assert r.json()["name"] == "Friend's flat" and r.json()["duration_minutes"] == 45
+    assert r.json()["duration_source"] == "user"
+
+
+def test_a_place_already_in_the_plan_gets_no_suggestion_and_says_why(api_env: ApiEnv) -> None:
+    plan = _plan(api_env)
+    planned = next(i["place_id"] for d in plan["days"] for i in d["items"] if i["type"] == "visit")
+    r = _suggest(api_env, plan["id"], place_id=planned)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["suggestions"] == []
+    assert [i["code"] for i in body["issues"]] == ["ALREADY_IN_PLAN"]
+
+
+def test_the_suggestion_request_needs_exactly_one_place(api_env: ApiEnv) -> None:
+    plan = _plan(api_env)
+    assert _suggest(api_env, plan["id"]).status_code == 422
+    r = _preview(
+        api_env, plan["id"], action="add_place", place_id=str(uuid.uuid4()), meal_type="lunch"
+    )
+    assert r.status_code == 422

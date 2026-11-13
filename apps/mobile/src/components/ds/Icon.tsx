@@ -72,6 +72,14 @@ const SHAPES = {
     ],
   },
   clock: { circles: [[12, 12, 9]], d: ["M12 7v5l3 2"] },
+  route: {
+    circles: [
+      [6, 18, 2],
+      [18, 6, 2],
+    ],
+    d: ["M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"],
+  },
+  search: { circles: [[11, 11, 6.5]], d: ["M16 16l4.5 4.5"] },
   check: { d: ["M5 12.5l4.5 4.5L19 7"] },
   close: { d: ["M6 6l12 12", "M18 6L6 18"] },
   bookmark: { d: ["M6 3h12v18l-6-4-6 4z"] },

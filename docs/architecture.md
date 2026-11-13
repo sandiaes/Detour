@@ -89,7 +89,9 @@ All services except the tile host run from one Docker Compose file in developmen
   proposals are in the trip's menu. Step 3: the itinerary a day at a time
   (`components/plan/DayPlan.tsx`), map and list sharing one selection, transport markers at new
   base cities (the API's `Day.base_city_lat`/`lon`, read from `geo.city` at read time), and a place
-  detail screen. Explore, Photos, Documents and notes are placeholders that say they are not
+  detail screen. Step 4: adding a place by search, address or pin with up to three suggested
+  days, each from the Phase 7 recalculation restricted to that day (`place-suggestions`), then
+  the usual preview. Explore, Photos, Documents and notes are placeholders that say they are not
   built.
 - **Built in Phase 5 (ADR 015):** a stack navigator in React state, a small server-state layer in front of an `expo-sqlite` read cache, and the screens: trips, new trip, the two proposals compared, day list, plan map, Settings with credits. Offline reads, "waking the server" and error states are in every list screen. The Phase 1 description that follows is the shell it replaced.
 - **Built in Phase 1:** `apps/mobile` with six placeholder screens (Trips, Create Trip, Itinerary,

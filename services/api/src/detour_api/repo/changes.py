@@ -470,6 +470,11 @@ def _restorable(
 # -- the diff as the API shows it ------------------------------------------------------------------
 
 
+def clock(minute: int) -> time:
+    """A minute of the day as a time (the diff's and suggestions' clock)."""
+    return _t(minute)
+
+
 def _t(minute: int) -> time:
     return time(minute // 60, minute % 60)
 

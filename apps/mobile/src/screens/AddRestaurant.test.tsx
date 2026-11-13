@@ -183,9 +183,10 @@ test("search the map data, see three slots with reasons, preview, accept", async
   // Reasons, the estimated detour, and which items move are on every card.
   expect(screen.getAllByText("Why here")).toHaveLength(3);
   expect(screen.getByText("+2 min travel that day (estimated)")).toBeOnTheScreen();
-  expect(screen.getByText("Replaces Gasthaus Zum Test, planned for this meal.")).toBeOnTheScreen();
-  expect(screen.getByText("No other item moves.")).toBeOnTheScreen();
-  expect(screen.getAllByText("Albertina 13:00 → 13:40")).toHaveLength(2);
+  expect(screen.getByText("Replaces Gasthaus Zum Test, planned for this meal")).toBeOnTheScreen();
+  expect(screen.getAllByText("Albertina: 13:00 → 13:40")).toHaveLength(2);
+  // The best slot is marked in words.
+  expect(screen.getAllByText("Best")).toHaveLength(1);
   expect(screen.getAllByText(/travel changes by/).length).toBe(3);
   // Nothing is stored or changed by asking.
   expect(client.count("POST /v1/itineraries/{itinerary_id}/change-sets")).toBe(0);

@@ -1,4 +1,5 @@
 import type {
+  PlaceSuggestions,
   ArchiveInfo,
   ChangeSet,
   DestinationResult,
@@ -421,4 +422,115 @@ export function makePastTrip(over: Partial<Trip> = {}): Trip {
 
 export function makeArchiveInfo(over: Partial<ArchiveInfo> = {}): ArchiveInfo {
   return { trip_id: TRIP_ID, cities: 2, attractions: 3, skipped: 0, size_bytes: 4519, ...over };
+}
+
+const EMPTY_DIFF = {
+  added: [],
+  removed: [],
+  moved: [],
+  retimed: [],
+  base_changes: [],
+  days_changed: [],
+  travel_minutes_before: 40,
+  travel_minutes_after: 40,
+  travel_minutes_added: 0,
+  estimated_legs: [],
+};
+
+/** Three suggested days for adding Prater (ADR 021, step 4), best first. */
+export function makePlaceSuggestions(over: Partial<PlaceSuggestions> = {}): PlaceSuggestions {
+  const added = (day: number, start: string, end: string) => ({
+    day,
+    kind: "visit",
+    name: "Prater",
+    meal_type: null,
+    start_time: start,
+    end_time: end,
+    added_by_you: true,
+  });
+  return {
+    name: "Prater",
+    duration_minutes: 120,
+    duration_source: "category_default",
+    days_considered: 2,
+    issues: [],
+    suggestions: [
+      {
+        rank: 1,
+        day: 1,
+        start_time: "15:10:00",
+        end_time: "17:10:00",
+        after_name: "St. Stephen's Cathedral",
+        before_name: "Café Ohne Angabe",
+        new_base_name: null,
+        travel_minutes_added: 12,
+        estimated: true,
+        diff: {
+          ...EMPTY_DIFF,
+          added: [added(1, "15:10:00", "17:10:00")],
+          days_changed: [1],
+          travel_minutes_after: 52,
+          travel_minutes_added: 12,
+          retimed: [
+            {
+              kind: "meal",
+              name: "Café Ohne Angabe",
+              day: 1,
+              meal_type: "dinner",
+              old_start_time: "18:30:00",
+              new_start_time: "19:00:00",
+            },
+          ],
+        },
+        reasons: [
+          { code: "LEAST_TRAVEL", text: "Adds the least travel of the days that can take it." },
+          { code: "NOTHING_LEFT_OUT", text: "Every planned visit stays in the plan." },
+        ],
+      },
+      {
+        rank: 2,
+        day: 2,
+        start_time: "10:05:00",
+        end_time: "12:05:00",
+        after_name: null,
+        before_name: "Hofburg",
+        new_base_name: null,
+        travel_minutes_added: 35,
+        estimated: false,
+        diff: {
+          ...EMPTY_DIFF,
+          added: [added(2, "10:05:00", "12:05:00")],
+          removed: [
+            {
+              day: 2,
+              kind: "visit",
+              name: "Kunsthaus",
+              meal_type: null,
+              start_time: "14:00:00",
+              end_time: "15:00:00",
+              added_by_you: false,
+            },
+          ],
+          moved: [
+            {
+              kind: "visit",
+              name: "Belvedere",
+              from_day: 1,
+              to_day: 2,
+              old_start_time: "11:21:00",
+              new_start_time: "15:00:00",
+            },
+          ],
+          days_changed: [1, 2],
+          travel_minutes_after: 75,
+          travel_minutes_added: 35,
+        },
+        reasons: [
+          { code: "MORE_TRAVEL", text: "Adds about 35 min of travel." },
+          { code: "LEAVES_OUT", text: "Leaves out Kunsthaus to make room." },
+        ],
+      },
+    ],
+    ...over,
+  } as PlaceSuggestions;
 }

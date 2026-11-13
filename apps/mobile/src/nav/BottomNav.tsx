@@ -125,7 +125,7 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
         <ListRow
           icon="attraction"
           title="Place"
-          detail={why ?? "A sight or a town; Detour finds the best day"}
+          detail={why ?? "A sight, town, address or pin; Detour suggests the best days"}
           disabled={!planId}
           disabledLabel="Not now"
           testID="add-sheet-place"

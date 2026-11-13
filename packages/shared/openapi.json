@@ -2112,6 +2112,94 @@
         }
       }
     },
+    "/v1/itineraries/{itinerary_id}/place-suggestions": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Where a place fits in a planned itinerary: up to three days, best first, each with the time it would get, the travel it adds and the visits it moves or leaves out, from the same recalculation as the add_place preview. Nothing is stored.",
+        "operationId": "place_suggestions",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itinerary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Itinerary Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceSuggestionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceSuggestions"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/change-sets/{change_set_id}": {
       "get": {
         "tags": [
@@ -3533,7 +3621,7 @@
               }
             ],
             "title": "Day",
-            "description": "add_restaurant: the day (a suggestion's day)"
+            "description": "add_restaurant: the day (a suggestion's day). add_place: optional, only this day is tried (a place suggestion's day); without it the day that costs the plan least"
           },
           "meal_type": {
             "anyOf": [
@@ -5926,6 +6014,200 @@
         ],
         "title": "PlaceSource"
       },
+      "PlaceSuggestion": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank",
+            "description": "1 is the best day"
+          },
+          "day": {
+            "type": "integer",
+            "title": "Day",
+            "description": "Pass it as day to the add_place preview to place it here"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "time",
+            "title": "End Time"
+          },
+          "after_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Name",
+            "description": "The stop before it; null: first of the day"
+          },
+          "before_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Name",
+            "description": "The stop after it; null: last of the day"
+          },
+          "new_base_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Base Name",
+            "description": "Set when the day would be planned from another base city near the place"
+          },
+          "travel_minutes_added": {
+            "type": "integer",
+            "title": "Travel Minutes Added",
+            "description": "Travel the plan gains (negative: less), from cached times and labelled straight-line estimates; the preview asks the routing provider"
+          },
+          "estimated": {
+            "type": "boolean",
+            "title": "Estimated",
+            "description": "True when some changed travel time is an estimate"
+          },
+          "diff": {
+            "$ref": "#/components/schemas/ChangeDiff",
+            "description": "What placing it here would change: moves, left out"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionReason"
+            },
+            "type": "array",
+            "title": "Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "day",
+          "start_time",
+          "end_time",
+          "after_name",
+          "before_name",
+          "new_base_name",
+          "travel_minutes_added",
+          "estimated",
+          "diff",
+          "reasons"
+        ],
+        "title": "PlaceSuggestion"
+      },
+      "PlaceSuggestionRequest": {
+        "properties": {
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id",
+            "description": "An imported attraction"
+          },
+          "user_place_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Place Id",
+            "description": "One of your places (kind city or location)"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 720.0,
+                "minimum": 5.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes",
+            "description": "How long to stay. Required for your own places; for an attraction the category's default length is used when it is not given"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PlaceSuggestionRequest",
+        "description": "Where a place could go in a planned itinerary (ADR 021): the same place as an add_place\nchange set, without a day."
+      },
+      "PlaceSuggestions": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "title": "Duration Minutes"
+          },
+          "duration_source": {
+            "type": "string",
+            "enum": [
+              "category_default",
+              "user"
+            ],
+            "title": "Duration Source"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceSuggestion"
+            },
+            "type": "array",
+            "title": "Suggestions",
+            "description": "At most three, best first"
+          },
+          "days_considered": {
+            "type": "integer",
+            "title": "Days Considered"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionReason"
+            },
+            "type": "array",
+            "title": "Issues",
+            "description": "Why no day can take it, when there are no suggestions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "duration_minutes",
+          "duration_source",
+          "suggestions",
+          "days_considered",
+          "issues"
+        ],
+        "title": "PlaceSuggestions"
+      },
       "PlaceSummary": {
         "properties": {
           "id": {
@@ -6830,6 +7112,25 @@
           "issues"
         ],
         "title": "SlotSuggestions"
+      },
+      "SuggestionReason": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "The code rendered through its fixed template"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "text"
+        ],
+        "title": "SuggestionReason"
       },
       "Transfer": {
         "properties": {

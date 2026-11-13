@@ -369,6 +369,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/itineraries/{itinerary_id}/place-suggestions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Where a place fits in a planned itinerary: up to three days, best first, each with the time it would get, the travel it adds and the visits it moves or leaves out, from the same recalculation as the add_place preview. Nothing is stored. */
+    post: operations["place_suggestions"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/change-sets/{change_set_id}": {
     parameters: {
       query?: never;
@@ -718,7 +735,7 @@ export interface components {
       item_id?: string | null;
       /**
        * Day
-       * @description add_restaurant: the day (a suggestion's day)
+       * @description add_restaurant: the day (a suggestion's day). add_place: optional, only this day is tried (a place suggestion's day); without it the day that costs the plan least
        */
       day?: number | null;
       /**
@@ -1613,6 +1630,104 @@ export interface components {
       /** Attribution */
       attribution: string;
     };
+    /** PlaceSuggestion */
+    PlaceSuggestion: {
+      /**
+       * Rank
+       * @description 1 is the best day
+       */
+      rank: number;
+      /**
+       * Day
+       * @description Pass it as day to the add_place preview to place it here
+       */
+      day: number;
+      /**
+       * Start Time
+       * Format: time
+       */
+      start_time: string;
+      /**
+       * End Time
+       * Format: time
+       */
+      end_time: string;
+      /**
+       * After Name
+       * @description The stop before it; null: first of the day
+       */
+      after_name: string | null;
+      /**
+       * Before Name
+       * @description The stop after it; null: last of the day
+       */
+      before_name: string | null;
+      /**
+       * New Base Name
+       * @description Set when the day would be planned from another base city near the place
+       */
+      new_base_name: string | null;
+      /**
+       * Travel Minutes Added
+       * @description Travel the plan gains (negative: less), from cached times and labelled straight-line estimates; the preview asks the routing provider
+       */
+      travel_minutes_added: number;
+      /**
+       * Estimated
+       * @description True when some changed travel time is an estimate
+       */
+      estimated: boolean;
+      /** @description What placing it here would change: moves, left out */
+      diff: components["schemas"]["ChangeDiff"];
+      /** Reasons */
+      reasons: components["schemas"]["SuggestionReason"][];
+    };
+    /**
+     * PlaceSuggestionRequest
+     * @description Where a place could go in a planned itinerary (ADR 021): the same place as an add_place
+     *     change set, without a day.
+     */
+    PlaceSuggestionRequest: {
+      /**
+       * Place Id
+       * @description An imported attraction
+       */
+      place_id?: string | null;
+      /**
+       * User Place Id
+       * @description One of your places (kind city or location)
+       */
+      user_place_id?: string | null;
+      /**
+       * Duration Minutes
+       * @description How long to stay. Required for your own places; for an attraction the category's default length is used when it is not given
+       */
+      duration_minutes?: number | null;
+    };
+    /** PlaceSuggestions */
+    PlaceSuggestions: {
+      /** Name */
+      name: string;
+      /** Duration Minutes */
+      duration_minutes: number;
+      /**
+       * Duration Source
+       * @enum {string}
+       */
+      duration_source: "category_default" | "user";
+      /**
+       * Suggestions
+       * @description At most three, best first
+       */
+      suggestions: components["schemas"]["PlaceSuggestion"][];
+      /** Days Considered */
+      days_considered: number;
+      /**
+       * Issues
+       * @description Why no day can take it, when there are no suggestions
+       */
+      issues: components["schemas"]["SuggestionReason"][];
+    };
     /** PlaceSummary */
     PlaceSummary: {
       /**
@@ -1991,6 +2106,16 @@ export interface components {
        * @description Why there is nothing to suggest, when empty
        */
       issues: components["schemas"]["SlotReason"][];
+    };
+    /** SuggestionReason */
+    SuggestionReason: {
+      /** Code */
+      code: string;
+      /**
+       * Text
+       * @description The code rendered through its fixed template
+       */
+      text: string;
     };
     /** Transfer */
     Transfer: {
@@ -3629,6 +3754,68 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanningErrorBody"];
+        };
+      };
+    };
+  };
+  place_suggestions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PlaceSuggestionRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaceSuggestions"];
         };
       };
       /** @description Unauthorized */

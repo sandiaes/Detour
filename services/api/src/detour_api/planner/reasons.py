@@ -160,6 +160,10 @@ ISSUE_TEMPLATES: dict[str, str] = {
         "{name} is {km} km from the plan's base cities, and no town lies within {radius_km} km "
         "of it to be based in."
     ),
+    "DAY_NOT_NEAR_ADDITION": (
+        "Day {day} cannot take {name}: the day is planned from a base city too far from it, and "
+        "it is not a day that could be based near it."
+    ),
     "NO_DAY_FOR_NEW_BASE": (
         "{name} is {km} km from the plan's base cities and needs a day based near it, but every "
         "base city has only one day ({bases}); taking one would remove a city from the plan."
