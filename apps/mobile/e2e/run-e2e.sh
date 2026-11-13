@@ -7,6 +7,8 @@ set -u
 TMP="${RUNNER_TEMP:-/tmp}"
 
 adb install "$TMP/app-release.apk" || exit 1
+# Let the freshly booted system settle before the first screen is driven.
+sleep 30
 maestro test --format junit --output "$TMP/maestro-report.xml" \
   --debug-output "$TMP/maestro-debug" apps/mobile/e2e/trip-flow.yaml
 status=$?

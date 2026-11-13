@@ -7,13 +7,22 @@ appId: io.github.sandiaes.detour
 ---
 - launchApp:
     clearState: true
-- extendedWaitUntil:
-    visible: "No trips yet"
-    timeout: 90000
+# The first screen: wait up to about 90 s, dismissing "isn't responding" dialogs of the slow
+# emulator as they appear.
+- repeat:
+    while:
+      notVisible: "No trips yet"
+    times: 30
+    commands:
+      - runFlow: dismiss-system-dialogs.yaml
+      - waitForAnimationToEnd:
+          timeout: 3000
+- assertVisible: "No trips yet"
 - tapOn: "Plan a trip"
 - tapOn:
     id: "destination-input"
 - inputText: "Testburg"
+- runFlow: dismiss-system-dialogs.yaml
 - extendedWaitUntil:
     visible:
       id: "destination-result-900101"
@@ -23,6 +32,7 @@ appId: io.github.sandiaes.detour
 - hideKeyboard
 - tapOn:
     id: "plan-trip"
+- runFlow: dismiss-system-dialogs.yaml
 - extendedWaitUntil:
     visible: "How they differ"
     timeout: 60000
@@ -35,6 +45,7 @@ appId: io.github.sandiaes.detour
 - assertVisible: "✓ Selected"
 - tapOn:
     id: "view-days-essentials"
+- runFlow: dismiss-system-dialogs.yaml
 - extendedWaitUntil:
     visible: "Day 1.*"
     timeout: 30000

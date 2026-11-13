@@ -1,0 +1,9 @@
+# A slow CI emulator sometimes puts an Android "isn't responding" dialog (System UI, the launcher)
+# over the app. It is not an app failure: tap Wait and carry on. Does nothing when no dialog shows.
+appId: io.github.sandiaes.detour
+---
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: "Wait"
