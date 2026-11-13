@@ -30,6 +30,8 @@ export type DataContextValue = {
   listeners: Map<string, Set<(entry: MemoryEntry) => void>>;
   /** Forget everything held for keys that start with the prefix (disk and memory). */
   invalidate: (prefix: string) => void;
+  /** Drop one key from memory and from the device (a deleted trip must not come back offline). */
+  forget: (key: string) => void;
   /** Store a value the app just received (for example from a PATCH), keyed like a read. */
   put: (key: string, data: unknown) => void;
   /** Change a held value in place (memory and device). Does nothing if it is not held. */
@@ -77,6 +79,14 @@ export function DataProvider({ cache, children }: { cache: CacheStore; children:
     [memory],
   );
 
+  const forget = useCallback(
+    (key: string) => {
+      memory.delete(key);
+      void cache.remove(key);
+    },
+    [cache, memory],
+  );
+
   const put = useCallback(
     (key: string, data: unknown) => {
       const entry = { data, savedAt: Date.now(), fetchedInSession: true };
@@ -96,8 +106,8 @@ export function DataProvider({ cache, children }: { cache: CacheStore; children:
   );
 
   const value = useMemo(
-    () => ({ cache, memory, inflight, listeners, invalidate, put, update }),
-    [cache, memory, inflight, listeners, invalidate, put, update],
+    () => ({ cache, memory, inflight, listeners, invalidate, forget, put, update }),
+    [cache, memory, inflight, listeners, invalidate, forget, put, update],
   );
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

@@ -54,9 +54,9 @@ test("attribution for OpenStreetMap and the tile provider is visible on the map"
 test("each stop is a numbered marker with a spoken label", async () => {
   await render(<ItineraryMap day={day1} {...props} />);
   expect(markers()).toHaveLength(5); // three sights and two meals
-  expect(screen.getByLabelText("Stop 1: Schönbrunn Palace")).toBeOnTheScreen();
-  expect(screen.getByLabelText("Stop 3: Gasthaus Zum Test")).toBeOnTheScreen();
-  expect(screen.getByLabelText("Stop 4: St. Stephen's Cathedral")).toBeOnTheScreen();
+  expect(screen.getByLabelText("Stop 1, Attraction: Schönbrunn Palace")).toBeOnTheScreen();
+  expect(screen.getByLabelText("Stop 3, Restaurant: Gasthaus Zum Test")).toBeOnTheScreen();
+  expect(screen.getByLabelText("Stop 4, Attraction: St. Stephen's Cathedral")).toBeOnTheScreen();
   expect(screen.getByText("2")).toBeOnTheScreen();
 });
 
@@ -129,8 +129,8 @@ test("the camera fits the day's stops once the map has loaded, and again for ano
   expect(bounds[3]).toBeCloseTo(48.2085);
   await view.rerender(<ItineraryMap day={day2} {...props} />);
   expect(maplibre.fitBounds).toHaveBeenCalledTimes(2);
-  expect(screen.getByLabelText("Stop 1: Hofburg")).toBeOnTheScreen();
-  expect(screen.queryByLabelText("Stop 1: Schönbrunn Palace")).toBeNull();
+  expect(screen.getByLabelText("Stop 1, Attraction: Hofburg")).toBeOnTheScreen();
+  expect(screen.queryByLabelText("Stop 1, Attraction: Schönbrunn Palace")).toBeNull();
 });
 
 test("a map that cannot load says so, offers a retry that remounts it, and the list", async () => {

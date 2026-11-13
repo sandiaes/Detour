@@ -11,7 +11,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useProgressiveCount } from "../data/useProgressive";
-import { type MapPoint, boundsOf, mapPoints, transferFeatures } from "../domain/itinerary";
+import {
+  type MapPoint,
+  STOP_KIND_LABEL,
+  boundsOf,
+  isEatKind,
+  mapPoints,
+  transferFeatures,
+} from "../domain/itinerary";
 import { colors, radius, spacing, type } from "../theme";
 import { formatMinutes, formatSeconds } from "../util/format";
 import { AttributionBar } from "./AttributionBar";
@@ -19,6 +26,13 @@ import { Button } from "./Button";
 import { Notice } from "./ui";
 
 export const MARKER_SIZE = 48;
+
+const MEAL_NAME = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  snack: "Afternoon snack",
+  dinner: "Dinner",
+} as const;
 const PADDING = { top: 72, right: 56, bottom: 72, left: 56 };
 
 type Props = {
@@ -112,10 +126,14 @@ export function ItineraryMap({ day, map, onShowList }: Props) {
               <View
                 accessible
                 accessibilityRole="button"
-                accessibilityLabel={`Stop ${p.ordinal}: ${p.name}`}
+                accessibilityLabel={`Stop ${p.ordinal}, ${STOP_KIND_LABEL[p.kind]}: ${p.name}`}
                 accessibilityHint="Shows details"
                 accessibilityState={{ selected: selected?.id === p.id }}
-                style={[styles.marker, selected?.id === p.id && styles.markerSelected]}
+                style={[
+                  styles.marker,
+                  isEatKind(p.kind) && styles.markerEat,
+                  selected?.id === p.id && styles.markerSelected,
+                ]}
               >
                 <Text style={styles.markerText} maxFontSizeMultiplier={1.3}>
                   {p.ordinal}
@@ -174,9 +192,18 @@ function StopDetails({ point }: { point: MapPoint }) {
       <Text style={styles.detailTitle}>
         {point.ordinal}. {point.name}
       </Text>
+      <Text style={[styles.detailKind, isEatKind(point.kind) && styles.detailKindEat]}>
+        {isEatKind(point.kind) ? "🍴 " : ""}
+        {STOP_KIND_LABEL[point.kind]}
+        {item.meal_type ? ` · ${MEAL_NAME[item.meal_type]}` : ""}
+      </Text>
       <Text style={styles.detailMeta}>
         {time} · {formatMinutes(item.duration_minutes)}
-        {item.duration_source === "user" ? " (set by you)" : " (typical visit length)"}
+        {item.duration_source === "user"
+          ? " (set by you)"
+          : item.type === "meal"
+            ? " (typical meal length)"
+            : " (typical visit length)"}
       </Text>
       {item.transfer ? (
         <Text style={styles.detailMeta}>
@@ -199,6 +226,14 @@ function Legend({ hasStops }: { hasStops: boolean }) {
       <Text style={styles.detailMeta}>
         {hasStops ? "Tap a numbered stop for details. " : "Nothing is planned on this day. "}
       </Text>
+      <View style={styles.legendRow}>
+        <View style={[styles.keyMarker, styles.keySight]} />
+        <Text style={styles.legendText}>Round, green: attraction</Text>
+      </View>
+      <View style={styles.legendRow}>
+        <View style={[styles.keyMarker, styles.keyEat]} />
+        <Text style={styles.legendText}>Square, orange: restaurant or café</Text>
+      </View>
       <View style={styles.legendRow}>
         <View style={[styles.swatch, styles.swatchSolid]} />
         <Text style={styles.legendText}>Solid line: travel time routed</Text>
@@ -226,6 +261,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  markerEat: { backgroundColor: colors.eat, borderRadius: radius.sm },
   markerSelected: { backgroundColor: colors.markerSelected, borderColor: colors.warning },
   markerText: { color: colors.onPrimary, fontWeight: "700", fontSize: 16 },
   failure: {
@@ -255,6 +291,11 @@ const styles = StyleSheet.create({
   },
   details: { flexGrow: 0 },
   detailTitle: { ...type.heading, color: colors.text },
+  detailKind: { ...type.small, fontWeight: "700", color: colors.marker },
+  detailKindEat: { color: colors.eat },
+  keyMarker: { width: 16, height: 16, borderWidth: 2, borderColor: colors.onPrimary },
+  keySight: { backgroundColor: colors.marker, borderRadius: 8 },
+  keyEat: { backgroundColor: colors.eat, borderRadius: 3 },
   detailMeta: { ...type.small, color: colors.muted },
   detailReason: { ...type.small, color: colors.text, marginTop: spacing.xs },
   legend: { gap: spacing.xs },

@@ -87,30 +87,38 @@ test("the plans are in a horizontal, snapping list so they can be swiped", async
   expect(pager.props.snapToInterval).toBeGreaterThan(0);
 });
 
-test("selecting a plan marks it selected and updates the trip list without refetching it", async () => {
+test("selecting a plan opens it, and Back from there goes to the trips", async () => {
   const client = await openTrip();
   await fireEvent.press(await screen.findByRole("button", { name: "Select the Essentials plan" }));
-  expect(await screen.findByText("✓ Selected")).toBeOnTheScreen();
-  expect(screen.getByText(/The Essentials plan is now the selected plan/)).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Essentials plan" })).toBeOnTheScreen();
   const patch = client.calls.find((c) => c.method === "PATCH");
   expect(patch?.body).toEqual({ selected_itinerary_id: ESSENTIALS_ID });
   expect(patch?.params).toMatchObject({ trip_id: TRIP_ID });
   expect(client.count("GET /v1/trips")).toBe(1);
-  expect(
-    screen.getByRole("button", { name: "The Essentials plan is selected" }).props
-      .accessibilityState,
-  ).toMatchObject({ disabled: true });
+  await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+  expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
 });
 
-test("selecting can be changed to the other plan", async () => {
-  await openTrip(server());
-  await fireEvent.press(await screen.findByRole("button", { name: "Select the Essentials plan" }));
-  await screen.findByText("✓ Selected");
-  await fireEvent.press(screen.getByRole("button", { name: "Select the Wider plan" }));
-  expect(
-    await screen.findByRole("button", { name: "The Wider plan is selected" }),
-  ).toBeOnTheScreen();
+test("after new proposals were asked for, the chosen plan is kept apart from the new pair", async () => {
+  await openTrip(
+    server({
+      "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: "old" })],
+      "GET /v1/trips/{trip_id}/itineraries": () => [
+        makeSummary("essentials", {
+          id: "old",
+          generation_id: "g0",
+          status: "selected",
+          created_at: "2026-01-01T00:00:00Z",
+        }),
+        makeSummary("essentials", { created_at: "2026-02-01T00:00:00Z" }),
+        makeSummary("wider", { created_at: "2026-02-01T00:00:00Z" }),
+      ],
+    }),
+  );
+  expect(await screen.findByText(/It stays selected, with the places you added/)).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: "The Essentials plan is selected" })).toBeOnTheScreen();
   expect(screen.getByRole("button", { name: "Select the Essentials plan" })).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: "Select the Wider plan" })).toBeOnTheScreen();
 });
 
 test("a failed selection says so and leaves the choice open", async () => {

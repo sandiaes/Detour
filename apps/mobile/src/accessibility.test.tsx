@@ -107,7 +107,7 @@ test("map with markers and the attribution links", async () => {
     { name: "itinerary", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID, view: "map", day: 1 },
     "Tap a numbered stop for details. ",
   );
-  expect(screen.getAllByLabelText(/^Stop \d+: /).length).toBe(5);
+  expect(screen.getAllByLabelText(/^Stop \d+, (Attraction|Restaurant|Café): /).length).toBe(5);
   checkControls();
 });
 

@@ -53,8 +53,27 @@ export function dayTotals(day: Day): DayTotals {
   return { visits, meals, visitMinutes, travelSeconds };
 }
 
+/** What a stop is, for telling sights from places to eat (map and day list). */
+export type StopKind = "attraction" | "restaurant" | "cafe" | "other";
+
+export const STOP_KIND_LABEL: Record<StopKind, string> = {
+  attraction: "Attraction",
+  restaurant: "Restaurant",
+  cafe: "Café",
+  other: "Stop",
+};
+
+export function stopKind(item: Item): StopKind {
+  if (item.type === "meal") return item.restaurant?.venue_type === "cafe" ? "cafe" : "restaurant";
+  return item.type === "visit" ? "attraction" : "other";
+}
+
+/** Restaurants and cafés are one group on the map: places to eat. */
+export const isEatKind = (kind: StopKind): boolean => kind === "restaurant" || kind === "cafe";
+
 export type MapPoint = {
   id: string;
+  kind: StopKind;
   ordinal: number;
   name: string;
   lngLat: [number, number];
@@ -69,6 +88,7 @@ export function mapPoints(day: Day): MapPoint[] {
     const { item } = row;
     points.push({
       id: item.id,
+      kind: stopKind(item),
       ordinal: row.ordinal,
       name: item.display_name,
       lngLat: [item.lon as number, item.lat as number],
