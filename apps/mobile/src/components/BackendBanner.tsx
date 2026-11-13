@@ -14,7 +14,7 @@ export function BackendBanner() {
       <View style={[styles.banner, styles.warning]} accessibilityLiveRegion="polite">
         <Text style={styles.text}>
           {state.waking
-            ? "Waking the server. The free host sleeps when idle; this can take about a minute."
+            ? "Waking the server. The free host was asleep."
             : "Connecting to the server…"}
         </Text>
       </View>

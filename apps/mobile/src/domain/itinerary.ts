@@ -1,0 +1,126 @@
+import type { Day, Item, Transfer } from "@detour/shared";
+
+export type DayRow =
+  | { kind: "item"; key: string; item: Item; ordinal: number | null }
+  | { kind: "transfer"; key: string; from: Item; to: Item | null; transfer: Transfer };
+
+/**
+ * One flat list per day: an item, then the transfer to the next one (if the backend computed it).
+ * `ordinal` numbers the items that have a place, so the number on a list row matches the number on
+ * the map marker.
+ */
+export function buildDayRows(day: Day): DayRow[] {
+  const byId = new Map(day.items.map((i) => [i.id, i]));
+  const rows: DayRow[] = [];
+  let ordinal = 0;
+  for (const item of day.items) {
+    const located = item.lat !== null && item.lon !== null;
+    rows.push({ kind: "item", key: item.id, item, ordinal: located ? ++ordinal : null });
+    if (item.transfer) {
+      rows.push({
+        kind: "transfer",
+        key: `${item.id}>${item.transfer.to_item_id}`,
+        from: item,
+        to: byId.get(item.transfer.to_item_id) ?? null,
+        transfer: item.transfer,
+      });
+    }
+  }
+  return rows;
+}
+
+export type DayTotals = { visits: number; visitMinutes: number; travelSeconds: number };
+
+export function dayTotals(day: Day): DayTotals {
+  let visits = 0;
+  let visitMinutes = 0;
+  let travelSeconds = 0;
+  for (const item of day.items) {
+    if (item.type === "visit") {
+      visits += 1;
+      visitMinutes += item.duration_minutes;
+    }
+    if (item.transfer) travelSeconds += item.transfer.seconds;
+  }
+  return { visits, visitMinutes, travelSeconds };
+}
+
+export type MapPoint = {
+  id: string;
+  ordinal: number;
+  name: string;
+  lngLat: [number, number];
+  start: string | null;
+  item: Item;
+};
+
+export function mapPoints(day: Day): MapPoint[] {
+  const points: MapPoint[] = [];
+  for (const row of buildDayRows(day)) {
+    if (row.kind !== "item" || row.ordinal === null) continue;
+    const { item } = row;
+    points.push({
+      id: item.id,
+      ordinal: row.ordinal,
+      name: item.display_name,
+      lngLat: [item.lon as number, item.lat as number],
+      start: item.start_time ?? null,
+      item,
+    });
+  }
+  return points;
+}
+
+export type TransferFeature = {
+  type: "Feature";
+  id: string;
+  properties: { confidence: Transfer["confidence"]; mode: Transfer["mode"] };
+  geometry: { type: "LineString"; coordinates: [number, number][] };
+};
+
+/**
+ * Straight connectors between the stops of a transfer. The backend does not return route
+ * geometry for these transfers (ADR 013: geometry is not stored, and no endpoint serves it), so a
+ * line joins the two stops directly. Whether the *time* is routed or estimated is the property
+ * `confidence`; the map draws routed solid and estimated dashed.
+ */
+export function transferFeatures(day: Day): TransferFeature[] {
+  const points = new Map(mapPoints(day).map((p) => [p.id, p]));
+  const features: TransferFeature[] = [];
+  for (const item of day.items) {
+    const t = item.transfer;
+    const from = points.get(item.id);
+    const to = t ? points.get(t.to_item_id) : undefined;
+    if (!t || !from || !to) continue;
+    features.push({
+      type: "Feature",
+      id: `${item.id}>${t.to_item_id}`,
+      properties: { confidence: t.confidence, mode: t.mode },
+      geometry: { type: "LineString", coordinates: [from.lngLat, to.lngLat] },
+    });
+  }
+  return features;
+}
+
+/** [west, south, east, north] around the points, or null when there are none. */
+export function boundsOf(
+  points: { lngLat: [number, number] }[],
+): [number, number, number, number] | null {
+  if (points.length === 0) return null;
+  let [w, s, e, n] = [180, 90, -180, -90];
+  for (const { lngLat } of points) {
+    w = Math.min(w, lngLat[0]);
+    e = Math.max(e, lngLat[0]);
+    s = Math.min(s, lngLat[1]);
+    n = Math.max(n, lngLat[1]);
+  }
+  return [w, s, e, n];
+}
+
+export function modeLabel(mode: Transfer["mode"]): string {
+  return mode === "walk" ? "Walk" : "Drive";
+}
+
+export function confidenceLabel(confidence: Transfer["confidence"]): string {
+  return confidence === "routed" ? "routed" : "estimated";
+}

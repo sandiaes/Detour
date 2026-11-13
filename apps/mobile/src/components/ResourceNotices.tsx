@@ -1,0 +1,50 @@
+import { useState } from "react";
+
+import type { Resource } from "../data/DataProvider";
+import { describeError } from "../api/unwrap";
+import { formatAge } from "../util/format";
+import { Notice } from "./ui";
+
+/**
+ * The notices that sit above data already on screen: a saved copy shown offline, a refresh that
+ * failed, or the free host waking up. Nothing is shown when the data is current.
+ */
+export function ResourceNotices({
+  resource,
+  noun,
+}: {
+  resource: Omit<Resource<unknown>, "setData">;
+  noun: string;
+}) {
+  // The age of a saved copy is worked out once, when the notice first appears.
+  const [now] = useState(Date.now);
+  if (resource.data === undefined) return null;
+  if (resource.offline) {
+    return (
+      <Notice
+        tone="warning"
+        label="Offline"
+        action={{ label: "Try again", onPress: resource.refresh }}
+      >
+        Showing {noun} saved {resource.savedAt ? formatAge(resource.savedAt, now) : "earlier"}. You
+        can read them, but changes need a connection.
+      </Notice>
+    );
+  }
+  if (resource.waking && resource.fromCache) {
+    return (
+      <Notice tone="info" label="Waking the server">
+        The free host is starting up, which can take about a minute. Your saved {noun} are shown
+        meanwhile.
+      </Notice>
+    );
+  }
+  if (resource.error) {
+    return (
+      <Notice tone="error" action={{ label: "Try again", onPress: resource.refresh }}>
+        Could not refresh {noun}. {describeError(resource.error)}
+      </Notice>
+    );
+  }
+  return null;
+}

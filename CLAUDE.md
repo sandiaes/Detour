@@ -24,7 +24,7 @@ agrees with the plain route. **Phase 4 is built and awaits acceptance** (ADR 014
 planning engine v1 in `detour_api/planner/` (two strategy profiles, heuristic sequencer, category
 duration table, diversity gate, independent validator, reason templates) and
 `POST /v1/trips/{id}/itineraries/generate`, for city destinations, without meals; tried on
-synthetic fixtures only. There is no map screen. The decisions in `docs/app-plan.md`
+synthetic fixtures only. **Phase 5 is built and awaits acceptance** (ADR 015, proposed): the mobile screens in `apps/mobile/src` (trips, create trip, comparison of two proposals, day list, plan map, selection, on-device read cache, offline and "waking the server" states) and an Android end-to-end workflow (`e2e-android.yml`, never yet run). The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),
 and the app is not distributed through app stores (ADR 008). Do not start the next phase until the
 owner asks for it.
@@ -128,6 +128,7 @@ Other:
 - `python tools/check_dependencies.py`: fails if an LLM or generative-AI library is listed
 - `python -m detour_api.importer region <id>` / `gazetteer <ISO2>...`: the imports (in CI they run
   through the "Import region" workflow; `osm2pgsql` and `osmium-tool` are needed locally)
+- `python -m tests.e2e_seed` (from `services/api`): the fixture database for the Android end-to-end test
 - `python -m detour_api.seed`: build the labelled seed trip from imported data
 - The database tests also need `osm2pgsql` and `osmium` (CI installs them; locally the import
   tests are skipped without them)

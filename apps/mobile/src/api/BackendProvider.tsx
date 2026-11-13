@@ -1,4 +1,5 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
+import { AppState } from "react-native";
 
 import { API_URL } from "../config/env";
 import { type Connection, connect } from "./connect";
@@ -53,6 +54,18 @@ export function BackendProvider({ children }: { children: ReactNode }) {
       clearTimeout(wakingTimer);
     };
   }, [attempt]);
+
+  // Coming back to the app after being offline: try again without asking the user to press Retry.
+  useEffect(() => {
+    if (state.phase !== "error") return;
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next === "active") {
+        setState({ phase: "connecting", waking: false });
+        setAttempt((n) => n + 1);
+      }
+    });
+    return () => subscription.remove();
+  }, [state.phase]);
 
   const retry = useCallback(() => {
     setState({ phase: "connecting", waking: false });

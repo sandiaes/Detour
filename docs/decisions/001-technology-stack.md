@@ -93,4 +93,4 @@ All planning logic lives in the backend so that Android and iOS share it complet
 - ~~Pin exact versions (Expo SDK, React Native, MapLibre, Python, FastAPI, PostGIS image) in
   Phase 1 and record them here.~~ Done on 2026-11-12: the table is in
   [`010-phase-1-foundation-choices.md`](010-phase-1-foundation-choices.md), section 2.
-- Record the navigation, server-state and form libraries for the app in a new ADR in Phase 5.
+- ~~Record the navigation, server-state and form libraries for the app in a new ADR in Phase 5.~~ Done: [`015-phase-5-mobile-shell.md`](015-phase-5-mobile-shell.md) (none are used).
