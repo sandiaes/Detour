@@ -73,7 +73,11 @@ def test_generation_stores_versioned_valid_itineraries(api_env: ApiEnv) -> None:
         assert plan["generation_id"] == body["generation_id"]
         assert [d["date"] for d in plan["days"]] == ["2027-05-01", "2027-05-02"]
         assert all(d["base_city_id"] == 900101 for d in plan["days"])
-        assert plan["stats"]["visits"] == len(items_of(plan)) > 0
+        assert all(d["base_city_name"] == "Testburg" and d["arrival"] is None for d in plan["days"])
+        visits = [i for i in items_of(plan) if i["type"] == "visit"]
+        meals = [i for i in items_of(plan) if i["type"] == "meal"]
+        assert plan["stats"]["visits"] == len(visits) > 0
+        assert plan["stats"]["meals"] == len(meals) > 0  # the fixture has places to eat
         assert all(n["text"] for n in plan["notes"])
         for day in plan["days"]:
             items = day["items"]
@@ -84,12 +88,13 @@ def test_generation_stores_versioned_valid_itineraries(api_env: ApiEnv) -> None:
             if items:
                 assert items[0]["start_time"] == "09:00:00" and items[-1]["transfer"] is None
             for item in items:
-                assert (item["type"], item["origin"], item["duration_source"]) == (
-                    "visit",
-                    "engine",
-                    "category_default",
-                )
+                assert (item["origin"], item["duration_source"]) == ("engine", "category_default")
                 assert item["reasons"] and len(item["reason_texts"]) == len(item["reasons"])
+                if item["type"] == "meal":
+                    assert item["meal_type"] in ("lunch", "snack", "dinner")
+                    assert item["restaurant"]["venue_type"] in ("restaurant", "cafe")
+                else:
+                    assert item["type"] == "visit" and item["restaurant"] is None
     # The stored plan reads back exactly as it was returned.
     again = api_env.client.get(f"/v1/itineraries/{plans[0]['id']}", headers=api_env.headers)
     assert again.json() == plans[0]
@@ -106,12 +111,29 @@ def test_a_larger_city_gets_two_distinct_itineraries(api_env: ApiEnv) -> None:
         "essentials",
         "wider",
     ]
-    a, b = ({i["place_id"] for i in items_of(p)} for p in body["itineraries"])
+    a, b = (
+        {i["place_id"] for i in items_of(p) if i["type"] == "visit"} for p in body["itineraries"]
+    )
     assert body["jaccard_permille"] == len(a & b) * 1000 // len(a | b) <= 600
     for plan in body["itineraries"]:
         assert plan["diversity_score"] == pytest.approx(body["jaccard_permille"] / 1000)
         assert all(d["items"] for d in plan["days"])
         assert 600 <= plan["stats"]["day_utilisation_permille"] <= 900
+        for day in plan["days"]:
+            meals = [i for i in day["items"] if i["type"] == "meal"]
+            assert [m["meal_type"] for m in meals] in (["lunch", "dinner"],
+                                                       ["lunch", "snack", "dinner"])  # fmt: skip
+            for m in meals:
+                assert (
+                    m["start_time"]
+                    >= {"lunch": "12:00", "snack": "15:00", "dinner": "18:30"}[m["meal_type"]]
+                )
+                assert (
+                    m["end_time"]
+                    <= {"lunch": "14:30", "snack": "17:30", "dinner": "21:00"}[m["meal_type"]]
+                )
+                cuisines = m["restaurant"]["cuisines"]
+                assert cuisines is None or all(isinstance(c, str) for c in cuisines)
 
 
 def test_a_small_town_gets_one_plan_and_the_reason(api_env: ApiEnv) -> None:
@@ -122,7 +144,7 @@ def test_a_small_town_gets_one_plan_and_the_reason(api_env: ApiEnv) -> None:
     assert body["jaccard_permille"] is None and body["itineraries"][0]["diversity_score"] is None
 
 
-def test_every_visit_is_an_imported_attraction_with_its_snapshot(api_env: ApiEnv) -> None:
+def test_every_item_is_an_imported_place_with_its_snapshot(api_env: ApiEnv) -> None:
     plans = generate(api_env, make_trip(api_env)).json()["itineraries"]
     for item in (i for p in plans for i in items_of(p)):
         [(kind, name, active)] = sql(
@@ -130,7 +152,8 @@ def test_every_visit_is_an_imported_attraction_with_its_snapshot(api_env: ApiEnv
             "SELECT kind, name, is_active FROM geo.place WHERE id = %s",
             uuid.UUID(item["place_id"]),
         )
-        assert (kind, name, active) == ("attraction", item["display_name"], True)
+        expected = "restaurant" if item["type"] == "meal" else "attraction"
+        assert (kind, name, active) == (expected, item["display_name"], True)
 
 
 def test_generating_again_replaces_unselected_proposals_only(api_env: ApiEnv) -> None:
@@ -152,13 +175,52 @@ def test_generating_again_replaces_unselected_proposals_only(api_env: ApiEnv) ->
     assert not ({p["id"] for p in first} - {chosen}) & ids
 
 
-def test_an_area_destination_is_refused_for_now(api_env: ApiEnv) -> None:
-    area = api_env.client.get(
-        "/v1/destinations/search", params={"q": "testland"}, headers=api_env.headers
+def _testland(env: ApiEnv) -> dict[str, Any]:
+    found: dict[str, Any] = env.client.get(
+        "/v1/destinations/search", params={"q": "testland"}, headers=env.headers
     ).json()["results"][0]
-    trip = make_trip(api_env, destination_kind="area", destination_ref=area["ref"])
+    assert found["kind"] == "area"
+    return found
+
+
+def test_an_area_destination_is_planned_from_its_towns(api_env: ApiEnv) -> None:
+    add_synthetic_sights(api_env)
+    area = _testland(api_env)
+    assert area["unavailable_reason"] is None
+    trip = make_trip(api_env, destination_kind="area", destination_ref=area["ref"], duration_days=3)
     r = generate(api_env, trip)
-    assert r.status_code == 422 and r.json()["code"] == "area_not_supported"
+    assert r.status_code == 201, r.text
+    for plan in r.json()["itineraries"]:
+        bases = {d["base_city_name"] for d in plan["days"]}
+        # The synthetic sights surround Testburg; Mühlbach, 300 m away, has the same sights but
+        # far fewer people, so Testburg is the base.
+        assert bases == {"Testburg"}
+        assert any(n["code"] == "BASE_CITY" for n in plan["notes"])
+        assert all(d["base_city_id"] is not None for d in plan["days"])
+
+
+def test_an_area_without_enough_sights_explains_why(api_env: ApiEnv) -> None:
+    trip = make_trip(api_env, destination_kind="area", destination_ref=_testland(api_env)["ref"])
+    sql(api_env, "UPDATE geo.place SET is_active = false WHERE kind = 'attraction'")
+    r = generate(api_env, trip)
+    assert r.status_code == 422 and r.json()["issues"][0]["code"] == "NO_BASE_CITIES"
+
+
+def test_areas_in_japan_are_single_city_only(api_env: ApiEnv) -> None:
+    area = _testland(api_env)
+    trip = make_trip(api_env, destination_kind="area", destination_ref=area["ref"])
+    sql(api_env, "UPDATE geo.admin_area SET country_iso2 = 'JP'")
+    found = _testland(api_env)
+    assert found["unavailable_reason"] in ("area_single_city_only", "region_not_available")
+    r = api_env.client.post(
+        "/v1/trips",
+        json={"title": "x", "destination_kind": "area", "destination_ref": area["ref"],
+              "duration_days": 2},
+        headers=api_env.headers,
+    )  # fmt: skip
+    assert r.status_code == 422 and r.json()["code"] == "area_single_city_only"
+    r = generate(api_env, trip)  # a trip made before the rule
+    assert r.status_code == 422 and r.json()["code"] == "area_single_city_only"
 
 
 def test_a_past_trip_is_refused(api_env: ApiEnv) -> None:
@@ -200,6 +262,7 @@ def test_another_installation_cannot_plan_the_trip(api_env: ApiEnv) -> None:
 
 
 def test_hand_edits_drop_transfers_that_no_longer_join_neighbours(api_env: ApiEnv) -> None:
+    sql(api_env, "DELETE FROM geo.place WHERE kind = 'restaurant'")  # visits only: no meals
     plans = generate(api_env, make_trip(api_env, duration_days=1)).json()["itineraries"]
     plan = max(plans, key=lambda p: len(items_of(p)))
     items = items_of(plan)

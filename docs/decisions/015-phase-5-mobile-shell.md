@@ -96,3 +96,15 @@ addendum already replaced them with release-variant APKs.
   labels and sizes only; map performance on a low-end phone is untested (the plan's marker
   clustering risk stands; a day has at most 40 stops).
 - New dependency: `expo-sqlite`. New CI tool: Maestro. No LLM dependency.
+
+## Addendum (2026-11-13)
+
+- The owner reported that the app works on the phone, and asked for the end-to-end workflow to be
+  **manual**: `e2e-android.yml` now runs only on `workflow_dispatch` (no pull-request or push
+  trigger). It has still not been run.
+- The currency and meal-budget fields are removed from the new-trip form, and the trip screen no
+  longer shows a budget ([ADR 017](017-no-budgets-currencies-or-prices.md)).
+- Area destinations can be chosen (Phase 6, [ADR 016](016-phase-6-meals-and-area-destinations.md));
+  the backend's `unavailable_reason` greys out regions without data and areas in Japan. The day
+  list shows meals (meal, venue type, cuisine or "Cuisine not specified"), the base city of each
+  day of a multi-base plan, and the drive between base cities with its Routed/Estimated tag.

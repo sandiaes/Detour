@@ -41,11 +41,11 @@ export async function call<T>(request: Promise<Result<T>>): Promise<T> {
 
 /** Wording for errors the user can act on. Codes come from the backend (stable). */
 const MESSAGES: Record<string, string> = {
-  area_not_supported: "Planning for whole areas is not available yet. Choose a city.",
+  area_single_city_only:
+    "Areas in Japan cannot be planned yet (rail travel is not modelled). Choose a city.",
   planning_impossible: "This destination does not have enough places for a plan yet.",
   region_not_available: "This destination's data is not ready yet.",
   destination_not_found: "That destination is no longer in the data. Search again.",
-  unknown_currency: "That currency code is not known. Use a three-letter code such as EUR.",
   limit_reached: "You have reached a limit (100 trips, 5 plans per trip). Delete one first.",
   trip_archived: "This is a past trip and can no longer be planned.",
   not_found: "That item no longer exists.",

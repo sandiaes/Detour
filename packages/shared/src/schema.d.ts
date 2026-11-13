@@ -392,6 +392,30 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /**
+     * Arrival
+     * @description The drive from the previous day's base city that starts the first day at a new one.
+     */
+    Arrival: {
+      /** From Base City Id */
+      from_base_city_id: number | null;
+      /** From Base City Name */
+      from_base_city_name: string | null;
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "walk" | "drive";
+      /** Seconds */
+      seconds: number;
+      /** Meters */
+      meters: number;
+      /**
+       * Confidence
+       * @enum {string}
+       */
+      confidence: "routed" | "estimated";
+    };
     /** AttributionEntry */
     AttributionEntry: {
       /** Name */
@@ -464,6 +488,13 @@ export interface components {
       date: string | null;
       /** Base City Id */
       base_city_id: number | null;
+      /**
+       * Base City Name
+       * @description The city the day is planned from (a snapshot)
+       */
+      base_city_name?: string | null;
+      /** @description Travel from the previous day's base city at the start of the day; null when the base does not change */
+      arrival?: components["schemas"]["Arrival"] | null;
       /** Items */
       items: components["schemas"]["Item"][];
     };
@@ -530,6 +561,11 @@ export interface components {
        * @description True only if the covering region is available (passed its readiness gates)
        */
       planning_available: boolean;
+      /**
+       * Unavailable Reason
+       * @description Null when a trip to this destination can be planned. region_not_available: the region has not passed its readiness gates. area_single_city_only: an area in a country planned as single-city trips only (Japan, for now); choose a city.
+       */
+      unavailable_reason?: ("region_not_available" | "area_single_city_only") | null;
       /**
        * Match
        * @enum {string}
@@ -725,7 +761,7 @@ export interface components {
        */
       type: "visit" | "meal" | "free_time";
       /** Meal Type */
-      meal_type: ("breakfast" | "lunch" | "dinner") | null;
+      meal_type: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /** Place Id */
       place_id: string | null;
       /** User Place Id */
@@ -766,6 +802,8 @@ export interface components {
       reason_texts: string[];
       /** @description To the next item of the day. Null for the last item, or when no transfer has been computed (items added or moved by hand) */
       transfer?: components["schemas"]["Transfer"] | null;
+      /** @description Meals only: the place to eat as the open data describes it */
+      restaurant?: components["schemas"]["RestaurantInfo"] | null;
     };
     /** ItemCreate */
     ItemCreate: {
@@ -775,7 +813,7 @@ export interface components {
        */
       type: "visit" | "meal" | "free_time";
       /** Meal Type */
-      meal_type?: ("breakfast" | "lunch" | "dinner") | null;
+      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /**
        * Place Id
        * @description A geo.place
@@ -823,7 +861,7 @@ export interface components {
        */
       day_index?: number | null;
       /** Meal Type */
-      meal_type?: ("breakfast" | "lunch" | "dinner") | null;
+      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
     };
     /** Itinerary */
     Itinerary: {
@@ -1113,7 +1151,7 @@ export interface components {
       estimated_transfers: number;
       /**
        * Day Utilisation Permille
-       * @description Visits and transfers as permille of the 09:00-21:00 window of all days
+       * @description Visits, meals and transfers as permille of the 09:00-21:00 window of all days
        */
       day_utilisation_permille: number;
       /**
@@ -1121,6 +1159,22 @@ export interface components {
        * @description Transfer time as permille of planned time
        */
       travel_share_permille: number;
+      /**
+       * Meals
+       * @default 0
+       */
+      meals: number;
+      /**
+       * Meal Minutes
+       * @default 0
+       */
+      meal_minutes: number;
+      /**
+       * Intercity Legs
+       * @description Drives between base cities; included in travel_minutes
+       * @default 0
+       */
+      intercity_legs: number;
     };
     /** PlanningErrorBody */
     PlanningErrorBody: {
@@ -1169,6 +1223,23 @@ export interface components {
         [key: string]: number;
       };
     };
+    /**
+     * RestaurantInfo
+     * @description What the open data says about a meal's place to eat. There is no price, rating or opening
+     *     hours.
+     */
+    RestaurantInfo: {
+      /**
+       * Venue Type
+       * @description restaurant or cafe (from the OpenStreetMap amenity tag); null when unknown
+       */
+      venue_type: string | null;
+      /**
+       * Cuisines
+       * @description From the OpenStreetMap cuisine tag; null when the data states no cuisine (shown as 'Cuisine not specified')
+       */
+      cuisines: string[] | null;
+    };
     /** Transfer */
     Transfer: {
       /**
@@ -1211,12 +1282,6 @@ export interface components {
        * @description start_date + duration_days - 1, if start_date is set
        */
       end_date: string | null;
-      /** Currency Code */
-      currency_code: string;
-      /** Meal Budget Per Person */
-      meal_budget_per_person: string | null;
-      /** Price Band Thresholds */
-      price_band_thresholds: string[] | null;
       /** Selected Itinerary Id */
       selected_itinerary_id: string | null;
       /**
@@ -1257,22 +1322,10 @@ export interface components {
       duration_days: number;
       /** Start Date */
       start_date?: string | null;
-      /**
-       * Currency Code
-       * @description Defaults to the destination country's currency, if known
-       */
-      currency_code?: string | null;
-      /** Meal Budget Per Person */
-      meal_budget_per_person?: number | string | null;
-      /**
-       * Price Band Thresholds
-       * @description Upper bounds of budget, moderate and upscale, in the trip currency; fine dining is above the third. Null until set.
-       */
-      price_band_thresholds?: (number | string)[] | null;
     };
     /**
      * TripUpdate
-     * @description Only the fields present are changed. Destination and currency are fixed after creation.
+     * @description Only the fields present are changed. The destination is fixed after creation.
      */
     TripUpdate: {
       /** Title */
@@ -1281,10 +1334,6 @@ export interface components {
       duration_days?: number | null;
       /** Start Date */
       start_date?: string | null;
-      /** Meal Budget Per Person */
-      meal_budget_per_person?: number | string | null;
-      /** Price Band Thresholds */
-      price_band_thresholds?: (number | string)[] | null;
       /** Selected Itinerary Id */
       selected_itinerary_id?: string | null;
     };

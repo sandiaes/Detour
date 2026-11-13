@@ -21,10 +21,14 @@ type SearchState =
   | { phase: "done"; results: DestinationResult[] }
   | { phase: "error"; offline: boolean; message: string };
 
-/** Why a result cannot be chosen, or null when it can. */
+/** Why a result cannot be chosen, or null when it can. The backend decides (`unavailable_reason`). */
 export function unavailableReason(r: DestinationResult): string | null {
-  if (r.kind === "area") return "Whole areas cannot be planned yet. Choose a city.";
-  if (!r.planning_available) return "Not available yet: this region's data has not been imported.";
+  if (r.unavailable_reason === "area_single_city_only") {
+    return "Areas in Japan cannot be planned yet (rail travel is not modelled). Choose a city.";
+  }
+  if (r.unavailable_reason === "region_not_available" || !r.planning_available) {
+    return "Not available yet: this region's data has not been imported.";
+  }
   return null;
 }
 
@@ -32,29 +36,12 @@ function describeResult(r: DestinationResult): string {
   return [r.admin1_name, r.country_name].filter(Boolean).join(", ");
 }
 
-/** "12,5" and "12.50" both mean twelve and a half. Returns null for anything else. */
-export function parseBudget(text: string): string | null {
-  const t = text.trim().replace(",", ".");
-  if (!/^\d{1,10}(\.\d{1,2})?$/.test(t)) return null;
-  return t;
-}
+export type FormErrors = { date?: string };
 
-export type FormErrors = { date?: string; currency?: string; budget?: string };
-
-export function validateForm(values: {
-  startDate: string;
-  currency: string;
-  budget: string;
-}): FormErrors {
+export function validateForm(values: { startDate: string }): FormErrors {
   const errors: FormErrors = {};
   if (values.startDate.trim() && !isValidIsoDate(values.startDate.trim())) {
     errors.date = "Use the form YYYY-MM-DD, for example 2027-05-01.";
-  }
-  if (values.currency.trim() && !/^[A-Za-z]{3}$/.test(values.currency.trim())) {
-    errors.currency = "Use a three-letter code such as EUR or JPY.";
-  }
-  if (values.budget.trim() && parseBudget(values.budget) === null) {
-    errors.budget = "Use a number such as 25 or 25.50.";
   }
   return errors;
 }
@@ -75,8 +62,6 @@ export function CreateTripScreen() {
   const [chosen, setChosen] = useState<DestinationResult | null>(null);
   const [days, setDays] = useState(3);
   const [startDate, setStartDate] = useState("");
-  const [currency, setCurrency] = useState("");
-  const [budget, setBudget] = useState("");
   const [name, setName] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [working, setWorking] = useState<"creating" | "planning" | null>(null);
@@ -123,7 +108,7 @@ export function CreateTripScreen() {
     search = { phase: "error", offline: true, message: "Searching needs a connection." };
   else search = { phase: "searching" };
 
-  const errors = validateForm({ startDate, currency, budget });
+  const errors = validateForm({ startDate });
   const hasErrors = Object.keys(errors).length > 0;
 
   const planNow = async (trip: Trip) => {
@@ -152,8 +137,6 @@ export function CreateTripScreen() {
           destination_ref: chosen.ref,
           duration_days: days,
           start_date: startDate.trim() || null,
-          currency_code: currency.trim() ? currency.trim().toUpperCase() : null,
-          meal_budget_per_person: budget.trim() ? parseBudget(budget) : null,
         });
         setCreated(trip);
       } catch (e) {
@@ -183,7 +166,15 @@ export function CreateTripScreen() {
           {chosen ? (
             <Card accent>
               <Text style={styles.resultName}>{chosen.name}</Text>
-              <Text style={styles.resultMeta}>{describeResult(chosen) || "City"}</Text>
+              <Text style={styles.resultMeta}>
+                {chosen.kind === "area" ? "Area" : "City"}
+                {describeResult(chosen) ? ` · ${describeResult(chosen)}` : ""}
+              </Text>
+              {chosen.kind === "area" ? (
+                <Text style={styles.hint}>
+                  The plans choose base cities in the area and divide the days between them.
+                </Text>
+              ) : null}
               <Button
                 label="Change destination"
                 variant="secondary"
@@ -198,7 +189,7 @@ export function CreateTripScreen() {
               <Field
                 label="Destination"
                 testID="destination-input"
-                hint="A city in one of the imported regions, for example Vienna or Prague."
+                hint="A city or an area in one of the imported regions, for example Vienna or Tyrol."
                 value={query}
                 onChangeText={setQuery}
                 autoCorrect={false}
@@ -231,24 +222,6 @@ export function CreateTripScreen() {
             error={submitted || startDate.length === 10 ? (errors.date ?? null) : null}
           />
           <Field
-            label="Currency (optional)"
-            hint="A three-letter code. Left empty, the destination country's currency is used."
-            value={currency}
-            onChangeText={(t) => setCurrency(t.toUpperCase())}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={3}
-            error={submitted || currency.length === 3 ? (errors.currency ?? null) : null}
-          />
-          <Field
-            label="Meal budget per person (optional)"
-            hint="For one meal, in the trip currency. It is kept with the trip."
-            value={budget}
-            onChangeText={setBudget}
-            keyboardType="decimal-pad"
-            error={submitted ? (errors.budget ?? null) : null}
-          />
-          <Field
             label="Trip name (optional)"
             hint={chosen ? `Left empty: "${chosen.name}, ${pluralise(days, "day")}".` : undefined}
             value={name}
@@ -266,7 +239,8 @@ export function CreateTripScreen() {
         ) : null}
         {working === "planning" ? (
           <Notice tone="info" label="Planning">
-            Choosing places and working out travel times. This usually takes a few seconds.
+            Choosing sights and places to eat and working out travel times. This usually takes a few
+            seconds.
           </Notice>
         ) : null}
 

@@ -36,7 +36,6 @@ def trip(conn: psycopg.Connection[Any], **over: Any) -> uuid.UUID:
         "destination_ref": "1",
         "destination_name": "X",
         "duration_days": 2,
-        "currency_code": "EUR",
         "status": "active",
     }
     values.update(over)
@@ -98,11 +97,34 @@ def item(conn: psycopg.Connection[Any], day_id: uuid.UUID, **over: Any) -> None:
         {"origin": "robot"},
         {"duration_source": "guess"},
         {"position": 0},
+        {"type": "meal", "meal_type": "brunch"},
     ],
 )
 def test_item_constraints(db: psycopg.Connection[Any], over: dict[str, Any]) -> None:
     with pytest.raises(psycopg.Error):
         item(db, day(db), **over)
+
+
+def test_meal_types_include_snack_and_the_arrival_leg_is_all_or_nothing(
+    db: psycopg.Connection[Any],
+) -> None:
+    d = day(db)
+    for n, meal in enumerate(("breakfast", "lunch", "snack", "dinner"), start=1):
+        item(db, d, type="meal", meal_type=meal, position=n)
+    db.execute(
+        "UPDATE app.itinerary_day SET base_city_name = 'B', arrival_mode = 'drive',"
+        " arrival_seconds = 3600, arrival_meters = 80000, arrival_confidence = 'routed'"
+        " WHERE id = %s",
+        (d,),
+    )
+    for bad in (
+        "arrival_seconds = NULL",
+        "arrival_confidence = 'guessed'",
+        "arrival_mode = 'fly'",
+        "arrival_meters = -1",
+    ):
+        with pytest.raises(psycopg.Error), db.transaction():
+            db.execute(f"UPDATE app.itinerary_day SET {bad} WHERE id = %s", (d,))  # noqa: S608
 
 
 def test_positions_can_be_swapped_in_one_transaction_and_duplicates_fail_at_commit(
@@ -125,61 +147,14 @@ def test_positions_can_be_swapped_in_one_transaction_and_duplicates_fail_at_comm
         {"status": "past"},  # past needs archived_at
         {"duration_days": 0},
         {"duration_days": 31},
-        {"currency_code": "eur"},
         {"title": ""},
-        {"meal_budget_per_person": -1},
+        {"currency_code": "EUR"},  # ADR 017: the column is gone
         {"destination_kind": "country"},
     ],
 )
 def test_trip_constraints(db: psycopg.Connection[Any], over: dict[str, Any]) -> None:
     with pytest.raises(psycopg.Error):
         trip(db, **over)
-
-
-def price(db: psycopg.Connection[Any], **over: Any) -> None:
-    values: dict[str, Any] = {
-        "id": uuid.uuid4(),
-        "installation_id": INSTALLATION,
-        "place_id": uuid.uuid4(),
-        "kind": "user_expected",
-        "amount": 10,
-        "currency_code": "EUR",
-        "basis": "per_person",
-        "source": "user",
-        "confidence": "medium",
-    }
-    values.update(over)
-    columns = ", ".join(values)
-    marks = ", ".join(f"%({k})s" for k in values)
-    db.execute(f"INSERT INTO app.price_record ({columns}) VALUES ({marks})", values)  # noqa: S608
-
-
-def test_a_valid_price_record_and_the_provenance_rules(db: psycopg.Connection[Any]) -> None:
-    price(db)
-    price(db, kind="user_actual", confidence="high", basis="total", party_size=4)
-    price(db, kind="provider_level", confidence="low", amount=None, level=3, source="some provider")
-
-
-@pytest.mark.parametrize(
-    "over",
-    [
-        {"amount": None},  # a user price has an amount
-        {"basis": "total"},  # total needs party_size
-        {"basis": "total", "party_size": 0},
-        {"confidence": "high"},  # expected is medium
-        {"kind": "user_actual"},  # actual is high
-        {"kind": "provider_level", "confidence": "low"},  # provider records carry a level only
-        {"level": 2},  # a user price has no level
-        {"amount": -1},
-        {"place_id": None},  # no restaurant at all
-        {"user_place_id": uuid.uuid4()},  # both
-        {"currency_code": "EU"},
-        {"kind": "inferred"},  # nothing is inferred (D10)
-    ],
-)
-def test_price_record_constraints(db: psycopg.Connection[Any], over: dict[str, Any]) -> None:
-    with pytest.raises(psycopg.Error):
-        price(db, **over)
 
 
 def test_user_place_constraints(db: psycopg.Connection[Any]) -> None:
@@ -215,14 +190,12 @@ def test_user_place_constraints(db: psycopg.Connection[Any]) -> None:
 def test_deleting_an_installation_removes_everything_of_theirs(db: psycopg.Connection[Any]) -> None:
     d = day(db)
     item(db, d)
-    price(db)
     db.execute("DELETE FROM app.installation WHERE id = %s", (INSTALLATION,))
     for table in (
         "trip",
         "itinerary",
         "itinerary_day",
         "itinerary_item",
-        "price_record",
         "user_place",
     ):
         row = db.execute(f"SELECT count(*) FROM app.{table}").fetchone()  # noqa: S608
@@ -235,7 +208,6 @@ def test_geo_constraints(db: psycopg.Connection[Any]) -> None:
         "INSERT INTO geo.region (id, name, country_codes) VALUES ('ok', 'x', '{}')",
         "INSERT INTO geo.region (id, name, country_codes, status) VALUES ('ok', 'x', '{AT}', 'ready')",
         "INSERT INTO geo.currency (code, name) VALUES ('eur', 'x')",
-        "INSERT INTO geo.fx_rate VALUES ('2026-01-01', 'EUR', 'EUR', 1, 'p', now())",
     ):
         with pytest.raises(psycopg.Error):
             db.execute(sql)

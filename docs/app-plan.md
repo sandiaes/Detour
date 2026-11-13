@@ -1,6 +1,6 @@
 # App plan
 
-Status: **Phase 0, 1 and 2 are done; Phases 3, 4 and 5 are built and await the owner's acceptance**; Phase 5 onward is proposed. Each phase is small enough to review on its own
+Status: **Phase 0, 1 and 2 are done; Phases 3, 4, 5 and 6 are built and await the owner's acceptance** (the owner reported on 2026-11-13 that the app works on the phone); Phase 7 onward is proposed. Budgets, currencies and prices are removed for now (ADR 017). Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
 ## 1. Decisions
@@ -12,13 +12,13 @@ Recorded on 2026-11-12 from the owner's answers.
 | D1 | Licence and commercial posture | **Open source and non-commercial.** Free non-commercial services (Open-Meteo, Transitous) become permissible, subject to their other conditions. | Decided |
 | D2 | MVP coverage | **Pilot regions: Japan, Italy, and Central Europe (Austria, Czechia and Hungary at least).** | Decided |
 | D3 | Backend hosting: where the API server, the database and the routing engine run when not on a local machine | Open. S2 measured about 145 MB of imported data for five countries (before ADR 003), so Supabase Free could hold the `geo` data. ADR 005 (accepted): Supabase Free for the database, a Render free web service for the API, a GitHub Actions import job. | **Decided** |
-| D4 | Public transport after the MVP (Phase 10) | Approved. See the note on Japan below. | Approved |
+| D4 | Public transport after the MVP (Phase 10) | Approved. **Japan is planned as single-city trips** until then (owner, Phase 6 prompt; ADR 016). | Approved |
 | D5 | Anonymous installation token, no accounts | Approved. | Approved |
 | D6 | Weather excluded from the MVP | Approved. | Approved |
 | D7 | OR-Tools only if the Phase 0 spike justifies it | **Not justified: the heuristic only.** Spike S5 found OR-Tools 6–8% better on two fixtures but 7–300 times slower, and unable to find any plan for the 14-day fixture with its usual strategies. See `docs/spikes/s5-sequencing-findings.md`. | Decided by the approved rule; the owner may override |
 | D8 | OpenFreeMap tiles now, self-hosted PMTiles as rehearsed fallback | Approved. | Approved |
 | D9 | Photos on-device first; cloud backup decided in the photo phase | Approved. | Approved |
-| D10 | Restaurant prices from users only; default band limits set in Phase 8 | Approved. | Approved |
+| D10 | Restaurant prices from users only; default band limits set in Phase 8 | **Superseded by ADR 017** (2026-11-13): no prices, price bands, budgets or currencies for now. | Superseded |
 | D11 | Which open-source licence, and when the repository becomes public | **Apache-2.0** (ADR 007). The repository stays private until the owner decides to publish it. | Decided |
 | D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
 | D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
@@ -46,7 +46,8 @@ anything is committed:
 **D4 and Japan.** Travel between Japanese cities is mostly by rail. With walking and driving
 only, multi-city itineraries in Japan will be weaker than in Italy or Central Europe. Options:
 keep the MVP order and limit Japan to single-city trips at first, or bring Phase 10 forward for
-Japan. To be settled when Phase 4 results are reviewed.
+Japan. **Settled (2026-11-13):** single-city trips in Japan for now; an area in Japan is refused
+with `area_single_city_only` (ADR 016).
 
 **D3 and Supabase.** Three things need a host: the API server, the PostgreSQL/PostGIS database,
 and the Valhalla routing engine.
@@ -67,7 +68,7 @@ option if the measured size fits or a paid plan is acceptable.
 ## 2. Phase overview
 
 ```
-0 Spikes ─► 1 Scaffold ─► 2 Geo data ─► 3 Travel time ─► 4 Planner v1 ─┬─► 6 Restaurants ─► 7 Add place ─► 8 Add restaurant + prices ─► 9 MVP release
+0 Spikes ─► 1 Scaffold ─► 2 Geo data ─► 3 Travel time ─► 4 Planner v1 ─┬─► 6 Restaurants ─► 7 Add place ─► 8 Add restaurant ─► 9 MVP release
                                    └──────────────────────────────────► 5 Mobile shell ────────────┘
 After MVP: 10 Public transport · 11 iOS · 12 Photos · 13 More coverage · 14 Weather (if approved)
 ```
@@ -186,7 +187,7 @@ cache warms; 14 days in one city run out of distinct sights.
 
 ### Phase 5 — Mobile shell
 
-**Status: built on 2026-11-12, not yet accepted** (ADR 015, proposed). All deliverables below are implemented with component tests (139) and an Android emulator workflow. **Not verified:** the emulator workflow has not run; no APK was built or run on a device in this change. Map lines are straight connectors (no route geometry exists); area destinations are disabled (the planner supports cities only).
+**Status: built on 2026-11-12, not yet accepted** (ADR 015, proposed). All deliverables below are implemented with component tests and an Android emulator workflow. The owner reported on 2026-11-13 that the app works on the phone, and asked for the emulator workflow to run **by hand only** (`e2e-android.yml`, `workflow_dispatch`). Map lines are straight connectors (no route geometry exists). Area destinations are enabled since Phase 6; the currency and meal budget fields were removed from the new-trip form (ADR 017).
 
 **Goal:** create a trip, compare two proposals, view days and the map on Android.
 
@@ -194,12 +195,24 @@ cache warms; 14 days in one city run out of distinct sights.
   lines; itinerary selection; attribution display; on-device read cache; error and empty
   states.
 - **Tests:** component tests; one end-to-end flow on an Android emulator against a seeded
-  backend.
+  backend (run by hand).
 - **Dependencies:** Phase 1 contract; Phase 4 for live data; S1.
 - **Risks:** map performance on low-end devices; mitigation is marker clustering and simplified
   geometry.
 
 ### Phase 6 — Restaurants in itineraries
+
+**Status: built on 2026-11-13, not yet accepted** (ADR 016, proposed). Meal windows by meal type
+(breakfast 07:30–10:00, lunch 12:00–14:30, afternoon snack 15:00–17:30, dinner 18:30–21:00) with
+lengths by meal type and venue type; Essentials plans lunch and dinner, Wider also a snack;
+breakfast is supported but not placed (the day starts after it). Places to eat come from the
+imported data only, chosen by proximity (600 m, 1.5 km, 3 km rings), cuisine variety and venue
+type; unknown cuisine shows as "Cuisine not specified"; no price, rating or opening hours. Areas
+get base cities by sights and population (Essentials one per 4 days, Wider one per 3), days in
+proportion, and inter-city legs from the travel-time service (route requests beyond 150 km). Japan
+is single-city only. Reason codes for every meal, notes for bases and drives. The validator checks
+meal windows and day length. Golden tests for three area trips added and the five city ones
+updated. **Tried on synthetic fixtures only.**
 
 **Goal:** plans include meals.
 
@@ -224,17 +237,15 @@ cache warms; 14 days in one city run out of distinct sights.
 - **Risks:** recalculation reshuffles too much; mitigation is tuning the stability cost with
   fixtures.
 
-### Phase 8 — Add a restaurant, prices and budget
+### Phase 8 — Add a restaurant
 
-**Goal:** a manually added restaurant lands in the best slot, and prices are tracked honestly.
+**Goal:** a manually added restaurant lands in the best slot. (Prices, budgets, price bands and
+currency conversion were removed by ADR 017 on 2026-11-13.)
 
 - **Deliverables:** restaurant search (local, then Photon through the backend, then manual
-  entry); slot scoring and alternatives with reasons; price records (expected and actual, per
-  person or total, any currency); trip meal budget and price bands; daily FX job and stored
-  rates; conversions labelled approximate.
-- **Tests:** scoring fixtures; per-person derivation; band and
-  budget-fit calculations; FX fallback order; provider budget counter stops calls at the limit.
-- **Dependencies:** Phase 7, D10.
+  entry); slot scoring and alternatives with reasons.
+- **Tests:** scoring fixtures; provider budget counter stops calls at the limit.
+- **Dependencies:** Phase 7.
 - **Risks:** external search unavailable; mitigation is manual entry always being possible.
 
 ### Phase 9 — MVP hardening and release
@@ -287,7 +298,7 @@ to reconsider later. Ideas discussed, none decided or built:
 - Destinations outside imported pilot regions; on-demand region import
 - Accounts, sign-in, sharing, multi-device sync
 - Offline map downloads and offline planning
-- Restaurant ratings, reviews and provider price levels
+- Restaurant ratings, reviews, prices and price levels; budgets and currencies (ADR 017)
 - Public-holiday opening rules
 - Accommodation as day start and end point
 - Booking, payments, hotel availability, flight prices (never in scope)
@@ -307,7 +318,9 @@ to reconsider later. Ideas discussed, none decided or built:
 
 ## 7. Recommended next task
 
-**Accept Phases 3 and 4, then Phase 5 (mobile shell), when the owner asks for it (CLAUDE.md).**
+**Accept Phases 3 to 6, then Phase 7 (add a city or location), when the owner asks for it
+(CLAUDE.md).** For Phase 6: confirm or change the meal windows, the profiles' meals and the
+base-city rules of ADR 016 on a real imported area.
 Phase 2 is accepted. For Phase 3: confirm or change the numbers in ADR 013 (especially the walking
 detour factor). For Phase 4: import Austria, generate plans for two or three Austrian cities, and
 confirm or change the weights, the duration table and the open items of ADR 014.

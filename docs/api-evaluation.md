@@ -3,6 +3,10 @@
 Research date: **2026-11-12**. Terms, quotas and prices change; every figure here must be
 re-checked against the linked official page before a provider is wired in.
 
+> **Update 2026-11-13 (ADR 017):** the app has no budgets, currencies or prices for now, so
+> nothing in sections 5 (restaurant prices) and 11 (exchange rates) is used; Frankfurter is not
+> wired in. The research is kept for the record.
+
 ## How to read this document
 
 **Verification status** is stated per candidate:
@@ -649,7 +653,9 @@ OpenWeatherMap was not evaluated (its pages were not read).
 
 ## 11. Exchange rates
 
-Rates are used only to compare a restaurant price with the user's budget in another currency.
+**Not used since ADR 017 (2026-11-13): the app has no currencies.** Kept for the record.
+
+Rates were to be used only to compare a restaurant price with the user's budget in another currency.
 They are **reference rates**: the UI must label converted amounts as approximate.
 
 ### 11.1 Frankfurter — ✅ Verified

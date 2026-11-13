@@ -12,7 +12,7 @@ First platform: Android. The architecture must allow an iPhone version without a
 ## 2. Target user
 
 A traveller planning a leisure trip of roughly 2 to 14 days who wants a workable day-by-day
-plan quickly, expects to adjust it, and cares about what things cost.
+plan quickly and expects to adjust it.
 
 ## 3. Product goals and how each is met
 
@@ -26,8 +26,8 @@ plan quickly, expects to adjust it, and cares about what things cost.
 | 5 | Automatic recalculation around the addition | Re-plan with minimal disruption; user reviews a diff | MVP |
 | 6 | Add a restaurant manually | Search local data, then external search, then manual entry | MVP |
 | 7 | Best day and time for that restaurant | Scored over every day and meal slot: location, neighbouring activities, meal time, travel impact | MVP |
-| 8 | Restaurants categorised by cuisine, price level, meal type, location, suitability | Cuisine, venue and meal type from open data; price from the user; suitability computed | MVP |
-| 9 | User-defined expected price or budget | Price records per restaurant; trip meal budget | MVP |
+| 8 | Restaurants categorised by cuisine, meal type, location, suitability | Cuisine, venue and meal type from open data; suitability computed. No price level (ADR 017) | MVP |
+| 9 | User-defined expected price or budget | **Removed for now** (owner, 2026-11-13; ADR 017): no budgets, currencies or prices | — |
 | 10 | Store travel photos linked to trip, day, city or item | Data model reserved; on-device first | Future |
 | 11 | No LLM at runtime | Deterministic engine, reason codes, fixed templates | Always |
 | 12 | Free or open APIs preferred | Open data imported and self-hosted; a few free public services behind adapters | Always |
@@ -35,19 +35,18 @@ plan quickly, expects to adjust it, and cares about what things cost.
 
 ## 4. Core user flows
 
-1. **Create a trip.** Choose a destination from search results, set the number of days,
-   optionally a start date, trip currency and a meal budget per person.
+1. **Create a trip.** Choose a destination (a city or an area) from search results, set the number
+   of days and optionally a start date. An area is planned from base cities with the days divided
+   between them (ADR 016); areas in Japan are planned as single cities for now (D4).
 2. **Compare proposals.** See two itineraries side by side with a short structured summary of
    how they differ (cities covered, number of visits, total travel time). Open either on the
    map or as a day list. Select one.
-3. **Review a day.** Ordered items with start times, visit durations, transfers with mode and
-   duration, and markers for estimated travel times.
+3. **Review a day.** Ordered visits and meals with start times and durations, transfers with mode
+   and duration, markers for estimated travel times, the meal's venue type and cuisine, and, on an
+   area trip, the day's base city and the drive from the previous one.
 4. **Add a place.** Search or drop a pin. The app shows what would change. Accept or discard.
-5. **Add a restaurant.** Search or enter manually, optionally with an expected price. The app
-   proposes the best day and meal slot with reasons, and lists alternatives. Accept, pick an
-   alternative, or place it manually.
-6. **Record prices.** Enter an expected price before the meal or the actual price after it,
-   per person or as a total, in any currency.
+5. **Add a restaurant.** Search or enter manually. The app proposes the best day and meal slot
+   with reasons, and lists alternatives. Accept, pick an alternative, or place it manually.
 
 ## 5. What "meaningfully different" means
 
@@ -66,17 +65,20 @@ When a destination cannot support two distinct plans, the app says so and shows 
 | Cuisine | OpenStreetMap `cuisine` tag, normalised | "Cuisine not specified" |
 | Venue and meal type | Venue tag | Derived from venue type alone |
 | Location | Coordinates | Always present |
-| Price level | **User only** in the MVP | "No price data" |
+| Price level | **Not provided** (ADR 017: no prices for now) | Not shown |
 | Suitability for the itinerary | Computed | Always present, with reasons |
 | Rating | **Not provided** | Not shown |
 
 Free and open sources do not carry trustworthy restaurant prices or ratings. The product shows
 only what it can stand behind.
 
-**Price bands.** Four bands (budget, moderate, upscale, fine dining) by price per person in the
-trip currency. The band limits are settings with defaults, editable per trip. The default
-values are a product decision to be set in Phase 8 (open decision D10); they are not derived
-from any provider.
+**Meals in a plan** (ADR 016) sit in fixed windows: breakfast 07:30–10:00, lunch 12:00–14:30,
+afternoon snack 15:00–17:30, dinner 18:30–21:00. A place to eat is chosen near the visits before
+and after the meal, varying cuisines, and only among places whose venue type serves that meal.
+
+**No prices, budgets or currencies** (ADR 017, owner decision of 2026-11-13). Earlier versions of
+this brief had a trip currency, a meal budget per person, user-entered prices and price bands;
+they are removed for now and need a new ADR to return.
 
 ## 7. Data transparency rules
 
@@ -84,8 +86,7 @@ from any provider.
 - Every visit duration is a default that the user can change.
 - Opening hours are not used (ADR 003). The app does not know whether a place is open and does
   not warn about closed places.
-- Every price shows its kind (expected or actual), basis, currency and, if converted, that it is
-  approximate and the date of the rate.
+- No price is shown: the app has none (ADR 017).
 - Every placement decision can show its reasons.
 
 ## 8. Out of scope

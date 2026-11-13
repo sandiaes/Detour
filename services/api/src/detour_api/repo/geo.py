@@ -20,6 +20,7 @@ from detour_api.models.search import (
     PlaceSummary,
     RegionInfo,
 )
+from detour_api.planner.config import DEFAULT_CONFIG
 from detour_api.textnorm import normalize_text
 
 METERS_PER_DEGREE = 111_320.0
@@ -177,6 +178,13 @@ def search_destinations(conn: Connection, query: str, limit: int) -> list[Destin
             lon=r.lon,
             region_id=r.region_id,
             planning_available=bool(r.available),
+            unavailable_reason=(
+                "region_not_available"
+                if not r.available
+                else "area_single_city_only"
+                if r.kind == "area" and r.country_iso2 in DEFAULT_CONFIG.single_city_countries
+                else None
+            ),
             match=MATCH_NAMES[r.tier],
         )
         for r in rows
@@ -191,6 +199,20 @@ class ResolvedDestination:
     country_iso2: str | None
     region_id: str | None
     region_status: str | None
+    # The countries of the covering region (for an area without its own country code).
+    region_countries: tuple[str, ...] = ()
+
+
+SINGLE_CITY_MESSAGE = (
+    "areas in Japan cannot be planned yet (travel between Japanese cities is mostly by rail, "
+    "which the planner does not model); choose a city"
+)
+
+
+def area_planning_allowed(dest: ResolvedDestination) -> bool:
+    """Japan is planned as single-city trips only for now (app plan D4, ADR 016)."""
+    countries = (dest.country_iso2,) if dest.country_iso2 else dest.region_countries
+    return not any(c in DEFAULT_CONFIG.single_city_countries for c in countries)
 
 
 def resolve_destination(conn: Connection, kind: str, ref: str) -> ResolvedDestination | None:
@@ -223,7 +245,7 @@ def resolve_destination(conn: Connection, kind: str, ref: str) -> ResolvedDestin
     area = conn.execute(
         text(
             "SELECT a.name, ST_Y(ST_PointOnSurface(a.geom)) lat, ST_X(ST_PointOnSurface(a.geom)) lon,"
-            " a.country_iso2, r.id AS region_id, r.status FROM geo.admin_area a"
+            " a.country_iso2, r.id AS region_id, r.status, r.country_codes FROM geo.admin_area a"
             " JOIN geo.region r ON r.id = a.region_id WHERE a.id = :i AND a.is_active"
         ),
         {"i": area_id},
@@ -231,23 +253,13 @@ def resolve_destination(conn: Connection, kind: str, ref: str) -> ResolvedDestin
     if area is None:
         return None
     return ResolvedDestination(
-        area.name, area.lat, area.lon, area.country_iso2, area.region_id, area.status
-    )
-
-
-def country_currency(conn: Connection, country_iso2: str | None) -> str | None:
-    if country_iso2 is None:
-        return None
-    row = conn.execute(
-        text("SELECT default_currency_code FROM geo.country WHERE iso2 = :c"), {"c": country_iso2}
-    ).first()
-    return None if row is None else row[0]
-
-
-def currency_exists(conn: Connection, code: str) -> bool:
-    return (
-        conn.execute(text("SELECT 1 FROM geo.currency WHERE code = :c"), {"c": code}).first()
-        is not None
+        area.name,
+        area.lat,
+        area.lon,
+        area.country_iso2,
+        area.region_id,
+        area.status,
+        tuple(area.country_codes or ()),
     )
 
 

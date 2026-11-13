@@ -53,9 +53,10 @@ test("attribution for OpenStreetMap and the tile provider is visible on the map"
 
 test("each stop is a numbered marker with a spoken label", async () => {
   await render(<ItineraryMap day={day1} {...props} />);
-  expect(markers()).toHaveLength(3);
+  expect(markers()).toHaveLength(5); // three sights and two meals
   expect(screen.getByLabelText("Stop 1: Schönbrunn Palace")).toBeOnTheScreen();
-  expect(screen.getByLabelText("Stop 3: St. Stephen's Cathedral")).toBeOnTheScreen();
+  expect(screen.getByLabelText("Stop 3: Gasthaus Zum Test")).toBeOnTheScreen();
+  expect(screen.getByLabelText("Stop 4: St. Stephen's Cathedral")).toBeOnTheScreen();
   expect(screen.getByText("2")).toBeOnTheScreen();
 });
 
@@ -79,7 +80,12 @@ test("transfer lines are drawn solid when routed and dashed when estimated, and 
   const lines = maplibre.sources.transfers as {
     features: { properties: { confidence: string } }[];
   };
-  expect(lines.features.map((f) => f.properties.confidence)).toEqual(["estimated", "routed"]);
+  expect(lines.features.map((f) => f.properties.confidence)).toEqual([
+    "estimated",
+    "routed",
+    "estimated",
+    "estimated",
+  ]);
   const routed = maplibre.layers.find((l) => l.id === "transfers-routed");
   const estimated = maplibre.layers.find((l) => l.id === "transfers-estimated");
   expect(routed?.style.lineDasharray).toBeUndefined();

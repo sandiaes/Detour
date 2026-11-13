@@ -8,7 +8,7 @@ at read time, so a wording change needs no data migration.
 
 from collections.abc import Mapping
 
-# Why a visit is in the plan (stored in app.itinerary_item.reasons). Parameter-free.
+# Why a visit or a meal is in the plan (stored in app.itinerary_item.reasons). Parameter-free.
 ITEM_TEMPLATES: dict[str, str] = {
     "WIKIDATA_LINKED": "Linked to a Wikidata entry, a sign that it is notable.",
     "WIKIPEDIA_ARTICLE": "Has a Wikipedia article.",
@@ -17,9 +17,22 @@ ITEM_TEMPLATES: dict[str, str] = {
     "TAGGED_TOURIST_ATTRACTION": "Mapped as a tourist attraction in OpenStreetMap.",
     "HIGHLIGHT_CATEGORY": "A kind of place ranked high, such as a museum or a castle.",
     "NAMED_SIGHT": "A named sight in the imported map data.",
-    "NEAR_CENTRE": "Close to the destination's centre point.",
+    "NEAR_CENTRE": "Close to the centre of the city the day is planned from.",
     "NEAR_PREVIOUS_ITEM": "A short transfer from the previous visit.",
     "ADDS_VARIETY": "Adds a kind of place this plan does not have yet.",
+    # Meals (ADR 016).
+    "BREAKFAST_WINDOW": "Breakfast, planned between 07:30 and 10:00.",
+    "LUNCH_WINDOW": "Lunch, planned between 12:00 and 14:30.",
+    "SNACK_WINDOW": "An afternoon snack, planned between 15:00 and 17:30.",
+    "DINNER_WINDOW": "Dinner, planned between 18:30 and 21:00.",
+    "VENUE_SUITS_MEAL": "Its venue type in the map data (restaurant or café) suits this meal.",
+    "ON_THE_WAY": "Close to the visits before and after it: little detour.",
+    "NEAREST_SUITABLE": "The nearest suitable place to eat found in the map data.",
+    "NEW_CUISINE": "Adds a cuisine this plan does not have yet.",
+    "CUISINE_NOT_SPECIFIED": "Cuisine not specified in the map data.",
+    "PLACE_REPEATED": (
+        "Already in this plan on an earlier day: no other suitable place to eat is near."
+    ),
     # Phase 2 seed data.
     "SEED_DATA": "Illustrative seed data, not a planned visit.",
 }
@@ -52,16 +65,37 @@ NOTE_TEMPLATES: dict[str, str] = {
         "{estimated} of {transfers} transfers are estimated from straight-line distance, "
         "not routed."
     ),
-    "VISITS_REMOVED_AFTER_ROUTING": (
-        "{removed} visits were removed because routed travel times were longer than planned."
+    "VISITS_REMOVED_TO_FIT": (
+        "{removed} visits were left out so that each day, with its meals and travel times, "
+        "fits its hours."
     ),
     "NOT_ENOUGH_DISTINCT_PLACES_AFTER_ROUTING": (
         "After routing, the two plans overlapped too much; only one plan is shown."
     ),
+    # Written by planner-1.0.0 and still rendered for its stored itineraries.
+    "VISITS_REMOVED_AFTER_ROUTING": (
+        "{removed} visits were removed because routed travel times were longer than planned."
+    ),
+    "NO_MEALS_YET": "Meals are not planned yet; the days leave time free in the evening.",
     "NO_OPENING_HOURS": (
         "Opening hours are not checked: a place may be closed at the planned time."
     ),
-    "NO_MEALS_YET": "Meals are not planned yet; the days leave time free in the evening.",
+    "MEALS_FROM_MAP_DATA": (
+        "Places to eat come from OpenStreetMap: venue type and cuisine only, with no prices, "
+        "ratings or opening hours."
+    ),
+    "MEALS_NOT_PLANNED": (
+        "{count} meals are not planned: no suitable place to eat was found within "
+        "{radius_km} km of the route in the imported data."
+    ),
+    "MEALS_SKIPPED_FOR_TRAVEL": (
+        "{count} meals fall during travel between base cities and are not planned."
+    ),
+    "BASE_CITY": "{name}: {days} days as a base, with {sights} sights within {radius_km} km.",
+    "INTER_CITY_TRAVEL": (
+        "Day {day}: {minutes} min by car from {from_name} to {to_name} ({label})."
+    ),
+    "DISTINCT_ALLOCATION": "The two plans divide the days between different base cities.",
     "DURATIONS_ARE_DEFAULTS": (
         "Visit lengths are defaults for each kind of place; you can change any of them."
     ),
@@ -81,6 +115,10 @@ ISSUE_TEMPLATES: dict[str, str] = {
         "a planned day allows."
     ),
     "NO_IMPORT_RUN": "The region of {destination} has no completed import.",
+    "NO_BASE_CITIES": (
+        "No town in {destination} has at least {min_sights} named sights within {radius_km} km "
+        "in the imported data."
+    ),
 }
 
 

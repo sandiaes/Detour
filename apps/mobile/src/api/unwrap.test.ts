@@ -25,11 +25,14 @@ test("a rejected request is a network error", async () => {
 
 test("an error body becomes an ApiError with the stable code", async () => {
   const e: unknown = await call(
-    Promise.resolve({ error: { detail: "nope", code: "area_not_supported" }, response: res(422) }),
+    Promise.resolve({
+      error: { detail: "nope", code: "area_single_city_only" },
+      response: res(422),
+    }),
   ).catch((x: unknown) => x);
   expect(e).toBeInstanceOf(ApiError);
   expect((e as ApiError).status).toBe(422);
-  expect((e as ApiError).code).toBe("area_not_supported");
+  expect((e as ApiError).code).toBe("area_single_city_only");
   expect(describeError(e)).toMatch(/Choose a city/);
 });
 

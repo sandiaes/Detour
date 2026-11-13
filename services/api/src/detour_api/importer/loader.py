@@ -341,12 +341,9 @@ def assign_cities(conn: psycopg.Connection[Any], region_id: str) -> int:
 # the database file shrinks. Smaller clean-ups only make the space reusable.
 FULL_VACUUM_THRESHOLD = 1000
 
-# Places and prices in app that name a geo place keep it from being deleted (soft reference, no
+# Itinerary items in app that name a geo place keep it from being deleted (soft reference, no
 # foreign key: the trip keeps its own snapshot either way).
-_REFERENCED_BY_APP = (
-    "EXISTS (SELECT 1 FROM app.itinerary_item i WHERE i.place_id = p.id)"
-    " OR EXISTS (SELECT 1 FROM app.price_record r WHERE r.place_id = p.id)"
-)
+_REFERENCED_BY_APP = "EXISTS (SELECT 1 FROM app.itinerary_item i WHERE i.place_id = p.id)"
 
 
 def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) -> dict[str, int]:
@@ -354,7 +351,7 @@ def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) 
 
     Rows that did not change are not written at all (``WHERE ... IS DISTINCT FROM``): rewriting
     them would leave a dead copy of every row behind on each import. Places that are gone from the
-    extract are deleted, unless an itinerary item or price record still names them, in which case
+    extract are deleted, unless an itinerary item still names them, in which case
     they stay with ``is_active = false``.
     """
     params = {"region": region.id, "run": run_id, "lic": OSM_LICENCE}

@@ -15,11 +15,11 @@ Measurement sources:
 | KPI | Definition | Target | Source |
 |---|---|---|---|
 | Variant count | Share of plan requests returning at least two itineraries | ≥ 95% of fixtures; the rest return the explicit single-plan response | Fixture suite |
-| Variant diversity | Jaccard similarity of the visit sets of the two variants | ≤ 0.6, or different city allocation | Fixture suite |
+| Variant diversity | Jaccard similarity of the visit sets of the two variants | ≤ 0.6, or different base cities or days per base (areas) | Fixture suite |
 | Feasibility | Generated itineraries passing the independent validator | 100% | Fixture suite, logs |
-| Closed-visit violations | Items scheduled while known to be closed | 0 | Validator |
-| Day utilisation | Planned time (visits, meals, transfers) as a share of the day window | 60–90% | Fixture suite |
-| Travel share | Transfer time as a share of planned time, Essentials profile | ≤ 25% | Fixture suite |
+| Day utilisation | Planned time (visits, meals, transfers, inter-city drives) as a share of the 09:00–21:00 window | 60–90% | Fixture suite |
+| Meals in their windows | Planned meals that start and end inside their meal window (ADR 016) | 100% | Validator |
+| Travel share | Transfer and inter-city time as a share of planned time, Essentials profile | ≤ 25% | Fixture suite |
 | Determinism | Identical output for identical input, data version and engine version | 100% | Golden tests |
 
 ## 2. Editing and recalculation
@@ -48,7 +48,7 @@ Measurement sources:
 |---|---|---|---|
 | Routed travel share | Transfers with `routed` rather than `estimated` confidence | ≥ 95% | Backend logs |
 | Cuisine coverage | Restaurants with a normalised cuisine | Reported per region | Import report |
-| Price provenance | Displayed prices backed by a price record with kind, basis and currency | 100% | Tests |
+| Meals planned | Meals of the profiles on days with visits that found a place to eat within 3 km | Reported per fixture; every gap explained in a note | Fixture suite |
 | Unlabelled estimates | Estimated or unknown values shown without a label | 0 | UI review checklist |
 | Region readiness | Pilot regions passing the minimum data thresholds set after spike S2 (ADR 009; computed by every import since Phase 2, a region is `available` only if all six gates pass) | 100% of enabled regions | Import report |
 

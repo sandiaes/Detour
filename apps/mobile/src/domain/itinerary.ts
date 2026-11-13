@@ -29,20 +29,28 @@ export function buildDayRows(day: Day): DayRow[] {
   return rows;
 }
 
-export type DayTotals = { visits: number; visitMinutes: number; travelSeconds: number };
+export type DayTotals = {
+  visits: number;
+  meals: number;
+  visitMinutes: number;
+  travelSeconds: number;
+};
 
+/** Travel includes the drive from the previous base city that starts the day (area trips). */
 export function dayTotals(day: Day): DayTotals {
   let visits = 0;
+  let meals = 0;
   let visitMinutes = 0;
-  let travelSeconds = 0;
+  let travelSeconds = day.arrival?.seconds ?? 0;
   for (const item of day.items) {
     if (item.type === "visit") {
       visits += 1;
       visitMinutes += item.duration_minutes;
     }
+    if (item.type === "meal") meals += 1;
     if (item.transfer) travelSeconds += item.transfer.seconds;
   }
-  return { visits, visitMinutes, travelSeconds };
+  return { visits, meals, visitMinutes, travelSeconds };
 }
 
 export type MapPoint = {

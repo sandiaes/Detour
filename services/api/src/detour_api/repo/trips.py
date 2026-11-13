@@ -1,7 +1,6 @@
 """Trips, the past-trip archive (ADR 006) and installations."""
 
 import uuid
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import Connection, text
@@ -21,8 +20,7 @@ MAX_TRIPS_PER_INSTALLATION = 100
 _TRIP_COLUMNS = """
     t.id, t.title, t.destination_kind, t.destination_ref, t.destination_name,
     ST_Y(t.destination_point) AS dlat, ST_X(t.destination_point) AS dlon, t.duration_days,
-    t.start_date, t.currency_code, t.meal_budget_per_person, t.price_band_thresholds,
-    t.selected_itinerary_id, t.status, t.archived_at, t.is_seed, t.created_at, t.updated_at
+    t.start_date, t.selected_itinerary_id, t.status, t.archived_at, t.is_seed, t.created_at, t.updated_at
 """
 
 
@@ -39,7 +37,6 @@ def ensure_installation(conn: Connection, installation_id: uuid.UUID) -> None:
 
 
 def _trip(row: Any) -> Trip:
-    thresholds = row.price_band_thresholds
     return Trip(
         id=row.id,
         title=row.title,
@@ -53,9 +50,6 @@ def _trip(row: Any) -> Trip:
         duration_days=row.duration_days,
         start_date=row.start_date,
         end_date=end_date_of(row.start_date, row.duration_days),
-        currency_code=row.currency_code,
-        meal_budget_per_person=row.meal_budget_per_person,
-        price_band_thresholds=None if thresholds is None else [Decimal(str(v)) for v in thresholds],
         selected_itinerary_id=row.selected_itinerary_id,
         status=row.status,
         archived_at=row.archived_at,
@@ -102,7 +96,6 @@ def create_trip(
     destination_name: str,
     lat: float,
     lon: float,
-    currency_code: str,
     is_seed: bool = False,
 ) -> Trip:
     count = conn.execute(
@@ -117,11 +110,9 @@ def create_trip(
         text(
             """
             INSERT INTO app.trip (id, installation_id, title, destination_kind, destination_ref,
-                destination_name, destination_point, duration_days, start_date, currency_code,
-                meal_budget_per_person, price_band_thresholds, is_seed)
+                destination_name, destination_point, duration_days, start_date, is_seed)
             VALUES (:id, :inst, :title, :kind, :ref, :dname,
-                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :days, :start, :cur, :budget,
-                CAST(:bands AS jsonb), :seed)
+                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :days, :start, :seed)
             """
         ),
         {
@@ -135,19 +126,10 @@ def create_trip(
             "lon": lon,
             "days": body.duration_days,
             "start": body.start_date,
-            "cur": currency_code,
-            "budget": body.meal_budget_per_person,
-            "bands": _bands_json(body.price_band_thresholds),
             "seed": is_seed,
         },
     )
     return require_trip(conn, installation_id, trip_id)
-
-
-def _bands_json(bands: list[Decimal] | None) -> str | None:
-    import json
-
-    return None if bands is None else json.dumps([str(b) for b in bands])
 
 
 def update_trip(
@@ -182,12 +164,6 @@ def update_trip(
     if "start_date" in changed:
         sets.append("start_date = :start")
         params["start"] = body.start_date
-    if "meal_budget_per_person" in changed:
-        sets.append("meal_budget_per_person = :budget")
-        params["budget"] = body.meal_budget_per_person
-    if "price_band_thresholds" in changed:
-        sets.append("price_band_thresholds = CAST(:bands AS jsonb)")
-        params["bands"] = _bands_json(body.price_band_thresholds)
     if "selected_itinerary_id" in changed:
         _select_itinerary(conn, trip_id, body.selected_itinerary_id)
         sets.append("selected_itinerary_id = :sel")

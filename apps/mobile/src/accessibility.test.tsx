@@ -85,11 +85,7 @@ test("trips list", async () => {
 test("create trip form with search results", async () => {
   await show({ name: "createTrip" }, "Details");
   await fireEvent.changeText(screen.getByLabelText("Destination"), "Vie");
-  await screen.findByText(
-    "Whole areas cannot be planned yet. Choose a city.",
-    {},
-    { timeout: 3000 },
-  );
+  await screen.findByText("Area", {}, { timeout: 3000 });
   checkControls();
 });
 
@@ -111,7 +107,7 @@ test("map with markers and the attribution links", async () => {
     { name: "itinerary", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID, view: "map", day: 1 },
     "Tap a numbered stop for details. ",
   );
-  expect(screen.getAllByLabelText(/^Stop \d+: /).length).toBe(3);
+  expect(screen.getAllByLabelText(/^Stop \d+: /).length).toBe(5);
   checkControls();
 });
 

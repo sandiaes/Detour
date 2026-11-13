@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
-from detour_api.planner.config import ProfileName
+from detour_api.planner.config import MealType, ProfileName
 from detour_api.travel.types import Confidence, Coord, EstimateReason, Mode
 
 # Parameters of a note: only what a fixed template needs, all JSON-safe.
@@ -32,15 +32,54 @@ class Candidate:
 
 
 @dataclass(frozen=True)
+class Restaurant:
+    """An imported place to eat (``geo.place`` of kind ``restaurant`` with its
+    ``geo.restaurant_profile``). Venue type, cuisines and meal types are what the open data says;
+    ``cuisines`` is ``None`` when the data states no cuisine. There is no price, rating or opening
+    hours."""
+
+    place_id: str
+    name: str
+    venue_type: str
+    lat: float
+    lon: float
+    meal_types: tuple[str, ...]
+    cuisines: tuple[str, ...] | None = None
+
+    @property
+    def coord(self) -> Coord:
+        return Coord.from_degrees(self.lat, self.lon)
+
+
+@dataclass(frozen=True)
+class BaseCity:
+    """A gazetteer city (``geo.city``): the destination of a city trip, or a possible base of an
+    area trip."""
+
+    city_id: int
+    name: str
+    lat: float
+    lon: float
+    population: int | None = None
+
+    @property
+    def coord(self) -> Coord:
+        return Coord.from_degrees(self.lat, self.lon)
+
+
+@dataclass(frozen=True)
 class PlanRequest:
     destination_name: str
     lat: float
     lon: float
     days: int
     start_date: date | None
-    currency_code: str
     # The geo.import_run the candidates came from: the data version stored on the itinerary.
     data_version: str | None
+    # "city": ``base_cities`` holds the destination city alone. "area": the towns of the area
+    # that may become bases (the engine chooses among them).
+    kind: Literal["city", "area"] = "city"
+    base_cities: tuple[BaseCity, ...] = ()
 
     @property
     def centre(self) -> Coord:
@@ -57,7 +96,8 @@ class Note:
 
 @dataclass(frozen=True)
 class Leg:
-    """The transfer from a visit to the next one of the same day."""
+    """A transfer: from an item to the next one of the same day, or, for the first day at a new
+    base city, from the previous base city."""
 
     mode: Mode
     seconds: int
@@ -68,9 +108,13 @@ class Leg:
 
 
 @dataclass(frozen=True)
-class PlannedVisit:
+class PlannedItem:
+    """A visit to an attraction or a meal at a place to eat."""
+
+    kind: Literal["visit", "meal"]
     place_id: str
     name: str
+    # Visits: the attraction's category. Meals: the venue type (restaurant, cafe).
     category: str
     lat: float
     lon: float
@@ -78,14 +122,29 @@ class PlannedVisit:
     end_minute: int
     duration_minutes: int
     reasons: tuple[str, ...]
-    transfer: Leg | None  # to the next visit of the day; None for the last one
+    transfer: Leg | None  # to the next item of the day; None for the last one
+    meal_type: MealType | None = None  # meals only
+    cuisines: tuple[str, ...] | None = None  # meals only; None: not stated in the data
 
 
 @dataclass(frozen=True)
 class DayPlan:
     day_index: int
     date: date | None
-    visits: tuple[PlannedVisit, ...]
+    items: tuple[PlannedItem, ...]
+    base_city_id: int | None = None
+    base_city_name: str | None = None
+    # Travel from the previous day's base city, at the start of the day; None when the base
+    # does not change.
+    arrival: Leg | None = None
+
+    @property
+    def visits(self) -> tuple[PlannedItem, ...]:
+        return tuple(i for i in self.items if i.kind == "visit")
+
+    @property
+    def meals(self) -> tuple[PlannedItem, ...]:
+        return tuple(i for i in self.items if i.kind == "meal")
 
 
 @dataclass(frozen=True)
@@ -97,10 +156,16 @@ class PlanStats:
     travel_seconds: int
     routed_transfers: int
     estimated_transfers: int
-    # Planned minutes (visits and transfers) as permille of the day window of all days.
+    # Planned minutes (visits, meals, transfers and inter-city travel) as permille of the day
+    # window of all days.
     day_utilisation_permille: int
-    # Transfer minutes as permille of planned minutes.
+    # Transfer and inter-city minutes as permille of planned minutes.
     travel_share_permille: int
+    meals: int = 0
+    meal_minutes: int = 0
+    # Inter-city legs (area trips); their minutes are part of travel_minutes, and their labels
+    # are counted in routed_transfers and estimated_transfers.
+    intercity_legs: int = 0
 
 
 @dataclass(frozen=True)
@@ -111,7 +176,18 @@ class Plan:
     stats: PlanStats
 
     def place_ids(self) -> frozenset[str]:
+        """The visits of the plan (meals do not count for the diversity gate)."""
         return frozenset(v.place_id for d in self.days for v in d.visits)
+
+    def allocation(self) -> tuple[tuple[int | None, int], ...]:
+        """Base cities in visiting order, each with its number of consecutive days."""
+        out: list[tuple[int | None, int]] = []
+        for d in self.days:
+            if out and out[-1][0] == d.base_city_id:
+                out[-1] = (d.base_city_id, out[-1][1] + 1)
+            else:
+                out.append((d.base_city_id, 1))
+        return tuple(out)
 
 
 @dataclass(frozen=True)

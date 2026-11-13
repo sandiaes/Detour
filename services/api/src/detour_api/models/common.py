@@ -1,24 +1,11 @@
 """Shared validated types."""
 
-import re
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 Latitude = Annotated[float, Field(ge=-90, le=90, description="WGS 84 latitude")]
 Longitude = Annotated[float, Field(ge=-180, le=180, description="WGS 84 longitude")]
-
-_CURRENCY = re.compile(r"^[A-Z]{3}$")
-
-
-def _currency(value: str) -> str:
-    value = value.strip().upper()
-    if not _CURRENCY.match(value):
-        raise ValueError("currency code must be three letters (ISO 4217)")
-    return value
-
-
-CurrencyCode = Annotated[str, AfterValidator(_currency), Field(description="ISO 4217 code")]
 
 
 class StrictModel(BaseModel):

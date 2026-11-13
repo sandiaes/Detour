@@ -7,6 +7,11 @@ recorded decisions removed are listed in section 4; the owner reviewed them on 2
 wants none of them for now. Each needs an ADR before it comes back. The prompt order was also
 confirmed.
 
+**Changed on 2026-11-13 (owner):** no budgets, currencies or prices in the app for now
+([ADR 017](decisions/017-no-budgets-currencies-or-prices.md)); the Android end-to-end workflow runs
+by hand only; every prompt below was rewritten to match, and each now starts with its status.
+Prompts 1 to 7 are done or built; the next one is Prompt 8.
+
 ## 1. How to use this file
 
 1. Give Claude one prompt at a time, in order.
@@ -45,6 +50,9 @@ confirmed.
 | Regions | Pilot regions Austria, Czechia, Hungary, Italy, Japan; enablement order and thresholds proposed in ADR 009 (not yet approved) | ADR 009 |
 | Accounts | None. Anonymous installation token | app plan D5 |
 | Weather, public transport, photos, iOS | After the MVP | app plan D4, D6, D9 |
+| Money | **No budgets, currencies, prices, price bands or currency conversion** (owner, 2026-11-13) | ADR 017 |
+| Meals and areas | Meals in fixed windows at imported places to eat; areas planned from base cities; Japan single-city only | ADR 016, app plan D4 |
+| End-to-end test | The Android emulator workflow runs by hand only, never on every push | ADR 015 addendum |
 
 Planned phases and their dependencies are in `docs/app-plan.md`.
 
@@ -61,7 +69,7 @@ Planned phases and their dependencies are in `docs/app-plan.md`.
 | Weather in the MVP | Removed | D6. |
 | Opening hours in planning, restaurants, UI, tests and the beta journeys | Removed | ADR 003. |
 | Variants "highlights, relaxed, culture, food, nature" | Two strategy profiles of one engine plus a diversity check | Plan Phase 4; product brief section 5. |
-| User inputs: interests, pace, budget, transport preferences, hotel or city changes | Destination or area, duration, optional start date, currency, meal budget | Product brief; the others are beyond the stated goals (CLAUDE.md rule 3). Listed in section 4. |
+| User inputs: interests, pace, budget, transport preferences, hotel or city changes | Destination or area, duration, optional start date (currency and meal budget removed by ADR 017) | Product brief; the others are beyond the stated goals (CLAUDE.md rule 3). Listed in section 4. |
 | Item states locked, preferred, flexible | `locked` boolean plus a stability cost for changes | Data model and plan Phase 7. |
 | Offline queued edits, conflict resolution, sync | On-device read cache with honest staleness labels | Plan Phase 5. Queued sync is listed in section 4. |
 | Public transport with GTFS, OpenTripPlanner or MOTIS self-hosted | Reassess in Prompt 13: Transitous or nothing; no self-hosting | No server (D14); ADR 005. |
@@ -94,7 +102,9 @@ Planned phases and their dependencies are in `docs/app-plan.md`.
 These are not in any prompt below. Ask for them explicitly if wanted.
 
 - Interests, travel pace, transport preferences and a free-form "approximate budget" as trip
-  inputs (the product brief has meal budget and currency only).
+  inputs.
+- Currencies, meal budgets, restaurant prices (expected or actual), price bands and currency
+  conversion (removed by ADR 017 on 2026-11-13).
 - A choice of five itinerary themes (culture, food, nature, relaxed, highlights).
 - Hotel or accommodation modelling, nights per city and "maximum hotel changes" (hotel
   availability is out of scope; the plan uses base cities and day allocation).
@@ -109,6 +119,7 @@ These are not in any prompt below. Ask for them explicitly if wanted.
 
 # Prompt 1 — Finish Phase 0: spikes S1 and S5
 
+**Status:** done (S1 and S5 findings in `docs/spikes/`; D7 decided). Kept for the record.  
 **Recommended model:** Claude Opus  
 **Effort:** High  
 **App-plan phase:** 0 (S2, S3 and S4 are done or removed)
@@ -150,6 +161,7 @@ Scope guards:
 
 # Prompt 2 — Project foundation (Phase 1)
 
+**Status:** done and accepted (ADR 010). Kept for the record.  
 **Recommended model:** Claude Sonnet  
 **Effort:** High  
 **App-plan phase:** 1
@@ -178,7 +190,7 @@ Implement:
 4. A generated, typed API client for the app.
 5. Linting, formatting, type checks and tests, all running in GitHub Actions. Nothing may
    require a local Windows toolchain.
-6. A workflow that builds an Android development APK as an artifact.
+6. A workflow that builds an Android release-variant APK as an artifact (ADR 008 addendum).
 7. Deployment configuration for a Render free web service and a Supabase Free database
    (ADR 005), plus docs/deployment.md with step-by-step instructions. The owner creates the
    Supabase and Render accounts; guide them one step at a time. Deploy the health endpoint and
@@ -205,6 +217,7 @@ Scope guards:
 
 # Prompt 3 — Data model and geo data foundation (Phase 2)
 
+**Status:** done and accepted (ADR 011, ADR 012). Kept for the record.  
 **Recommended model:** Claude Sonnet  
 **Effort:** High  
 **App-plan phase:** 2
@@ -216,10 +229,10 @@ docs/app-plan.md, docs/kpis.md, docs/spikes/s2-data-findings.md and ADRs 002, 00
 Task: implement the persistence layer and the region data import.
 
 1. Implement the `geo` and `app` schemas exactly as docs/data-model.md describes, with
-   migrations: regions, import runs, countries, currencies, cities, places, place sources and
-   licences, restaurant profiles, Wikidata signals, travel times, FX rates; installation, trip,
-   itinerary, day, item, transfer, user place, price record, and the past-trip archive
-   (`app.trip_visit`, ADR 006). There is no opening-hours table. Installation tokens replace user
+   migrations: regions, import runs, countries, cities, places, place sources and licences,
+   restaurant profiles, Wikidata signals, travel times; installation, trip, itinerary, day, item,
+   transfer, user place, and the past-trip archive (`app.trip_visit`, ADR 006). No prices,
+   currencies or FX rates (ADR 017). There is no opening-hours table. Installation tokens replace user
    accounts. No photo table yet.
 2. A region import command, run as a manually started GitHub Actions workflow (as in spike S2): it
    downloads a Geofabrik extract with an identifying User-Agent, filters it, imports it into a
@@ -246,13 +259,14 @@ Scope guards:
 - Data and search only. No itinerary optimization, no routing, no map screens.
 - Never invent data. Unknown values stay unknown.
 - Do not call Nominatim, Overpass or tile.openstreetmap.org from code or tests.
-- No weather, no transit, no photos, no accounts, no LLM dependency.
+- No weather, no transit, no photos, no accounts, no budgets or prices, no LLM dependency.
 ```
 
 ---
 
 # Prompt 4 — Travel-time service (Phase 3)
 
+**Status:** built, awaiting acceptance (ADR 013). Kept for the record.  
 **Recommended model:** Claude Sonnet  
 **Effort:** High  
 **App-plan phase:** 3
@@ -293,6 +307,7 @@ Scope guards:
 
 # Prompt 5 — Planner v1: attractions and days (Phase 4)
 
+**Status:** built, awaiting acceptance (ADR 014; amended by ADR 016). Kept for the record.  
 **Recommended model:** Claude Opus  
 **Effort:** High  
 **App-plan phase:** 4
@@ -303,9 +318,9 @@ docs/kpis.md and ADRs 003, 004, 006.
 
 Task: implement version 1 of the deterministic planning engine for attractions and days.
 
-Inputs: a city destination (area destinations come in Prompt 7), a duration in days, an optional
-start date, and the trip currency. Nothing else is a user input in the MVP (see section 4 of
-docs/build-prompts.md).
+Inputs: a city destination (area destinations come in Prompt 7), a duration in days and an
+optional start date. Nothing else is a user input in the MVP (see section 4 of
+docs/build-prompts.md); there is no currency or budget (ADR 017).
 
 Produce two meaningfully different itineraries from two strategy profiles of one engine, with a
 diversity check (Jaccard overlap of visits at most 0.6, or a different allocation of days). If
@@ -337,6 +352,8 @@ Scope guards:
 
 # Prompt 6 — Mobile shell (Phase 5)
 
+**Status:** built, awaiting acceptance (ADR 015); the owner reported on 2026-11-13 that the app
+works on the phone. Kept for the record.  
 **Recommended model:** Claude Sonnet  
 **Effort:** High  
 **App-plan phase:** 5
@@ -346,11 +363,11 @@ Read CLAUDE.md, docs/product-brief.md, docs/architecture.md, docs/data-model.md,
 and ADRs 001, 004, 006, 008.
 
 Task: build the mobile screens for creating a trip, comparing two proposals, and viewing days
-and the map, on Android, using development builds. The design should feel calm and minimal, like
+and the map, on Android, as release-variant APKs built in GitHub Actions (ADR 008). The design should feel calm and minimal, like
 a travel-planning product, not a booking marketplace. Do not copy another product's design.
 
-Implement: trip list; create-trip form (destination search, days, optional start date, currency,
-meal budget per person); proposals comparison (side by side or swipeable, with a short
+Implement: trip list; create-trip form (destination search, days, optional start date; no currency
+or budget, ADR 017); proposals comparison (side by side or swipeable, with a short
 structured summary of how they differ); day list with items, durations, transfers and their
 routed or estimated labels; map with markers for the day and transfer lines, loading markers
 progressively; itinerary selection; attribution for OpenStreetMap and the tile provider visible
@@ -360,14 +377,14 @@ error states. Show a clear "waking the server" state during the Render cold star
 Accessibility: touch targets, screen-reader labels, contrast, text scaling, nothing conveyed by
 colour alone. Performance: virtualised lists; no unnecessary requests.
 
-Tests: component tests for the critical flows; one end-to-end flow on an Android emulator in CI
-against a seeded backend.
+Tests: component tests for the critical flows; one end-to-end flow on an Android emulator against
+a seeded backend, in a GitHub Actions workflow the owner starts by hand (not on every push).
 
 Scope guards:
 - Screens and integration only; do not change planning calculations except to fix an
   integration defect.
 - No accounts, no photos, no weather, no sharing or social features, no booking.
-- No offline editing or sync.
+- No offline editing or sync. No budgets, currencies or prices.
 - No LLM dependency.
 ```
 
@@ -375,12 +392,13 @@ Scope guards:
 
 # Prompt 7 — Restaurants in itineraries and area destinations (Phase 6)
 
+**Status:** built on 2026-11-13, awaiting acceptance (ADR 016). Kept for the record.  
 **Recommended model:** Claude Opus  
 **Effort:** High  
 **App-plan phase:** 6
 
 ```text
-Read CLAUDE.md, docs/architecture.md, docs/data-model.md, docs/app-plan.md and ADRs 003, 004.
+Read CLAUDE.md, docs/architecture.md, docs/data-model.md, docs/app-plan.md and ADRs 003, 004, 017.
 
 Task: add meals to itineraries, and area destinations (a region instead of a single city).
 
@@ -400,7 +418,8 @@ Tests: meals inside meal windows; area fixtures give a sensible day allocation; 
 updated.
 
 Scope guards:
-- Meals and areas only. No manual restaurant adding, no prices, no recalculation after edits.
+- Meals and areas only. No manual restaurant adding, no recalculation after edits.
+- No prices, budgets or currencies (ADR 017).
 - No opening hours, reservations, ratings or reviews.
 - No hotels or accommodation modelling.
 - No LLM dependency.
@@ -410,20 +429,22 @@ Scope guards:
 
 # Prompt 8 — Add a city or place, with recalculation (Phase 7)
 
+**Status:** next, when the owner asks for it.  
 **Recommended model:** Claude Opus  
 **Effort:** High  
 **App-plan phase:** 7
 
 ```text
-Read CLAUDE.md, docs/architecture.md, docs/data-model.md, docs/app-plan.md and the planning
-engine.
+Read CLAUDE.md, docs/architecture.md, docs/data-model.md, docs/app-plan.md, ADRs 014, 016 and 017
+and the planning engine.
 
 Task: let the user add a city or place that was not in the proposal, and recalculate around it.
 
 1. The user searches for a place or drops a pin; it becomes a mandatory visit.
 2. The engine recalculates with minimal disruption: a stability cost for moving existing items,
-   `locked` items never moved or removed, and the destination's day length respected. If the
-   addition is far away, days are re-allocated to a new base city.
+   `locked` items never moved or removed, the day length and the meal windows respected (meals
+   move with the day and stay at imported places to eat, ADR 016). If the addition is far away,
+   days are re-allocated to a new base city with the inter-city legs of ADR 016.
 3. The app previews the change as a diff (what moves, what is dropped, added travel time, any
    estimated times). The user accepts or discards. Nothing changes until acceptance.
 4. Itinerary versioning: accepting creates a new version; the previous one stays; adding then
@@ -441,43 +462,42 @@ Scope guards:
 - Adding and removing places only. No restaurant adding in this prompt.
 - No minimum or preferred nights, "trip may grow" options or per-city protections (section 4 of
   docs/build-prompts.md).
+- No budgets, currencies or prices (ADR 017).
 - No LLM dependency, no booking.
 ```
 
 ---
 
-# Prompt 9 — Add a restaurant, prices and budget (Phase 8)
+# Prompt 9 — Add a restaurant (Phase 8)
 
+**Status:** after Prompt 8. Prices, budgets and currency conversion were removed from this prompt
+by ADR 017 (2026-11-13).  
 **Recommended model:** Claude Sonnet  
 **Effort:** High  
 **App-plan phase:** 8
 
 ```text
 Read CLAUDE.md, docs/product-brief.md, docs/architecture.md, docs/api-evaluation.md,
-docs/data-model.md, docs/app-plan.md and ADRs 002, 003.
+docs/data-model.md, docs/app-plan.md and ADRs 002, 003, 016, 017.
 
-Task: restaurant adding, best-slot suggestions, prices and budget.
+Task: let the user add a restaurant and place it in the best slot.
 
 Adding: search the local data first, then Photon through the backend (read its current terms),
-then manual entry with a name and a map pin (the user may also type coordinates).
+then manual entry with a name and a map pin (the user may also type coordinates). The user may
+give cuisines and the meals the place serves; otherwise they are unknown and shown as such
+("Cuisine not specified").
 
-Best slot: score every day and meal slot by location, neighbouring activities, meal type and
-travel impact; return up to three suggestions with reasons, the estimated detour and which
-items move. No opening hours and no reservations.
+Best slot: score every day and meal slot of the itinerary by location, neighbouring activities,
+meal type and venue type, meal window (ADR 016) and travel impact; return up to three suggestions
+with reasons, the estimated detour and which items move. The meal must stay inside its window and
+the day inside its hours (the validator checks both). No opening hours and no reservations.
 
-Prices: expected price before the meal and actual price after it, per person or total, any
-currency, with a stated source and confidence. Price bands (budget, moderate, upscale, fine
-dining) come from editable per-trip thresholds with defaults (app-plan D10). A trip meal budget
-and a budget-fit calculation. A daily FX job through Frankfurter (read its current terms; stored
-rates; conversions labelled approximate with the date of the rate). Never infer a precise price
-from a category.
-
-Tests: scoring fixtures; per-person derivation; band and budget-fit calculations; FX fallback
-order; the provider budget counter stops calls at the limit.
+Tests: scoring fixtures; suggestions respect meal windows and day length; manual entry without
+cuisine stays "Cuisine not specified"; the provider budget counter stops calls at the limit.
 
 Scope guards:
-- Restaurants and prices only. No reviews or ratings, no reservations or booking, no fabricated
-  prices.
+- Restaurants only. No prices, budgets, price bands or currencies (ADR 017).
+- No reviews or ratings, no reservations or booking.
 - No weather, no accounts.
 - No LLM dependency.
 ```
@@ -486,6 +506,7 @@ Scope guards:
 
 # Prompt 10 — MVP hardening and private Android APK (Phase 9)
 
+**Status:** after Prompt 9.  
 **Recommended model:** Claude Opus  
 **Effort:** High  
 **App-plan phase:** 9
@@ -497,8 +518,9 @@ Task: stabilise Detour for the owner's own use as a sideloaded Android APK. No n
 features.
 
 1. Audit: requirements implemented, incomplete items, architecture consistency, provider-term
-   compliance and attribution, quotas, error handling, data correctness, itinerary feasibility,
-   price transparency, accessibility, performance, privacy, security, test coverage.
+   compliance and attribution, quotas, error handling, data correctness, itinerary feasibility
+   (meal windows and day length included), accessibility, performance, privacy, security, test
+   coverage. Confirm that no budget, currency or price remains anywhere (ADR 017).
 2. Resilience (only what the plan has): an on-device read cache with honest "cached, last
    updated" labels, retry with backoff, network-status handling, a clear state for each external
    dependency being slow or down (Render cold start, Supabase paused or limited, FOSSGIS
@@ -509,11 +531,13 @@ features.
    log leakage. Trip and local data deletion. No export unless approved.
 4. Backups: Supabase Free has none (ADR 005). Implement or document the scheduled export of the
    `app` schema that the owner chose, or record that the owner accepted the risk.
-5. Test plan and execution for these journeys: a 3-day city trip; a 14-day multi-city trip;
-   comparing two proposals; adding a place and previewing the impact; an impossible addition;
-   adding a provider restaurant; a custom restaurant by map pin; using the app with no network
-   (read cache); restarting and recovering a saved trip; FOSSGIS unavailable or throttled
-   (estimated times labelled); the Render cold start; a paused database; undoing an adjustment.
+5. Test plan and execution for these journeys: a 3-day city trip; a 14-day area trip with several
+   base cities; an area in Japan (refused, single-city only); comparing two proposals; adding a
+   place and previewing the impact; an impossible addition; adding a provider restaurant; a
+   custom restaurant by map pin; using the app with no network (read cache); restarting and
+   recovering a saved trip; FOSSGIS unavailable or throttled (estimated times labelled); the
+   Render cold start; a paused database; undoing an adjustment. The Android end-to-end workflow
+   is started by hand; run it once and record the result.
 6. docs/android-release.md: exact steps to build the APK in GitHub Actions and install it on a
    phone (step by step). docs/known-limitations.md. docs/ios-readiness.md (the Mac route,
    ADR 008).
@@ -533,6 +557,8 @@ Scope guards:
 
 # Prompt 11 — Past trips archive (ADR 006)
 
+**Status:** the manual archive endpoint exists (Phase 2); the automatic archive and the app screen
+are open.  
 **Recommended model:** Claude Sonnet  
 **Effort:** Medium  
 **App-plan phase:** release timing to be set by the owner
@@ -546,7 +572,8 @@ and one `app.trip_visit` row per city and attraction of the selected itinerary w
 name, point, kind and day; delete transfers, route geometry, unselected and superseded
 itineraries, and versions. The app shows a past trip as a map with markers for visited cities and
 attractions and a list grouped by city, with no routes or travel times. The user can clear the
-visits that were skipped (the `confirmed` flag). Restaurants and prices are untouched.
+visits that were skipped (the `confirmed` flag). Meals and restaurants are not archived. For an
+area trip, the archive lists each base city once.
 
 Tests: archiving deletes exactly the listed data; a past trip renders without any routing data;
 re-importing `geo` data does not break an archived trip; the size of an archived trip is
@@ -557,13 +584,14 @@ Scope guards: archive and display only; no re-planning of past trips; no photos;
 
 # Prompt 12 — Public transport (Phase 10)
 
+**Status:** after the MVP.  
 **Recommended model:** Claude Opus  
 **Effort:** High  
 **App-plan phase:** 10
 
 ```text
 Read CLAUDE.md, docs/architecture.md, docs/api-evaluation.md, docs/data-model.md, the routing
-implementation, and ADRs 005, 007, 008.
+implementation, and ADRs 005, 007, 008, 016.
 
 Task: first reassess the public-transport options with the current official documentation.
 Self-hosting OpenTripPlanner or MOTIS is not possible (no server). The candidate is the hosted
@@ -576,14 +604,17 @@ adapter (timeout, cache, budget, fallback, identifying headers, tests on recorde
 Legs show the mode (walk, rail, bus and so on), departure and arrival times, operator, and
 whether the data is scheduled or real-time. Where no data exists, show nothing invented; fall
 back to labelled driving or walking times. Document the supported regions, the unsupported
-cases and feed attribution. Japan's rail coverage is the main reason for this phase (app-plan D4).
+cases and feed attribution. Japan's rail coverage is the main reason for this phase (app-plan D4):
+if transit fits, propose (in the ADR) lifting the single-city limit for areas in Japan and use
+transit for the legs between base cities there.
 
-Scope guards: transit only; no ticket purchase or fare claims; no worldwide coverage claim; no
+Scope guards: transit only; no ticket purchase, fares or prices; no worldwide coverage claim; no
 paid provider; no LLM.
 ```
 
 # Prompt 13 — iOS on the owner's Mac (Phase 11)
 
+**Status:** after the MVP.  
 **Recommended model:** Claude Sonnet  
 **Effort:** High  
 **App-plan phase:** 11
@@ -604,6 +635,7 @@ ADR; no LLM.
 
 # Prompt 14 — Photos: design first (Phase 12)
 
+**Status:** after the MVP.  
 **Recommended model:** Claude Opus  
 **Effort:** Medium  
 **App-plan phase:** 12
@@ -619,8 +651,8 @@ access (use the picker).
 
 Compare storage options using their current official pages: device-only (the default),
 Supabase Storage (Free plan storage and egress limits), Cloudflare R2 and Backblaze B2. Include
-free allowance, bandwidth, mobile support, signed URLs, backup, privacy, deletion and the cost
-if the free allowance is exceeded. Include Firebase Storage only if it is clearly better and its
+free allowance, bandwidth, mobile support, signed URLs, backup, privacy, deletion and what
+happens if the free allowance is exceeded (the owner wants no paid services). Include Firebase Storage only if it is clearly better and its
 free terms are verified.
 
 Create docs/photo-architecture.md and update docs/data-model.md and docs/app-plan.md. Do not

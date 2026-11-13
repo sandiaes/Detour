@@ -115,8 +115,9 @@ environment unless a transport is injected, so no test or CI run can reach the s
 `.github/workflows/e2e-android.yml` builds an x86_64 release APK with `DETOUR_E2E=1` (allows plain
 HTTP to the CI runner only), seeds a database with `python -m tests.e2e_seed` (the API tests'
 invented fixture region plus synthetic sights, Testburg), starts the API with routing and Photon
-off, and runs `apps/mobile/e2e/trip-flow.yaml` with Maestro on an API 34 emulator. It runs on pull
-requests that touch the app, the API or the workflow, on pushes to main, and by hand. Reports are
+off, and runs `apps/mobile/e2e/trip-flow.yaml` with Maestro on an API 34 emulator. It runs **by
+hand only** (Actions → "E2E Android" → "Run workflow"): the owner confirmed the app works on the
+phone on 2026-11-13 and asked for it not to run on every pull request or push. Reports are
 uploaded as an artifact. Component tests (`npm test`) cover the same flow with a fake server.
 
 ## Running an import locally

@@ -2331,6 +2331,67 @@
   },
   "components": {
     "schemas": {
+      "Arrival": {
+        "properties": {
+          "from_base_city_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Base City Id"
+          },
+          "from_base_city_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Base City Name"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "drive"
+            ],
+            "title": "Mode"
+          },
+          "seconds": {
+            "type": "integer",
+            "title": "Seconds"
+          },
+          "meters": {
+            "type": "integer",
+            "title": "Meters"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "routed",
+              "estimated"
+            ],
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_base_city_id",
+          "from_base_city_name",
+          "mode",
+          "seconds",
+          "meters",
+          "confidence"
+        ],
+        "title": "Arrival",
+        "description": "The drive from the previous day's base city that starts the first day at a new one."
+      },
       "AttributionEntry": {
         "properties": {
           "name": {
@@ -2519,6 +2580,29 @@
             ],
             "title": "Base City Id"
           },
+          "base_city_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base City Name",
+            "description": "The city the day is planned from (a snapshot)"
+          },
+          "arrival": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Arrival"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Travel from the previous day's base city at the start of the day; null when the base does not change"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/Item"
@@ -2675,6 +2759,22 @@
             "type": "boolean",
             "title": "Planning Available",
             "description": "True only if the covering region is available (passed its readiness gates)"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "region_not_available",
+                  "area_single_city_only"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason",
+            "description": "Null when a trip to this destination can be planned. region_not_available: the region has not passed its readiness gates. area_single_city_only: an area in a country planned as single-city trips only (Japan, for now); choose a city."
           },
           "match": {
             "type": "string",
@@ -3156,7 +3256,8 @@
                 "enum": [
                   "breakfast",
                   "lunch",
-                  "dinner"
+                  "dinner",
+                  "snack"
                 ]
               },
               {
@@ -3289,6 +3390,17 @@
               }
             ],
             "description": "To the next item of the day. Null for the last item, or when no transfer has been computed (items added or moved by hand)"
+          },
+          "restaurant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RestaurantInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Meals only: the place to eat as the open data describes it"
           }
         },
         "type": "object",
@@ -3332,7 +3444,8 @@
                 "enum": [
                   "breakfast",
                   "lunch",
-                  "dinner"
+                  "dinner",
+                  "snack"
                 ]
               },
               {
@@ -3489,7 +3602,8 @@
                 "enum": [
                   "breakfast",
                   "lunch",
-                  "dinner"
+                  "dinner",
+                  "snack"
                 ]
               },
               {
@@ -4276,12 +4390,28 @@
           "day_utilisation_permille": {
             "type": "integer",
             "title": "Day Utilisation Permille",
-            "description": "Visits and transfers as permille of the 09:00-21:00 window of all days"
+            "description": "Visits, meals and transfers as permille of the 09:00-21:00 window of all days"
           },
           "travel_share_permille": {
             "type": "integer",
             "title": "Travel Share Permille",
             "description": "Transfer time as permille of planned time"
+          },
+          "meals": {
+            "type": "integer",
+            "title": "Meals",
+            "default": 0
+          },
+          "meal_minutes": {
+            "type": "integer",
+            "title": "Meal Minutes",
+            "default": 0
+          },
+          "intercity_legs": {
+            "type": "integer",
+            "title": "Intercity Legs",
+            "description": "Drives between base cities; included in travel_minutes",
+            "default": 0
           }
         },
         "type": "object",
@@ -4409,6 +4539,44 @@
         ],
         "title": "RegionInfo"
       },
+      "RestaurantInfo": {
+        "properties": {
+          "venue_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Type",
+            "description": "restaurant or cafe (from the OpenStreetMap amenity tag); null when unknown"
+          },
+          "cuisines": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cuisines",
+            "description": "From the OpenStreetMap cuisine tag; null when the data states no cuisine (shown as 'Cuisine not specified')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "venue_type",
+          "cuisines"
+        ],
+        "title": "RestaurantInfo",
+        "description": "What the open data says about a meal's place to eat. There is no price, rating or opening\nhours."
+      },
       "Transfer": {
         "properties": {
           "to_item_id": {
@@ -4495,35 +4663,6 @@
             "title": "End Date",
             "description": "start_date + duration_days - 1, if start_date is set"
           },
-          "currency_code": {
-            "type": "string",
-            "title": "Currency Code"
-          },
-          "meal_budget_per_person": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Budget Per Person"
-          },
-          "price_band_thresholds": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Band Thresholds"
-          },
           "selected_itinerary_id": {
             "anyOf": [
               {
@@ -4580,9 +4719,6 @@
           "duration_days",
           "start_date",
           "end_date",
-          "currency_code",
-          "meal_budget_per_person",
-          "price_band_thresholds",
           "selected_itinerary_id",
           "status",
           "archived_at",
@@ -4631,56 +4767,6 @@
               }
             ],
             "title": "Start Date"
-          },
-          "currency_code": {
-            "anyOf": [
-              {
-                "type": "string",
-                "description": "ISO 4217 code"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Currency Code",
-            "description": "Defaults to the destination country's currency, if known"
-          },
-          "meal_budget_per_person": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Budget Per Person"
-          },
-          "price_band_thresholds": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Band Thresholds",
-            "description": "Upper bounds of budget, moderate and upscale, in the trip currency; fine dining is above the third. Null until set."
           }
         },
         "additionalProperties": false,
@@ -4733,42 +4819,6 @@
             ],
             "title": "Start Date"
           },
-          "meal_budget_per_person": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Budget Per Person"
-          },
-          "price_band_thresholds": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Band Thresholds"
-          },
           "selected_itinerary_id": {
             "anyOf": [
               {
@@ -4785,7 +4835,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "TripUpdate",
-        "description": "Only the fields present are changed. Destination and currency are fixed after creation."
+        "description": "Only the fields present are changed. The destination is fixed after creation."
       },
       "TripVisit": {
         "properties": {
