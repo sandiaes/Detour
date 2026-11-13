@@ -8,7 +8,7 @@ import type {
 import { useCallback } from "react";
 
 import { useBackend } from "../api/BackendProvider";
-import { NetworkError, call } from "../api/unwrap";
+import { NetworkError, call, callEmpty } from "../api/unwrap";
 import { useData } from "./DataProvider";
 
 // Everything the app changes on the server. There is no offline editing: with no connection these
@@ -88,5 +88,18 @@ export function useTripActions() {
     [need, data],
   );
 
-  return { createTrip, generate, selectPlan, connected: client !== null };
+  /** Deletes the trip with its plans on the server, then forgets everything held for it. */
+  const deleteTrip = useCallback(
+    async (trip: Trip): Promise<void> => {
+      await callEmpty(
+        need().DELETE("/v1/trips/{trip_id}", { params: { path: { trip_id: trip.id } } }),
+      );
+      data.update<Trip[]>(keys.trips, (list) => list.filter((t) => t.id !== trip.id));
+      data.forget(keys.itineraries(trip.id));
+      if (trip.selected_itinerary_id) data.forget(keys.itinerary(trip.selected_itinerary_id));
+    },
+    [need, data],
+  );
+
+  return { createTrip, generate, selectPlan, deleteTrip, connected: client !== null };
 }

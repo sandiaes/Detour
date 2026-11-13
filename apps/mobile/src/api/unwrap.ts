@@ -39,6 +39,21 @@ export async function call<T>(request: Promise<Result<T>>): Promise<T> {
   throw new ApiError(result.response.status, code, detail, result.error ?? null);
 }
 
+/** For answers with no body (204 No Content, for example a deletion). */
+export async function callEmpty(request: Promise<Result<unknown>>): Promise<void> {
+  let result: Result<unknown>;
+  try {
+    result = await request;
+  } catch (e) {
+    throw new NetworkError(e instanceof Error ? e.message : undefined);
+  }
+  if (result.response.ok && result.error === undefined) return;
+  const body = (result.error ?? null) as { detail?: unknown; code?: unknown } | null;
+  const detail = typeof body?.detail === "string" ? body.detail : `HTTP ${result.response.status}`;
+  const code = typeof body?.code === "string" ? body.code : null;
+  throw new ApiError(result.response.status, code, detail, result.error ?? null);
+}
+
 /** Wording for errors the user can act on. Codes come from the backend (stable). */
 const MESSAGES: Record<string, string> = {
   area_single_city_only:

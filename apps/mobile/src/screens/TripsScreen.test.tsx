@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { AppContent } from "../App";
 import { createMemoryStore } from "../cache/store";
 import { createFakeClient, offline } from "../testing/fakeClient";
-import { TRIP_ID, makeTrip } from "../testing/fixtures";
+import { ESSENTIALS_ID, TRIP_ID, makeItinerary, makeTrip } from "../testing/fixtures";
 import { Harness } from "../testing/harness";
 
 const trips = (list = [makeTrip()]) => ({ "GET /v1/trips": () => list });
@@ -174,4 +174,35 @@ test("opening a trip needs no further request for the trip itself", async () => 
   expect(
     client.calls.find((c) => c.path === "/v1/trips/{trip_id}/itineraries")?.params.trip_id,
   ).toBe(TRIP_ID);
+});
+
+test("a trip with a chosen plan opens on that plan, not on the proposals", async () => {
+  const client = createFakeClient({
+    ...trips([makeTrip({ selected_itinerary_id: ESSENTIALS_ID })]),
+    "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
+  });
+  await render(
+    <Harness client={client}>
+      <AppContent />
+    </Harness>,
+  );
+  await fireEvent.press(await screen.findByRole("button", { name: /Plan selected/ }));
+  expect(await screen.findByRole("header", { name: "Essentials plan" })).toBeOnTheScreen();
+  expect(await screen.findByText("Day 1 · Sat 1 May")).toBeOnTheScreen();
+  expect(screen.queryByText("How they differ")).toBeNull();
+  expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBe(0);
+});
+
+test("a trip with no chosen plan opens on its proposals", async () => {
+  const client = createFakeClient({
+    ...trips(),
+    "GET /v1/trips/{trip_id}/itineraries": () => [],
+  });
+  await render(
+    <Harness client={client}>
+      <AppContent />
+    </Harness>,
+  );
+  await fireEvent.press(await screen.findByRole("button", { name: /No plan chosen yet/ }));
+  expect(await screen.findByText("Not planned yet")).toBeOnTheScreen();
 });

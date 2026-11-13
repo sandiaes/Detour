@@ -7,9 +7,23 @@ import { ResourceNotices } from "../components/ResourceNotices";
 import { EmptyState, ErrorState, LoadingState, ScreenHeader, WakingServer } from "../components/ui";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
-import { useNavigation } from "../nav/Navigator";
+import { type Route, useNavigation } from "../nav/Navigator";
 import { colors, radius, spacing, type } from "../theme";
 import { formatTripSpan } from "../util/format";
+
+/** A trip with a chosen plan opens on that plan; the proposals are for trips still to decide. */
+export function tripRoute(trip: Trip): Route {
+  if (trip.status !== "past" && trip.selected_itinerary_id) {
+    return {
+      name: "itinerary",
+      tripId: trip.id,
+      itineraryId: trip.selected_itinerary_id,
+      view: "days",
+      day: 1,
+    };
+  }
+  return { name: "trip", tripId: trip.id };
+}
 
 export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   const span = formatTripSpan(trip.start_date, trip.end_date, trip.duration_days);
@@ -23,7 +37,11 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${trip.title}. ${trip.destination.name}. ${span}. ${status.replace("✓ ", "")}.`}
-      accessibilityHint="Opens the trip"
+      accessibilityHint={
+        trip.status !== "past" && trip.selected_itinerary_id
+          ? "Opens the selected plan"
+          : "Opens the trip"
+      }
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
@@ -74,7 +92,7 @@ export function TripsScreen() {
         data={trips.data}
         keyExtractor={(t) => t.id}
         renderItem={({ item }) => (
-          <TripCard trip={item} onPress={() => nav.push({ name: "trip", tripId: item.id })} />
+          <TripCard trip={item} onPress={() => nav.push(tripRoute(item))} />
         )}
         ListHeaderComponent={<ResourceNotices resource={trips} noun="trips" />}
         contentContainerStyle={styles.list}

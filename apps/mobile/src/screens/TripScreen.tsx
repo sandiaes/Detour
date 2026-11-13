@@ -178,14 +178,12 @@ export function TripScreen({ tripId }: { tripId: string }) {
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const [announce, setAnnounce] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const pager = useRef<FlatList<ItinerarySummary>>(null);
 
   const run = useCallback(async (id: string, work: () => Promise<void>) => {
     setBusy(id);
     setProblem(null);
-    setAnnounce(null);
     try {
       await work();
     } catch (e) {
@@ -198,9 +196,11 @@ export function TripScreen({ tripId }: { tripId: string }) {
   const select = (plan: ItinerarySummary) =>
     run(plan.id, async () => {
       await actions.selectPlan(tripId, plan.id);
-      setAnnounce(
-        `The ${PROFILE_LABEL[plan.profile]} plan is now the selected plan for this trip.`,
-      );
+      // The chosen plan is what the trip is from now on: open it, with the trips list under it.
+      nav.resetTo([
+        { name: "trips" },
+        { name: "itinerary", tripId, itineraryId: plan.id, view: "days", day: 1 },
+      ]);
     });
 
   const plan = () =>
@@ -239,7 +239,14 @@ export function TripScreen({ tripId }: { tripId: string }) {
   }
 
   const shown = plans.data ? visiblePlans(plans.data) : [];
-  const pair = shown.length >= 2 ? shown.slice(0, 2) : null;
+  // After new proposals were asked for, the plan chosen earlier is kept apart from the new pair.
+  const kept = shown.find(
+    (p) =>
+      p.status === "selected" &&
+      shown.some((q) => q !== p && q.status !== "selected" && q.generation_id !== p.generation_id),
+  );
+  const proposals = shown.filter((p) => p !== kept);
+  const pair = proposals.length >= 2 ? proposals.slice(0, 2) : null;
   const sideBySide = width >= SIDE_BY_SIDE_MIN_WIDTH;
   const pageWidth = Math.max(240, width - spacing.lg * 2);
 
@@ -297,6 +304,15 @@ export function TripScreen({ tripId }: { tripId: string }) {
   } else {
     content = (
       <View style={styles.stack}>
+        {kept ? (
+          <View style={styles.pad}>
+            <Notice tone="info" label="Your current plan is kept">
+              It stays selected, with the places you added, until you choose one of the new
+              proposals below.
+            </Notice>
+            {renderPlan(kept)}
+          </View>
+        ) : null}
         {pair ? (
           <>
             <View style={styles.pad}>
@@ -345,7 +361,7 @@ export function TripScreen({ tripId }: { tripId: string }) {
             )}
           </>
         ) : (
-          <View style={styles.pad}>{shown.map((p) => renderPlan(p))}</View>
+          <View style={styles.pad}>{proposals.map((p) => renderPlan(p))}</View>
         )}
       </View>
     );
@@ -356,13 +372,20 @@ export function TripScreen({ tripId }: { tripId: string }) {
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <ScreenHeader title={trip.title} subtitle={subtitle} onBack={nav.back} />
+        <ScreenHeader
+          title={trip.title}
+          subtitle={subtitle}
+          onBack={nav.back}
+          right={
+            <Button
+              testID="trip-settings"
+              label="Trip settings"
+              variant="quiet"
+              onPress={() => nav.push({ name: "tripSettings", tripId })}
+            />
+          }
+        />
         <ResourceNotices resource={trips} noun="trips" />
-        {announce ? (
-          <Notice tone="info" label="Done">
-            {announce}
-          </Notice>
-        ) : null}
         {problem ? <Notice tone="error">{problem}</Notice> : null}
         {plans.data !== undefined ? <ResourceNotices resource={plans} noun="plans" /> : null}
         {content}

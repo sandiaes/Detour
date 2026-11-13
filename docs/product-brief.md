@@ -40,8 +40,11 @@ plan quickly and expects to adjust it.
    between them (ADR 016); areas in Japan are planned as single cities for now (D4).
 2. **Compare proposals.** See two itineraries side by side with a short structured summary of
    how they differ (cities covered, number of visits, total travel time). Open either on the
-   map or as a day list. Select one.
-3. **Review a day.** Ordered visits and meals with start times and durations, transfers with mode
+   map or as a day list. Select one: it opens, and from then on the trip opens on that plan, not
+   on the proposals (ADR 020). "Trip settings" asks for new proposals (the chosen plan stays
+   selected until another is chosen) or deletes the trip.
+3. **Review a day.** Ordered visits and meals, with sights and places to eat told apart on the
+   map and in the list (ADR 020), with start times and durations, transfers with mode
    and duration, markers for estimated travel times, the meal's venue type and cuisine, and, on an
    area trip, the day's base city and the drive from the previous one.
 4. **Add a place.** Search or drop a pin. The app shows what would change. Accept or discard.

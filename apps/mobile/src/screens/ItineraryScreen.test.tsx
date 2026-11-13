@@ -50,17 +50,17 @@ test("days list items with times, durations and what the duration is", async () 
 test("meals show the meal, the venue type and the cuisine from the open data", async () => {
   await openDays();
   expect(await screen.findByText("Gasthaus Zum Test")).toBeOnTheScreen();
-  expect(screen.getByText("Lunch · Restaurant")).toBeOnTheScreen();
+  expect(screen.getByText("Lunch")).toBeOnTheScreen();
   expect(screen.getByText("Regional, coffee shop")).toBeOnTheScreen();
   expect(screen.getByText("1 h · typical meal length")).toBeOnTheScreen();
   expect(screen.getByText("Lunch, planned between 12:00 and 14:30.")).toBeOnTheScreen();
   // Unknown cuisine is said plainly, never guessed; no price or rating is shown.
-  expect(screen.getByText("Dinner · Restaurant")).toBeOnTheScreen();
+  expect(screen.getByText("Dinner")).toBeOnTheScreen();
   expect(screen.getByText("Cuisine not specified")).toBeOnTheScreen();
   expect(screen.queryByText(/€|EUR|price|rating/i)).toBeNull();
   expect(
     screen.getByLabelText(
-      "Stop 3. Lunch · Restaurant. Gasthaus Zum Test. Regional, coffee shop. 13:01 to 14:01. " +
+      "Stop 3. Restaurant. Lunch. Gasthaus Zum Test. Regional, coffee shop. 13:01 to 14:01. " +
         "1 h, typical meal length. Why: Lunch, planned between 12:00 and 14:30.",
     ),
   ).toBeOnTheScreen();
@@ -103,7 +103,7 @@ test("an item reads as one sentence to a screen reader", async () => {
   await screen.findByText("Schönbrunn Palace");
   expect(
     screen.getByLabelText(
-      "Stop 1. Schönbrunn Palace. 09:00 to 11:00. 2 h, typical visit length. Why: A well-known sight. Close to the previous stop.",
+      "Stop 1. Attraction. Schönbrunn Palace. 09:00 to 11:00. 2 h, typical visit length. Why: A well-known sight. Close to the previous stop.",
     ),
   ).toBeOnTheScreen();
 });
@@ -230,4 +230,13 @@ test("the map needs a connection and says so, offering the list", async () => {
     </Harness>,
   );
   expect(await screen.findByText("The map needs a connection")).toBeOnTheScreen();
+});
+
+test("sights and places to eat are told apart in words, not by colour alone", async () => {
+  await openDays();
+  await screen.findByText("Gasthaus Zum Test");
+  expect(screen.getAllByTestId("kind-attraction").length).toBeGreaterThan(0);
+  expect(screen.getAllByTestId("kind-restaurant")).toHaveLength(2);
+  expect(screen.getAllByText("🍴 Restaurant")).toHaveLength(2);
+  expect(screen.getAllByText("Attraction").length).toBeGreaterThan(0);
 });

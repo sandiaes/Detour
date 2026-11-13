@@ -1,7 +1,7 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
 
-// A small stack navigator held in React state (ADR 015). The app has two root tabs and six
+// A small stack navigator held in React state (ADR 015). The app has two root tabs and seven
 // pushed screens, so a navigation library (and its native screens module) is not needed. The
 // Android back button pops the stack, then returns from Settings to Trips, then leaves the app.
 
@@ -10,6 +10,7 @@ export type Route =
   | { name: "settings" }
   | { name: "createTrip" }
   | { name: "trip"; tripId: string }
+  | { name: "tripSettings"; tripId: string }
   | {
       name: "itinerary";
       tripId: string;
@@ -30,6 +31,8 @@ export type Navigation = {
   /** Swap the top screen (used after creating a trip, and to switch days list or map). */
   replace: (route: Route) => void;
   back: () => boolean;
+  /** Replace the whole stack (the first route is the root). */
+  resetTo: (routes: Route[]) => void;
   /** Show a root tab and drop everything above it. */
   switchRoot: (route: Route & { name: "trips" | "settings" }) => void;
 };
@@ -74,6 +77,7 @@ export function NavigationProvider({
     push: (route) => setStack((s) => [...s, route]),
     replace: (route) => setStack((s) => [...s.slice(0, -1), route]),
     back,
+    resetTo: (routes) => setStack(routes.length > 0 ? routes : [{ name: "trips" }]),
     switchRoot: (route) => setStack([route]),
   };
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;

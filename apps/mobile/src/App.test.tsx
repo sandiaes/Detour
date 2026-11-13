@@ -153,12 +153,9 @@ test("create a trip, compare the proposals, select one, read its days, see it on
 
     expect(await screen.findByText("How they differ")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Select the Essentials plan" }));
-    expect(await screen.findByText("✓ Selected")).toBeOnTheScreen();
+    // Choosing a plan opens it: the trip is about that plan from now on.
+    expect(await screen.findByRole("header", { name: "Essentials plan" })).toBeOnTheScreen();
     expect(selected).toBe(ESSENTIALS_ID);
-
-    await fireEvent.press(
-      screen.getByRole("button", { name: "View the days of the Essentials plan" }),
-    );
     expect(await screen.findByText("Schönbrunn Palace")).toBeOnTheScreen();
     expect(screen.getAllByText("Estimated").length).toBeGreaterThan(0);
 
@@ -167,7 +164,6 @@ test("create a trip, compare the proposals, select one, read its days, see it on
     expect(screen.getByText("Data from OpenStreetMap")).toBeOnTheScreen();
 
     // Back to the list of trips: the selected plan is shown there without refetching the list.
-    await fireEvent.press(screen.getByRole("button", { name: "Back" }));
     await fireEvent.press(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
     expect(screen.getByText("✓ Plan selected")).toBeOnTheScreen();

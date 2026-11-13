@@ -15,6 +15,7 @@ import { CreateTripScreen } from "./screens/CreateTripScreen";
 import { ItineraryScreen } from "./screens/ItineraryScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TripScreen } from "./screens/TripScreen";
+import { TripSettingsScreen } from "./screens/TripSettingsScreen";
 import { TripsScreen } from "./screens/TripsScreen";
 import { TOUCH, colors, spacing, type } from "./theme";
 
@@ -33,6 +34,8 @@ function CurrentScreen({ route }: { route: Route }) {
       return <CreateTripScreen />;
     case "trip":
       return <TripScreen tripId={route.tripId} />;
+    case "tripSettings":
+      return <TripSettingsScreen tripId={route.tripId} />;
     case "itinerary":
       // Keyed so that a different plan never reuses another plan's state.
       return <ItineraryScreen key={route.itineraryId} route={route} />;

@@ -22,6 +22,9 @@ export const colors = {
   /** Map marker disc and its number: white on this, 7:1. */
   marker: "#1d5b55",
   markerSelected: "#1e2a2d",
+  /** Restaurants and cafés on the map and in the day list: white on this, 6:1. */
+  eat: "#9a4310",
+  eatSoft: "#fbeadd",
 };
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };

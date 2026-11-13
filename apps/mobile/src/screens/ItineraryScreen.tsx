@@ -24,9 +24,12 @@ import { PROFILE_LABEL } from "../domain/compare";
 import {
   type DayRow,
   buildDayRows,
+  STOP_KIND_LABEL,
   confidenceLabel,
   dayTotals,
+  isEatKind,
   modeLabel,
+  stopKind,
 } from "../domain/itinerary";
 import { type Route, useNavigation } from "../nav/Navigator";
 import { colors, radius, spacing, type } from "../theme";
@@ -48,8 +51,6 @@ const MEAL_LABEL = {
   snack: "Afternoon snack",
   dinner: "Dinner",
 } as const;
-
-const VENUE_LABEL: Record<string, string> = { restaurant: "Restaurant", cafe: "Café" };
 
 export function dayTitle(day: Day): string {
   return day.date
@@ -129,10 +130,12 @@ export function ItemRow({
       : meal
         ? "typical meal length"
         : "typical visit length";
-  const venue = item.restaurant?.venue_type ? VENUE_LABEL[item.restaurant.venue_type] : undefined;
+  const stop = stopKind(item);
+  const eat = isEatKind(stop);
+  const stopLabel = STOP_KIND_LABEL[stop];
   const kind =
     meal && item.meal_type
-      ? `${MEAL_LABEL[item.meal_type]}${venue ? ` · ${venue}` : ""}`
+      ? MEAL_LABEL[item.meal_type]
       : item.type === "free_time"
         ? "Free time"
         : null;
@@ -144,7 +147,7 @@ export function ItemRow({
     .filter(Boolean)
     .join(" · ");
   const label =
-    `${ordinal ? `Stop ${ordinal}. ` : ""}${kind ? `${kind}. ` : ""}${item.display_name}. ` +
+    `${ordinal ? `Stop ${ordinal}. ` : ""}${item.type === "free_time" ? "" : `${stopLabel}. `}${kind ? `${kind}. ` : ""}${item.display_name}. ` +
     `${tags ? `${tags}. ` : ""}${cuisine ? `${cuisine}. ` : ""}${when}. ` +
     `${duration}, ${source}.${reasons ? ` Why: ${reasons}` : ""}`;
   const busy = actions?.busyId === item.id;
@@ -154,11 +157,13 @@ export function ItemRow({
         <Text style={styles.time}>{start ?? "–"}</Text>
         {end ? <Text style={styles.timeEnd}>{end}</Text> : null}
       </View>
-      <View style={styles.itemBody}>
+      <View style={[styles.itemBody, eat && styles.itemBodyEat]}>
         <View accessible accessibilityLabel={label} style={styles.itemText}>
           <View style={styles.titleRow}>
             {ordinal ? (
-              <View style={styles.ordinal}>
+              // Sights are round and green, places to eat are square and orange, and the tag
+              // below says it in words: never colour alone.
+              <View style={[styles.ordinal, eat && styles.ordinalEat]}>
                 <Text style={styles.ordinalText} maxFontSizeMultiplier={1.3}>
                   {ordinal}
                 </Text>
@@ -166,6 +171,15 @@ export function ItemRow({
             ) : null}
             <Text style={styles.itemTitle}>{item.display_name}</Text>
           </View>
+          {item.type !== "free_time" ? (
+            <Text
+              testID={`kind-${stop}`}
+              style={[styles.kindTag, eat ? styles.kindTagEat : styles.kindTagSight]}
+            >
+              {eat ? "🍴 " : ""}
+              {stopLabel}
+            </Text>
+          ) : null}
           {kind ? <Text style={styles.itemMeta}>{kind}</Text> : null}
           {cuisine ? <Text style={styles.itemMeta}>{cuisine}</Text> : null}
           <Text style={styles.itemMeta}>
@@ -357,6 +371,15 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
         title={`${label} plan`}
         subtitle={trip ? `${trip.title} · ${trip.destination.name}` : undefined}
         onBack={nav.back}
+        right={
+          <Button
+            testID="trip-settings"
+            label="Trip settings"
+            variant="quiet"
+            hint="Ask for new proposals or delete the trip"
+            onPress={() => nav.push({ name: "tripSettings", tripId: route.tripId })}
+          />
+        }
       />
       <ResourceNotices resource={itinerary} noun="this plan" />
       {problem ? <Notice tone="error">{[problem, ...issues].join(" ")}</Notice> : null}
@@ -559,6 +582,23 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
   },
+  itemBodyEat: { borderColor: colors.eat, borderLeftWidth: 5, backgroundColor: colors.eatSoft },
+  kindTag: {
+    ...type.caption,
+    fontWeight: "700",
+    alignSelf: "flex-start",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    overflow: "hidden",
+  },
+  kindTagSight: {
+    color: colors.marker,
+    borderColor: colors.marker,
+    backgroundColor: colors.primarySoft,
+  },
+  kindTagEat: { color: colors.eat, borderColor: colors.eat, backgroundColor: colors.surface },
   titleRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   itemText: { gap: spacing.xs },
   itemTags: { ...type.small, fontWeight: "700", color: colors.primary },
@@ -571,6 +611,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  ordinalEat: { backgroundColor: colors.eat, borderRadius: radius.sm },
   ordinalText: { color: colors.onPrimary, fontWeight: "700", fontSize: 14 },
   itemTitle: { ...type.heading, color: colors.text, flexShrink: 1 },
   itemMeta: { ...type.small, color: colors.muted },
