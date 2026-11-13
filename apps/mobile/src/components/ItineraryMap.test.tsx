@@ -37,7 +37,7 @@ function manyStops(count: number): Day {
   return { ...day1, id: "many", items };
 }
 
-const props = { map: MAP_CONFIG, onShowList: () => {} };
+const props = { map: MAP_CONFIG, onShowList: () => {}, selectedId: null, onSelect: () => {} };
 const markers = () => screen.queryAllByTestId(/^marker-/);
 
 test("gives the map the style URL that the backend sent", async () => {
@@ -91,7 +91,8 @@ test("transfer lines are drawn solid when routed and dashed when estimated, and 
   expect(routed?.style.lineDasharray).toBeUndefined();
   expect(estimated?.style.lineDasharray).toEqual([1.5, 1.5]);
   expect(routed?.filter).toEqual(["==", ["get", "confidence"], "routed"]);
-  // The legend explains both, in words, and that the line is not the road path.
+  // The map key explains both, in words, and that the line is not the road path.
+  await fireEvent.press(screen.getByRole("button", { name: "Map key" }));
   expect(screen.getByText("Solid line: travel time routed")).toBeOnTheScreen();
   expect(screen.getByText("Dashed line: travel time estimated")).toBeOnTheScreen();
   expect(screen.getByText(/not the road path/)).toBeOnTheScreen();
@@ -107,14 +108,57 @@ test("a line appears only once both of its stops are on the map", async () => {
   expect(count()).toBe(14);
 });
 
-test("tapping a marker shows the stop with its time, duration and reasons", async () => {
-  await render(<ItineraryMap day={day1} {...props} />);
-  expect(screen.getByText(/Tap a numbered stop for details/)).toBeOnTheScreen();
+test("tapping a marker selects its stop; the selected marker is announced as selected", async () => {
+  const onSelect = jest.fn();
+  const view = await render(<ItineraryMap day={day1} {...props} onSelect={onSelect} />);
   await fireEvent.press(screen.getByTestId(`marker-${day1.items[0]!.id}`));
-  expect(screen.getByText("1. Schönbrunn Palace")).toBeOnTheScreen();
-  expect(screen.getByText("09:00 · 2 h (typical visit length)")).toBeOnTheScreen();
-  expect(screen.getByText("Next: walk 21 min, estimated")).toBeOnTheScreen();
-  expect(screen.getByText("A well-known sight.")).toBeOnTheScreen();
+  expect(onSelect).toHaveBeenCalledWith(day1.items[0]!.id);
+  await view.rerender(
+    <ItineraryMap day={day1} {...props} selectedId={day1.items[0]!.id} onSelect={onSelect} />,
+  );
+  expect(
+    screen.getByLabelText("Stop 1, Attraction: Schönbrunn Palace").props.accessibilityState,
+  ).toEqual({ selected: true });
+});
+
+test("a stop chosen elsewhere is brought into view once the map has loaded", async () => {
+  const view = await render(<ItineraryMap day={day1} {...props} />);
+  await act(async () => {
+    maplibre.map?.onDidFinishLoadingMap?.({ nativeEvent: null });
+  });
+  expect(maplibre.easeTo).not.toHaveBeenCalled();
+  await view.rerender(<ItineraryMap day={day1} {...props} selectedId="i3" />);
+  expect(maplibre.easeTo).toHaveBeenCalledWith({ center: [16.3731, 48.2085], duration: 350 });
+});
+
+test("the arrival at a new base city is a transport marker with its leg", async () => {
+  const onSelect = jest.fn();
+  await render(<ItineraryMap day={day2} previousDay={day1} {...props} onSelect={onSelect} />);
+  const marker = screen.getByLabelText(
+    "Transport: drive to Graz from Vienna, 2 h 20 min, estimated",
+  );
+  expect(marker).toBeOnTheScreen();
+  const lines = maplibre.sources.transfers as {
+    features: { id: string; geometry: { coordinates: number[][] } }[];
+  };
+  const leg = lines.features.find((f) => f.id === `arrival-${day2.id}`);
+  expect(leg?.geometry.coordinates).toEqual([
+    [16.3738, 48.2082],
+    [15.4395, 47.0707],
+  ]);
+  await fireEvent.press(screen.getByTestId(`marker-arrival-${day2.id}`));
+  expect(onSelect).toHaveBeenCalledWith(`arrival-${day2.id}`);
+});
+
+test("without the base city's position no transport marker is placed", async () => {
+  await render(
+    <ItineraryMap
+      day={{ ...day2, base_city_lat: null, base_city_lon: null }}
+      previousDay={day1}
+      {...props}
+    />,
+  );
+  expect(screen.queryByLabelText(/^Transport:/)).toBeNull();
 });
 
 test("the camera fits the day's stops once the map has loaded, and again for another day", async () => {
@@ -135,7 +179,7 @@ test("the camera fits the day's stops once the map has loaded, and again for ano
 
 test("a map that cannot load says so, offers a retry that remounts it, and the list", async () => {
   const onShowList = jest.fn();
-  await render(<ItineraryMap day={day1} map={MAP_CONFIG} onShowList={onShowList} />);
+  await render(<ItineraryMap day={day1} {...props} onShowList={onShowList} />);
   expect(screen.getByText("Loading the map…")).toBeOnTheScreen();
   await act(async () => {
     maplibre.map?.onDidFailLoadingMap?.({ nativeEvent: null });

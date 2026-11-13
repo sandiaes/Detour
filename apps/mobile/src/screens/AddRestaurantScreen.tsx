@@ -16,7 +16,7 @@ import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
 import { AttributionBar } from "../components/AttributionBar";
 import { Button } from "../components/Button";
-import { Card, Chip, Field, Notice, ScreenHeader } from "../components/ui";
+import { Chip, Field, Notice, ScreenHeader } from "../components/ui";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
@@ -26,7 +26,6 @@ import {
   type Meal,
   detourText,
   formatMealTypes,
-  movedLines,
   parseCoordinate,
   parseCuisines,
   restaurantMeta,
@@ -35,7 +34,11 @@ import {
 } from "../domain/restaurants";
 import { type Route, useNavigation } from "../nav/Navigator";
 import { TOUCH, colors, radius, spacing, type } from "../theme";
-import { formatCuisines } from "../util/format";
+import { formatClock, formatCuisines } from "../util/format";
+import {
+  type AffectedLine,
+  SuggestionCard as DsSuggestionCard,
+} from "../components/ds/SuggestionCard";
 
 type AddRoute = Extract<Route, { name: "addRestaurant" }>;
 
@@ -86,11 +89,13 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   const centre = trip?.destination;
 
   const [mode, setMode] = useState<"search" | "hand">("search");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(route.preset?.name ?? "");
   const [results, setResults] = useState<Record<string, RestaurantSearchResponse>>({});
   const [wide, setWide] = useState<Record<string, RestaurantSearchResponse>>({});
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [choice, setChoice] = useState<Choice | null>(null);
+  const [choice, setChoice] = useState<Choice | null>(
+    route.preset ? { kind: "imported", place: route.preset } : null,
+  );
   const [form, setForm] = useState<Form>(EMPTY_FORM);
   // The user place made for an external or hand-entered restaurant, so retrying does not save it
   // twice.
@@ -595,36 +600,27 @@ function SuggestionCard({
   selected: boolean;
   onPress: () => void;
 }) {
+  const affected: AffectedLine[] = [
+    ...(slot.replaces
+      ? [{ tone: "info" as const, text: `Replaces ${slot.replaces}, planned for this meal` }]
+      : []),
+    ...slot.items_moved.map((m) => ({
+      tone: "info" as const,
+      text: `${m.name}: ${formatClock(m.old_start_time) ?? m.old_start_time} → ${formatClock(m.new_start_time) ?? m.new_start_time}`,
+    })),
+  ];
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${slot.rank === 1 ? "Best: " : "Alternative: "}${suggestionTitle(slot)}`}
-      accessibilityState={{ selected }}
+    <DsSuggestionCard
+      rank={slot.rank}
+      title={suggestionTitle(slot)}
+      where={suggestionPlace(slot)}
+      impact={detourText(slot)}
+      affected={affected}
+      reasons={slot.reasons.map((r) => r.text)}
+      selected={selected}
       onPress={onPress}
-    >
-      <Card accent={selected}>
-        <Text style={styles.resultTitle}>
-          {selected ? "✓ " : ""}
-          {suggestionTitle(slot)}
-        </Text>
-        <Text style={styles.small}>{suggestionPlace(slot)}</Text>
-        <Text style={styles.small}>{detourText(slot)}</Text>
-        {slot.replaces ? (
-          <Text style={styles.small}>Replaces {slot.replaces}, planned for this meal.</Text>
-        ) : null}
-        {movedLines(slot).map((line) => (
-          <Text key={line} style={styles.small}>
-            {line}
-          </Text>
-        ))}
-        <Text style={styles.label}>Why here</Text>
-        {slot.reasons.map((r) => (
-          <Text key={r.code} style={styles.small}>
-            • {r.text}
-          </Text>
-        ))}
-      </Card>
-    </Pressable>
+      accessibilityLabel={`${slot.rank === 1 ? "Best: " : "Alternative: "}${suggestionTitle(slot)}`}
+    />
   );
 }
 

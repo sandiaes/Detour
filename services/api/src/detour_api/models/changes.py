@@ -34,7 +34,11 @@ class ChangeSetCreate(StrictModel):
     )
     item_id: uuid.UUID | None = Field(default=None, description="remove_place: the visit to remove")
     day: int | None = Field(
-        default=None, ge=1, le=60, description="add_restaurant: the day (a suggestion's day)"
+        default=None,
+        ge=1,
+        le=60,
+        description="add_restaurant: the day (a suggestion's day). add_place: optional, only this "
+        "day is tried (a place suggestion's day); without it the day that costs the plan least",
     )
     meal_type: MealType | None = Field(
         default=None, description="add_restaurant: the meal (a suggestion's meal_type)"
@@ -59,8 +63,8 @@ class ChangeSetCreate(StrictModel):
         if self.item_id is not None:
             raise ValueError("item_id is only for remove_place")
         if self.action == "add_place":
-            if slot:
-                raise ValueError("day, meal_type and after_item_id are only for add_restaurant")
+            if self.meal_type is not None or self.after_item_id is not None:
+                raise ValueError("meal_type and after_item_id are only for add_restaurant")
         else:
             if self.day is None or self.meal_type is None:
                 raise ValueError("add_restaurant needs day and meal_type")
@@ -160,3 +164,61 @@ class ItineraryVersion(BaseModel):
     change_set_id: uuid.UUID | None = Field(description="Null when a hand edit replaced it")
     action: Literal["add_place", "remove_place", "add_restaurant"] | None
     target_name: str | None
+
+
+class PlaceSuggestionRequest(StrictModel):
+    """Where a place could go in a planned itinerary (ADR 021): the same place as an add_place
+    change set, without a day."""
+
+    place_id: uuid.UUID | None = Field(default=None, description="An imported attraction")
+    user_place_id: uuid.UUID | None = Field(
+        default=None, description="One of your places (kind city or location)"
+    )
+    duration_minutes: int | None = Field(
+        default=None,
+        ge=5,
+        le=720,
+        description="How long to stay. Required for your own places; for an attraction the "
+        "category's default length is used when it is not given",
+    )
+
+    @model_validator(mode="after")
+    def _shape(self) -> Self:
+        if (self.place_id is None) == (self.user_place_id is None):
+            raise ValueError("give exactly one of place_id and user_place_id")
+        return self
+
+
+class SuggestionReason(BaseModel):
+    code: str
+    text: str = Field(description="The code rendered through its fixed template")
+
+
+class PlaceSuggestion(BaseModel):
+    rank: int = Field(description="1 is the best day")
+    day: int = Field(description="Pass it as day to the add_place preview to place it here")
+    start_time: time
+    end_time: time
+    after_name: str | None = Field(description="The stop before it; null: first of the day")
+    before_name: str | None = Field(description="The stop after it; null: last of the day")
+    new_base_name: str | None = Field(
+        description="Set when the day would be planned from another base city near the place"
+    )
+    travel_minutes_added: int = Field(
+        description="Travel the plan gains (negative: less), from cached times and labelled "
+        "straight-line estimates; the preview asks the routing provider"
+    )
+    estimated: bool = Field(description="True when some changed travel time is an estimate")
+    diff: ChangeDiff = Field(description="What placing it here would change: moves, left out")
+    reasons: list[SuggestionReason]
+
+
+class PlaceSuggestions(BaseModel):
+    name: str
+    duration_minutes: int
+    duration_source: Literal["category_default", "user"]
+    suggestions: list[PlaceSuggestion] = Field(description="At most three, best first")
+    days_considered: int
+    issues: list[SuggestionReason] = Field(
+        description="Why no day can take it, when there are no suggestions"
+    )

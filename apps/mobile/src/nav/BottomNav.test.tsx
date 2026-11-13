@@ -1,0 +1,130 @@
+import { fireEvent, render, screen } from "@testing-library/react-native";
+
+import { AppContent } from "../App";
+import { createFakeClient } from "../testing/fakeClient";
+import { ESSENTIALS_ID, TRIP_ID, makeItinerary, makePastTrip, makeTrip } from "../testing/fixtures";
+import { Harness } from "../testing/harness";
+import { showsBottomNav, tripContext } from "./BottomNav";
+
+function server(trip = makeTrip({ selected_itinerary_id: ESSENTIALS_ID })) {
+  return createFakeClient({
+    "GET /v1/trips": () => [trip],
+    "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials", { status: "selected" }),
+    "GET /v1/trips/{trip_id}/itineraries": () => [],
+    "GET /v1/attributions": () => [],
+  });
+}
+
+async function show(initial: Parameters<typeof Harness>[0]["initial"], client = server()) {
+  await render(
+    <Harness client={client} initial={initial}>
+      <AppContent />
+    </Harness>,
+  );
+}
+
+test("outside a trip, Add starts a new trip", async () => {
+  await show({ name: "trips" });
+  await screen.findByText("Vienna, 2 days");
+  await fireEvent.press(screen.getByRole("button", { name: "Add a trip" }));
+  expect(await screen.findByRole("header", { name: "New trip" })).toBeOnTheScreen();
+});
+
+test("inside a trip, Add offers a place or restaurant through the adjustment flow", async () => {
+  await show({ name: "tripOverview", tripId: TRIP_ID });
+  await screen.findByRole("header", { name: "Your itinerary" });
+  await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
+  expect(await screen.findByRole("header", { name: "Add to this trip" })).toBeOnTheScreen();
+  // Not built yet: transport, notes and documents say so and cannot be pressed.
+  for (const name of [/^Transport\./, /^Note\./, /^Document\./]) {
+    const row = screen.getByRole("button", { name });
+    expect(row.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(row.props.accessibilityLabel).toMatch(/Coming later$/);
+  }
+  await fireEvent.press(screen.getByRole("button", { name: /^Place\./ }));
+  expect(await screen.findByRole("header", { name: "Add a place" })).toBeOnTheScreen();
+});
+
+test("Add on a trip opens the restaurant flow for the active itinerary", async () => {
+  await show({ name: "tripOverview", tripId: TRIP_ID });
+  await screen.findByRole("header", { name: "Your itinerary" });
+  await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Restaurant\./ }));
+  expect(await screen.findByRole("header", { name: "Add a restaurant" })).toBeOnTheScreen();
+});
+
+test("without a chosen plan, places and restaurants wait for a plan", async () => {
+  await show({ name: "tripOverview", tripId: TRIP_ID }, server(makeTrip()));
+  await screen.findByRole("header", { name: "Choose a plan" });
+  await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
+  const place = await screen.findByRole("button", { name: /^Place\. Choose a plan first\./ });
+  expect(place.props.accessibilityState).toMatchObject({ disabled: true });
+  // The backdrop and the close button both close the sheet.
+  const close = screen.getAllByRole("button", { name: "Close" });
+  expect(close).toHaveLength(2);
+  await fireEvent.press(close[1] as (typeof close)[number]);
+  expect(screen.queryByRole("header", { name: "Add to this trip" })).toBeNull();
+  expect(await screen.findByRole("header", { name: "Choose a plan" })).toBeOnTheScreen();
+});
+
+test("a past trip cannot be added to", async () => {
+  await show(
+    { name: "pastTrip", tripId: TRIP_ID },
+    createFakeClient({
+      "GET /v1/trips": () => [makePastTrip()],
+      "GET /v1/trips/{trip_id}/visits": () => [],
+      "GET /v1/trips/{trip_id}/archive": () => ({
+        trip_id: TRIP_ID,
+        cities: 0,
+        attractions: 0,
+        skipped: 0,
+        size_bytes: 0,
+      }),
+    }),
+  );
+  await fireEvent.press(await screen.findByRole("button", { name: "Add to this trip" }));
+  expect(
+    await screen.findByRole("button", { name: /^Place\. A past trip cannot be changed\./ }),
+  ).toBeOnTheScreen();
+});
+
+test("Explore, Photos and More are root tabs; the planned ones say they are not built", async () => {
+  await show({ name: "trips" });
+  await screen.findByText("Vienna, 2 days");
+  await fireEvent.press(screen.getByRole("tab", { name: "Explore" }));
+  expect(await screen.findByTestId("explore-planned")).toBeOnTheScreen();
+  expect(screen.getByRole("tab", { name: "Explore" }).props.accessibilityState).toMatchObject({
+    selected: true,
+  });
+  await fireEvent.press(screen.getByRole("tab", { name: "Photos" }));
+  expect(await screen.findByTestId("photos-planned")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("tab", { name: "More" }));
+  for (const name of [
+    /^Saved places\./,
+    /^Travel preferences\./,
+    /^Export trip\./,
+    /^Archive trip\./,
+  ]) {
+    expect(screen.getByRole("button", { name }).props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+  }
+  await fireEvent.press(screen.getByTestId("more-settings"));
+  expect(await screen.findByRole("header", { name: "Settings" })).toBeOnTheScreen();
+  // Settings is pushed from More: Back returns there, and the bar marks More.
+  await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+  expect(await screen.findByRole("header", { name: "More" })).toBeOnTheScreen();
+});
+
+test("the bar stays on a trip's main screens and leaves forms alone", () => {
+  expect(showsBottomNav({ name: "trips" }, 1)).toBe(true);
+  expect(showsBottomNav({ name: "tripOverview", tripId: "t" }, 2)).toBe(true);
+  expect(
+    showsBottomNav({ name: "itinerary", tripId: "t", itineraryId: "i", view: "days", day: 1 }, 3),
+  ).toBe(true);
+  expect(showsBottomNav({ name: "createTrip" }, 2)).toBe(false);
+  expect(showsBottomNav({ name: "addPlace", tripId: "t", itineraryId: "i" }, 3)).toBe(false);
+  expect(showsBottomNav({ name: "settings" }, 2)).toBe(false);
+  expect(tripContext({ name: "tripOverview", tripId: "t" })).toBe("t");
+  expect(tripContext({ name: "trips" })).toBeNull();
+});

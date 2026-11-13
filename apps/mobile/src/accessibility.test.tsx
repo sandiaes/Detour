@@ -12,6 +12,7 @@ import {
   makeDestination,
   makeItinerary,
   makePastTrip,
+  makePlaceSuggestions,
   makeSummary,
   makeTrip,
 } from "./testing/fixtures";
@@ -85,6 +86,118 @@ test("trips list", async () => {
   checkControls();
 });
 
+test("trips list: the Past tab", async () => {
+  await show({ name: "trips" }, "Vienna, 2 days");
+  await fireEvent.press(screen.getByRole("tab", { name: "Past" }));
+  await screen.findByText("No past trips yet");
+  checkControls();
+});
+
+test("trip overview, each of its tabs, its menu and the Add sheet", async () => {
+  await render(
+    <Harness
+      client={createFakeClient({
+        "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
+        "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
+      })}
+      initial={{ name: "tripOverview", tripId: TRIP_ID }}
+    >
+      <AppContent />
+    </Harness>,
+  );
+  await screen.findByRole("header", { name: "Your itinerary" });
+  checkControls();
+  for (const tab of ["Itinerary", "Map", "Trip photos", "Trip documents"]) {
+    await fireEvent.press(screen.getByRole("tab", { name: tab }));
+    expect(screen.getByRole("tab", { name: tab }).props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+    checkControls();
+  }
+  await fireEvent.press(screen.getByRole("button", { name: "Trip menu" }));
+  await screen.findByRole("header", { name: "Trip menu" });
+  checkControls();
+  await fireEvent.press(screen.getAllByRole("button", { name: "Close" })[1] as Host);
+  await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
+  await screen.findByRole("header", { name: "Add to this trip" });
+  checkControls();
+});
+
+test("add a place: search results and the suggested days", async () => {
+  await render(
+    <Harness
+      client={createFakeClient({
+        "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
+        "GET /v1/places/search": () => ({
+          query: "Prat",
+          results: [
+            {
+              id: "00000000-0000-4000-8000-00000000ab01",
+              name: "Prater",
+              kind: "attraction",
+              category: "theme_park",
+              lat: 48.2,
+              lon: 16.39,
+              region_id: "austria",
+              city_id: null,
+              city_name: "Vienna",
+              distance_m: 2300,
+            },
+          ],
+          external: { state: "not_requested", provider: null, results: [] },
+        }),
+        "GET /v1/destinations/search": () => ({ query: "Prat", results: [] }),
+        "POST /v1/itineraries/{itinerary_id}/place-suggestions": () => makePlaceSuggestions(),
+      } as never)}
+      initial={{ name: "addPlace", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID }}
+    >
+      <AppContent />
+    </Harness>,
+  );
+  await fireEvent.changeText(screen.getByLabelText("Sight, town or restaurant"), "Prat");
+  await fireEvent.press(await screen.findByLabelText(/^Prater, theme park/, {}, { timeout: 3000 }));
+  checkControls();
+  await fireEvent.press(screen.getByTestId("find-days"));
+  await screen.findByTestId("place-suggestions");
+  checkControls();
+  await fireEvent.press(screen.getByRole("tab", { name: "Address" }));
+  checkControls();
+});
+
+test("place detail", async () => {
+  await show(
+    { name: "placeDetail", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID, itemId: "m1" },
+    "Regional, coffee shop",
+  );
+  checkControls();
+});
+
+test("trip overview: the Itinerary tab with a stop chosen", async () => {
+  await render(
+    <Harness
+      client={createFakeClient({
+        "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
+        "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
+      })}
+      initial={{ name: "tripOverview", tripId: TRIP_ID, section: "itinerary" }}
+    >
+      <AppContent />
+    </Harness>,
+  );
+  await fireEvent.press(await screen.findByTestId("stop-i1"));
+  await screen.findByLabelText("Lock Schönbrunn Palace");
+  checkControls();
+});
+
+test.each([
+  ["explore", "Explore is planned"],
+  ["photos", "Trip photos are planned"],
+  ["more", "Settings"],
+] as const)("the %s tab", async (name, ready) => {
+  await show({ name }, ready);
+  checkControls();
+});
+
 test("create trip form with search results", async () => {
   await show({ name: "createTrip" }, "Details");
   await fireEvent.changeText(screen.getByLabelText("Destination"), "Vie");
@@ -108,9 +221,12 @@ test("day list", async () => {
 test("map with markers and the attribution links", async () => {
   await show(
     { name: "itinerary", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID, view: "map", day: 1 },
-    "Tap a numbered stop for details. ",
+    "Schönbrunn Palace",
   );
   expect(screen.getAllByLabelText(/^Stop \d+, (Attraction|Restaurant|Café): /).length).toBe(5);
+  checkControls();
+  await fireEvent.press(screen.getByRole("button", { name: "Map key" }));
+  await screen.findByText("Solid line: travel time routed");
   checkControls();
 });
 

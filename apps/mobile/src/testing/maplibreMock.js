@@ -6,11 +6,13 @@ const { Pressable, View } = require("react-native");
 const state = {
   map: null,
   fitBounds: jest.fn(),
+  easeTo: jest.fn(),
   sources: {},
   layers: [],
   reset() {
     this.map = null;
     this.fitBounds.mockClear();
+    this.easeTo.mockClear();
     this.sources = {};
     this.layers = [];
   },
@@ -22,7 +24,7 @@ function Map(props) {
 }
 
 function Camera({ ref }) {
-  React.useImperativeHandle(ref, () => ({ fitBounds: state.fitBounds, easeTo: jest.fn() }));
+  React.useImperativeHandle(ref, () => ({ fitBounds: state.fitBounds, easeTo: state.easeTo }));
   return null;
 }
 

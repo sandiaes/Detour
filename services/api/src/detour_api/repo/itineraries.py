@@ -218,9 +218,12 @@ def get_itinerary(
         return None
     days = conn.execute(
         text(
-            "SELECT id, day_index, date, base_city_id, base_city_name, arrival_mode,"
-            " arrival_seconds, arrival_meters, arrival_confidence FROM app.itinerary_day"
-            " WHERE itinerary_id = :i ORDER BY day_index"
+            "SELECT d.id, d.day_index, d.date, d.base_city_id, d.base_city_name, d.arrival_mode,"
+            " d.arrival_seconds, d.arrival_meters, d.arrival_confidence,"
+            # The position is read from the gazetteer by identifier, never copied into app.
+            " ST_Y(c.geom) AS base_lat, ST_X(c.geom) AS base_lon"
+            " FROM app.itinerary_day d LEFT JOIN geo.city c ON c.id = d.base_city_id"
+            " WHERE d.itinerary_id = :i ORDER BY d.day_index"
         ),
         {"i": itinerary_id},
     ).all()
@@ -257,6 +260,8 @@ def get_itinerary(
                 date=d.date,
                 base_city_id=d.base_city_id,
                 base_city_name=d.base_city_name,
+                base_city_lat=d.base_lat,
+                base_city_lon=d.base_lon,
                 arrival=arrival,
                 items=by_day.get(d.id, []),
             )

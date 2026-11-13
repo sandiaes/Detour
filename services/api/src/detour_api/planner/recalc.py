@@ -283,6 +283,9 @@ class Revision:
     stats: PlanStats
     bases: Mapping[int, BaseCity]  # including a new base
     known_times: Mapping[Cell, TravelTime] = field(default_factory=dict)
+    # The stability cost of the chosen option (travel, moves, drops, retimes): lower is better.
+    # Used to rank the days a place could go on (ADR 021); 0 for removals.
+    cost: int = 0
 
 
 # -- the working state ---------------------------------------------------------------------------
@@ -781,7 +784,11 @@ def add_place(
     rconfig: RecalcConfig = DEFAULT_RECALC,
     sequencer: Sequencer | None = None,
     use_provider: bool = False,
+    only_day: int | None = None,
 ) -> Revision:
+    """Add a place where it costs the plan least. With ``only_day`` only that day is tried, so
+    the days a place could go on can be compared (place suggestions, ADR 021); the choice among
+    days is otherwise unchanged."""
     found = inp.plan.find(addition.key)
     if found is not None:
         raise PlanningImpossible(
@@ -809,7 +816,9 @@ def add_place(
     notes: list[Note] = []
     if nearest <= rconfig.new_base_min_m:
         near_bases = {b for b, d in distances.items() if d <= rconfig.new_base_min_m}
-        days = [d.day_index for d in inp.plan.days if d.base_city_id in near_bases]
+        days = _only(
+            [d.day_index for d in inp.plan.days if d.base_city_id in near_bases], only_day, x
+        )
         option = _same_base(work, x, days)
     else:
         if inp.single_city:
@@ -833,11 +842,15 @@ def add_place(
         if town.city_id in work.bases and any(
             d.base_city_id == town.city_id for d in inp.plan.days
         ):
-            days = [d.day_index for d in inp.plan.days if d.base_city_id == town.city_id]
+            days = _only(
+                [d.day_index for d in inp.plan.days if d.base_city_id == town.city_id],
+                only_day,
+                x,
+            )
             option = _same_base(work, x, days)
         else:
             work.bases[town.city_id] = town
-            option = _new_base(work, x, town, nearest, sequencer or HeuristicSequencer())
+            option = _new_base(work, x, town, nearest, sequencer or HeuristicSequencer(), only_day)
             day = option.order[0]
             notes.append(
                 Note(
@@ -856,6 +869,16 @@ def add_place(
     day_of_x = next(d.day_index for d in work.days.values() for e in d.items if e.key == x.key)
     notes.insert(0, Note("PLACE_ADDED", {"name": x.name, "day": day_of_x}))
     return _revision(work, option, notes)
+
+
+def _only(days: list[int], only_day: int | None, x: Entry) -> list[int]:
+    if only_day is None:
+        return days
+    if only_day not in days:
+        raise PlanningImpossible(
+            [Issue("DAY_NOT_NEAR_ADDITION", {"day": only_day, "name": x.name})]
+        )
+    return [only_day]
 
 
 def _nearest_town(
@@ -907,7 +930,12 @@ def _same_base(work: _Work, x: Entry, days: Sequence[int]) -> _Option:
 
 
 def _new_base(
-    work: _Work, x: Entry, town: BaseCity, nearest: float, sequencer: Sequencer
+    work: _Work,
+    x: Entry,
+    town: BaseCity,
+    nearest: float,
+    sequencer: Sequencer,
+    only_day: int | None = None,
 ) -> _Option:
     """Give one day to a new base city near x: the first or last day of a base's run of at least
     two days. The options are ranked by stability cost."""
@@ -929,6 +957,13 @@ def _new_base(
                 issues.append(Issue("DAY_HAS_FIXED_ITEMS", {"day": k, "items": _names(fixed)}))
                 continue
             candidates_days.append((k, [d for d in run if d != k]))
+    if only_day is not None:
+        candidates_days = [(k, rest) for k, rest in candidates_days if k == only_day]
+        issues = [i for i in issues if i.params.get("day") == only_day]
+        if not candidates_days and not issues:
+            raise PlanningImpossible(
+                [Issue("DAY_NOT_NEAR_ADDITION", {"day": only_day, "name": x.name})]
+            )
     if not candidates_days and not issues:
         names = ", ".join(f"{plan.days[run[0] - 1].base_city_name}" for _, run in runs)
         raise PlanningImpossible(
@@ -1227,6 +1262,7 @@ def _revision(work: _Work, option: _Option, notes: list[Note]) -> Revision:
         stats=stats,
         bases=dict(work.bases),
         known_times=work.lookup.known(),
+        cost=option.cost,
     )
 
 

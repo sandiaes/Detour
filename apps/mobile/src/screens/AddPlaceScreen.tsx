@@ -2,6 +2,8 @@ import type {
   ChangeSetCreate,
   DestinationResult,
   ExternalPlace,
+  PlaceSuggestionRequest,
+  PlaceSuggestions,
   PlaceSummary,
   Trip,
 } from "@detour/shared";
@@ -13,13 +15,29 @@ import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
 import { AttributionBar } from "../components/AttributionBar";
 import { Button } from "../components/Button";
+import { Icon, type IconName } from "../components/ds/Icon";
+import { Tabs } from "../components/ds/primitives";
+import { SuggestionCard } from "../components/ds/SuggestionCard";
 import { Chip, Field, Notice, ScreenHeader } from "../components/ui";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
+import {
+  affectedLines,
+  placeSuggestionSentence,
+  placeSuggestionTitle,
+  placeSuggestionWhere,
+  travelImpact,
+} from "../domain/placeSuggestions";
+import { restaurantMeta } from "../domain/restaurants";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { TOUCH, colors, radius, shadow, spacing, type } from "../theme";
 import { formatMeters, formatMinutes } from "../util/format";
+
+// Adding a place (Phase 7, ADR 018; redesigned in ADR 021, step 4). Find it (sights, towns and
+// places to eat in the imported data, an address, or a pin), say how long to stay, and Detour's
+// recalculation suggests up to three days with the time, the travel it adds and what else moves.
+// The chosen day is previewed with its full diff; nothing changes until the user accepts.
 
 type AddRoute = Extract<Route, { name: "addPlace" }>;
 
@@ -29,16 +47,30 @@ const MIN_QUERY = 2;
 export const SIGHT_RADIUS_M = 50_000;
 export const DURATIONS = [30, 60, 90, 120, 180] as const;
 
-/** What the user picked: an imported sight, a town, an external result or a pin. */
+/** What the user picked: an imported sight, a town, an external result (a search or an address)
+ * or a pin. */
 export type Choice =
   | { kind: "sight"; place: PlaceSummary }
   | { kind: "town"; town: DestinationResult }
   | { kind: "external"; place: ExternalPlace }
   | { kind: "pin"; lat: number; lon: number };
 
-type Results = { sights: PlaceSummary[]; towns: DestinationResult[]; external: ExternalPlace[] };
+type Mode = "search" | "address" | "pin";
+type Results = {
+  sights: PlaceSummary[];
+  eat: PlaceSummary[];
+  towns: DestinationResult[];
+};
 
-function choiceName(c: Choice, pinName: string): string {
+/** "Hauptplatz 1, 8010 Graz, Austria" from an external result's parts. */
+export function externalAddress(p: ExternalPlace): string {
+  const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+  const town = [p.postcode, p.city].filter(Boolean).join(" ");
+  return [street, town, p.country].filter(Boolean).join(", ");
+}
+
+function choiceName(c: Choice, customName: string): string {
+  if (customName.trim()) return customName.trim();
   switch (c.kind) {
     case "sight":
       return c.place.name ?? c.place.category;
@@ -47,24 +79,20 @@ function choiceName(c: Choice, pinName: string): string {
     case "external":
       return c.place.name;
     case "pin":
-      return pinName.trim();
+      return "";
   }
 }
 
-/** The change-set body for a choice, saving the place as one of the user's places first when it
- * is not an imported sight. */
-export async function bodyFor(
+/** The place for the suggestion and preview requests, saving it as one of the user's places
+ * first when it is not an imported sight. */
+export async function placeFor(
   choice: Choice,
   minutes: number | null,
-  pinName: string,
+  name: string,
   savePlace: ReturnType<typeof useChangeActions>["savePlace"],
-): Promise<ChangeSetCreate> {
+): Promise<PlaceSuggestionRequest> {
   if (choice.kind === "sight") {
-    return {
-      action: "add_place",
-      place_id: choice.place.id,
-      ...(minutes ? { duration_minutes: minutes } : {}),
-    };
+    return { place_id: choice.place.id, ...(minutes ? { duration_minutes: minutes } : {}) };
   }
   const base =
     choice.kind === "town"
@@ -80,7 +108,7 @@ export async function bodyFor(
       : choice.kind === "external"
         ? {
             kind: "location" as const,
-            name: choice.place.name,
+            name: name.trim() || choice.place.name,
             lat: choice.place.lat,
             lon: choice.place.lon,
             ...(choice.place.ref
@@ -93,13 +121,23 @@ export async function bodyFor(
           }
         : {
             kind: "location" as const,
-            name: pinName.trim(),
+            name: name.trim(),
             lat: choice.lat,
             lon: choice.lon,
             source: "manual_pin" as const,
           };
   const place = await savePlace(base);
-  return { action: "add_place", user_place_id: place.id, duration_minutes: minutes ?? 60 };
+  return { user_place_id: place.id, duration_minutes: minutes ?? 60 };
+}
+
+/** The change-set body for a choice (kept for the callers of Phase 7). */
+export async function bodyFor(
+  choice: Choice,
+  minutes: number | null,
+  pinName: string,
+  savePlace: ReturnType<typeof useChangeActions>["savePlace"],
+): Promise<ChangeSetCreate> {
+  return { action: "add_place", ...(await placeFor(choice, minutes, pinName, savePlace)) };
 }
 
 export function AddPlaceScreen({ route }: { route: AddRoute }) {
@@ -111,15 +149,22 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   const client = state.phase === "ready" ? state.connection.client : null;
   const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
 
-  const [mode, setMode] = useState<"search" | "pin">("search");
+  const [mode, setMode] = useState<Mode>("search");
   const [query, setQuery] = useState("");
+  const [address, setAddress] = useState("");
   const [results, setResults] = useState<Record<string, Results>>({});
   const [wide, setWide] = useState<Record<string, ExternalPlace[] | "none">>({});
+  const [addressResults, setAddressResults] = useState<ExternalPlace[] | "none" | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
-  const [pinName, setPinName] = useState("");
+  const [customName, setCustomName] = useState("");
   const [minutes, setMinutes] = useState<number | null>(null);
-  const [working, setWorking] = useState(false);
+  const [request, setRequest] = useState<PlaceSuggestionRequest | null>(null);
+  // The user place saved for a town, address or pin, so asking again does not save it twice.
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<PlaceSuggestions | null>(null);
+  const [picked, setPicked] = useState<number | null>(null);
+  const [working, setWorking] = useState<"find" | "preview" | "address" | null>(null);
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
 
   const q = query.trim();
@@ -132,19 +177,16 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const [places, towns] = await Promise.all([
+          const near = { lat: centre.lat, lon: centre.lon, radius_m: SIGHT_RADIUS_M, limit: 8 };
+          const [sights, eat, towns] = await Promise.all([
             call(
               client.GET("/v1/places/search", {
-                params: {
-                  query: {
-                    q,
-                    kind: "attraction",
-                    lat: centre.lat,
-                    lon: centre.lon,
-                    radius_m: SIGHT_RADIUS_M,
-                    limit: 8,
-                  },
-                },
+                params: { query: { q, kind: "attraction", ...near } },
+              }),
+            ),
+            call(
+              client.GET("/v1/places/search", {
+                params: { query: { q, kind: "restaurant", ...near, limit: 5 } },
               }),
             ),
             call(client.GET("/v1/destinations/search", { params: { query: { q, limit: 5 } } })),
@@ -154,9 +196,9 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
           setResults((r) => ({
             ...r,
             [key]: {
-              sights: places.results.filter((p) => p.name),
+              sights: sights.results.filter((p) => p.name),
+              eat: eat.results.filter((p) => p.name),
               towns: towns.results.filter((t) => t.kind === "city"),
-              external: [],
             },
           }));
         } catch (e) {
@@ -170,39 +212,98 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
     };
   }, [needsSearch, client, centre, q, key]);
 
+  /** Places beyond the imported data, and addresses: Photon through the Detour server. */
+  const external = async (text: string): Promise<ExternalPlace[]> => {
+    if (!client || !centre) return [];
+    const response = await call(
+      client.GET("/v1/places/search", {
+        params: {
+          query: { q: text, lat: centre.lat, lon: centre.lon, limit: 8, include_external: true },
+        },
+      }),
+    );
+    return response.external.results ?? [];
+  };
+
   const searchWider = async () => {
-    if (!client || !centre) return;
     try {
-      const response = await call(
-        client.GET("/v1/places/search", {
-          params: {
-            query: { q, lat: centre.lat, lon: centre.lon, limit: 8, include_external: true },
-          },
-        }),
-      );
-      const external = response.external.results ?? [];
-      setWide((w) => ({ ...w, [key]: external.length ? external : "none" }));
+      const found = await external(q);
+      setWide((w) => ({ ...w, [key]: found.length ? found : "none" }));
     } catch (e) {
       setSearchError(describeError(e));
     }
   };
 
+  const findAddress = async () => {
+    setWorking("address");
+    setSearchError(null);
+    try {
+      const found = await external(address.trim());
+      setAddressResults(found.length ? found : "none");
+    } catch (e) {
+      setSearchError(describeError(e));
+    } finally {
+      setWorking(null);
+    }
+  };
+
+  const clearSuggestions = () => {
+    setSuggestions(null);
+    setRequest(null);
+    setPicked(null);
+    setProblem(null);
+  };
+
   const pick = (c: Choice) => {
     setChoice(c);
-    setProblem(null);
+    setSavedId(null);
+    clearSuggestions();
+    setCustomName(c.kind === "external" && mode === "address" ? c.place.name : "");
     // A sight has a typical length; anything else needs one from the user.
     setMinutes(c.kind === "sight" ? null : c.kind === "town" ? 120 : 60);
   };
 
-  const ready = choice !== null && (choice.kind !== "pin" || pinName.trim().length > 0) && !working;
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setChoice(null);
+    clearSuggestions();
+  };
 
-  const submit = async () => {
+  const named = choice !== null && (choice.kind !== "pin" || customName.trim().length > 0);
+  const ready = named && working === null && changes.connected;
+
+  const find = async () => {
     if (!choice) return;
-    setWorking(true);
+    setWorking("find");
+    clearSuggestions();
+    try {
+      const body =
+        choice.kind !== "sight" && savedId
+          ? { user_place_id: savedId, duration_minutes: minutes ?? 60 }
+          : await placeFor(choice, minutes, customName, changes.savePlace);
+      if (body.user_place_id) setSavedId(body.user_place_id);
+      setRequest(body);
+      const found = await changes.suggestPlaces(route.itineraryId, body);
+      setSuggestions(found);
+      setPicked(found.suggestions.length ? 0 : null);
+    } catch (e) {
+      setProblem({ message: describeError(e), issues: planningIssues(e) });
+    } finally {
+      setWorking(null);
+    }
+  };
+
+  const preview = async () => {
+    const chosen = picked !== null ? suggestions?.suggestions[picked] : undefined;
+    if (!request || !chosen) return;
+    setWorking("preview");
     setProblem(null);
     try {
-      const body = await bodyFor(choice, minutes, pinName, changes.savePlace);
-      const change = await changes.preview(route.itineraryId, body);
+      const change = await changes.preview(route.itineraryId, {
+        action: "add_place",
+        ...request,
+        day: chosen.day,
+      });
       nav.replace({
         name: "changePreview",
         tripId: route.tripId,
@@ -212,13 +313,17 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
     } catch (e) {
       setProblem({ message: describeError(e), issues: planningIssues(e) });
     } finally {
-      setWorking(false);
+      setWorking(null);
     }
   };
 
   const found = results[key];
   const wider = wide[key];
-  const nothingFound = found !== undefined && found.sights.length === 0 && found.towns.length === 0;
+  const nothingFound =
+    found !== undefined &&
+    found.sights.length === 0 &&
+    found.towns.length === 0 &&
+    found.eat.length === 0;
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -229,195 +334,368 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
       />
       <View style={styles.section}>
         <Text style={styles.lead}>
-          The place becomes a visit every recalculation keeps. You see what would change before
-          anything changes.
+          Find a sight, a town or a place to eat, or add your own by address or pin. Detour suggests
+          the best days for it and shows what would change before anything changes.
         </Text>
-        <View style={styles.row}>
-          <Chip label="Search" selected={mode === "search"} onPress={() => setMode("search")} />
-          <Chip
-            label="Drop a pin"
-            selected={mode === "pin"}
-            testID="pin-mode"
-            onPress={() => {
-              setMode("pin");
-              setChoice(null);
-            }}
-          />
-        </View>
       </View>
+      <Tabs<Mode>
+        items={[
+          { key: "search", label: "Search" },
+          { key: "address", label: "Address" },
+          { key: "pin", label: "Pin on map" },
+        ]}
+        value={mode}
+        onChange={switchMode}
+        testID="add-mode"
+      />
 
-      {mode === "search" ? (
-        <View style={styles.section}>
-          <Field
-            label="Sight, town or place"
-            value={query}
-            onChangeText={(t) => {
-              setQuery(t);
-              setChoice(null);
-            }}
-            autoCorrect={false}
-            hint="At least two letters. Sights near the trip and towns are searched first."
-          />
-          {searchError ? <Notice tone="error">{searchError}</Notice> : null}
-          {q.length >= MIN_QUERY && found === undefined && !searchError ? (
-            <Text style={styles.muted}>Searching…</Text>
-          ) : null}
-          {found?.sights.length ? (
-            <ResultGroup title="Sights in the map data">
-              {found.sights.map((p) => (
-                <ResultRow
-                  key={p.id}
-                  title={p.name ?? p.category}
-                  meta={[
-                    p.category.replace(/_/g, " "),
-                    p.city_name,
-                    p.distance_m != null
-                      ? `${formatMeters(p.distance_m)} from ${centre?.name ?? "the centre"}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  selected={choice?.kind === "sight" && choice.place.id === p.id}
-                  onPress={() => pick({ kind: "sight", place: p })}
-                />
-              ))}
-            </ResultGroup>
-          ) : null}
-          {found?.towns.length ? (
-            <ResultGroup title="Towns and cities">
-              {found.towns.map((t) => (
-                <ResultRow
-                  key={t.ref}
-                  title={t.name}
-                  meta={[t.admin1_name, t.country_name].filter(Boolean).join(", ")}
-                  selected={choice?.kind === "town" && choice.town.ref === t.ref}
-                  onPress={() => pick({ kind: "town", town: t })}
-                />
-              ))}
-            </ResultGroup>
-          ) : null}
-          {nothingFound ? (
-            <View style={styles.gap}>
-              <Text style={styles.muted}>Nothing in the imported data matches “{q}”.</Text>
-              {wider === undefined ? (
-                <Button
-                  label="Search more widely"
-                  variant="secondary"
-                  hint="Asks an OpenStreetMap search service through the Detour server"
-                  onPress={() => void searchWider()}
-                />
-              ) : wider === "none" ? (
-                <Text style={styles.muted}>
-                  The wider search found nothing either. Drop a pin instead.
-                </Text>
-              ) : (
-                <ResultGroup title="Other places (OpenStreetMap, via Photon)">
-                  {wider.map((p, n) => (
-                    <ResultRow
-                      key={`${p.ref ?? n}`}
-                      title={p.name}
-                      meta={[p.city, p.state, p.country].filter(Boolean).join(", ")}
-                      selected={choice?.kind === "external" && choice.place === p}
-                      onPress={() => pick({ kind: "external", place: p })}
-                    />
-                  ))}
-                </ResultGroup>
-              )}
-            </View>
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.section}>
-          <Text style={styles.muted}>Tap the map where the place is, then name it.</Text>
-          {mapConfig && centre ? (
-            <View style={styles.map}>
-              <Map
-                style={styles.fill}
-                mapStyle={mapConfig.style_url}
-                logo={false}
-                attribution={false}
-                onPress={(e) => {
-                  const [lon, lat] = e.nativeEvent.lngLat;
-                  pick({ kind: "pin", lat, lon });
+      <View style={styles.body}>
+        {mode === "search" ? (
+          <View style={styles.gap}>
+            <Field
+              label="Sight, town or restaurant"
+              value={query}
+              onChangeText={(t) => {
+                setQuery(t);
+                setChoice(null);
+                clearSuggestions();
+              }}
+              autoCorrect={false}
+              hint="At least two letters. Places near the trip and towns are searched first."
+            />
+            {searchError ? <Notice tone="error">{searchError}</Notice> : null}
+            {q.length >= MIN_QUERY && found === undefined && !searchError ? (
+              <Text style={styles.muted}>Searching…</Text>
+            ) : null}
+            {found?.sights.length ? (
+              <ResultGroup title="Sights">
+                {found.sights.map((p) => (
+                  <ResultRow
+                    key={p.id}
+                    icon="attraction"
+                    title={p.name ?? p.category}
+                    meta={[
+                      p.category.replace(/_/g, " "),
+                      p.city_name,
+                      p.distance_m != null
+                        ? `${formatMeters(p.distance_m)} from ${centre?.name ?? "the centre"}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    selected={choice?.kind === "sight" && choice.place.id === p.id}
+                    onPress={() => pick({ kind: "sight", place: p })}
+                  />
+                ))}
+              </ResultGroup>
+            ) : null}
+            {found?.eat.length ? (
+              <ResultGroup title="Places to eat">
+                {found.eat.map((p) => (
+                  <ResultRow
+                    key={p.id}
+                    icon="restaurant"
+                    eat
+                    title={p.name ?? p.category}
+                    meta={restaurantMeta(p)}
+                    hint="Opens the restaurant flow: Detour suggests the best day and meal"
+                    selected={false}
+                    onPress={() =>
+                      nav.replace({
+                        name: "addRestaurant",
+                        tripId: route.tripId,
+                        itineraryId: route.itineraryId,
+                        preset: { ...p, meal_types: null },
+                      })
+                    }
+                  />
+                ))}
+              </ResultGroup>
+            ) : null}
+            {found?.towns.length ? (
+              <ResultGroup title="Towns and cities">
+                {found.towns.map((t) => (
+                  <ResultRow
+                    key={t.ref}
+                    icon="city"
+                    title={t.name}
+                    meta={[t.admin1_name, t.country_name].filter(Boolean).join(", ")}
+                    selected={choice?.kind === "town" && choice.town.ref === t.ref}
+                    onPress={() => pick({ kind: "town", town: t })}
+                  />
+                ))}
+              </ResultGroup>
+            ) : null}
+            {nothingFound ? (
+              <View style={styles.gap}>
+                <Text style={styles.muted}>Nothing in the imported data matches “{q}”.</Text>
+                {wider === undefined ? (
+                  <Button
+                    label="Search more widely"
+                    variant="secondary"
+                    icon="search"
+                    hint="Asks an OpenStreetMap search service through the Detour server"
+                    onPress={() => void searchWider()}
+                  />
+                ) : wider === "none" ? (
+                  <Text style={styles.muted}>
+                    The wider search found nothing either. Try the address, or drop a pin.
+                  </Text>
+                ) : (
+                  <ResultGroup title="Other places (OpenStreetMap, via Photon)">
+                    {wider.map((p, n) => (
+                      <ResultRow
+                        key={`${p.ref ?? n}`}
+                        icon="pin"
+                        title={p.name}
+                        meta={[p.city, p.state, p.country].filter(Boolean).join(", ")}
+                        selected={choice?.kind === "external" && choice.place === p}
+                        onPress={() => pick({ kind: "external", place: p })}
+                      />
+                    ))}
+                  </ResultGroup>
+                )}
+              </View>
+            ) : null}
+          </View>
+        ) : mode === "address" ? (
+          <View style={styles.gap}>
+            <Field
+              label="Street address"
+              value={address}
+              onChangeText={(t) => {
+                setAddress(t);
+                setAddressResults(null);
+                setChoice(null);
+                clearSuggestions();
+              }}
+              autoCorrect={false}
+              hint="A street and number, a postcode or a known place. Found through an OpenStreetMap search service, via the Detour server."
+            />
+            <Button
+              label="Find the address"
+              icon="search"
+              variant="secondary"
+              testID="find-address"
+              disabled={address.trim().length < MIN_QUERY || working !== null}
+              loading={working === "address"}
+              onPress={() => void findAddress()}
+            />
+            {searchError ? <Notice tone="error">{searchError}</Notice> : null}
+            {addressResults === "none" ? (
+              <Text style={styles.muted}>
+                No address matches “{address.trim()}”. Check the spelling, or drop a pin.
+              </Text>
+            ) : addressResults ? (
+              <ResultGroup title="Addresses (OpenStreetMap, via Photon)">
+                {addressResults.map((p, n) => (
+                  <ResultRow
+                    key={`${p.ref ?? n}`}
+                    icon="pin"
+                    title={p.name}
+                    meta={externalAddress(p)}
+                    selected={choice?.kind === "external" && choice.place === p}
+                    onPress={() => pick({ kind: "external", place: p })}
+                  />
+                ))}
+              </ResultGroup>
+            ) : null}
+            {choice?.kind === "external" ? (
+              <Field
+                label="Name of the place"
+                value={customName}
+                onChangeText={(t) => {
+                  setCustomName(t);
+                  setSavedId(null);
+                  clearSuggestions();
                 }}
-              >
-                <Camera initialViewState={{ center: [centre.lon, centre.lat], zoom: 12 }} />
-                {choice?.kind === "pin" ? (
-                  <Marker id="pin" lngLat={[choice.lon, choice.lat]} anchor="bottom">
-                    <View style={styles.pin} accessible accessibilityLabel="The pin you dropped" />
-                  </Marker>
-                ) : null}
-              </Map>
-              <AttributionBar lines={mapConfig.attribution} userInteractionCount={0} />
-            </View>
-          ) : (
-            <Notice tone="warning">The map needs a connection to the server.</Notice>
-          )}
-          {choice?.kind === "pin" ? (
-            <Text style={styles.muted}>
-              Pin at {choice.lat.toFixed(5)}, {choice.lon.toFixed(5)}
-            </Text>
-          ) : null}
-          <Field
-            label="Name of the place"
-            value={pinName}
-            onChangeText={setPinName}
-            hint="Your own name for it, for example “Friend's flat”."
-          />
-        </View>
-      )}
-
-      {choice ? (
-        <View style={styles.section}>
-          <Text style={styles.label}>
-            How long to stay at {choiceName(choice, pinName) || "it"}
-          </Text>
-          <View style={styles.row}>
-            {choice.kind === "sight" ? (
-              <Chip
-                label="Typical length"
-                selected={minutes === null}
-                onPress={() => setMinutes(null)}
+                hint="Your own name for it, for example “Friend's flat”."
               />
             ) : null}
-            {DURATIONS.map((m) => (
-              <Chip
-                key={m}
-                label={formatMinutes(m)}
-                selected={minutes === m}
-                onPress={() => setMinutes(m)}
+          </View>
+        ) : (
+          <View style={styles.gap}>
+            <Text style={styles.muted}>Tap the map where the place is, then name it.</Text>
+            {mapConfig && centre ? (
+              <View style={styles.map}>
+                <Map
+                  style={styles.fill}
+                  mapStyle={mapConfig.style_url}
+                  logo={false}
+                  attribution={false}
+                  onPress={(e) => {
+                    const [lon, lat] = e.nativeEvent.lngLat;
+                    const name = customName;
+                    pick({ kind: "pin", lat, lon });
+                    setCustomName(name);
+                  }}
+                >
+                  <Camera initialViewState={{ center: [centre.lon, centre.lat], zoom: 12 }} />
+                  {choice?.kind === "pin" ? (
+                    <Marker id="pin" lngLat={[choice.lon, choice.lat]} anchor="bottom">
+                      <View
+                        style={styles.pin}
+                        accessible
+                        accessibilityLabel="The pin you dropped"
+                      />
+                    </Marker>
+                  ) : null}
+                </Map>
+                <AttributionBar lines={mapConfig.attribution} userInteractionCount={0} />
+              </View>
+            ) : (
+              <Notice tone="warning">The map needs a connection to the server.</Notice>
+            )}
+            {choice?.kind === "pin" ? (
+              <Text style={styles.muted}>
+                Pin at {choice.lat.toFixed(5)}, {choice.lon.toFixed(5)}
+              </Text>
+            ) : null}
+            <Field
+              label="Name of the place"
+              value={customName}
+              onChangeText={(t) => {
+                setCustomName(t);
+                setSavedId(null);
+                clearSuggestions();
+              }}
+              hint="Your own name for it, for example “Friend's flat”."
+            />
+          </View>
+        )}
+
+        {choice ? (
+          <View style={styles.gap}>
+            <Text style={styles.label}>
+              How long to stay at {choiceName(choice, customName) || "it"}
+            </Text>
+            <View style={styles.row}>
+              {choice.kind === "sight" ? (
+                <Chip
+                  label="Typical length"
+                  selected={minutes === null}
+                  onPress={() => {
+                    setMinutes(null);
+                    clearSuggestions();
+                  }}
+                />
+              ) : null}
+              {DURATIONS.map((m) => (
+                <Chip
+                  key={m}
+                  label={formatMinutes(m)}
+                  selected={minutes === m}
+                  onPress={() => {
+                    setMinutes(m);
+                    clearSuggestions();
+                  }}
+                />
+              ))}
+            </View>
+            {!suggestions ? (
+              <Button
+                label="Find the best day"
+                icon="calendar"
+                testID="find-days"
+                fill
+                disabled={!ready}
+                loading={working === "find"}
+                hint="Detour tries each day and suggests up to three, with what would change"
+                onPress={() => void find()}
               />
+            ) : null}
+          </View>
+        ) : null}
+
+        {problem ? (
+          <View style={styles.gap}>
+            <Notice tone="error">{problem.message}</Notice>
+            {problem.issues.map((i) => (
+              <Text key={i} style={styles.issue}>
+                • {i}
+              </Text>
             ))}
           </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      {problem ? (
-        <View style={styles.section}>
-          <Notice tone="error">{problem.message}</Notice>
-          {problem.issues.map((i) => (
-            <Text key={i} style={styles.issue}>
-              • {i}
-            </Text>
-          ))}
-        </View>
-      ) : null}
+        {suggestions ? (
+          <Suggestions
+            suggestions={suggestions}
+            picked={picked}
+            onPick={setPicked}
+            working={working === "preview"}
+            onPreview={() => void preview()}
+          />
+        ) : null}
 
-      <View style={styles.section}>
-        <Button
-          label="Preview the change"
-          testID="preview-change"
-          fill
-          disabled={!ready}
-          loading={working}
-          hint="Shows what would change. Nothing changes until you accept."
-          onPress={() => void submit()}
-        />
         {!changes.connected ? (
           <Text style={styles.muted}>Adding a place needs a connection to the server.</Text>
         ) : null}
       </View>
     </ScrollView>
+  );
+}
+
+function Suggestions({
+  suggestions,
+  picked,
+  onPick,
+  working,
+  onPreview,
+}: {
+  suggestions: PlaceSuggestions;
+  picked: number | null;
+  onPick: (n: number) => void;
+  working: boolean;
+  onPreview: () => void;
+}) {
+  if (suggestions.suggestions.length === 0) {
+    return (
+      <View style={styles.gap} testID="place-suggestions">
+        <Notice tone="warning" label="No day fits">
+          {suggestions.issues.map((i) => i.text).join(" ") ||
+            `None of the ${suggestions.days_considered} days can take ${suggestions.name}.`}
+        </Notice>
+      </View>
+    );
+  }
+  const count = suggestions.suggestions.length;
+  return (
+    <View style={styles.gap} testID="place-suggestions">
+      <Text style={styles.heading} accessibilityRole="header">
+        {count === 1 ? "The day that fits" : `The ${count} best days`} for {suggestions.name}
+      </Text>
+      <Text style={styles.muted}>
+        {formatMinutes(suggestions.duration_minutes)}{" "}
+        {suggestions.duration_source === "user" ? "(set by you)" : "(typical visit length)"} ·{" "}
+        {suggestions.days_considered} days tried. Travel times are from the cache or labelled
+        estimates; the preview checks them.
+      </Text>
+      {suggestions.suggestions.map((s, n) => (
+        <SuggestionCard
+          key={s.day}
+          rank={s.rank}
+          title={placeSuggestionTitle(s)}
+          where={placeSuggestionWhere(s)}
+          impact={travelImpact(s.travel_minutes_added, s.estimated)}
+          affected={affectedLines(s.diff)}
+          reasons={s.reasons.map((r) => r.text)}
+          selected={picked === n}
+          onPress={() => onPick(n)}
+          accessibilityLabel={placeSuggestionSentence(s)}
+          testID={`suggestion-day-${s.day}`}
+        />
+      ))}
+      <Button
+        label="Preview this change"
+        testID="preview-change"
+        fill
+        disabled={picked === null}
+        loading={working}
+        hint="Shows everything that would change. Nothing changes until you accept."
+        onPress={onPreview}
+      />
+    </View>
   );
 }
 
@@ -433,29 +711,42 @@ function ResultGroup({ title, children }: { title: string; children: ReactNode }
 }
 
 function ResultRow({
+  icon,
   title,
   meta,
   selected,
   onPress,
+  hint,
+  eat = false,
 }: {
+  icon: IconName;
   title: string;
   meta: string;
   selected: boolean;
   onPress: () => void;
+  hint?: string;
+  eat?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${title}${meta ? `, ${meta}` : ""}`}
+      accessibilityHint={hint}
       accessibilityState={{ selected }}
       onPress={onPress}
       style={[styles.result, selected && styles.resultSelected]}
     >
-      <Text style={styles.resultTitle}>
-        {selected ? "✓ " : ""}
-        {title}
-      </Text>
-      {meta ? <Text style={styles.muted}>{meta}</Text> : null}
+      <View style={[styles.resultIcon, eat && styles.resultIconEat]}>
+        <Icon name={icon} size={18} color={eat ? colors.accentText : colors.primary} />
+      </View>
+      <View style={styles.resultText}>
+        <Text style={styles.resultTitle}>
+          {selected ? "✓ " : ""}
+          {title}
+        </Text>
+        {meta ? <Text style={styles.muted}>{meta}</Text> : null}
+      </View>
+      {eat ? <Icon name="chevronRight" size={18} color={colors.muted} /> : null}
     </Pressable>
   );
 }
@@ -463,24 +754,39 @@ function ResultRow({
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xxl },
   fill: { flex: 1 },
-  section: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.sm },
+  section: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  body: { padding: spacing.lg, gap: spacing.lg },
   lead: { ...type.body, color: colors.text },
   row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   gap: { gap: spacing.sm },
+  heading: { ...type.heading, color: colors.text },
   label: { ...type.small, fontWeight: "700", color: colors.text },
   muted: { ...type.small, color: colors.muted },
   issue: { ...type.small, color: colors.text },
   result: {
-    minHeight: TOUCH,
-    justifyContent: "center",
+    minHeight: TOUCH + 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
     padding: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
+    ...shadow.card,
   },
   resultSelected: { borderColor: colors.primary, borderWidth: 2 },
-  resultTitle: { ...type.heading, color: colors.text },
+  resultIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primarySoft,
+  },
+  resultIconEat: { backgroundColor: colors.accentSoft },
+  resultText: { flex: 1, gap: spacing.xxs },
+  resultTitle: { ...type.body, fontWeight: "700", color: colors.text },
   map: {
     height: 280,
     borderRadius: radius.md,
@@ -492,7 +798,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.markerSelected,
+    backgroundColor: colors.accent,
     borderWidth: 3,
     borderColor: colors.onPrimary,
   },

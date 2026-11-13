@@ -10,6 +10,8 @@ from detour_api.models.changes import (
     ChangeSetApplied,
     ChangeSetCreate,
     ItineraryVersion,
+    PlaceSuggestionRequest,
+    PlaceSuggestions,
 )
 from detour_api.models.common import PlanningErrorBody
 from detour_api.planner import change_service
@@ -30,6 +32,25 @@ def preview_change(
     session: SessionDep, request: Request, itinerary_id: uuid.UUID, body: ChangeSetCreate
 ) -> ChangeSet:
     return change_service.preview(
+        session,
+        itinerary_id,
+        body,
+        request.app.state.travel_time,
+        request.app.state.settings,
+    )
+
+
+@router.post(
+    "/itineraries/{itinerary_id}/place-suggestions",
+    summary="Where a place fits in a planned itinerary: up to three days, best first, each with "
+    "the time it would get, the travel it adds and the visits it moves or leaves out, from the "
+    "same recalculation as the add_place preview. Nothing is stored.",
+    responses={**ERRORS, 422: {"model": PlanningErrorBody}},
+)
+def place_suggestions(
+    session: SessionDep, request: Request, itinerary_id: uuid.UUID, body: PlaceSuggestionRequest
+) -> PlaceSuggestions:
+    return change_service.suggest_places(
         session,
         itinerary_id,
         body,

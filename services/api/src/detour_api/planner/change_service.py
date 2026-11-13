@@ -19,14 +19,23 @@ import structlog
 
 from detour_api.deps import Session
 from detour_api.errors import ApiError, conflict, invalid
-from detour_api.models.changes import ChangeSet, ChangeSetApplied, ChangeSetCreate
+from detour_api.models.changes import (
+    ChangeSet,
+    ChangeSetApplied,
+    ChangeSetCreate,
+    PlaceSuggestion,
+    PlaceSuggestionRequest,
+    PlaceSuggestions,
+    SuggestionReason,
+)
 from detour_api.models.restaurants import SlotRequest, SlotSuggestions
 from detour_api.planner import diff, recalc, restaurant_slots
 from detour_api.planner.config import DEFAULT_CONFIG, ENGINE_VERSION, PlannerConfig
+from detour_api.planner.reasons import issue_text
 from detour_api.planner.recalc import DEFAULT_RECALC, RecalcConfig, Revision
 from detour_api.planner.revision_validator import validate_revision
 from detour_api.planner.travel import ServiceTravelSource
-from detour_api.planner.types import Note, PlanningImpossible
+from detour_api.planner.types import Issue, Note, PlanningImpossible
 from detour_api.repo import changes
 from detour_api.repo.plan_state import State, from_rplan, to_rplan
 from detour_api.settings import Settings
@@ -119,6 +128,7 @@ def _recalculate(
                 config=config,
                 rconfig=rconfig,
                 use_provider=settings.planner_use_provider,
+                only_day=ctx.slot_day,
             )
         else:
             assert ctx.removed_key is not None  # noqa: S101
@@ -258,3 +268,159 @@ def suggest_slots(
         engine_ms=round((time.perf_counter() - loaded) * 1000, 1),
     )
     return response
+
+
+MAX_PLACE_SUGGESTIONS = 3
+
+# Why a day is suggested: fixed templates over the computed facts (CLAUDE.md, constraint 1).
+_SUGGESTION_TEXT = {
+    "LEAST_TRAVEL": "Adds the least travel of the days that can take it.",
+    "LESS_TRAVEL": "The plan travels {minutes} min less.",
+    "MORE_TRAVEL": "Adds about {minutes} min of travel.",
+    "NOTHING_LEFT_OUT": "Every planned visit stays in the plan.",
+    "LEAVES_OUT": "Leaves out {names} to make room.",
+    "NO_DAY_CHANGES": "No other visit changes day.",
+    "VISITS_MOVE": "{count} other visits change day.",
+    "NEW_BASE": "Day {day} would be spent based in {town}, near it.",
+}
+
+
+def _reason(code: str, **params: object) -> SuggestionReason:
+    return SuggestionReason(code=code, text=_SUGGESTION_TEXT[code].format(**params))
+
+
+def suggest_places(
+    session: Session,
+    itinerary_id: uuid.UUID,
+    body: PlaceSuggestionRequest,
+    travel: TravelTimeService,
+    settings: Settings,
+    config: PlannerConfig = DEFAULT_CONFIG,
+    rconfig: RecalcConfig = DEFAULT_RECALC,
+) -> PlaceSuggestions:
+    """Up to three days a place could go on, best first (ADR 021). The recalculation of Phase 7
+    is run once per day with only that day allowed, and the days are ranked by its own stability
+    cost (travel, moved and left-out visits, retimed items), ties to the earlier day. Nothing is
+    stored and no routing provider is asked: times come from the cache and labelled estimates;
+    the preview of the chosen day asks the provider as usual."""
+    started = time.perf_counter()
+    request = ChangeSetCreate(
+        action="add_place",
+        place_id=body.place_id,
+        user_place_id=body.user_place_id,
+        duration_minutes=body.duration_minutes,
+    )
+    with session.tx() as conn:
+        ctx = changes.load_context(
+            conn, session.installation_id, itinerary_id, request, config, rconfig
+        )
+    assert ctx.recalc is not None and ctx.addition is not None  # noqa: S101
+    loaded = time.perf_counter()
+    source = ServiceTravelSource(travel, max_seconds=settings.recalc_provider_max_seconds)
+    current = to_rplan(ctx.state, ctx.profile)
+    found: list[tuple[int, int, Revision, diff.PlanDiff]] = []
+    issues: list[Issue] = []
+    days = [d.day_index for d in ctx.recalc.plan.days]
+    for k in days:
+        try:
+            revision = recalc.add_place(
+                ctx.recalc,
+                ctx.addition,
+                source,
+                config=config,
+                rconfig=rconfig,
+                use_provider=False,
+                only_day=k,
+            )
+        except PlanningImpossible as exc:
+            issues.extend(exc.issues)
+            continue
+        problems = validate_revision(
+            ctx.recalc.plan,
+            revision,
+            added=ctx.addition.key,
+            removed=None,
+            candidates={c.place_id: c for c in ctx.recalc.candidates},
+            restaurants={r.place_id: r for r in ctx.recalc.restaurants},
+            config=config,
+            added_meal=None,
+        )
+        if problems:
+            # A bug: never suggested.
+            log.error("suggestion_invalid", itinerary_id=str(itinerary_id), day=k)
+            continue
+        proposal = _proposal(ctx.state, revision, ctx.data_version, config, rconfig)
+        found.append(
+            (revision.cost, k, revision, diff.compare(current, to_rplan(proposal, ctx.profile)))
+        )
+    found.sort(key=lambda f: (f[0], f[1]))
+    best = found[:MAX_PLACE_SUGGESTIONS]
+    least = min((f[3].travel_minutes_added for f in best), default=0)
+    suggestions: list[PlaceSuggestion] = []
+    for rank, (_, k, revision, planned) in enumerate(best, start=1):
+        day = next(d for d in revision.plan.days if d.day_index == k)
+        index = next(n for n, e in enumerate(day.items) if e.key == ctx.addition.key)
+        entry = day.items[index]
+        after = day.items[index - 1].name if index > 0 else None
+        before = day.items[index + 1].name if index + 1 < len(day.items) else None
+        model = changes.diff_model(planned)
+        new_base = next((b.new_name for b in planned.base_changes if b.day == k), None)
+        added = planned.travel_minutes_added
+        reasons: list[SuggestionReason] = []
+        if len(best) > 1 and added == least:
+            reasons.append(_reason("LEAST_TRAVEL"))
+        if added < 0:
+            reasons.append(_reason("LESS_TRAVEL", minutes=-added))
+        elif added > 0:
+            reasons.append(_reason("MORE_TRAVEL", minutes=added))
+        if planned.removed:
+            reasons.append(_reason("LEAVES_OUT", names=", ".join(i.name for i in planned.removed)))
+        else:
+            reasons.append(_reason("NOTHING_LEFT_OUT"))
+        if planned.moved:
+            reasons.append(_reason("VISITS_MOVE", count=len(planned.moved)))
+        else:
+            reasons.append(_reason("NO_DAY_CHANGES"))
+        if new_base:
+            reasons.append(_reason("NEW_BASE", day=k, town=new_base))
+        suggestions.append(
+            PlaceSuggestion(
+                rank=rank,
+                day=k,
+                start_time=changes.clock(entry.start_minute),
+                end_time=changes.clock(entry.end_minute),
+                after_name=after,
+                before_name=before,
+                new_base_name=new_base,
+                travel_minutes_added=added,
+                estimated=bool(planned.estimated_legs),
+                diff=model,
+                reasons=reasons,
+            )
+        )
+    log.info(
+        "place_days_suggested",
+        itinerary_id=str(itinerary_id),
+        suggestions=len(suggestions),
+        days=[s.day for s in suggestions],
+        days_considered=len(days),
+        load_ms=round((loaded - started) * 1000, 1),
+        engine_ms=round((time.perf_counter() - loaded) * 1000, 1),
+    )
+    addition = ctx.addition
+    shown_issues: list[SuggestionReason] = []
+    if not suggestions:
+        seen: set[str] = set()
+        for i in issues:
+            text = issue_text(i.code, i.params)
+            if text not in seen:
+                seen.add(text)
+                shown_issues.append(SuggestionReason(code=i.code, text=text))
+    return PlaceSuggestions(
+        name=addition.name,
+        duration_minutes=addition.duration_minutes,
+        duration_source=addition.duration_source,
+        suggestions=suggestions,
+        days_considered=len(days),
+        issues=shown_issues,
+    )

@@ -11,8 +11,9 @@ import {
   findNodeHandle,
 } from "react-native";
 
-import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { TOUCH, colors, radius, shadow, spacing, type } from "../theme";
 import { Button } from "./Button";
+import { IconButton } from "./ds/primitives";
 
 // ---- header ------------------------------------------------------------------------------------
 
@@ -49,15 +50,9 @@ export function ScreenHeader({
     <View style={styles.header}>
       <View style={styles.headerTop}>
         {onBack ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            onPress={onBack}
-            hitSlop={4}
-            style={styles.back}
-          >
-            <Text style={styles.backText}>‹ Back</Text>
-          </Pressable>
+          <View style={styles.back}>
+            <IconButton icon="back" label="Back" onPress={onBack} />
+          </View>
         ) : (
           <View />
         )}
@@ -336,9 +331,9 @@ export function Card({ children, accent }: { children: ReactNode; accent?: boole
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
+
   headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  back: { minHeight: TOUCH, justifyContent: "center", paddingRight: spacing.lg },
-  backText: { ...type.body, color: colors.link, fontWeight: "600" },
+  back: { minHeight: TOUCH, justifyContent: "center", marginLeft: -spacing.md },
   headerTitle: { ...type.display, color: colors.text },
   headerSubtitle: { ...type.small, color: colors.muted, marginTop: spacing.xs },
 
@@ -418,11 +413,12 @@ const styles = StyleSheet.create({
   noteText: { ...type.small, color: colors.muted },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadow.card,
   },
   cardAccent: { borderColor: colors.primary, borderWidth: 1.5 },
 });

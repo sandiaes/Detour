@@ -16,7 +16,7 @@ import { Harness } from "./testing/harness";
 // Timers are restored after the screens unmount (Testing Library cleans up first).
 afterEach(() => jest.useRealTimers());
 
-test("Trips and Settings are the two tabs, and Settings shows the connection and credits", async () => {
+test("the bottom bar has Trips, Explore, Add, Photos and More; Settings is under More", async () => {
   const client = createFakeClient({
     "GET /v1/trips": () => [],
     "GET /v1/attributions": () => [
@@ -42,7 +42,13 @@ test("Trips and Settings are the two tabs, and Settings shows the connection and
     </Harness>,
   );
   expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole("tab", { name: "Settings" }));
+  for (const name of ["Trips", "Explore", "Photos", "More"]) {
+    expect(screen.getByRole("tab", { name })).toBeOnTheScreen();
+  }
+  expect(screen.getByRole("button", { name: "Add a trip" })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("tab", { name: "More" }));
+  expect(await screen.findByRole("header", { name: "More" })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("button", { name: /^Settings\./ }));
   expect(await screen.findByRole("header", { name: "Settings" })).toBeOnTheScreen();
   expect(screen.getByText("Status: connected")).toBeOnTheScreen();
   expect(screen.getByText(/detour-api 0\.1\.0 \(abcdef1\)/)).toBeOnTheScreen();
@@ -59,7 +65,8 @@ test("the tab bar is hidden on pushed screens so back is the only way out", asyn
   );
   await screen.findByText("No trips yet");
   expect(screen.getByRole("tab", { name: "Trips" })).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole("button", { name: "New trip" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Add a trip" }));
+  expect(await screen.findByRole("header", { name: "New trip" })).toBeOnTheScreen();
   expect(screen.queryByRole("tab", { name: "Trips" })).toBeNull();
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
   expect(await screen.findByRole("tab", { name: "Trips" })).toBeOnTheScreen();
@@ -153,20 +160,23 @@ test("create a trip, compare the proposals, select one, read its days, see it on
 
     expect(await screen.findByText("How they differ")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Select the Essentials plan" }));
-    // Choosing a plan opens it: the trip is about that plan from now on.
-    expect(await screen.findByRole("header", { name: "Essentials plan" })).toBeOnTheScreen();
+    // Choosing a plan makes it the trip's active itinerary; the trip opens on its overview.
+    expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
     expect(selected).toBe(ESSENTIALS_ID);
+    // The itinerary and its map are tabs of the trip.
+    await fireEvent.press(screen.getByRole("button", { name: "Open the itinerary" }));
     expect(await screen.findByText("Schönbrunn Palace")).toBeOnTheScreen();
     expect(screen.getAllByText("Estimated").length).toBeGreaterThan(0);
 
-    await fireEvent.press(screen.getByRole("button", { name: "Show the map" }));
+    await fireEvent.press(screen.getByRole("tab", { name: "Map" }));
     expect(await screen.findByTestId("map")).toBeOnTheScreen();
     expect(screen.getByText("Data from OpenStreetMap")).toBeOnTheScreen();
 
     // Back to the list of trips: the selected plan is shown there without refetching the list.
     await fireEvent.press(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
-    expect(screen.getByText("✓ Plan selected")).toBeOnTheScreen();
+    expect(screen.getAllByText("Upcoming")).toHaveLength(2); // the tab and the trip's badge
+    expect(screen.queryByText("Planning")).toBeNull();
     expect(client.count("GET /v1/trips")).toBe(1);
   }
 });

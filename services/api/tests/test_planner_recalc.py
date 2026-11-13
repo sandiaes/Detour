@@ -392,3 +392,41 @@ def test_a_single_city_country_gets_no_new_base() -> None:
     with pytest.raises(PlanningImpossible) as info:
         recalc.add_place(inp, _addition(far_sights[0]), FixedTravelSource())
     assert [i.code for i in info.value.issues] == ["SINGLE_CITY_ONLY"]
+
+
+# -- one day only (place suggestions, ADR 021) ---------------------------------------------------
+
+
+def test_only_day_places_the_addition_on_that_day_and_the_best_matches_the_default() -> None:
+    req = ph.request("city-large", 3, date(2027, 5, 1))
+    plan, rp = generated(req, CANDS, RESTS)
+    add = _addition(_unplanned(rp)[0])
+    inp = recalc_input(plan, rp, req, CANDS, RESTS)
+    default = recalc.add_place(inp, add, FixedTravelSource())
+    per_day = {k: recalc.add_place(inp, add, FixedTravelSource(), only_day=k) for k in (1, 2, 3)}
+    for k, rev in per_day.items():
+        _check(rp, rev, added=add.key)
+        day = next(d for d in rev.plan.days if any(e.key == add.key for e in d.items))
+        assert day.day_index == k
+    # The cheapest single day is the day the unrestricted recalculation chooses, at the same cost.
+    best = min(per_day, key=lambda k: (per_day[k].cost, k))
+    default_day = next(
+        d.day_index for d in default.plan.days if any(e.key == add.key for e in d.items)
+    )
+    assert best == default_day and per_day[best].cost == default.cost
+    assert per_day[best].plan == default.plan
+
+
+def test_only_day_far_from_the_addition_is_explained() -> None:
+    town, far_sights, far_eat = _far_world()
+    cands, rests = CANDS + far_sights, RESTS + far_eat
+    req = ph.request("city-large", 3, date(2027, 5, 1))
+    plan, rp = generated(req, CANDS, RESTS)
+    inp = recalc_input(plan, rp, req, cands, rests, towns=[town])
+    add = _addition(far_sights[0])
+    # Only the ends of the city's run can become a new base; day 2 is in the middle.
+    with pytest.raises(PlanningImpossible) as exc:
+        recalc.add_place(inp, add, FixedTravelSource(), only_day=2)
+    assert [i.code for i in exc.value.issues] == ["DAY_NOT_NEAR_ADDITION"]
+    rev = recalc.add_place(inp, add, FixedTravelSource(), only_day=1)
+    assert rev.plan.days[0].base_city_id == town.city_id

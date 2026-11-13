@@ -289,6 +289,12 @@ class Day(BaseModel):
     base_city_name: str | None = Field(
         default=None, description="The city the day is planned from (a snapshot)"
     )
+    base_city_lat: float | None = Field(
+        default=None,
+        description="The base city's position, read from the gazetteer by base_city_id when the "
+        "plan is read (not stored on the day); null when the city is not in the gazetteer",
+    )
+    base_city_lon: float | None = Field(default=None, description="See base_city_lat")
     arrival: Arrival | None = Field(
         default=None,
         description="Travel from the previous day's base city at the start of the day; null "

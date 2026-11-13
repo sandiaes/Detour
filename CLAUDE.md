@@ -50,7 +50,19 @@ city, with no routes or travel times, and the user can clear skipped visits; the
 reported; tried on synthetic fixtures only. **A trip-centred app is built and
 awaits acceptance** (ADR 020, proposed, owner request of 2026-11-13; mobile app only): a trip with a
 chosen plan opens on that plan, "Trip settings" offers new proposals and deleting the trip, and the map
-and day list tell sights from restaurants and cafés. **No budgets,
+and day list tell sights from restaurants and cafés. **A trip-manager redesign is under way** (ADR 021, proposed, owner request
+of 2026-11-13, reference screens in `docs/screenshots/`; mobile app only). Steps 1 to 3 of five are
+built and await acceptance: design tokens and components (`src/theme.ts`, `src/components/ds/`,
+`react-native-svg`), a bottom bar (Trips, Explore, Add, Photos, More; Add is contextual), the trips
+list with Upcoming and Past tabs, a Trip Overview around the active itinerary
+(`selected_itinerary_id`) with the original proposals in the trip menu, the itinerary a day at a
+time with the map and list sharing one selection and transport markers for new base cities (the
+API's `Day` gained read-only `base_city_lat`/`lon`), a place detail screen, and (step 4) adding a
+place found by search (sights, towns, places to eat), address or pin with up to three suggested days
+from the Phase 7 recalculation (`POST /v1/itineraries/{id}/place-suggestions`, `recalc.add_place`'s
+`only_day`, `day` on the add-place preview). Step 5 (photos, documents and trip summary) waits for
+the owner. Covers are illustrations,
+not photos, until an image source has an ADR. **No budgets,
 currencies or prices** (ADR 017, accepted 2026-11-13): none in the app, the API or the database;
 bringing them back needs a new ADR. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),

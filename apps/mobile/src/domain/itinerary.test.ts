@@ -1,5 +1,16 @@
+import type { Day } from "@detour/shared";
+
+import { stopSummary } from "../components/plan/DayPlan";
 import { makeItinerary } from "../testing/fixtures";
-import { boundsOf, buildDayRows, dayTotals, mapPoints, transferFeatures } from "./itinerary";
+import {
+  boundsOf,
+  buildDayRows,
+  dayTotals,
+  mapPoints,
+  transferFeatures,
+  transportFeature,
+  transportPoint,
+} from "./itinerary";
 
 const day1 = makeItinerary("essentials").days[0]!;
 
@@ -76,4 +87,46 @@ test("bounds", () => {
   expect(b[1]).toBeCloseTo(48.1845);
   expect(b[2]).toBeCloseTo(16.3808);
   expect(b[3]).toBeCloseTo(48.2091);
+});
+
+describe("transport points (ADR 021)", () => {
+  const plan = makeItinerary("essentials");
+  const [d1, d2] = plan.days as [Day, Day];
+
+  test("a day that starts at a new base city has a transport point at that city", () => {
+    const point = transportPoint(d2, d1);
+    expect(point).toMatchObject({
+      id: `arrival-${d2.id}`,
+      name: "Graz",
+      fromName: "Vienna",
+      lngLat: [15.4395, 47.0707],
+      fromLngLat: [16.3738, 48.2082],
+    });
+    expect(transportFeature(point!)?.geometry.coordinates).toEqual([
+      [16.3738, 48.2082],
+      [15.4395, 47.0707],
+    ]);
+  });
+
+  test("no arrival, or no known position, means no point", () => {
+    expect(transportPoint(d1, undefined)).toBeNull();
+    expect(transportPoint({ ...d2, base_city_lat: null }, d1)).toBeNull();
+  });
+
+  test("without the previous city's position the point stands alone, with no line", () => {
+    const point = transportPoint(d2, { ...d1, base_city_lon: null });
+    expect(point?.fromLngLat).toBeNull();
+    expect(transportFeature(point!)).toBeNull();
+  });
+});
+
+test("stopSummary says what a stop is and how long it lasts", () => {
+  const [d1] = makeItinerary("essentials").days as [Day];
+  expect(d1.items.map(stopSummary)).toEqual([
+    "Attraction · 2 h",
+    "Attraction · 1 h 30 min",
+    "Lunch · Restaurant · 1 h",
+    "Attraction · 1 h",
+    "Dinner · Restaurant · 1 h 30 min",
+  ]);
 });

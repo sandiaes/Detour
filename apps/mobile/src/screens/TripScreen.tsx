@@ -197,11 +197,9 @@ export function TripScreen({ tripId }: { tripId: string }) {
   const select = (plan: ItinerarySummary) =>
     run(plan.id, async () => {
       await actions.selectPlan(tripId, plan.id);
-      // The chosen plan is what the trip is from now on: open it, with the trips list under it.
-      nav.resetTo([
-        { name: "trips" },
-        { name: "itinerary", tripId, itineraryId: plan.id, view: "days", day: 1 },
-      ]);
+      // The chosen plan is the trip's active itinerary from now on: open the trip's overview,
+      // built around it, with the trips list under it (ADR 021).
+      nav.resetTo([{ name: "trips" }, { name: "tripOverview", tripId }]);
     });
 
   const plan = () =>
@@ -370,8 +368,8 @@ export function TripScreen({ tripId }: { tripId: string }) {
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <ScreenHeader
-          title={trip.title}
-          subtitle={subtitle}
+          title={trip.selected_itinerary_id ? "Original proposals" : "Proposals"}
+          subtitle={`${trip.title} · ${subtitle}`}
           onBack={nav.back}
           right={
             <Button

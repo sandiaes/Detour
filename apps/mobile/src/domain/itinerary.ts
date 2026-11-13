@@ -152,3 +152,50 @@ export function modeLabel(mode: Transfer["mode"]): string {
 export function confidenceLabel(confidence: Transfer["confidence"]): string {
   return confidence === "routed" ? "routed" : "estimated";
 }
+
+/** The travel that starts a day at a new base city (area trips), placed at that city. */
+export type TransportPoint = {
+  id: string;
+  dayId: string;
+  name: string;
+  fromName: string | null;
+  lngLat: [number, number];
+  /** The previous base city, when its position is known: the leg is drawn from there. */
+  fromLngLat: [number, number] | null;
+  arrival: NonNullable<Day["arrival"]>;
+};
+
+export const transportId = (day: Day) => `arrival-${day.id}`;
+
+/**
+ * The transport marker of a day: its arrival at the base city, when the backend gives the city's
+ * position. Nothing is placed when the position is unknown; the list still shows the journey.
+ */
+export function transportPoint(day: Day, previous: Day | undefined): TransportPoint | null {
+  const a = day.arrival;
+  if (!a || day.base_city_lat == null || day.base_city_lon == null) return null;
+  const from =
+    previous && previous.base_city_lat != null && previous.base_city_lon != null
+      ? ([previous.base_city_lon, previous.base_city_lat] as [number, number])
+      : null;
+  return {
+    id: transportId(day),
+    dayId: day.id,
+    name: day.base_city_name ?? "Next base",
+    fromName: a.from_base_city_name,
+    lngLat: [day.base_city_lon, day.base_city_lat],
+    fromLngLat: from,
+    arrival: a,
+  };
+}
+
+/** The leg of a transport point as a line, when both ends are known. */
+export function transportFeature(point: TransportPoint): TransferFeature | null {
+  if (!point.fromLngLat) return null;
+  return {
+    type: "Feature",
+    id: point.id,
+    properties: { confidence: point.arrival.confidence, mode: point.arrival.mode },
+    geometry: { type: "LineString", coordinates: [point.fromLngLat, point.lngLat] },
+  };
+}

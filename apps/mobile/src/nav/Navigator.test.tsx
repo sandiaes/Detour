@@ -11,7 +11,7 @@ function Probe() {
       <Text testID="where">{`${nav.route.name}:${nav.depth}`}</Text>
       <Text onPress={() => nav.push({ name: "createTrip" })}>push</Text>
       <Text onPress={() => nav.replace({ name: "trip", tripId: "t" })}>replace</Text>
-      <Text onPress={() => nav.switchRoot({ name: "settings" })}>settings</Text>
+      <Text onPress={() => nav.switchRoot({ name: "more" })}>more</Text>
     </>
   );
 }
@@ -37,19 +37,22 @@ test("push, replace and the back button", async () => {
   expect(back.press()).toBe(false);
 });
 
-test("back from Settings returns to Trips before leaving the app", async () => {
-  const back = captureBackButton();
-  await render(
-    <NavigationProvider initial={{ name: "settings" }}>
-      <Probe />
-    </NavigationProvider>,
-  );
-  await act(async () => {
-    expect(back.press()).toBe(true);
-  });
-  expect(where()).toBe("trips:1");
-  expect(back.press()).toBe(false);
-});
+test.each(["explore", "photos", "more"] as const)(
+  "back from the %s tab returns to Trips before leaving the app",
+  async (root) => {
+    const back = captureBackButton();
+    await render(
+      <NavigationProvider initial={{ name: root }}>
+        <Probe />
+      </NavigationProvider>,
+    );
+    await act(async () => {
+      expect(back.press()).toBe(true);
+    });
+    expect(where()).toBe("trips:1");
+    expect(back.press()).toBe(false);
+  },
+);
 
 test("switching a root tab drops the screens above it", async () => {
   await render(
@@ -58,6 +61,6 @@ test("switching a root tab drops the screens above it", async () => {
     </NavigationProvider>,
   );
   await fireEvent.press(screen.getByText("push"));
-  await fireEvent.press(screen.getByText("settings"));
-  expect(where()).toBe("settings:1");
+  await fireEvent.press(screen.getByText("more"));
+  expect(where()).toBe("more:1");
 });
