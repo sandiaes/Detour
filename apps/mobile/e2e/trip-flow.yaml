@@ -30,6 +30,10 @@ appId: io.github.sandiaes.detour
 - tapOn:
     id: "destination-result-900101"
 - hideKeyboard
+# The form is longer than the screen: only elements on screen are visible to the test.
+- scrollUntilVisible:
+    element:
+      id: "plan-trip"
 - tapOn:
     id: "plan-trip"
 - runFlow: dismiss-system-dialogs.yaml
