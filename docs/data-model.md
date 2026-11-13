@@ -8,7 +8,8 @@ name and inter-city leg (ADR 016), and removes the trip's currency, meal budget 
 `app.price_record` and `geo.fx_rate` (ADR 017). Migration `0007_change_sets_and_versions`
 (Phase 7, ADR 018) adds `app.change_set` and `app.itinerary_version` (section 3.7);
 `0008_add_restaurant_change_sets` (Phase 8, ADR 019) lets a change set add a restaurant to a meal
-slot.
+slot. The past-trips archive (section 3.5, ADR 006) needs no migration since `0003`; its automatic
+rule and size report are described in section 5.
 Where the built schema differs from the earlier proposal, the difference is listed in section 9
 and decided in [ADR 012](decisions/012-phase-2-data-and-search-choices.md). Photos (section 8) are
 still reserved, not built.
@@ -271,7 +272,10 @@ installation.
 One row per city or attraction of the selected itinerary of a past trip: `kind`, `name` and
 `point` (snapshots), `geo_place_ref` (a `geo.place` id for imported places, null for user places
 and cities; may no longer exist), `day_number`, `confirmed` (default true; the user can clear it).
-Restaurants and meals are not archived.
+Restaurants and meals are not archived. Each city is listed once, however many days are spent there.
+The archive stores no city for an attraction: the app groups attractions under the nearest city row.
+`GET /v1/trips/{id}/archive` reports the counts and `size_bytes`, the stored row data of the trip
+row and its visit rows (`pg_column_size`; no indexes or page overhead).
 
 ### 3.6 `app.provider_cache` and `app.provider_usage`
 Answers from the one external provider (Photon) and its daily call counter (architecture, section
@@ -322,12 +326,12 @@ carry venue type, cuisines and meal types only. Bringing prices back needs a new
 | **Apply a change** | Keeps the current version in `itinerary_version`, writes the proposal, increments the version, clears the proposal |
 | **Discard a change** | The change set becomes `discarded` and loses its proposal |
 | **Delete a user place** | Refused (409) while an item uses it |
-| **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per city and visit item of the *selected* itinerary (or the destination city if there is none); then **every** itinerary of the trip is deleted (transfers, route geometry, versions, seeds go with them); the trip becomes `past`. One-way. A past trip is read-only except deletion and clearing visits |
+| **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per base city (once each) and per visit item of the *selected* itinerary (or the destination city if there is none and the destination is a city); then **every** itinerary of the trip is deleted (days, items, transfers, route geometry, versions and change sets go with them; user places stay); the trip becomes `past`. One-way. A past trip is read-only except deletion and clearing visits |
+| **A trip's last day passes** (ADR 006, amendment of 2026-11-13) | Reading the trips (`GET /v1/trips`, `GET /v1/trips/{id}`) first archives the caller's active, non-seed trips that have a start date and whose last day ended two days ago or more (the same archive as above). No scheduled job. A trip without a start date never becomes past by itself |
 | **Delete an installation** (no endpoint; operator action) | Cascades to everything it owns. Tokens are stateless, so the app would register a new installation |
 | **Limits** | 100 trips per installation, 5 itineraries per trip, 40 items per day, 500 user places, 30 kept versions per itinerary, one pending change set per itinerary |
 
-Not built: archiving a trip automatically after its last day (ADR 006 allows it; it needs a
-scheduled job), and a backup of `app` (ADR 005: Supabase Free has none).
+Not built: a backup of `app` (ADR 005: Supabase Free has none).
 
 ## 6. Provider-data ownership and licence handling
 

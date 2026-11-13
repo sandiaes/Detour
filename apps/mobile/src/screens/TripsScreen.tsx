@@ -11,9 +11,11 @@ import { type Route, useNavigation } from "../nav/Navigator";
 import { colors, radius, spacing, type } from "../theme";
 import { formatTripSpan } from "../util/format";
 
-/** A trip with a chosen plan opens on that plan; the proposals are for trips still to decide. */
+/** A past trip opens on its map; a trip with a chosen plan opens on that plan; the proposals are
+ * for trips still to decide. */
 export function tripRoute(trip: Trip): Route {
-  if (trip.status !== "past" && trip.selected_itinerary_id) {
+  if (trip.status === "past") return { name: "pastTrip", tripId: trip.id };
+  if (trip.selected_itinerary_id) {
     return {
       name: "itinerary",
       tripId: trip.id,
@@ -38,9 +40,11 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
       accessibilityRole="button"
       accessibilityLabel={`${trip.title}. ${trip.destination.name}. ${span}. ${status.replace("✓ ", "")}.`}
       accessibilityHint={
-        trip.status !== "past" && trip.selected_itinerary_id
-          ? "Opens the selected plan"
-          : "Opens the trip"
+        trip.status === "past"
+          ? "Opens the places you visited"
+          : trip.selected_itinerary_id
+            ? "Opens the selected plan"
+            : "Opens the trip"
       }
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}

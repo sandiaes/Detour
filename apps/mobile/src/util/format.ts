@@ -82,3 +82,18 @@ export function formatAge(savedAtMs: number, nowMs: number): string {
   if (hours < 48) return `${pluralise(hours, "hour")} ago`;
   return `${pluralise(Math.floor(hours / 24), "day")} ago`;
 }
+
+/** "Day 2 · Sun 2 May" with a start date, "Day 2" without one. */
+export function formatDayLabel(startDate: string | null, day: number): string {
+  const start = startDate ? parseIsoDate(startDate) : null;
+  if (!start) return `Day ${day}`;
+  const date = new Date(start.getTime() + (day - 1) * 86_400_000);
+  return `Day ${day} · ${formatDate(date.toISOString().slice(0, 10), false)}`;
+}
+
+/** "812 bytes", "4.5 kB", "1.2 MB" (powers of 1000). */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1000) return `${bytes} ${bytes === 1 ? "byte" : "bytes"}`;
+  if (bytes < 1_000_000) return `${(bytes / 1000).toFixed(1)} kB`;
+  return `${(bytes / 1_000_000).toFixed(1)} MB`;
+}

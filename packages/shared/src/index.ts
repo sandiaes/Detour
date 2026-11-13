@@ -45,6 +45,10 @@ export type SlotSuggestions = components["schemas"]["SlotSuggestions"];
 export type ChangeSetApplied = components["schemas"]["ChangeSetApplied"];
 export type ChangeDiff = components["schemas"]["ChangeDiff"];
 
+// The past-trips archive (ADR 006).
+export type TripVisit = components["schemas"]["TripVisit"];
+export type ArchiveInfo = components["schemas"]["ArchiveInfo"];
+
 export type ApiClientOptions = {
   /** Bearer token of the anonymous installation, read on every request. */
   getToken?: () => string | null | undefined;

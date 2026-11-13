@@ -42,7 +42,12 @@ backend, then manual entry with a pin or typed coordinates and optional cuisines
 three suggested day and meal slots with reasons, the estimated detour and which items move
 (`planner/restaurant_slots.py`), placed through the Phase 7 change sets (action `add_restaurant`,
 migration `0008`) and the app's add-a-restaurant screen; tried on synthetic fixtures only.
-**A trip-centred app is built and
+**The past-trips archive is built and awaits
+acceptance** (ADR 006, amendment of 2026-11-13): a trip becomes past when the user marks it or two
+days after its last day (checked when the trips are read), keeping one `app.trip_visit` snapshot per
+city (each once) and attraction and deleting every plan; the app shows it as a map and a list by
+city, with no routes or travel times, and the user can clear skipped visits; the archive's size is
+reported; tried on synthetic fixtures only. **A trip-centred app is built and
 awaits acceptance** (ADR 020, proposed, owner request of 2026-11-13; mobile app only): a trip with a
 chosen plan opens on that plan, "Trip settings" offers new proposals and deleting the trip, and the map
 and day list tell sights from restaurants and cafés. **No budgets,
