@@ -22,7 +22,7 @@ import { useItemActions } from "../data/itemActions";
 import { useResource } from "../data/DataProvider";
 import { STOP_KIND_LABEL, isEatKind, stopKind } from "../domain/itinerary";
 import { useNavigation } from "../nav/Navigator";
-import { colors, radius, shadow, spacing, type } from "../theme";
+import { colors, radius, spacing, type } from "../theme";
 import { formatClock, formatCuisines, formatMinutes } from "../util/format";
 
 // One stop of a plan (ADR 021, step 3): what Detour knows about it, and nothing it does not.
@@ -343,12 +343,8 @@ const styles = StyleSheet.create({
   body: { padding: spacing.lg, gap: spacing.lg },
   tagRow: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   factCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.xs,
-    ...shadow.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   fact: {
     flexDirection: "row",

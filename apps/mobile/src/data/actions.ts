@@ -91,6 +91,22 @@ export function useTripActions() {
     [need, data],
   );
 
+  /** A clean trip: one empty day per trip day, chosen as the trip's plan at once, so the trip opens
+   * on it and places can be added freely. No proposals are made. */
+  const startEmptyTrip = useCallback(
+    async (tripId: string): Promise<Trip> => {
+      const itinerary = await call(
+        need().POST("/v1/trips/{trip_id}/itineraries", {
+          params: { path: { trip_id: tripId } },
+        }),
+      );
+      data.put(keys.itinerary(itinerary.id), itinerary);
+      data.put(keys.itineraries(tripId), [toSummary(itinerary)]);
+      return selectPlan(tripId, itinerary.id);
+    },
+    [need, data, selectPlan],
+  );
+
   /** Deletes the trip with its plans on the server, then forgets everything held for it. */
   const deleteTrip = useCallback(
     async (trip: Trip): Promise<void> => {
@@ -144,6 +160,7 @@ export function useTripActions() {
   return {
     createTrip,
     generate,
+    startEmptyTrip,
     selectPlan,
     deleteTrip,
     archiveTrip,

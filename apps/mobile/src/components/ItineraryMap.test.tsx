@@ -89,7 +89,7 @@ test("transfer lines are drawn solid when routed and dashed when estimated, and 
   const routed = maplibre.layers.find((l) => l.id === "transfers-routed");
   const estimated = maplibre.layers.find((l) => l.id === "transfers-estimated");
   expect(routed?.style.lineDasharray).toBeUndefined();
-  expect(estimated?.style.lineDasharray).toEqual([1.5, 1.5]);
+  expect(estimated?.style.lineDasharray).toEqual([2, 2]);
   expect(routed?.filter).toEqual(["==", ["get", "confidence"], "routed"]);
   // The map key explains both, in words, and that the line is not the road path.
   await fireEvent.press(screen.getByRole("button", { name: "Map key" }));

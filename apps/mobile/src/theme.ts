@@ -1,13 +1,14 @@
-// Design tokens (ADR 021). Modern, clean and calm: a warm off-white page, deep navy text, a muted
+// Design tokens (ADR 021, docs/design.md). Modern, clean and calm: a near-white page, deep navy text, a muted
 // teal as the primary accent and a restrained orange for map markers of places to eat and for the
-// few actions that matter most. Rounded cards with a hairline border and a soft shadow.
+// few actions that matter most. Flat surfaces separated by hairlines; cards only where a thing is
+// picked up and opened (a trip's cover).
 //
 // Every text/background pair is checked against WCAG AA in theme.test.ts (4.5:1 for text, 3:1 for
 // the borders that identify a control). Screens import these tokens; no screen defines a colour.
 export const colors = {
-  background: "#f7f4ee",
+  background: "#fcfcfb",
   surface: "#ffffff",
-  surfaceMuted: "#efe9df",
+  surfaceMuted: "#f2f2f0",
   text: "#14243a",
   muted: "#56616c",
   primary: "#2b6b64",
@@ -23,7 +24,7 @@ export const colors = {
   ink: "#14243a",
   onInk: "#ffffff",
   /** Hairline dividers only. Never the sole identification of a control. */
-  border: "#e3ddd2",
+  border: "#e4e4e1",
   /** Borders that identify a control (inputs, chips): at least 3:1 on the background. */
   outline: "#7a858c",
   warning: "#fff3d6",

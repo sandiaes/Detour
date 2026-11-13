@@ -35,10 +35,9 @@ async function openDays(client = server(), cache = createMemoryStore()) {
 
 test("the list shows one day at a time, with times, kinds and durations", async () => {
   await openDays();
-  expect(await screen.findByText("Day 1 · Sat 1 May")).toBeOnTheScreen();
-  expect(
-    screen.getByText("3 visits · 2 meals · 4 h 30 min at the sights · 37 min travelling"),
-  ).toBeOnTheScreen();
+  expect(await screen.findByRole("tab", { name: "Day 1, Sat 1 May" })).toBeOnTheScreen();
+  // No "Day 1 · Sat 1 May · 3 visits…" title above the stops: the tab names the day.
+  expect(screen.queryByText(/visits · .* at the sights/)).toBeNull();
   expect(screen.getByText("Schönbrunn Palace")).toBeOnTheScreen();
   expect(screen.getAllByText("Attraction · 2 h").length).toBeGreaterThan(0);
   // Day 2 is behind its tab in the day selector.
@@ -73,12 +72,12 @@ test("meals show the meal, the venue type and the cuisine from the open data", a
   expect(
     screen.getByLabelText(
       "Stop 3. Restaurant. Lunch. Gasthaus Zum Test. Regional, coffee shop. 13:01 to 14:01. " +
-        "1 h, typical meal length. Why: Lunch, planned between 12:00 and 14:30.",
+        "1 h, typical meal length. Why: Lunch, planned between 13:00 and 15:00.",
     ),
   ).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("stop-m1"));
   expect(screen.getByText("1 h · typical meal length")).toBeOnTheScreen();
-  expect(screen.getByText("Lunch, planned between 12:00 and 14:30.")).toBeOnTheScreen();
+  expect(screen.getByText("Lunch, planned between 13:00 and 15:00.")).toBeOnTheScreen();
 });
 
 test("an area plan names each day's base city and starts a new base with the journey", async () => {
@@ -88,11 +87,7 @@ test("an area plan names each day's base city and starts a new base with the jou
   expect(await screen.findByText("Graz")).toBeOnTheScreen();
   expect(screen.getByText("To Graz")).toBeOnTheScreen();
   expect(screen.getByText("Drive from Vienna · 2 h 20 min · 191 km")).toBeOnTheScreen();
-  expect(
-    screen.getByLabelText(
-      "Day 2 · Sun 2 May. Based in Graz. 2 visits · 3 h at the sights · 2 h 25 min travelling.",
-    ),
-  ).toBeOnTheScreen();
+  expect(screen.getByLabelText("Day 2 · Sun 2 May. Based in Graz.")).toBeOnTheScreen();
   expect(
     screen.getByRole("button", {
       name:
@@ -223,7 +218,7 @@ test("the Android back button leaves the plan for the screen before it", async (
       <AppContent />
     </Harness>,
   );
-  await fireEvent.press(await screen.findByText("Vienna, 2 days"));
+  await fireEvent.press(await screen.findByText("Vienna"));
   expect(await screen.findByRole("header", { name: "Choose a plan" })).toBeOnTheScreen();
   await act(async () => {
     expect(back.press()).toBe(true);

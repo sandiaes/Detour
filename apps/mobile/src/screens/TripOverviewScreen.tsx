@@ -12,7 +12,6 @@ import {
   ListRow,
   PlannedFeature,
   RowGroup,
-  SectionTitle,
   Sheet,
   type Stat,
   StatRow,
@@ -43,7 +42,7 @@ import {
   tripPhase,
 } from "../domain/trips";
 import { type TripSection, useNavigation } from "../nav/Navigator";
-import { colors, radius, spacing, type } from "../theme";
+import { TOUCH, colors, radius, spacing, type } from "../theme";
 import { pluralise } from "../util/format";
 import { useBackend } from "../api/BackendProvider";
 import { PlanDayView, dayTitle } from "../components/plan/DayPlan";
@@ -75,18 +74,12 @@ export function dayContents(day: Day): string {
   const t = dayTotals(day);
   if (t.visits === 0 && t.meals === 0) return "Nothing planned";
   const parts = [pluralise(t.visits, "activity", "activities")];
-  if (t.meals > 0) parts.push(pluralise(t.meals, "meal"));
+  if (t.meals > 0) parts.push(pluralise(t.meals, "restaurant"));
   return parts.join(" · ");
 }
 
 function statsOf(counts: TripCounts): Stat[] {
   const all: (Stat | null)[] = [
-    {
-      key: "days",
-      icon: "calendar",
-      value: counts.days,
-      label: counts.days === 1 ? "Day" : "Days",
-    },
     counts.cities !== null
       ? {
           key: "cities",
@@ -115,7 +108,17 @@ function statsOf(counts: TripCounts): Stat[] {
   return all.filter((s): s is Stat => s !== null);
 }
 
-function DayTimeline({ days, onOpen }: { days: Day[]; onOpen: (dayIndex: number) => void }) {
+/** The trip's days as a timeline (reference screen 12): a thumbnail, the day, the town and what is
+ * planned. A day opens the map of that day. Hairlines, no cards. */
+function DayTimeline({
+  days,
+  coverKey,
+  onOpen,
+}: {
+  days: Day[];
+  coverKey: string;
+  onOpen: (dayIndex: number) => void;
+}) {
   return (
     <View style={styles.timeline}>
       {days.map((day, i) => {
@@ -127,7 +130,7 @@ function DayTimeline({ days, onOpen }: { days: Day[]; onOpen: (dayIndex: number)
             key={day.id}
             accessibilityRole="button"
             accessibilityLabel={`${title}.${base ? ` ${base}.` : ""} ${contents}.`}
-            accessibilityHint="Opens this day of the itinerary"
+            accessibilityHint="Opens this day on the map"
             onPress={() => onOpen(day.day_index)}
             style={({ pressed }) => [styles.dayRow, pressed && styles.pressed]}
             testID={`day-row-${day.day_index}`}
@@ -137,13 +140,19 @@ function DayTimeline({ days, onOpen }: { days: Day[]; onOpen: (dayIndex: number)
               <View style={styles.railDot} />
               <View style={[styles.railLine, i === days.length - 1 && styles.railLineHidden]} />
             </View>
-            <View style={styles.dayCard}>
+            <View style={[styles.dayCard, i < days.length - 1 && styles.dayCardRule]}>
+              <Cover
+                seedKey={`${coverKey}:${base ?? day.day_index}`}
+                height={56}
+                rounded={radius.sm + 2}
+                style={styles.thumb}
+              />
               <View style={styles.dayText}>
                 <Text style={styles.dayTitle}>{title}</Text>
                 {base ? <Text style={styles.dayBase}>{base}</Text> : null}
                 <Text style={styles.dayMeta}>{contents}</Text>
               </View>
-              <Icon name="chevronRight" size={18} color={colors.muted} />
+              <Icon name="chevronRight" size={16} color={colors.muted} />
             </View>
           </Pressable>
         );
@@ -243,7 +252,7 @@ export function TripOverviewScreen({
   // The day shown in the Itinerary and Map tabs: today's during the trip, else the first.
   const day =
     dayIndex ?? (plan.data ? (previewDays(trip, plan.data, undefined, 1)[0]?.day_index ?? 1) : 1);
-  const openDay = (d: number, target: TripSection = "itinerary") => {
+  const openDay = (d: number, target: TripSection = "map") => {
     setDayIndex(d);
     setSection(target);
   };
@@ -257,7 +266,6 @@ export function TripOverviewScreen({
         onDayChange={setDayIndex}
         mode={mode}
         map={mapConfig}
-        embedded={mode === "list"}
         onDetails={(item) =>
           nav.push({ name: "placeDetail", tripId, itineraryId: planId, itemId: item.id })
         }
@@ -300,7 +308,7 @@ export function TripOverviewScreen({
       <>
         <ResourceNotices resource={plan} noun="this itinerary" />
         {counts ? <StatRow stats={statsOf(counts)} /> : null}
-        <Card>
+        <View style={styles.planBlock}>
           <View style={styles.planHead}>
             <Text accessibilityRole="header" style={styles.cardTitle}>
               Your itinerary
@@ -308,14 +316,16 @@ export function TripOverviewScreen({
             <Badge label={`${PROFILE_LABEL[data.profile]} plan`} tone="primary" />
           </View>
           <Text style={styles.body}>{PROFILE_EMPHASIS[data.profile]}</Text>
-          <Text style={styles.meta}>{planFacts(data).join(" · ")}</Text>
+          {data.profile !== "manual" ? (
+            <Text style={styles.meta}>{planFacts(data).join(" · ")}</Text>
+          ) : null}
           <View style={styles.actions}>
             <Button
               label="Itinerary"
               icon="list"
               testID="open-itinerary"
               accessibilityLabel="Open the itinerary"
-              onPress={() => openDay(day)}
+              onPress={() => setSection("itinerary")}
             />
             <Button
               label="Map"
@@ -326,27 +336,7 @@ export function TripOverviewScreen({
               onPress={() => openDay(day, "map")}
             />
           </View>
-        </Card>
-        <SectionTitle
-          title={phase === "inProgress" ? "Today and next" : "First days"}
-          action={
-            data.days.length > 3 ? (
-              <Button
-                label="All days"
-                variant="quiet"
-                accessibilityLabel="Show all days"
-                onPress={() => setSection("itinerary")}
-              />
-            ) : undefined
-          }
-        />
-        <DayTimeline days={previewDays(trip, data)} onOpen={(d) => openDay(d)} />
-        <PlannedFeature
-          icon="note"
-          title="Notes and reservations"
-          text="Your notes and the next reservations of this trip will be shown here. Not built yet."
-          testID="notes-planned"
-        />
+        </View>
       </>
     );
   } else if (section === "itinerary") {
@@ -354,7 +344,11 @@ export function TripOverviewScreen({
       <>
         <ResourceNotices resource={plan} noun="this itinerary" />
         {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
-        {planView("list")}
+        <DayTimeline
+          days={[...plan.data.days].sort((x, y) => x.day_index - y.day_index)}
+          coverKey={trip.destination.ref}
+          onOpen={(d) => openDay(d, "map")}
+        />
       </>
     );
   }
@@ -400,34 +394,50 @@ export function TripOverviewScreen({
     />
   );
 
-  // The map fills the screen under a compact header, with the day's list beneath it.
+  const compactHead = (
+    <>
+      <View style={styles.compactHead}>
+        <IconButton icon="back" label="Back" onPress={nav.back} />
+        <View
+          ref={titleRef}
+          style={styles.flex}
+          accessible
+          accessibilityRole="header"
+          accessibilityLabel={trip.title}
+        >
+          <Text style={styles.compactTitle} numberOfLines={1}>
+            {trip.title}
+          </Text>
+        </View>
+        <IconButton
+          icon="dots"
+          label="Trip menu"
+          hint="Original proposals and trip settings"
+          testID="trip-menu"
+          onPress={() => setMenu(true)}
+        />
+      </View>
+      {tabs}
+    </>
+  );
+
+  // Itinerary and Map have no cover (reference screen 12): a compact header, the tabs, then the
+  // days as a timeline, or the map of one day with its stops beneath.
   if (section === "map" && hasPlan && plan.data) {
     return (
       <View style={styles.fill}>
-        <View style={styles.compactHead}>
-          <IconButton icon="back" label="Back" onPress={nav.back} />
-          <View
-            ref={titleRef}
-            style={styles.flex}
-            accessible
-            accessibilityRole="header"
-            accessibilityLabel={trip.title}
-          >
-            <Text style={styles.compactTitle} numberOfLines={1}>
-              {trip.title}
-            </Text>
-          </View>
-          <IconButton
-            icon="dots"
-            label="Trip menu"
-            hint="Original proposals and trip settings"
-            testID="trip-menu"
-            onPress={() => setMenu(true)}
-          />
-        </View>
-        {tabs}
+        {compactHead}
         {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
         {planView("map")}
+        {menuSheet}
+      </View>
+    );
+  }
+  if (section === "itinerary" && hasPlan && plan.data) {
+    return (
+      <View style={styles.fill}>
+        {compactHead}
+        <ScrollView contentContainerStyle={styles.scroll}>{content}</ScrollView>
         {menuSheet}
       </View>
     );
@@ -473,14 +483,19 @@ export function TripOverviewScreen({
             </View>
           </View>
         </Cover>
-        <View style={styles.tabs}>{tabs}</View>
-        <ResourceNotices resource={trips} noun="trips" />
-        <View style={styles.body2}>{content}</View>
+        {/* The tabs and what follows sit on a white sheet whose top corners curve over the photo. */}
+        <View style={styles.sheetTop}>{tabs}</View>
+        <View style={styles.sheetBody}>
+          <ResourceNotices resource={trips} noun="trips" />
+          <View style={styles.body2}>{content}</View>
+        </View>
       </ScrollView>
       {menuSheet}
     </View>
   );
 }
+
+const SHEET_RADIUS = 28;
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
@@ -503,8 +518,16 @@ const styles = StyleSheet.create({
   heroTitle: { ...type.display, color: colors.onImage },
   heroMeta: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   heroMetaText: { ...type.small, color: colors.onImage, fontWeight: "500" },
-  tabs: { backgroundColor: colors.background },
-  body2: { padding: spacing.lg, gap: spacing.lg },
+  sheetTop: {
+    marginTop: -SHEET_RADIUS,
+    backgroundColor: colors.background,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
+    overflow: "hidden",
+  },
+  sheetBody: { backgroundColor: colors.background },
+  body2: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.lg },
+  planBlock: { gap: spacing.sm },
   cardTitle: { ...type.heading, color: colors.text },
   body: { ...type.body, color: colors.text },
   meta: { ...type.small, color: colors.muted },
@@ -525,33 +548,28 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
   },
   compactTitle: { ...type.heading, color: colors.text },
-  dayRow: { flexDirection: "row", minHeight: 72 },
-  rail: { width: 24, alignItems: "center" },
-  railLine: { flex: 1, width: 2, backgroundColor: colors.border },
+  dayRow: { flexDirection: "row", paddingHorizontal: spacing.lg, minHeight: TOUCH },
+  rail: { width: 20, alignItems: "center" },
+  railLine: { flex: 1, width: StyleSheet.hairlineWidth * 2, backgroundColor: colors.outline },
   railLineHidden: { backgroundColor: "transparent" },
   railDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
   },
   dayCard: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.md,
     marginLeft: spacing.sm,
-    marginVertical: spacing.xs,
-    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
+  dayCardRule: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  thumb: { width: 56 },
   dayText: { flex: 1, gap: spacing.xxs },
-  dayTitle: { ...type.body, fontWeight: "700", color: colors.text },
+  dayTitle: { ...type.small, fontWeight: "700", color: colors.text },
   dayBase: { ...type.small, color: colors.text },
-  dayMeta: { ...type.small, color: colors.muted },
+  dayMeta: { ...type.caption, color: colors.muted },
 });

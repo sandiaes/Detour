@@ -31,7 +31,7 @@ import {
 } from "../domain/placeSuggestions";
 import { restaurantMeta } from "../domain/restaurants";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, radius, shadow, spacing, type } from "../theme";
+import { TOUCH, colors, radius, spacing, type } from "../theme";
 import { formatMeters, formatMinutes } from "../util/format";
 
 // Adding a place (Phase 7, ADR 018; redesigned in ADR 021, step 4). Find it (sights, towns and
@@ -768,14 +768,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    ...shadow.card,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  resultSelected: { borderColor: colors.primary, borderWidth: 2 },
+  resultSelected: { backgroundColor: colors.surfaceMuted },
   resultIcon: {
     width: 36,
     height: 36,

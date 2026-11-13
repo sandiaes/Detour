@@ -82,7 +82,7 @@ function slot(rank: number, day: number, meal: string, start: string, end: strin
     reasons: [
       {
         code: "SLOT_WINDOW",
-        text: `${meal} is planned between 12:00 and 14:30; here it runs ${start}-${end}.`,
+        text: `${meal} is planned between 13:00 and 15:00; here it runs ${start}-${end}.`,
       },
       { code: "SLOT_TRAVEL", text: `Day ${day} travel changes by +${rank * 2} min (estimated).` },
     ],

@@ -61,7 +61,13 @@ API's `Day` gained read-only `base_city_lat`/`lon`), a place detail screen, and 
 place found by search (sights, towns, places to eat), address or pin with up to three suggested days
 from the Phase 7 recalculation (`POST /v1/itineraries/{id}/place-suggestions`, `recalc.add_place`'s
 `only_day`, `day` on the add-place preview). Step 5 (photos, documents and trip summary) waits for
-the owner. Covers are illustrations,
+the owner. **An amendment of 2026-11-14** (ADR 021, decisions 25 to 31; the design is described in
+`docs/design.md`) is built and awaits acceptance: a near-white, flat look with hairlines instead of
+cards, trip cards with only name, dates and length (a trip is named after its destination), an
+overview without the days figure, first days or notes, an Itinerary tab of days that open the map of
+that day, quieter map markers, a new-trip screen with travel style, public transport and "Start with
+an empty trip", and meals aimed at lunch 13:00 and dinner 20:00 (day window to 22:00). Adding places
+to an empty trip is not built yet (it needs the owner's approval). Covers are illustrations,
 not photos, until an image source has an ADR. **No budgets,
 currencies or prices** (ADR 017, accepted 2026-11-13): none in the app, the API or the database;
 bringing them back needs a new ADR. The decisions in `docs/app-plan.md`
@@ -79,6 +85,7 @@ owner asks for it.
 | Tables, the licence boundary, lifecycle | `docs/data-model.md` |
 | Phases, dependencies, exclusions | `docs/app-plan.md` |
 | Targets | `docs/kpis.md` |
+| How the app looks and behaves (screens, tokens, patterns) | `docs/design.md` |
 | Recorded decisions | `docs/decisions/` |
 | Working on the code, CI | `docs/development.md` |
 | Deploying | `docs/deployment.md` |

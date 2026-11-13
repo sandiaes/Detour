@@ -24,7 +24,7 @@ test("a first run with no trips explains what to do and offers the form", async 
   );
   expect(await screen.findByText("No trips yet")).toBeOnTheScreen();
   await fireEvent.press(screen.getByText("Plan a trip"));
-  expect(await screen.findByRole("header", { name: "New trip" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Create new trip" })).toBeOnTheScreen();
 });
 
 test("trips are listed with destination, dates, status and what the plan contains", async () => {
@@ -47,22 +47,19 @@ test("trips are listed with destination, dates, status and what the plan contain
       <AppContent />
     </Harness>,
   );
-  expect(await screen.findByText("Vienna, 2 days")).toBeOnTheScreen();
+  expect(await screen.findByText("Vienna")).toBeOnTheScreen();
   expect(screen.getByText("1–2 May 2027 · 2 days")).toBeOnTheScreen();
   expect(screen.getByText("Planning")).toBeOnTheScreen();
-  expect(screen.getByText("Vienna · No plan chosen yet")).toBeOnTheScreen();
   expect(screen.getAllByText("Upcoming")).toHaveLength(2); // the tab and the badge
   expect(screen.queryByRole("tab", { name: "Archived" })).toBeNull();
-  // The counts come from the active plan, read once and shared with the plan screen.
-  expect(
-    await screen.findByText(/^Vienna · 2 cities · \d+ places · \d+ restaurants$/),
-  ).toBeOnTheScreen();
-  expect(client.count("GET /v1/itineraries/{itinerary_id}")).toBe(1);
+  // A card is the cover, the name, the dates and the length, and nothing under it: no footer, no
+  // counts, and so no request for the plan.
+  expect(screen.queryByText(/No plan chosen yet/)).toBeNull();
+  expect(screen.queryByText(/cities/)).toBeNull();
+  expect(client.count("GET /v1/itineraries/{itinerary_id}")).toBe(0);
   // The whole card is one control with a full spoken description.
   expect(
-    screen.getByRole("button", {
-      name: /^Prague\. Vienna\. 3 days\. Upcoming\. 2 cities · /,
-    }),
+    screen.getByRole("button", { name: /^Prague\. .*3 days\. Upcoming\.$/ }),
   ).toBeOnTheScreen();
 });
 
@@ -76,7 +73,7 @@ test("the tabs split upcoming and past trips", async () => {
       <AppContent />
     </Harness>,
   );
-  expect(await screen.findByText("Vienna, 2 days")).toBeOnTheScreen();
+  expect(await screen.findByText("Vienna")).toBeOnTheScreen();
   expect(screen.queryByText("Graz last spring")).toBeNull();
   expect(screen.getByRole("tab", { name: "Upcoming" }).props.accessibilityState).toMatchObject({
     selected: true,
@@ -84,9 +81,7 @@ test("the tabs split upcoming and past trips", async () => {
 
   await fireEvent.press(screen.getByRole("tab", { name: "Past" }));
   expect(await screen.findByText("Graz last spring")).toBeOnTheScreen();
-  expect(screen.queryByText("Vienna, 2 days")).toBeNull();
-  // A past trip keeps its cities and attractions, not its restaurants (ADR 006).
-  expect(await screen.findByText(/· 2 cities · 3 places$/)).toBeOnTheScreen();
+  expect(screen.queryByText("Vienna")).toBeNull();
 });
 
 test("each interactive control is at least 48 dp tall", async () => {
@@ -95,7 +90,7 @@ test("each interactive control is at least 48 dp tall", async () => {
       <AppContent />
     </Harness>,
   );
-  await screen.findByText("Vienna, 2 days");
+  await screen.findByText("Vienna");
   const newTrip = screen.getByRole("button", { name: "New trip" });
   const flat = Array.isArray(newTrip.props.style)
     ? Object.assign({}, ...newTrip.props.style.flat(3).filter(Boolean))
@@ -122,7 +117,7 @@ test("while waking, saved trips are shown with a notice instead of a spinner", a
       <AppContent />
     </Harness>,
   );
-  expect(await screen.findByText("Vienna, 2 days")).toBeOnTheScreen();
+  expect(await screen.findByText("Vienna")).toBeOnTheScreen();
   expect(screen.getByText(/The free host is starting up/)).toBeOnTheScreen();
 });
 
@@ -135,7 +130,7 @@ test("offline with a saved copy: the trips can be read and the notice says so", 
       <AppContent />
     </Harness>,
   );
-  expect(await screen.findByText("Vienna, 2 days")).toBeOnTheScreen();
+  expect(await screen.findByText("Vienna")).toBeOnTheScreen();
   expect(await screen.findByText(/Showing trips saved 5 minutes ago/)).toBeOnTheScreen();
   expect(screen.getByText(/changes need a connection/)).toBeOnTheScreen();
 });
@@ -148,7 +143,7 @@ test("the backend being unreachable is the same offline read", async () => {
       <AppContent />
     </Harness>,
   );
-  expect(await screen.findByText("Vienna, 2 days")).toBeOnTheScreen();
+  expect(await screen.findByText("Vienna")).toBeOnTheScreen();
   expect(await screen.findByText(/Showing trips saved/)).toBeOnTheScreen();
 });
 
@@ -178,7 +173,7 @@ test("a server error shows its message and Try again fetches again", async () =>
   expect(await screen.findByText(/The server had a problem/)).toBeOnTheScreen();
   fail = false;
   await fireEvent.press(screen.getByText("Try again"));
-  expect(await screen.findByText("Vienna, 2 days")).toBeOnTheScreen();
+  expect(await screen.findByText("Vienna")).toBeOnTheScreen();
   expect(client.count("GET /v1/trips")).toBe(2);
 });
 
@@ -189,10 +184,10 @@ test("coming back to the list within a minute makes no new request", async () =>
       <AppContent />
     </Harness>,
   );
-  await screen.findByText("Vienna, 2 days");
+  await screen.findByText("Vienna");
   await fireEvent.press(screen.getByRole("tab", { name: "More" }));
   await fireEvent.press(await screen.findByRole("tab", { name: "Trips" }));
-  expect(await screen.findByText("Vienna, 2 days")).toBeOnTheScreen();
+  expect(await screen.findByText("Vienna")).toBeOnTheScreen();
   expect(client.count("GET /v1/trips")).toBe(1);
 });
 
@@ -206,7 +201,7 @@ test("opening a trip needs no further request for the trip itself", async () => 
       <AppContent />
     </Harness>,
   );
-  await fireEvent.press(await screen.findByText("Vienna, 2 days"));
+  await fireEvent.press(await screen.findByText("Vienna"));
   await fireEvent.press(await screen.findByRole("button", { name: "See the proposals" }));
   expect(await screen.findByText("Not planned yet")).toBeOnTheScreen();
   expect(client.count("GET /v1/trips")).toBe(1);
@@ -226,14 +221,15 @@ test("a trip with a chosen plan opens on its overview, built around the active i
     </Harness>,
   );
   await fireEvent.press(await screen.findByRole("button", { name: /Upcoming/ }));
-  expect(await screen.findByRole("header", { name: "Vienna, 2 days" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Vienna" })).toBeOnTheScreen();
   expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
   expect(screen.getByText("Essentials plan")).toBeOnTheScreen();
-  expect(screen.getByRole("button", { name: /^Day 1 · Sat 1 May\./ })).toBeOnTheScreen();
+  // The overview no longer previews the first days: the Itinerary tab has them.
+  expect(screen.queryByRole("button", { name: /^Day 1/ })).toBeNull();
   // The original proposals are not shown, and not even fetched.
   expect(screen.queryByText("How they differ")).toBeNull();
   expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBe(0);
-  // The card's counts and the overview share one read of the plan.
+  // The overview reads the plan once.
   expect(client.count("GET /v1/itineraries/{itinerary_id}")).toBe(1);
 });
 
@@ -247,7 +243,7 @@ test("a trip with no chosen plan opens on its overview, which leads to the propo
       <AppContent />
     </Harness>,
   );
-  await fireEvent.press(await screen.findByRole("button", { name: /No plan chosen yet/ }));
+  await fireEvent.press(await screen.findByRole("button", { name: /Planning/ }));
   expect(await screen.findByRole("header", { name: "Choose a plan" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "See the proposals" }));
   expect(await screen.findByText("Not planned yet")).toBeOnTheScreen();

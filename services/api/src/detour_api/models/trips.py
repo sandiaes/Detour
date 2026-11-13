@@ -317,7 +317,7 @@ class PlanStats(BaseModel):
     routed_transfers: int
     estimated_transfers: int
     day_utilisation_permille: int = Field(
-        description="Visits, meals and transfers as permille of the 09:00-21:00 window of all days"
+        description="Visits, meals and transfers as permille of the 09:00-22:00 window of all days"
     )
     travel_share_permille: int = Field(description="Transfer time as permille of planned time")
     meals: int = 0

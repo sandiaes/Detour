@@ -330,7 +330,7 @@ Phase 8 (ADR 019).
 **Built in Phase 4 (v1, [ADR 014](decisions/014-phase-4-planner-v1.md)):** city destinations;
 steps 2, 3, 4, 6, 7 and 8 below, the two profiles and the diversity gate of section 5.3, and the
 determinism rules of section 5.6. What v1 does differently from the outline below: the only time
-windows are the day (09:00 to 18:00 for Essentials, 19:00 for Wider, inside the 09:00–21:00
+windows are the day (09:00 to 18:00 for Essentials, 19:00 for Wider, inside the 09:00–22:00
 window), because opening hours are out of scope (ADR 003) and meals come in Phase 6; planning uses
 cached travel times and labelled estimates for a sparse cell set, and only the transfers of the
 finished plans are asked of the provider, within 3 s; days whose routed transfers no longer fit
@@ -341,7 +341,7 @@ drop their lowest-value visit. Code: `planner/engine.py` (pipeline), `scoring.py
 
 Destination (a city or an area), trip length in days, optional start date, and items the user
 has added or locked. Defaults that the user does not see as features: day window (for example
-09:00–21:00), meal windows, and walking threshold. These live in a versioned configuration file.
+09:00–22:00), meal windows, and walking threshold. These live in a versioned configuration file.
 
 ### 5.2 Pipeline
 

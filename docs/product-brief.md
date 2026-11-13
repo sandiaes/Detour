@@ -78,8 +78,8 @@ When a destination cannot support two distinct plans, the app says so and shows 
 Free and open sources do not carry trustworthy restaurant prices or ratings. The product shows
 only what it can stand behind.
 
-**Meals in a plan** (ADR 016) sit in fixed windows: breakfast 07:30–10:00, lunch 12:00–14:30,
-afternoon snack 15:00–17:30, dinner 18:30–21:00. A place to eat is chosen near the visits before
+**Meals in a plan** (ADR 016) sit in fixed windows: breakfast 07:30–10:00, lunch 13:00–15:00,
+afternoon snack 15:00–17:30, dinner 20:00–22:00. A place to eat is chosen near the visits before
 and after the meal, varying cuisines, and only among places whose venue type serves that meal.
 
 **No prices, budgets or currencies** (ADR 017, owner decision of 2026-11-13). Earlier versions of

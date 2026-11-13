@@ -5,7 +5,8 @@
   for step 3, then step 4; both are built: see "Step 3" and "Step 4" below. Step 3 adds one
   read-only field pair to the API; step 4 adds an optional `day` to the add-place preview, a
   suggestions endpoint and a day restriction in the recalculation (default behaviour unchanged).
-  There is no database change. Step 5 waits for the owner.
+  There is no database change. Step 5 waits for the owner. The amendment of 2026-11-14 (flat design,
+  new-trip screen, meal times) is below.
 - **Date:** 2026-11-13
 - **Related:** [`020-trip-centred-app.md`](020-trip-centred-app.md) (extended),
   [`015-phase-5-mobile-shell.md`](015-phase-5-mobile-shell.md) (decision 9, design, superseded),
@@ -188,6 +189,47 @@ not built and are recorded here as references for later (see "Not built" below).
     until the user accepts.
 24. **One card for both flows.** `components/ds/SuggestionCard.tsx` shows place days and
     restaurant slots the same way (title, place, travel, what else changes, why).
+
+## Amendment of 2026-11-14: flat design, trip and itinerary screens, new-trip screen, meal times
+
+Owner feedback after seeing the app (proposed with the rest of this ADR; mobile app, plus one
+planner configuration change). The full description of the screens is in
+[`../design.md`](../design.md), which is new and is now the design reference.
+
+25. **Flat, near-white look.** The page is `#fcfcfb` (the beige `#f7f4ee` was too yellow). Details
+    screens, lists, forms and figures use hairlines, not cards: `Card`, `RowGroup`, `StatRow`,
+    `PlannedFeature`, search results, place facts and suggestions lose their boxes, borders and
+    shadows. The one card kept is the trip's cover on the Trips screen.
+26. **Trips.** A card is the cover, the name, the dates and the length, and nothing else (no footer
+    and no counts, so no plan request per card). **A trip is named after its destination** ("Austria"),
+    not "Austria, 8 days".
+27. **Overview.** The figures are cities, places and restaurants (no days). The first days and the
+    notes placeholder are removed. The tabs sit on a sheet whose top corners curve over the cover.
+28. **Itinerary and Map.** The Itinerary tab has no cover: a compact header, then the days as a
+    timeline with thumbnails (screen 12). A day opens the Map tab on that day. In the day's view
+    the "Day 1, date, visits, meals…" title is removed, stops are hairline rows with smaller type,
+    the map takes about a third of the height and the stops the rest.
+29. **Map markers** are small flat discs (26 dp, 34 dp when selected) with a 48 dp touch area, and
+    the lines are thinner and grey. Shapes and colours still say sight, place to eat and travel.
+30. **New trip** follows screen 13: destination, start date, duration, travel style (Relaxed,
+    Balanced, Active) and a public-transport switch. Interests, budget and "popular highlights" are
+    removed. Travel style and public transport are shown and kept on the screen but **not stored or
+    used** (the screen says so); using them needs a trip field and a planner rule, with an ADR.
+    Two actions: **Generate itineraries** (as before) and **Start with an empty trip**, which
+    creates the trip, an empty manual itinerary (`POST /v1/trips/{id}/itineraries`, existing) and
+    chooses it, with no proposals.
+31. **Meal times.** Meals are aimed at lunch 13:00 and dinner 20:00: windows lunch 13:00 to 15:00
+    and dinner 20:00 to 22:00 (were 12:00 to 14:30 and 18:30 to 21:00); a meal starts at its window's
+    start at the earliest. The day window and both profiles end at 22:00 (were 21:00, and 20:30 for
+    Essentials). The sightseeing allowance is kept by adding the extra evening to `free_minutes`
+    (Essentials 60 to 150, Wider 90 to 150), so days hold as many visits as before and the 60 to 90 %
+    utilisation KPI holds. `CONFIG_VERSION` is `2026-11-14.1+…`; the golden files are regenerated.
+    Itineraries already stored keep their old times; new and regenerated ones use the new windows.
+
+**Not done, needs the owner:** adding places to an empty trip. The Phase 7 and 8 flows recalculate
+planned itineraries and refuse a manual one; a manual add (choose a day, say how long, place by
+hand) is a new flow. Until then an empty trip is created and shown but cannot yet be filled from
+the app's Add menu.
 
 ## Not built (kept as references for later steps)
 

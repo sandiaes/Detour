@@ -5,24 +5,21 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "rea
 import { call, describeError, isOfflineError } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { Cover } from "../components/ds/Cover";
-import { Icon } from "../components/ds/Icon";
 import { Badge, type BadgeTone, Tabs } from "../components/ds/primitives";
 import { ResourceNotices } from "../components/ResourceNotices";
 import { EmptyState, ErrorState, LoadingState, ScreenHeader, WakingServer } from "../components/ui";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
-import { useTripCounts } from "../data/tripCounts";
 import {
   TRIP_PHASE_LABEL,
   type TripPhase,
   type TripTab,
-  countsLine,
   shortSpan,
   tripPhase,
   tripsInTab,
 } from "../domain/trips";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { colors, radius, shadow, spacing, type } from "../theme";
+import { colors, radius, spacing, type } from "../theme";
 
 /** A past trip opens on its map of visited places (ADR 006); every other trip on its overview,
  * which shows the active plan or leads to the proposals (ADR 021). */
@@ -38,21 +35,17 @@ const PHASE_TONE: Record<TripPhase, BadgeTone> = {
   past: "solid",
 };
 
-const CARD_HEIGHT = 168;
+const CARD_HEIGHT = 148;
 
+/** Just the cover, the trip's name, its dates and its length (docs/design.md): nothing under it. */
 export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   const phase = tripPhase(trip);
   const label = TRIP_PHASE_LABEL[phase];
   const span = shortSpan(trip);
-  const { counts } = useTripCounts(trip);
-  const line = counts ? countsLine(counts) : null;
-  const detail =
-    phase === "planning" ? "No plan chosen yet" : (line ?? (counts ? null : "Loading details…"));
-  const spokenDetail = detail && detail !== "Loading details…" ? ` ${detail}.` : "";
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${trip.title}. ${trip.destination.name}. ${span}. ${label}.${spokenDetail}`}
+      accessibilityLabel={`${trip.title}. ${span}. ${label}.`}
       accessibilityHint={
         phase === "past"
           ? "Opens the places you visited"
@@ -64,7 +57,7 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       testID={`trip-card-${trip.id}`}
     >
-      <Cover seedKey={trip.destination.ref} height={CARD_HEIGHT}>
+      <Cover seedKey={trip.destination.ref} height={CARD_HEIGHT} rounded={radius.lg}>
         <View style={styles.cardBadge}>
           <Badge label={label} tone={PHASE_TONE[phase]} />
         </View>
@@ -77,13 +70,6 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
           </Text>
         </View>
       </Cover>
-      <View style={styles.cardFoot}>
-        <Icon name="pin" size={16} color={colors.muted} />
-        <Text style={styles.cardFootText} numberOfLines={1}>
-          {trip.destination.name}
-          {detail ? ` · ${detail}` : ""}
-        </Text>
-      </View>
     </Pressable>
   );
 }
@@ -190,15 +176,7 @@ export function TripsScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   list: { padding: spacing.lg, gap: spacing.lg },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-    minHeight: 48,
-    ...shadow.card,
-  },
+  card: { borderRadius: radius.lg, overflow: "hidden", minHeight: 48 },
   pressed: { opacity: 0.88 },
   cardBadge: { position: "absolute", top: spacing.md, right: spacing.md },
   cardText: {
@@ -210,14 +188,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: { ...type.title, color: colors.onImage },
   cardMeta: { ...type.small, color: colors.onImage, fontWeight: "500" },
-  cardFoot: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  cardFootText: { ...type.small, color: colors.muted, flex: 1 },
   empty: { paddingVertical: spacing.xxl, gap: spacing.sm, alignItems: "center" },
   emptyTitle: { ...type.heading, color: colors.text, textAlign: "center" },
   emptyText: { ...type.body, color: colors.muted, textAlign: "center" },

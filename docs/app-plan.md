@@ -203,7 +203,7 @@ cache warms; 14 days in one city run out of distinct sights.
 ### Phase 6 — Restaurants in itineraries
 
 **Status: built on 2026-11-13, not yet accepted** (ADR 016, proposed). Meal windows by meal type
-(breakfast 07:30–10:00, lunch 12:00–14:30, afternoon snack 15:00–17:30, dinner 18:30–21:00) with
+(breakfast 07:30–10:00, lunch 13:00–15:00, afternoon snack 15:00–17:30, dinner 20:00–22:00) with
 lengths by meal type and venue type; Essentials plans lunch and dinner, Wider also a snack;
 breakfast is supported but not placed (the day starts after it). Places to eat come from the
 imported data only, chosen by proximity (600 m, 1.5 km, 3 km rings), cuisine variety and venue

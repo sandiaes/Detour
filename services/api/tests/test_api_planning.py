@@ -126,11 +126,11 @@ def test_a_larger_city_gets_two_distinct_itineraries(api_env: ApiEnv) -> None:
             for m in meals:
                 assert (
                     m["start_time"]
-                    >= {"lunch": "12:00", "snack": "15:00", "dinner": "18:30"}[m["meal_type"]]
+                    >= {"lunch": "13:00", "snack": "15:00", "dinner": "20:00"}[m["meal_type"]]
                 )
                 assert (
                     m["end_time"]
-                    <= {"lunch": "14:30", "snack": "17:30", "dinner": "21:00"}[m["meal_type"]]
+                    <= {"lunch": "15:00", "snack": "17:30", "dinner": "22:00"}[m["meal_type"]]
                 )
                 cuisines = m["restaurant"]["cuisines"]
                 assert cuisines is None or all(isinstance(c, str) for c in cuisines)

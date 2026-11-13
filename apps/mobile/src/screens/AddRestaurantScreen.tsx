@@ -679,13 +679,11 @@ const styles = StyleSheet.create({
   result: {
     minHeight: TOUCH,
     justifyContent: "center",
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  resultSelected: { borderColor: colors.primary, borderWidth: 2 },
+  resultSelected: { backgroundColor: colors.surfaceMuted },
   resultTitle: { ...type.heading, color: colors.text },
   map: {
     height: 240,

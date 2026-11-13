@@ -140,7 +140,7 @@ test("View days and View map open the plan in that view", async () => {
     await screen.findByRole("button", { name: "View the days of the Wider plan" }),
   );
   expect(await screen.findByRole("header", { name: "Wider plan" })).toBeOnTheScreen();
-  expect(await screen.findByText("Day 1 · Sat 1 May")).toBeOnTheScreen();
+  expect(await screen.findByRole("tab", { name: "Day 1, Sat 1 May" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
   expect(await screen.findByText("How they differ")).toBeOnTheScreen();
   await fireEvent.press(
@@ -154,12 +154,12 @@ test("opening a plan again makes no second request for it", async () => {
   await fireEvent.press(
     await screen.findByRole("button", { name: "View the days of the Wider plan" }),
   );
-  await screen.findByText("Day 1 · Sat 1 May");
+  await screen.findByRole("tab", { name: "Day 1, Sat 1 May" });
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
   await fireEvent.press(
     await screen.findByRole("button", { name: "View the days of the Wider plan" }),
   );
-  expect(await screen.findByText("Day 1 · Sat 1 May")).toBeOnTheScreen();
+  expect(await screen.findByRole("tab", { name: "Day 1, Sat 1 May" })).toBeOnTheScreen();
   expect(client.count("GET /v1/itineraries/{itinerary_id}")).toBe(1);
   expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBe(1);
 });

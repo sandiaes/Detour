@@ -1803,7 +1803,7 @@ export interface components {
       estimated_transfers: number;
       /**
        * Day Utilisation Permille
-       * @description Visits, meals and transfers as permille of the 09:00-21:00 window of all days
+       * @description Visits, meals and transfers as permille of the 09:00-22:00 window of all days
        */
       day_utilisation_permille: number;
       /**

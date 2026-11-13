@@ -144,10 +144,10 @@ export type Stat = { key: string; icon: IconName; value: number | string; label:
 export function StatRow({ stats }: { stats: Stat[] }) {
   return (
     <View style={styles.statRow}>
-      {stats.map((s) => (
+      {stats.map((s, i) => (
         <View
           key={s.key}
-          style={styles.stat}
+          style={[styles.stat, i > 0 && styles.statDivider]}
           accessible
           accessibilityLabel={`${s.value} ${s.label.toLowerCase()}`}
         >
@@ -228,7 +228,7 @@ export function ListRow({
   );
 }
 
-/** A group of rows in one rounded card, divided by hairlines. */
+/** A group of rows divided by hairlines: no card, no shadow. */
 export function RowGroup({ children }: { children: ReactNode }) {
   return <View style={styles.group}>{children}</View>;
 }
@@ -340,17 +340,20 @@ const styles = StyleSheet.create({
   tabLine: { height: 2.5, alignSelf: "stretch", borderRadius: 2, backgroundColor: "transparent" },
   tabLineActive: { backgroundColor: colors.text },
 
-  statRow: { flexDirection: "row", gap: spacing.sm },
+  // Flat: figures separated by hairlines, no boxes (docs/design.md).
+  statRow: {
+    flexDirection: "row",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
   stat: {
     flex: 1,
     alignItems: "center",
     gap: spacing.xxs,
     paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
+  statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.border },
   statValue: { ...type.title, color: colors.text },
   statLabel: { ...type.caption, color: colors.muted },
 
@@ -363,15 +366,11 @@ const styles = StyleSheet.create({
   sectionTitle: { ...type.heading, color: colors.text },
 
   group: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-    ...shadow.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   row: {
-    minHeight: TOUCH + 16,
+    minHeight: TOUCH + 8,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
@@ -380,15 +379,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  rowIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.sm + 2,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primarySoft,
-  },
-  rowIconDisabled: { backgroundColor: colors.surfaceMuted },
+  rowIcon: { width: 32, alignItems: "center", justifyContent: "center" },
+  rowIconDisabled: {},
   rowText: { flex: 1, gap: spacing.xxs },
   rowTitle: { ...type.body, fontWeight: "600", color: colors.text },
   rowDetail: { ...type.small, color: colors.muted },
@@ -396,20 +388,13 @@ const styles = StyleSheet.create({
   planned: {
     alignItems: "center",
     gap: spacing.sm,
-    padding: spacing.xl,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  plannedIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primarySoft,
-  },
+  plannedIcon: { alignItems: "center", justifyContent: "center" },
   plannedTitle: { ...type.heading, color: colors.text, textAlign: "center" },
   plannedText: { ...type.small, color: colors.muted, textAlign: "center" },
 

@@ -82,12 +82,12 @@ beforeEach(() =>
 );
 
 test("trips list", async () => {
-  await show({ name: "trips" }, "Vienna, 2 days");
+  await show({ name: "trips" }, "Vienna");
   checkControls();
 });
 
 test("trips list: the Past tab", async () => {
-  await show({ name: "trips" }, "Vienna, 2 days");
+  await show({ name: "trips" }, "Vienna");
   await fireEvent.press(screen.getByRole("tab", { name: "Past" }));
   await screen.findByText("No past trips yet");
   checkControls();
@@ -172,7 +172,7 @@ test("place detail", async () => {
   checkControls();
 });
 
-test("trip overview: the Itinerary tab with a stop chosen", async () => {
+test("trip overview: a day on the map with a stop chosen", async () => {
   await render(
     <Harness
       client={createFakeClient({
@@ -184,6 +184,7 @@ test("trip overview: the Itinerary tab with a stop chosen", async () => {
       <AppContent />
     </Harness>,
   );
+  await fireEvent.press(await screen.findByTestId("day-row-1"));
   await fireEvent.press(await screen.findByTestId("stop-i1"));
   await screen.findByLabelText("Lock Schönbrunn Palace");
   checkControls();
@@ -199,7 +200,7 @@ test.each([
 });
 
 test("create trip form with search results", async () => {
-  await show({ name: "createTrip" }, "Details");
+  await show({ name: "createTrip" }, "Travel style");
   await fireEvent.changeText(screen.getByLabelText("Destination"), "Vie");
   await screen.findByText("Area", {}, { timeout: 3000 });
   checkControls();
