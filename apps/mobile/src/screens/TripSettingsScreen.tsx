@@ -17,8 +17,9 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
   const actions = useTripActions();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
-  const [busy, setBusy] = useState<"generate" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"generate" | "delete" | "archive" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   if (trips.data === undefined) {
@@ -56,6 +57,19 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
       await actions.generate(trip.id);
       // The proposals are the screen to see now; going back from it returns to the trips.
       nav.resetTo([{ name: "trips" }, { name: "trip", tripId: trip.id }]);
+    } catch (e) {
+      setProblem(describeError(e));
+      setBusy(null);
+    }
+  };
+
+  const markPast = async () => {
+    setBusy("archive");
+    setProblem(null);
+    try {
+      await actions.archiveTrip(trip);
+      // The places are the screen to see now; going back from it returns to the trips.
+      nav.resetTo([{ name: "trips" }, { name: "pastTrip", tripId: trip.id }]);
     } catch (e) {
       setProblem(describeError(e));
       setBusy(null);
@@ -113,13 +127,63 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
           </View>
         ) : null}
 
+        {!past ? (
+          <View style={styles.pad}>
+            <Card>
+              <Text accessibilityRole="header" style={styles.heading}>
+                Mark as a past trip
+              </Text>
+              <Text style={styles.body}>
+                {`A trip also becomes a past trip by itself two days after its last day, when it has dates. Detour keeps the title, destination, dates and ${
+                  hasPlan
+                    ? "the cities and attractions of your chosen plan"
+                    : trip.destination.kind === "city"
+                      ? "the destination city (no plan is chosen, so nothing else)"
+                      : "nothing else (no plan is chosen, so no cities or attractions)"
+                }, and shows them on a map. It deletes the plans, routes and travel times. Meals and restaurants are not kept. This cannot be undone.`}
+              </Text>
+              {confirmArchive ? (
+                <View style={styles.confirm}>
+                  <Notice tone="error" label="Mark as a past trip?">
+                    {`“${trip.title}” will lose its plans for good.`}
+                  </Notice>
+                  <Button
+                    testID="confirm-archive"
+                    label="Yes, mark as past"
+                    loading={busy === "archive"}
+                    disabled={busy !== null}
+                    onPress={() => void markPast()}
+                  />
+                  <Button
+                    label="Keep planning"
+                    variant="secondary"
+                    disabled={busy !== null}
+                    onPress={() => setConfirmArchive(false)}
+                  />
+                </View>
+              ) : (
+                <Button
+                  testID="archive-trip"
+                  label="Mark as past trip"
+                  variant="secondary"
+                  disabled={!actions.connected || busy !== null}
+                  accessibilityLabel={`Mark the trip ${trip.title} as a past trip`}
+                  onPress={() => setConfirmArchive(true)}
+                />
+              )}
+            </Card>
+          </View>
+        ) : null}
+
         <View style={styles.pad}>
           <Card>
             <Text accessibilityRole="header" style={styles.heading}>
               Delete this trip
             </Text>
             <Text style={styles.body}>
-              Removes the trip and all its plans from Detour for good. This cannot be undone.
+              {past
+                ? "Removes the trip and its saved places from Detour for good. This cannot be undone."
+                : "Removes the trip and all its plans from Detour for good. This cannot be undone."}
             </Text>
             {confirmDelete ? (
               <View style={styles.confirm}>

@@ -21,7 +21,8 @@ provider or a new data source (CLAUDE.md rules 3 and 4 are not touched).
 
 1. **A trip with a chosen plan opens on that plan** (days list, with the map one tap away). A
    trip without a chosen plan, and a trip still to be planned, opens on the proposals as before.
-   Past trips keep their existing screen.
+   Past trips keep their existing screen. (Superseded in part on 2026-11-13: a past trip now opens
+   on its map of visited places, ADR 006 amendment.)
 2. **Choosing a plan opens it**, with the trips list underneath, so Back returns to the trips.
 3. **Trip settings** (a button on the plan screen and on the proposals screen) holds two actions:
    - *Get new proposals*: runs the existing generation. The backend already keeps the selected
@@ -50,5 +51,5 @@ provider or a new data source (CLAUDE.md rules 3 and 4 are not touched).
 - The proposals screen is now a step in a trip's life, reached from settings, not the front door.
 - Deleting is permanent and cannot be undone; the confirmation says so. Price records no longer
   exist (ADR 017), so nothing else is affected.
-- The wider direction (a history of past trips) is unchanged: ADR 006 still governs it, and is
-  the next step when the owner asks for it.
+- The wider direction (a history of past trips) is unchanged: ADR 006 governs it (built on
+  2026-11-13, awaits acceptance).

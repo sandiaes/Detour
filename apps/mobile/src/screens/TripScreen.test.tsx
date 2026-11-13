@@ -223,13 +223,22 @@ test("a trip with no plans offers to plan it, and the new plans appear", async (
   expect(await screen.findByText("How they differ")).toBeOnTheScreen();
 });
 
-test("a past trip says its plans were archived", async () => {
+test("a trip that is past shows its saved places, not proposals", async () => {
   await openTrip(
     server({
       "GET /v1/trips": () => [makeTrip({ status: "past", archived_at: "2027-06-01T00:00:00Z" })],
+      "GET /v1/trips/{trip_id}/visits": () => [],
+      "GET /v1/trips/{trip_id}/archive": () => ({
+        trip_id: TRIP_ID,
+        cities: 0,
+        attractions: 0,
+        skipped: 0,
+        size_bytes: 300,
+      }),
     }),
   );
-  expect(await screen.findByText("A past trip")).toBeOnTheScreen();
+  expect(await screen.findByText("Nothing was kept")).toBeOnTheScreen();
+  expect(screen.queryByRole("button", { name: "Plan this trip" })).toBeNull();
 });
 
 test("offline, saved plans are shown with a notice", async () => {

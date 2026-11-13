@@ -1053,6 +1053,82 @@
             "description": "Unprocessable Content"
           }
         }
+      },
+      "get": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "What a past trip keeps and how much room it takes (ADR 006).",
+        "operationId": "get_trip_archive",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
       }
     },
     "/v1/trips/{trip_id}/visits": {
@@ -3012,6 +3088,44 @@
   },
   "components": {
     "schemas": {
+      "ArchiveInfo": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Trip Id"
+          },
+          "cities": {
+            "type": "integer",
+            "title": "Cities",
+            "description": "Archived city rows (each base city once)"
+          },
+          "attractions": {
+            "type": "integer",
+            "title": "Attractions"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped",
+            "description": "Visits the user cleared (confirmed = false)"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes",
+            "description": "Stored row data of the trip row and its visit rows (PostgreSQL pg_column_size). Indexes and page overhead are not counted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "cities",
+          "attractions",
+          "skipped",
+          "size_bytes"
+        ],
+        "title": "ArchiveInfo",
+        "description": "What a past trip keeps, and how much room it takes (ADR 006)."
+      },
       "Arrival": {
         "properties": {
           "from_base_city_id": {

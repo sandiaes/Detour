@@ -13,6 +13,7 @@ import { AddRestaurantScreen } from "./screens/AddRestaurantScreen";
 import { ChangePreviewScreen } from "./screens/ChangePreviewScreen";
 import { CreateTripScreen } from "./screens/CreateTripScreen";
 import { ItineraryScreen } from "./screens/ItineraryScreen";
+import { PastTripScreen } from "./screens/PastTripScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TripScreen } from "./screens/TripScreen";
 import { TripSettingsScreen } from "./screens/TripSettingsScreen";
@@ -36,6 +37,8 @@ function CurrentScreen({ route }: { route: Route }) {
       return <TripScreen tripId={route.tripId} />;
     case "tripSettings":
       return <TripSettingsScreen tripId={route.tripId} />;
+    case "pastTrip":
+      return <PastTripScreen key={route.tripId} tripId={route.tripId} />;
     case "itinerary":
       // Keyed so that a different plan never reuses another plan's state.
       return <ItineraryScreen key={route.itineraryId} route={route} />;

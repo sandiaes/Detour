@@ -157,7 +157,7 @@ rows needs the installation token. Errors are `{"detail", "code"}` with a stable
 | `GET /v1/attributions` | Credits to show: OpenStreetMap, GeoNames, map tiles |
 | `GET /v1/destinations/search` | Cities (GeoNames) and areas (OSM boundaries) by name; accents, case and alternate names ignored; each result says whether its region can be planned. `include_external=true` asks Photon only if nothing matches locally |
 | `GET /v1/places/search`, `GET /v1/places/{id}` | Imported places by name and/or around a point; a place with its provenance and licence |
-| `POST/GET/PATCH/DELETE /v1/trips`, `POST /v1/trips/{id}/archive`, `GET/PATCH …/visits` | Trips (city or area destination, days, optional start date; no currency, budget or price bands since ADR 017) and the past-trip archive (ADR 006) |
+| `POST/GET/PATCH/DELETE /v1/trips`, `POST/GET /v1/trips/{id}/archive`, `GET/PATCH …/visits` | Trips (city or area destination, days, optional start date; no currency, budget or price bands since ADR 017) and the past-trip archive (ADR 006): marked by the user or made when reading the trips two days after the last day; `GET …/archive` reports its size |
 | `POST/GET /v1/trips/{id}/itineraries`, `GET/DELETE /v1/itineraries/{id}` | Manual (empty) itineraries and their days; engine itineraries arrive in Phase 4 |
 | `POST /v1/itineraries/{id}/days/{n}/items`, `GET/PATCH/DELETE /v1/items/{id}` | Visits, meals and free time with validation (place kind, duration, times, overlap, positions) |
 | `POST/GET/PATCH/DELETE /v1/user-places` | Places the user pinned or saved from an external search result |

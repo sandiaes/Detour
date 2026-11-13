@@ -218,7 +218,8 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** What a past trip keeps and how much room it takes (ADR 006). */
+    get: operations["get_trip_archive"];
     put?: never;
     /** Make the trip a past trip (ADR 006): keep a snapshot of its visits, delete the plans. */
     post: operations["archive_trip"];
@@ -511,6 +512,34 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /**
+     * ArchiveInfo
+     * @description What a past trip keeps, and how much room it takes (ADR 006).
+     */
+    ArchiveInfo: {
+      /**
+       * Trip Id
+       * Format: uuid
+       */
+      trip_id: string;
+      /**
+       * Cities
+       * @description Archived city rows (each base city once)
+       */
+      cities: number;
+      /** Attractions */
+      attractions: number;
+      /**
+       * Skipped
+       * @description Visits the user cleared (confirmed = false)
+       */
+      skipped: number;
+      /**
+       * Size Bytes
+       * @description Stored row data of the trip row and its visit rows (PostgreSQL pg_column_size). Indexes and page overhead are not counted
+       */
+      size_bytes: number;
+    };
     /**
      * Arrival
      * @description The drive from the previous day's base city that starts the first day at a new one.
@@ -2764,6 +2793,64 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  get_trip_archive: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ArchiveInfo"];
         };
       };
       /** @description Unauthorized */

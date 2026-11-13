@@ -1,9 +1,11 @@
 import type {
+  ArchiveInfo,
   ChangeSet,
   DestinationResult,
   Itinerary,
   ItinerarySummary,
   Trip,
+  TripVisit,
 } from "@detour/shared";
 
 export const TRIP_ID = "00000000-0000-4000-8000-0000000000a1";
@@ -351,4 +353,68 @@ export function makeChangeSet(over: Partial<ChangeSet> = {}): ChangeSet {
     decided_at: null,
     ...over,
   } as ChangeSet;
+}
+
+// ---- past trips (ADR 006) ----------------------------------------------------------------------
+
+export function makeVisit(
+  over: Partial<TripVisit> & Pick<TripVisit, "id" | "kind" | "name">,
+): TripVisit {
+  return { lat: 47.07, lon: 15.44, geo_place_ref: null, day_number: 1, confirmed: true, ...over };
+}
+
+/** An area trip's archive: Graz on days 1 and 2, Leoben from day 3, in the archive's order. */
+export function makeArchivedVisits(): TripVisit[] {
+  return [
+    makeVisit({ id: "v-graz", kind: "city", name: "Graz", lat: 47.0707, lon: 15.4395 }),
+    makeVisit({
+      id: "v-schlossberg",
+      kind: "attraction",
+      name: "Schlossberg",
+      lat: 47.0737,
+      lon: 15.4375,
+    }),
+    makeVisit({
+      id: "v-kunsthaus",
+      kind: "attraction",
+      name: "Kunsthaus Graz",
+      lat: 47.0714,
+      lon: 15.4342,
+      day_number: 2,
+    }),
+    makeVisit({
+      id: "v-leoben",
+      kind: "city",
+      name: "Leoben",
+      lat: 47.3833,
+      lon: 15.0956,
+      day_number: 3,
+    }),
+    makeVisit({
+      id: "v-goess",
+      kind: "attraction",
+      name: "Stift Göss",
+      lat: 47.3826,
+      lon: 15.0914,
+      day_number: 3,
+    }),
+  ];
+}
+
+export function makePastTrip(over: Partial<Trip> = {}): Trip {
+  return makeTrip({
+    id: TRIP_ID,
+    title: "Styria, 4 days",
+    destination: { kind: "area", ref: "area-1", name: "Styria", lat: 47.2, lon: 15.3 },
+    duration_days: 4,
+    end_date: "2027-05-04",
+    status: "past",
+    archived_at: "2027-05-06T08:00:00Z",
+    selected_itinerary_id: null,
+    ...over,
+  });
+}
+
+export function makeArchiveInfo(over: Partial<ArchiveInfo> = {}): ArchiveInfo {
+  return { trip_id: TRIP_ID, cities: 2, attractions: 3, skipped: 0, size_bytes: 4519, ...over };
 }

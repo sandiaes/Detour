@@ -63,6 +63,8 @@ const MESSAGES: Record<string, string> = {
   destination_not_found: "That destination is no longer in the data. Search again.",
   limit_reached: "You have reached a limit (100 trips, 5 plans per trip). Delete one first.",
   trip_archived: "This is a past trip and can no longer be planned.",
+  already_archived: "This trip is already a past trip.",
+  not_archived: "Only a past trip has saved places.",
   not_found: "That item no longer exists.",
   recalculation_impossible: "This change does not fit the plan:",
   change_set_stale: "The plan changed after this preview. Preview the change again.",

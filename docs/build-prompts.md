@@ -557,8 +557,8 @@ Scope guards:
 
 # Prompt 11 — Past trips archive (ADR 006)
 
-**Status:** the manual archive endpoint exists (Phase 2); the automatic archive and the app screen
-are open.  
+**Status:** built on 2026-11-13 and awaiting the owner's acceptance (ADR 006, amendment): the
+manual and automatic archive, the size report and the app's past-trip screen.  
 **Recommended model:** Claude Sonnet  
 **Effort:** Medium  
 **App-plan phase:** release timing to be set by the owner

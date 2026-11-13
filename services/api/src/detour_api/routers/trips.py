@@ -7,6 +7,7 @@ from detour_api.deps import SessionDep
 from detour_api.errors import ApiError, invalid
 from detour_api.models.common import PlanningErrorBody
 from detour_api.models.trips import (
+    ArchiveInfo,
     GenerationResult,
     Itinerary,
     ItinerarySummary,
@@ -53,12 +54,14 @@ def list_trips(
     status_filter: Annotated[Literal["active", "past"] | None, Query(alias="status")] = None,
 ) -> list[Trip]:
     with session.tx() as conn:
+        trips.archive_due_trips(conn, session.installation_id)  # ADR 006: after the last day
         return trips.list_trips(conn, session.installation_id, status_filter)
 
 
 @router.get("/{trip_id}", summary="One trip.", responses=ERRORS)
 def get_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
     with session.tx() as conn:
+        trips.archive_due_trips(conn, session.installation_id)  # ADR 006: after the last day
         return trips.require_trip(conn, session.installation_id, trip_id)
 
 
@@ -92,6 +95,16 @@ def delete_trip(session: SessionDep, trip_id: uuid.UUID) -> Response:
 def archive_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
     with session.tx() as conn:
         return trips.archive_trip(conn, session.installation_id, trip_id)
+
+
+@router.get(
+    "/{trip_id}/archive",
+    summary="What a past trip keeps and how much room it takes (ADR 006).",
+    responses=ERRORS,
+)
+def get_trip_archive(session: SessionDep, trip_id: uuid.UUID) -> ArchiveInfo:
+    with session.tx() as conn:
+        return trips.get_archive_info(conn, session.installation_id, trip_id)
 
 
 @router.get("/{trip_id}/visits", summary="The archived visits of a past trip.", responses=ERRORS)

@@ -76,6 +76,19 @@ class TripVisitUpdate(StrictModel):
     confirmed: bool
 
 
+class ArchiveInfo(BaseModel):
+    """What a past trip keeps, and how much room it takes (ADR 006)."""
+
+    trip_id: uuid.UUID
+    cities: int = Field(description="Archived city rows (each base city once)")
+    attractions: int
+    skipped: int = Field(description="Visits the user cleared (confirmed = false)")
+    size_bytes: int = Field(
+        description="Stored row data of the trip row and its visit rows (PostgreSQL "
+        "pg_column_size). Indexes and page overhead are not counted"
+    )
+
+
 # -- user places -------------------------------------------------------------------------------
 
 

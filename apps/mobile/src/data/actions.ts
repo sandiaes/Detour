@@ -4,6 +4,7 @@ import type {
   ItinerarySummary,
   Trip,
   TripCreate,
+  TripVisit,
 } from "@detour/shared";
 import { useCallback } from "react";
 
@@ -18,6 +19,8 @@ export const keys = {
   trips: "trips",
   itineraries: (tripId: string) => `itineraries:${tripId}`,
   itinerary: (id: string) => `itinerary:${id}`,
+  visits: (tripId: string) => `visits:${tripId}`,
+  archive: (tripId: string) => `archive:${tripId}`,
 };
 
 function toSummary(itinerary: Itinerary): ItinerarySummary {
@@ -97,9 +100,54 @@ export function useTripActions() {
       data.update<Trip[]>(keys.trips, (list) => list.filter((t) => t.id !== trip.id));
       data.forget(keys.itineraries(trip.id));
       if (trip.selected_itinerary_id) data.forget(keys.itinerary(trip.selected_itinerary_id));
+      data.forget(keys.visits(trip.id));
+      data.forget(keys.archive(trip.id));
     },
     [need, data],
   );
 
-  return { createTrip, generate, selectPlan, deleteTrip, connected: client !== null };
+  /** Makes the trip a past trip (ADR 006): the server keeps the visits and deletes the plans, so
+   * everything held for the plans is forgotten here too. */
+  const archiveTrip = useCallback(
+    async (trip: Trip): Promise<Trip> => {
+      const past = await call(
+        need().POST("/v1/trips/{trip_id}/archive", { params: { path: { trip_id: trip.id } } }),
+      );
+      data.update<Trip[]>(keys.trips, (list) => list.map((t) => (t.id === past.id ? past : t)));
+      data.forget(keys.itineraries(trip.id));
+      if (trip.selected_itinerary_id) data.forget(keys.itinerary(trip.selected_itinerary_id));
+      data.forget(keys.visits(trip.id));
+      data.forget(keys.archive(trip.id));
+      return past;
+    },
+    [need, data],
+  );
+
+  /** Confirms or clears one archived visit (the app cannot know what was really visited). */
+  const setVisitConfirmed = useCallback(
+    async (tripId: string, visitId: string, confirmed: boolean): Promise<TripVisit> => {
+      const visit = await call(
+        need().PATCH("/v1/trips/{trip_id}/visits/{visit_id}", {
+          params: { path: { trip_id: tripId, visit_id: visitId } },
+          body: { confirmed },
+        }),
+      );
+      data.update<TripVisit[]>(keys.visits(tripId), (list) =>
+        list.map((v) => (v.id === visit.id ? visit : v)),
+      );
+      data.forget(keys.archive(tripId)); // the count of skipped visits changed
+      return visit;
+    },
+    [need, data],
+  );
+
+  return {
+    createTrip,
+    generate,
+    selectPlan,
+    deleteTrip,
+    archiveTrip,
+    setVisitConfirmed,
+    connected: client !== null,
+  };
 }

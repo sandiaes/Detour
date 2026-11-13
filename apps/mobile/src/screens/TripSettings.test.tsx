@@ -3,7 +3,15 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { AppContent } from "../App";
 import { createMemoryStore } from "../cache/store";
 import { createFakeClient } from "../testing/fakeClient";
-import { ESSENTIALS_ID, TRIP_ID, makeItinerary, makeSummary, makeTrip } from "../testing/fixtures";
+import {
+  ESSENTIALS_ID,
+  TRIP_ID,
+  makeArchiveInfo,
+  makeItinerary,
+  makeSummary,
+  makeTrip,
+  makeVisit,
+} from "../testing/fixtures";
 import { Harness } from "../testing/harness";
 
 const settings = { name: "tripSettings", tripId: TRIP_ID } as const;
@@ -120,4 +128,45 @@ test("the settings are reachable from the plan and from the proposals", async ()
   );
   await fireEvent.press(await screen.findByRole("button", { name: "Trip settings" }));
   expect(await screen.findByRole("header", { name: "Trip settings" })).toBeOnTheScreen();
+});
+
+test("marking a trip as past asks first, keeps nothing until confirmed, then shows the places", async () => {
+  const client = await open({
+    "POST /v1/trips/{trip_id}/archive": () =>
+      makeTrip({
+        status: "past",
+        archived_at: "2027-05-06T08:00:00Z",
+        selected_itinerary_id: null,
+      }),
+    "GET /v1/trips/{trip_id}/visits": () => [
+      makeVisit({ id: "v1", kind: "city", name: "Vienna", lat: 48.2082, lon: 16.3738 }),
+      makeVisit({
+        id: "v2",
+        kind: "attraction",
+        name: "Schönbrunn Palace",
+        lat: 48.18,
+        lon: 16.31,
+      }),
+    ],
+    "GET /v1/trips/{trip_id}/archive": () => makeArchiveInfo({ cities: 1, attractions: 1 }),
+  });
+  await fireEvent.press(await screen.findByTestId("archive-trip"));
+  // The warning says what is kept and what is deleted, and nothing has been sent yet.
+  expect(screen.getByText(/the cities and attractions of your chosen plan/)).toBeOnTheScreen();
+  expect(screen.getByText(/deletes the plans, routes and travel times/)).toBeOnTheScreen();
+  expect(client.count("POST /v1/trips/{trip_id}/archive")).toBe(0);
+  await fireEvent.press(screen.getByRole("button", { name: "Keep planning" }));
+  expect(screen.getByTestId("archive-trip")).toBeOnTheScreen();
+
+  await fireEvent.press(screen.getByTestId("archive-trip"));
+  await fireEvent.press(screen.getByTestId("confirm-archive"));
+  expect(await screen.findByText("1 city and 1 attraction visited")).toBeOnTheScreen();
+  expect(client.count("POST /v1/trips/{trip_id}/archive")).toBe(1);
+});
+
+test("a trip without a chosen plan says that only the destination city is kept", async () => {
+  await open({ "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: null })] });
+  expect(
+    await screen.findByText(/the destination city \(no plan is chosen, so nothing else\)/),
+  ).toBeOnTheScreen();
 });

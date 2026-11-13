@@ -22,7 +22,7 @@ Recorded on 2026-11-12 from the owner's answers.
 | D11 | Which open-source licence, and when the repository becomes public | **Apache-2.0** (ADR 007). The repository stays private until the owner decides to publish it. | Decided |
 | D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
 | D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
-| D15 | Past trips archive | Past trips are kept as a map and list of visited cities and attractions, without routing. See ADR 006. Release timing open. | Decided |
+| D15 | Past trips archive | Past trips are kept as a map and list of visited cities and attractions, without routing. See ADR 006. Built 2026-11-13, awaits acceptance. | Decided |
 | D17 | Region readiness thresholds | ADR 009: six gates; Austria, Czechia and Hungary first, then Italy, then Japan. | Decided |
 | D16 | Distribution | No app stores. Android by sideloaded APK; iPhone built on the owner's Mac. See ADR 008. | Decided |
 | D14 | Hosting constraint | Owner has no server and wants free, managed services. Travel times come from the FOSSGIS Valhalla server through a cached adapter (ADR 004, approved); S3 stays the reference for self-hosting. | Constraint |
@@ -123,8 +123,8 @@ the Free plan (confirm in `deployment.md` step 3).
 against a synthetic extract (ADR 011, ADR 012, `docs/data-model.md`). **No real extract has been
 imported yet**: that is the owner's first acceptance step (`docs/deployment.md`, "Importing a
 region"). Not done and carried forward: Wikidata sitelink counts, the category visit-duration
-table (Phase 4), a display rule for non-Latin names (gate 5, Japan), and the automatic archive of
-past trips.
+table (Phase 4), and a display rule for non-Latin names (gate 5, Japan). The automatic archive of
+past trips was built later (ADR 006, amendment of 2026-11-13).
 
 **Goal:** a pilot region's data is in the database and destinations can be searched.
 

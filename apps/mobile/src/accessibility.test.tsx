@@ -7,8 +7,11 @@ import { createFakeClient } from "./testing/fakeClient";
 import {
   ESSENTIALS_ID,
   TRIP_ID,
+  makeArchiveInfo,
+  makeArchivedVisits,
   makeDestination,
   makeItinerary,
+  makePastTrip,
   makeSummary,
   makeTrip,
 } from "./testing/fixtures";
@@ -108,6 +111,37 @@ test("map with markers and the attribution links", async () => {
     "Tap a numbered stop for details. ",
   );
   expect(screen.getAllByLabelText(/^Stop \d+, (Attraction|Restaurant|Café): /).length).toBe(5);
+  checkControls();
+});
+
+function pastServer() {
+  return createFakeClient({
+    "GET /v1/trips": () => [makePastTrip()],
+    "GET /v1/trips/{trip_id}/visits": () => makeArchivedVisits(),
+    "GET /v1/trips/{trip_id}/archive": () => makeArchiveInfo(),
+  });
+}
+
+test("past trip: map with markers", async () => {
+  await render(
+    <Harness client={pastServer()} initial={{ name: "pastTrip", tripId: TRIP_ID }}>
+      <AppContent />
+    </Harness>,
+  );
+  await screen.findByText("Tap a marker for details.");
+  expect(screen.getAllByLabelText(/^(City|Attraction), day \d+: /).length).toBe(5);
+  checkControls();
+});
+
+test("past trip: list by city, every skip control named for its place", async () => {
+  await render(
+    <Harness client={pastServer()} initial={{ name: "pastTrip", tripId: TRIP_ID }}>
+      <AppContent />
+    </Harness>,
+  );
+  await fireEvent.press(await screen.findByRole("button", { name: "Show the list by city" }));
+  await screen.findByText("Kunsthaus Graz");
+  expect(screen.getAllByRole("button", { name: /^Mark .+ as skipped$/ })).toHaveLength(5);
   checkControls();
 });
 

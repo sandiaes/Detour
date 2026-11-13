@@ -1,12 +1,15 @@
 """Trips, the past-trip archive (ADR 006) and installations."""
 
 import uuid
+from datetime import UTC, date, datetime
 from typing import Any
 
+import structlog
 from sqlalchemy import Connection, text
 
 from detour_api.errors import conflict, invalid, not_found
 from detour_api.models.trips import (
+    ArchiveInfo,
     Destination,
     Trip,
     TripCreate,
@@ -211,10 +214,8 @@ def _select_itinerary(conn: Connection, trip_id: uuid.UUID, itinerary_id: uuid.U
 
 
 def delete_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> None:
-    """Deletes the trip with its itineraries, days, items, transfers and archive rows.
-
-    Price records stay (they belong to the installation); their link to an item is cleared.
-    """
+    """Deletes the trip with its itineraries, days, items, transfers and archive rows. User places
+    stay (they belong to the installation)."""
     result = conn.execute(
         text("DELETE FROM app.trip WHERE id = :t AND installation_id = :i"),
         {"t": trip_id, "i": installation_id},
@@ -225,18 +226,21 @@ def delete_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
 
 # -- archive (ADR 006) -------------------------------------------------------------------------
 
+# A trip becomes past by itself this many days after its last day. The last day is a calendar date
+# without a time zone and trips are anywhere on Earth, so two days make sure that day is over
+# everywhere (UTC-12 to UTC+14) before anything is deleted.
+AUTO_ARCHIVE_GRACE_DAYS = 2
 
-def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
-    """Turn a trip into a past trip.
+log = structlog.get_logger("detour.archive")
 
-    Keeps one snapshot row per city and attraction of the *selected* itinerary; deletes every
-    itinerary (and with them transfers, route geometry, versions and seeds). Prices untouched.
-    """
-    trip = require_trip(conn, installation_id, trip_id)
-    if trip.status == "past":
-        raise conflict("already_archived", "the trip is already a past trip")
-    conn.execute(text("SELECT 1 FROM app.trip WHERE id = :t FOR UPDATE"), {"t": trip_id})
 
+def today_utc() -> date:
+    return datetime.now(UTC).date()
+
+
+def _collect_visits(conn: Connection, trip: Trip) -> list[dict[str, Any]]:
+    """The cities and attractions of the selected itinerary, as snapshots. Meals, restaurants and
+    free time are not archived. Each city is listed once, however many days are spent there."""
     visits: list[dict[str, Any]] = []
     if trip.selected_itinerary_id is not None:
         cities = conn.execute(
@@ -275,10 +279,17 @@ def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUI
             ),
             {"it": trip.selected_itinerary_id},
         ).all()
+        # A town the user added by hand may be a base city already listed (or added twice).
+        listed_cities = {v["name"].casefold() for v in visits}
         for it in items:
+            is_city = it.up_kind == "city"
+            if is_city:
+                if it.display_name.casefold() in listed_cities:
+                    continue
+                listed_cities.add(it.display_name.casefold())
             visits.append(
                 {
-                    "kind": "city" if it.up_kind == "city" else "attraction",
+                    "kind": "city" if is_city else "attraction",
                     "name": it.display_name,
                     "lat": it.lat,
                     "lon": it.lon,
@@ -298,6 +309,18 @@ def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUI
                 "day": 1,
             },
         )
+    return visits
+
+
+def _archive(conn: Connection, trip: Trip, reason: str) -> bool:
+    """Writes the archive and deletes the plans. False if the trip was already past (a concurrent
+    request got there first)."""
+    status = conn.execute(
+        text("SELECT status FROM app.trip WHERE id = :t FOR UPDATE"), {"t": trip.id}
+    ).scalar_one()
+    if status == "past":
+        return False
+    visits = _collect_visits(conn, trip)
     for v in visits:
         conn.execute(
             text(
@@ -307,7 +330,7 @@ def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUI
             ),
             {
                 "id": uuid.uuid4(),
-                "t": trip_id,
+                "t": trip.id,
                 "k": v["kind"],
                 "n": v["name"],
                 "lon": v["lon"],
@@ -317,16 +340,96 @@ def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUI
             },
         )
     conn.execute(
-        text("UPDATE app.trip SET selected_itinerary_id = NULL WHERE id = :t"), {"t": trip_id}
+        text("UPDATE app.trip SET selected_itinerary_id = NULL WHERE id = :t"), {"t": trip.id}
     )
-    conn.execute(text("DELETE FROM app.itinerary WHERE trip_id = :t"), {"t": trip_id})
+    # Days, items, transfers (with their route geometry), itinerary versions and change sets go
+    # with their itinerary (ON DELETE CASCADE).
+    deleted = conn.execute(text("DELETE FROM app.itinerary WHERE trip_id = :t"), {"t": trip.id})
     conn.execute(
         text(
             "UPDATE app.trip SET status = 'past', archived_at = now(), updated_at = now() WHERE id = :t"
         ),
-        {"t": trip_id},
+        {"t": trip.id},
     )
+    info = archive_info(conn, trip.id)
+    log.info(
+        "trip_archived",
+        reason=reason,
+        itineraries_deleted=deleted.rowcount,
+        visits=info.cities + info.attractions,
+        size_bytes=info.size_bytes,
+    )
+    return True
+
+
+def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+    """Turn a trip into a past trip, on the user's request.
+
+    Keeps the title, destination, dates and duration, and one snapshot row per city and attraction
+    of the *selected* itinerary; deletes every itinerary (and with them transfers, route geometry,
+    versions and seeds).
+    """
+    trip = require_trip(conn, installation_id, trip_id)
+    if trip.status == "past" or not _archive(conn, trip, "user"):
+        raise conflict("already_archived", "the trip is already a past trip")
     return require_trip(conn, installation_id, trip_id)
+
+
+def archive_due_trips(
+    conn: Connection, installation_id: uuid.UUID, today: date | None = None
+) -> list[uuid.UUID]:
+    """Archives the installation's active trips whose last day ended
+    ``AUTO_ARCHIVE_GRACE_DAYS`` ago. Trips without a start date never become past by themselves
+    (there is no last day), and neither does the seed trip, which is illustrative.
+
+    Called when the trips are read, so no scheduled job is needed."""
+    due = conn.execute(
+        text(
+            "SELECT id FROM app.trip WHERE installation_id = :i AND status = 'active' AND NOT is_seed"
+            " AND start_date IS NOT NULL"
+            " AND start_date + (duration_days - 1 + :g) <= CAST(:today AS date) ORDER BY id"
+        ),
+        {"i": installation_id, "g": AUTO_ARCHIVE_GRACE_DAYS, "today": today or today_utc()},
+    ).all()
+    archived: list[uuid.UUID] = []
+    for row in due:
+        trip = get_trip(conn, installation_id, row.id)
+        if trip is not None and _archive(conn, trip, "after_last_day"):
+            archived.append(row.id)
+    return archived
+
+
+def archive_info(conn: Connection, trip_id: uuid.UUID) -> ArchiveInfo:
+    row = conn.execute(
+        text(
+            """
+            SELECT
+              count(*) FILTER (WHERE v.kind = 'city') AS cities,
+              count(*) FILTER (WHERE v.kind = 'attraction') AS attractions,
+              count(*) FILTER (WHERE NOT v.confirmed) AS skipped,
+              coalesce(sum(pg_column_size(v.*)), 0)
+                + (SELECT pg_column_size(t.*) FROM app.trip t WHERE t.id = :t) AS size_bytes
+            FROM app.trip_visit v WHERE v.trip_id = :t
+            """
+        ),
+        {"t": trip_id},
+    ).one()
+    return ArchiveInfo(
+        trip_id=trip_id,
+        cities=row.cities,
+        attractions=row.attractions,
+        skipped=row.skipped,
+        size_bytes=int(row.size_bytes),
+    )
+
+
+def get_archive_info(
+    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
+) -> ArchiveInfo:
+    trip = require_trip(conn, installation_id, trip_id)
+    if trip.status != "past":
+        raise conflict("not_archived", "only a past trip has an archive")
+    return archive_info(conn, trip_id)
 
 
 def list_visits(

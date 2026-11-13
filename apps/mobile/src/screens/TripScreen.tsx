@@ -29,6 +29,7 @@ import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { PROFILE_EMPHASIS, PROFILE_LABEL, buildComparison, planFacts } from "../domain/compare";
 import { useNavigation } from "../nav/Navigator";
+import { PastTripScreen } from "./PastTripScreen";
 import { colors, radius, spacing, type } from "../theme";
 import { formatTripSpan } from "../util/format";
 
@@ -238,6 +239,9 @@ export function TripScreen({ tripId }: { tripId: string }) {
     );
   }
 
+  // A trip that became past while this screen was open (or reached by a stale link).
+  if (trip.status === "past") return <PastTripScreen tripId={tripId} />;
+
   const shown = plans.data ? visiblePlans(plans.data) : [];
   // After new proposals were asked for, the plan chosen earlier is kept apart from the new pair.
   const kept = shown.find(
@@ -267,14 +271,7 @@ export function TripScreen({ tripId }: { tripId: string }) {
   );
 
   let content;
-  if (trip.status === "past") {
-    content = (
-      <EmptyState
-        title="A past trip"
-        text="Its plans were archived when it ended. Viewing past trips on a map comes later."
-      />
-    );
-  } else if (plans.data === undefined) {
+  if (plans.data === undefined) {
     content =
       plans.status === "error" ? (
         <ErrorState text={describeError(plans.error)} onRetry={plans.refresh} />
