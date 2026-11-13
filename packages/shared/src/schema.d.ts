@@ -436,6 +436,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/restaurants/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search restaurants: imported places first, then your saved restaurants and, when nothing matches and asked for, Photon through the backend (cached, budgeted). */
+    get: operations["search_restaurants"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/itineraries/{itinerary_id}/restaurant-suggestions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Where a restaurant fits in a planned itinerary: up to three day and meal slots, scored by location, neighbouring stops, meal type, meal window and travel, each with its reasons, the estimated detour and which items move. Nothing is stored. */
+    post: operations["restaurant_suggestions"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/user-places": {
     parameters: {
       query?: never;
@@ -581,7 +615,7 @@ export interface components {
        * Action
        * @enum {string}
        */
-      action: "add_place" | "remove_place";
+      action: "add_place" | "remove_place" | "add_restaurant";
       /** Target Name */
       target_name: string;
       /**
@@ -624,22 +658,23 @@ export interface components {
     /**
      * ChangeSetCreate
      * @description Preview adding a place (an imported attraction, or one of your own places of kind city or
-     *     location) or removing a visit. Nothing changes until the change set is applied.
+     *     location), adding a restaurant to a meal slot, or removing a visit. Nothing changes until the
+     *     change set is applied.
      */
     ChangeSetCreate: {
       /**
        * Action
        * @enum {string}
        */
-      action: "add_place" | "remove_place";
+      action: "add_place" | "remove_place" | "add_restaurant";
       /**
        * Place Id
-       * @description add_place: an imported attraction
+       * @description add_place: an imported attraction. add_restaurant: an imported place to eat
        */
       place_id?: string | null;
       /**
        * User Place Id
-       * @description add_place: one of your places (kind city or location)
+       * @description add_place: one of your places (kind city or location). add_restaurant: one of your restaurants (kind restaurant)
        */
       user_place_id?: string | null;
       /**
@@ -652,6 +687,21 @@ export interface components {
        * @description remove_place: the visit to remove
        */
       item_id?: string | null;
+      /**
+       * Day
+       * @description add_restaurant: the day (a suggestion's day)
+       */
+      day?: number | null;
+      /**
+       * Meal Type
+       * @description add_restaurant: the meal (a suggestion's meal_type)
+       */
+      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
+      /**
+       * After Item Id
+       * @description add_restaurant: the visit (or meal you fixed) the meal follows, as a suggestion gives it; null puts the meal first in the day
+       */
+      after_item_id?: string | null;
     };
     /** ClientConfig */
     ClientConfig: {
@@ -961,6 +1011,96 @@ export interface components {
        * @constant
        */
       licence: "ODbL-1.0";
+    };
+    /**
+     * ExternalRestaurant
+     * @description A restaurant or café from the external provider (Photon). Not part of our data: save it as
+     *     a user place (kind restaurant, source search_result) to add it to a plan. The provider gives
+     *     no cuisine, so it is not specified unless you give one.
+     */
+    ExternalRestaurant: {
+      /**
+       * Provider
+       * @default photon
+       * @constant
+       */
+      provider: "photon";
+      /**
+       * Ref
+       * @description Provider reference, for example N123 (OSM node 123)
+       */
+      ref: string | null;
+      /** Name */
+      name: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** Osm Key */
+      osm_key: string | null;
+      /** Osm Value */
+      osm_value: string | null;
+      /** Country Code */
+      country_code: string | null;
+      /** Country */
+      country: string | null;
+      /** State */
+      state: string | null;
+      /** City */
+      city: string | null;
+      /** Street */
+      street: string | null;
+      /** Housenumber */
+      housenumber: string | null;
+      /** Postcode */
+      postcode: string | null;
+      /**
+       * Licence
+       * @default ODbL-1.0
+       * @constant
+       */
+      licence: "ODbL-1.0";
+      /**
+       * Venue Type
+       * @enum {string}
+       */
+      venue_type: "restaurant" | "cafe";
+      /**
+       * Meal Types
+       * @description From the venue type by the same fixed rule as imported places: a restaurant serves lunch and dinner, a café breakfast and a snack. You can change them.
+       */
+      meal_types: ("breakfast" | "lunch" | "dinner" | "snack")[];
+      /**
+       * Meal Types Basis
+       * @default venue_type
+       * @constant
+       */
+      meal_types_basis: "venue_type";
+      /**
+       * Cuisines
+       * @description Always null: the provider's answer carries none
+       */
+      cuisines?: string[] | null;
+    };
+    /** ExternalRestaurantStatus */
+    ExternalRestaurantStatus: {
+      /**
+       * State
+       * @description not_requested: include_external was false. not_needed: there are local or own results. unavailable, budget_exhausted and disabled: no external results; you can always enter the restaurant by hand (a name and a map pin).
+       * @enum {string}
+       */
+      state:
+        | "not_requested"
+        | "not_needed"
+        | "ok"
+        | "cached"
+        | "unavailable"
+        | "budget_exhausted"
+        | "disabled";
+      /** Provider */
+      provider?: "photon" | null;
+      /** Results */
+      results?: components["schemas"]["ExternalRestaurant"][];
     };
     /** ExternalStatus */
     ExternalStatus: {
@@ -1317,7 +1457,7 @@ export interface components {
        */
       change_set_id: string | null;
       /** Action */
-      action: ("add_place" | "remove_place") | null;
+      action: ("add_place" | "remove_place" | "add_restaurant") | null;
       /** Target Name */
       target_name: string | null;
     };
@@ -1327,6 +1467,26 @@ export interface components {
       style_url: string;
       /** Attribution */
       attribution: components["schemas"]["AttributionLine"][];
+    };
+    /** MovedItem */
+    MovedItem: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "visit" | "meal";
+      /** Name */
+      name: string;
+      /**
+       * Old Start Time
+       * Format: time
+       */
+      old_start_time: string;
+      /**
+       * New Start Time
+       * Format: time
+       */
+      new_start_time: string;
     };
     /** PlaceDetail */
     PlaceDetail: {
@@ -1577,6 +1737,221 @@ export interface components {
        * @description From the OpenStreetMap cuisine tag; null when the data states no cuisine (shown as 'Cuisine not specified')
        */
       cuisines: string[] | null;
+    };
+    /**
+     * RestaurantResult
+     * @description An imported place to eat. ``cuisines`` null means the data states none: shown as
+     *     "Cuisine not specified".
+     */
+    RestaurantResult: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Name
+       * @description Null when the source has no name
+       */
+      name: string | null;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "attraction" | "restaurant" | "transport_hub" | "other";
+      /** Category */
+      category: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** Region Id */
+      region_id: string;
+      /** City Id */
+      city_id: number | null;
+      /** City Name */
+      city_name: string | null;
+      /**
+       * Cuisines
+       * @description Restaurants; null = unknown
+       */
+      cuisines?: string[] | null;
+      /** Venue Type */
+      venue_type?: string | null;
+      /**
+       * Distance M
+       * @description From the search point, if given
+       */
+      distance_m?: number | null;
+      /** Match */
+      match?: ("exact" | "prefix" | "word_prefix" | "contains" | "similar") | null;
+      /**
+       * Meal Types
+       * @description Derived from the venue type by the import's fixed rule
+       */
+      meal_types?: ("breakfast" | "lunch" | "dinner" | "snack")[] | null;
+    };
+    /** RestaurantSearchResponse */
+    RestaurantSearchResponse: {
+      /** Query */
+      query: string;
+      /**
+       * Results
+       * @description Imported places to eat, searched first
+       */
+      results: components["schemas"]["RestaurantResult"][];
+      /**
+       * Your Places
+       * @description Restaurants you saved before (kind restaurant) whose name matches
+       */
+      your_places: components["schemas"]["UserPlace"][];
+      external: components["schemas"]["ExternalRestaurantStatus"];
+    };
+    /** SlotReason */
+    SlotReason: {
+      /** Code */
+      code: string;
+      /** Text */
+      text: string;
+    };
+    /**
+     * SlotRequest
+     * @description Suggest where a restaurant fits in a planned itinerary.
+     */
+    SlotRequest: {
+      /**
+       * Place Id
+       * @description An imported place to eat
+       */
+      place_id?: string | null;
+      /**
+       * User Place Id
+       * @description One of your restaurants (kind restaurant)
+       */
+      user_place_id?: string | null;
+      /**
+       * Day
+       * @description Only this day
+       */
+      day?: number | null;
+      /**
+       * Meal Type
+       * @description Only this meal
+       */
+      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
+    };
+    /** SlotRestaurant */
+    SlotRestaurant: {
+      /** Name */
+      name: string;
+      /** Venue Type */
+      venue_type: string | null;
+      /**
+       * Cuisines
+       * @description Null: Cuisine not specified
+       */
+      cuisines: string[] | null;
+      /**
+       * Meal Types
+       * @description Null: not known
+       */
+      meal_types: ("breakfast" | "lunch" | "dinner" | "snack")[] | null;
+      /**
+       * Meal Types Basis
+       * @enum {string}
+       */
+      meal_types_basis: "venue_type" | "you" | "unknown";
+    };
+    /** SlotSuggestion */
+    SlotSuggestion: {
+      /**
+       * Rank
+       * @description 1 is the best slot
+       */
+      rank: number;
+      /** Day */
+      day: number;
+      /**
+       * Meal Type
+       * @enum {string}
+       */
+      meal_type: "breakfast" | "lunch" | "dinner" | "snack";
+      /**
+       * Start Time
+       * Format: time
+       */
+      start_time: string;
+      /**
+       * End Time
+       * Format: time
+       */
+      end_time: string;
+      /**
+       * After Item Id
+       * @description Pass this, with day and meal_type, to the change-set preview to place the meal here. Null: first in the day
+       */
+      after_item_id: string | null;
+      /**
+       * After Name
+       * @description The stop before the meal; null: first of the day
+       */
+      after_name: string | null;
+      /**
+       * Before Name
+       * @description The stop after the meal; null: last of the day
+       */
+      before_name: string | null;
+      /**
+       * Travel Minutes Added
+       * @description Travel the day gains (negative: less). Estimated from the cache and straight-line distance, not routed, unless travel_label says routed
+       */
+      travel_minutes_added: number;
+      /**
+       * Travel Label
+       * @enum {string}
+       */
+      travel_label: "routed" | "estimated";
+      /**
+       * Detour Metres
+       * @description Straight-line detour from the stops before and after the meal
+       */
+      detour_metres: number;
+      /**
+       * Replaces
+       * @description The meal of this type the plan has now, replaced
+       */
+      replaces: string | null;
+      /**
+       * Items Moved
+       * @description Other items that start at another time
+       */
+      items_moved: components["schemas"]["MovedItem"][];
+      /** Reasons */
+      reasons: components["schemas"]["SlotReason"][];
+      /**
+       * Score
+       * @description Lower is better; ties go to the earlier day, then the start
+       */
+      score: number;
+    };
+    /** SlotSuggestions */
+    SlotSuggestions: {
+      restaurant: components["schemas"]["SlotRestaurant"];
+      /**
+       * Suggestions
+       * @description At most three, best first
+       */
+      suggestions: components["schemas"]["SlotSuggestion"][];
+      /**
+       * Slots Considered
+       * @description Day and meal combinations that could be tried
+       */
+      slots_considered: number;
+      /**
+       * Issues
+       * @description Why there is nothing to suggest, when empty
+       */
+      issues: components["schemas"]["SlotReason"][];
     };
     /** Transfer */
     Transfer: {
@@ -3425,6 +3800,133 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  search_restaurants: {
+    parameters: {
+      query: {
+        q: string;
+        region?: string | null;
+        lat?: number | null;
+        lon?: number | null;
+        radius_m?: number | null;
+        limit?: number;
+        include_external?: boolean;
+        lang?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RestaurantSearchResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  restaurant_suggestions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SlotRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SlotSuggestions"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanningErrorBody"];
         };
       };
     };

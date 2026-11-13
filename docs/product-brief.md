@@ -45,8 +45,11 @@ plan quickly and expects to adjust it.
    and duration, markers for estimated travel times, the meal's venue type and cuisine, and, on an
    area trip, the day's base city and the drive from the previous one.
 4. **Add a place.** Search or drop a pin. The app shows what would change. Accept or discard.
-5. **Add a restaurant.** Search or enter manually. The app proposes the best day and meal slot
-   with reasons, and lists alternatives. Accept, pick an alternative, or place it manually.
+5. **Add a restaurant.** Search the map data, then the wider search, or enter it by hand (a name,
+   a map pin or typed coordinates; cuisines and the meals it serves are optional). The app proposes
+   the best day and meal slot with reasons, the estimated detour and which items move, and lists two
+   alternatives. Accept, pick an alternative, or limit the suggestions to a day or meal. The meal
+   always stays inside its meal window and the day inside its hours (built in Phase 8, ADR 019).
 
 ## 5. What "meaningfully different" means
 

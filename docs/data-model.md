@@ -6,7 +6,9 @@ fills the engine columns of `app.itinerary` and `app.transfer` without a schema 
 `0006_meals_areas_no_budgets` (2026-11-13) adds the meal type `snack` and each day's base city
 name and inter-city leg (ADR 016), and removes the trip's currency, meal budget and price bands,
 `app.price_record` and `geo.fx_rate` (ADR 017). Migration `0007_change_sets_and_versions`
-(Phase 7, ADR 018) adds `app.change_set` and `app.itinerary_version` (section 3.7).
+(Phase 7, ADR 018) adds `app.change_set` and `app.itinerary_version` (section 3.7);
+`0008_add_restaurant_change_sets` (Phase 8, ADR 019) lets a change set add a restaurant to a meal
+slot.
 Where the built schema differs from the earlier proposal, the difference is listed in section 9
 and decided in [ADR 012](decisions/012-phase-2-data-and-search-choices.md). Photos (section 8) are
 still reserved, not built.
@@ -227,7 +229,7 @@ A proposed or selected plan. Variants of one generation share a `generation_id`.
 | `profile` | `essentials`, `wider`, or `manual` (an empty plan filled by hand; the only kind before Phase 4) |
 | `status` | `proposed`, `selected`, `superseded`; at most one `selected` per trip (kept by the API when the selection changes) |
 | `version` | Starts at 1; incremented by every accepted item edit and every applied change set. The version it replaces is kept in `app.itinerary_version` (section 3.7) |
-| `engine_version`, `config_version` | `manual` for manual itineraries; for engine itineraries for example `planner-1.0.0` and `2026-11-12.2+durations-2026-11-12.1`; after a recalculation (ADR 018) `planner-2.0.0+recalc-1.0.0` and `<config>+recalc-2026-11-13.1` |
+| `engine_version`, `config_version` | `manual` for manual itineraries; for engine itineraries for example `planner-1.0.0` and `2026-11-12.2+durations-2026-11-12.1`; after a recalculation (ADR 018, ADR 019) `planner-2.0.0+recalc-1.1.0` and `<config>+recalc-2026-11-13.2` (before ADR 019: `recalc-1.0.0` and `recalc-2026-11-13.1`) |
 | `import_run_id` | The data version used; null for manual itineraries; not a foreign key |
 | `seed`, `diversity_score`, `summary` | Engine itineraries (Phase 4, ADR 014): `seed` 0 (no randomness is used); `diversity_score` the Jaccard similarity of the generation's two variants (null with one); `summary` holds `stats` (visits, minutes, transfers by label, day utilisation and travel share in permille), `notes` (codes with parameters, rendered by fixed templates when read), `sequencer`, `estimate_version`, `jaccard_permille`; since ADR 016 the stats also hold `meals`, `meal_minutes` and `intercity_legs` (itineraries written before have a `currency_code` key, unused). `{}` for manual itineraries |
 
@@ -245,7 +247,7 @@ set (a CHECK enforces it). The leg always comes from the previous day's base cit
 | `display_name`, `display_point` | Snapshot at creation (name or, for an unnamed place, its category); user-place renames are propagated |
 | `start_time`, `end_time` | Local time at the destination; both null or both set, `end > start`, same day. Unscheduled is allowed. Timed items of a day may touch but not overlap |
 | `duration_minutes`, `duration_source` | 1 to 1440; `user` or `category_default`. Engine items and imported attractions added without a duration take the category default (ADR 014); a meal or a user place needs a duration |
-| `origin`, `locked`, `reasons` | `engine` or `user`; a locked item keeps its day, start and end in every recalculation and is never removed by one; an item with origin `user` (added by hand or through a change set) is mandatory: never left out (ADR 018); reason codes from the fixed template table (`planner/reasons.py`; `SEED_DATA` on seed items) |
+| `origin`, `locked`, `reasons` | `engine` or `user`; a locked item keeps its day, start and end in every recalculation and is never removed by one; an item with origin `user` (added by hand or through a change set, a restaurant added through an `add_restaurant` change set included: a meal with `origin = user` keeps its day and times, ADR 019) is mandatory: never left out (ADR 018); reason codes from the fixed template table (`planner/reasons.py`; `SEED_DATA` on seed items) |
 
 `transfer`: `from_item_id` (unique: one outgoing transfer per item), `to_item_id`, `mode`,
 `seconds`, `meters`, `confidence` (`routed`, `estimated`), `geometry`. Written by the planner for
@@ -256,7 +258,10 @@ recomputed. A recalculation (ADR 018) writes the transfers of the days it change
 
 ### 3.4 `app.user_place`
 A place the user added that is not in `geo.place`: `kind` (`city`, `location`, `restaurant`),
-`name`, `geom`, `cuisines` and `meal_types` (restaurants only; meal types may include `snack`),
+`name`, `geom`, `cuisines` and `meal_types` (restaurants only; meal types may include `snack`;
+**null means unknown** and is shown as "Cuisine not specified" and "Meals not specified": a
+restaurant entered by hand without them stays unknown, nothing is derived or guessed; a Photon
+result saved as one gets its meal types from the venue-type rule and no cuisine, ADR 019),
 `source` (`manual_pin`, `search_result`), and `search_provider` (`photon`, or `geonames` for a
 town from destination search saved to add it to a plan, ADR 018) with `search_ref` (for example
 `N123`, an OSM node, or a GeoNames id) **iff** the source is a search result. At most 500 per
@@ -280,7 +285,8 @@ never holds an installation identifier. `provider_usage` is `(provider, usage_da
 |---|---|
 | `itinerary_id` | fk, `ON DELETE CASCADE` |
 | `base_version` | The itinerary version the preview was made from; apply refuses if it changed |
-| `action` | `add_place` (with `place_id` **or** `user_place_id`, and `duration_minutes` if given) or `remove_place` (with `item_id`) |
+| `action` | `add_place` (with `place_id` **or** `user_place_id`, and `duration_minutes` if given), `remove_place` (with `item_id`) or `add_restaurant` (Phase 8, ADR 019: `place_id` of a place to eat **or** `user_place_id` of a restaurant, with `slot_day`, `slot_meal` and `after_item_id`) |
+| `slot_day`, `slot_meal`, `after_item_id` | `add_restaurant` only (a CHECK enforces it): the day, the meal type and the stop the new meal follows (null: first of the day), as the suggestion gave them |
 | `target_name` | Snapshot of the place's name |
 | `status` | `pending` (previewed), `applied`, `discarded`, `expired` (the itinerary changed, or a newer preview replaced it); `decided_at` iff not pending; `result_version` iff applied |
 | `restores_version` | Set when applying restores that stored version exactly (removing the place the latest change added) |

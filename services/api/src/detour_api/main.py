@@ -26,6 +26,7 @@ from detour_api.routers import (
     installations,
     itineraries,
     regions,
+    restaurants,
     search,
     trips,
     user_places,
@@ -126,5 +127,6 @@ def create_app(
     app.include_router(trips.router)
     app.include_router(itineraries.router)
     app.include_router(changes.router)
+    app.include_router(restaurants.router)
     app.include_router(user_places.router)
     return app

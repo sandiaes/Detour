@@ -70,7 +70,7 @@ from detour_api.planner.types import (
 )
 from detour_api.travel.types import Coord, TravelTime, distance_m
 
-RECALC_VERSION = "recalc-1.0.0"
+RECALC_VERSION = "recalc-1.1.0"
 FOLLOW_UP_FETCHES = 2
 # How many of the cheapest insertion positions (by added travel) are laid out in full.
 POSITIONS_TRIED = 4
@@ -95,6 +95,8 @@ REPLACED_NOTES = frozenset(
         "NEW_BASE_DAY",
         "VISITS_MOVED",
         "VISITS_DROPPED",
+        "RESTAURANT_ADDED",
+        "MEAL_REPLACED",
     }
 )
 
@@ -104,7 +106,7 @@ class RecalcConfig:
     """Recalculation settings (planning choices, not facts). Part of the configuration version
     stored on a recalculated itinerary."""
 
-    version: str = "2026-11-13.1"
+    version: str = "2026-11-13.2"
     # An addition farther than this (straight line) from every base city of the plan gets a day
     # at a new base. The same distance ADR 016 keeps between bases.
     new_base_min_m: int = 20_000
@@ -117,6 +119,23 @@ class RecalcConfig:
     retime_cost: int = 5
     # The sequencer value given to the added place on a new base day, so it is always planned.
     pinned_value: int = 1_000_000_000
+
+    # -- adding a restaurant (Phase 8, ADR 019; restaurant_slots.py) -----------------------------
+    # How many slots are suggested.
+    slot_suggestions: int = 3
+    # Location: the straight-line detour from the neighbouring items costs one unit per this many
+    # metres (so 400 m costs 20, two minutes of Essentials travel).
+    slot_detour_m_per_unit: int = 20
+    # Other items that start at another time: retime_cost each, plus this per minute of shift.
+    slot_shift_minute_cost: int = 1
+    # Waiting at the restaurant for the meal window to open, per minute.
+    slot_wait_minute_cost: int = 2
+    # The new meal replaces a meal the plan has (the engine's meal of that type is lost).
+    slot_replace_meal_cost: int = 200
+    # Its cuisine is already in a meal of this day or the days either side.
+    slot_cuisine_repeat_cost: int = 150
+    # The meals the place serves are unknown (it is judged by place and timing alone).
+    slot_meal_unknown_cost: int = 100
 
 
 DEFAULT_RECALC = RecalcConfig()
@@ -160,6 +179,10 @@ class Entry:
     meal_type: MealType | None = None
     cuisines: tuple[str, ...] | None = None
     item_id: str | None = None  # the stored item it continues; None for a new one
+    # A meal the user is adding (Phase 8, ADR 019) whose time the layout still has to find: it
+    # starts when its window opens or when the traveller arrives, whichever is later. Never stored:
+    # the layout's result is a fixed meal.
+    floating: bool = False
 
     @property
     def coord(self) -> Coord:
@@ -168,7 +191,7 @@ class Entry:
     @property
     def fixed(self) -> bool:
         """Keeps its day and its times: a locked item, or a meal the user added."""
-        return self.locked or (self.kind == "meal" and self.origin == "user")
+        return self.locked or (self.kind == "meal" and self.origin == "user" and not self.floating)
 
     @property
     def mandatory(self) -> bool:
@@ -410,6 +433,16 @@ class _Work:
                     return Choice(r, detour_m(prev, r.coord, nxt), ring)
         return choose(self.index, meal, prev, nxt, used_other, seen, self.config, today)
 
+    def _end_after(self, e: Entry, arrive: int) -> int:
+        """When ``e`` would end if the traveller reaches it at ``arrive``."""
+        if e.fixed:
+            return e.end_minute
+        if e.floating:
+            return max(arrive, self.config.meal_window(e.meal_type or "").start_minute) + (
+                e.duration_minutes
+            )
+        return arrive + e.duration_minutes
+
     def lay_out(self, spec: _Spec) -> RDay | None:
         """The day with its meals in their windows and its transfers, or None if it does not fit
         (a fixed item that cannot be reached in time, a meal outside its window, a visit past the
@@ -453,7 +486,7 @@ class _Work:
                     if arrive >= w.start_minute:
                         now = True
                     else:
-                        end_e = e.end_minute if e.fixed else arrive + e.duration_minutes
+                        end_e = self._end_after(e, arrive)
                         after = seq[i + 1].coord if i + 1 < len(seq) else None
                         probe = self._choose(
                             meal, e.coord, after, spec.preferred.get(meal), used_other, today, seen
@@ -541,6 +574,13 @@ class _Work:
                 if prev is not None and arrive > e.start_minute:
                     return None
                 start, end = e.start_minute, e.end_minute
+            elif e.floating:
+                # A meal being added: in its window, and inside the day.
+                fw = config.meal_window(e.meal_type or "")
+                start = max(arrive, fw.start_minute)
+                end = start + e.duration_minutes
+                if end > min(fw.end_minute, day_end):
+                    return None
             else:
                 start = arrive
                 end = start + e.duration_minutes

@@ -1,6 +1,6 @@
 # App plan
 
-Status: **Phase 0, 1 and 2 are done; Phases 3, 4, 5, 6 and 7 are built and await the owner's acceptance** (the owner reported on 2026-11-13 that the app works on the phone); Phase 8 onward is proposed. Budgets, currencies and prices are removed for now (ADR 017). Each phase is small enough to review on its own
+Status: **Phase 0, 1 and 2 are done; Phases 3, 4, 5, 6, 7 and 8 are built and await the owner's acceptance** (the owner reported on 2026-11-13 that the app works on the phone); Phase 8 onward is proposed. Budgets, currencies and prices are removed for now (ADR 017). Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
 ## 1. Decisions
@@ -258,9 +258,22 @@ to another day; 12 to 690 ms in the engine.
 **Goal:** a manually added restaurant lands in the best slot. (Prices, budgets, price bands and
 currency conversion were removed by ADR 017 on 2026-11-13.)
 
+**Status: built on 2026-11-13, not yet accepted** (ADR 019, proposed). The user searches
+restaurants (the map data, then their saved ones, then, when nothing matches, Photon through the
+backend with its budget counter, then entry by hand with a name, a map pin or typed coordinates,
+optional cuisines and optional meals, otherwise "Cuisine not specified"). Every day with visits and
+every meal slot the place serves is scored (location, neighbouring stops, meal type and venue type,
+the ADR 016 meal window, travel impact, cuisine variety); up to three suggestions come back with
+reasons, the estimated detour and which items move. The meal always stays inside its window and
+the day inside its hours (the layout refuses otherwise and the revision validator checks it); no
+visit is left out or moved to another day for it. Placing it is a Phase 7 change set (preview with
+a diff, accept or discard, versions). Removing an added restaurant is not built (open item in
+ADR 019).
+
 - **Deliverables:** restaurant search (local, then Photon through the backend, then manual
   entry); slot scoring and alternatives with reasons.
-- **Tests:** scoring fixtures; provider budget counter stops calls at the limit.
+- **Tests:** scoring fixtures; suggestions respect meal windows and day length; manual entry
+  without cuisine stays "Cuisine not specified"; provider budget counter stops calls at the limit.
 - **Dependencies:** Phase 7.
 - **Risks:** external search unavailable; mitigation is manual entry always being possible.
 
@@ -334,8 +347,10 @@ to reconsider later. Ideas discussed, none decided or built:
 
 ## 7. Recommended next task
 
-**Accept Phases 3 to 7, then Phase 8 (add a restaurant), when the owner asks for it
-(CLAUDE.md).** For Phase 7: confirm or change the stability costs and the 20 km / 25 km distances
+**Accept Phases 3 to 8, then Phase 9 (MVP hardening), when the owner asks for it
+(CLAUDE.md).** For Phase 8: confirm or change the slot costs of ADR 019 on a real imported city,
+add a restaurant from the map data, one from the wider search and one by hand on the phone, and
+decide whether removing an added restaurant is wanted. For Phase 7: confirm or change the stability costs and the 20 km / 25 km distances
 of ADR 018 on a real imported city, and try adding a sight, a pin and a distant town on the phone. For Phase 6: confirm or change the meal windows, the profiles' meals and the
 base-city rules of ADR 016 on a real imported area.
 Phase 2 is accepted. For Phase 3: confirm or change the numbers in ADR 013 (especially the walking

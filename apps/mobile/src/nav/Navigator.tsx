@@ -19,6 +19,7 @@ export type Route =
       day: number;
     }
   | { name: "addPlace"; tripId: string; itineraryId: string }
+  | { name: "addRestaurant"; tripId: string; itineraryId: string }
   | { name: "changePreview"; tripId: string; itineraryId: string; changeSetId: string };
 
 export type Navigation = {

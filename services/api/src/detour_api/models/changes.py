@@ -12,14 +12,18 @@ from detour_api.models.trips import Itinerary, MealType, PlanNote
 
 class ChangeSetCreate(StrictModel):
     """Preview adding a place (an imported attraction, or one of your own places of kind city or
-    location) or removing a visit. Nothing changes until the change set is applied."""
+    location), adding a restaurant to a meal slot, or removing a visit. Nothing changes until the
+    change set is applied."""
 
-    action: Literal["add_place", "remove_place"]
+    action: Literal["add_place", "remove_place", "add_restaurant"]
     place_id: uuid.UUID | None = Field(
-        default=None, description="add_place: an imported attraction"
+        default=None,
+        description="add_place: an imported attraction. add_restaurant: an imported place to eat",
     )
     user_place_id: uuid.UUID | None = Field(
-        default=None, description="add_place: one of your places (kind city or location)"
+        default=None,
+        description="add_place: one of your places (kind city or location). add_restaurant: one "
+        "of your restaurants (kind restaurant)",
     )
     duration_minutes: int | None = Field(
         default=None,
@@ -29,19 +33,39 @@ class ChangeSetCreate(StrictModel):
         "attraction the category's default length is used when it is not given",
     )
     item_id: uuid.UUID | None = Field(default=None, description="remove_place: the visit to remove")
+    day: int | None = Field(
+        default=None, ge=1, le=60, description="add_restaurant: the day (a suggestion's day)"
+    )
+    meal_type: MealType | None = Field(
+        default=None, description="add_restaurant: the meal (a suggestion's meal_type)"
+    )
+    after_item_id: uuid.UUID | None = Field(
+        default=None,
+        description="add_restaurant: the visit (or meal you fixed) the meal follows, as a "
+        "suggestion gives it; null puts the meal first in the day",
+    )
 
     @model_validator(mode="after")
     def _shape(self) -> Self:
-        if self.action == "add_place":
-            if (self.place_id is None) == (self.user_place_id is None):
-                raise ValueError("add_place needs exactly one of place_id and user_place_id")
-            if self.item_id is not None:
-                raise ValueError("item_id is only for remove_place")
-        else:
+        slot = self.day is not None or self.meal_type is not None or self.after_item_id is not None
+        if self.action == "remove_place":
             if self.item_id is None:
                 raise ValueError("remove_place needs item_id")
-            if self.place_id or self.user_place_id or self.duration_minutes:
+            if self.place_id or self.user_place_id or self.duration_minutes or slot:
                 raise ValueError("remove_place takes item_id only")
+            return self
+        if (self.place_id is None) == (self.user_place_id is None):
+            raise ValueError(f"{self.action} needs exactly one of place_id and user_place_id")
+        if self.item_id is not None:
+            raise ValueError("item_id is only for remove_place")
+        if self.action == "add_place":
+            if slot:
+                raise ValueError("day, meal_type and after_item_id are only for add_restaurant")
+        else:
+            if self.day is None or self.meal_type is None:
+                raise ValueError("add_restaurant needs day and meal_type")
+            if self.duration_minutes is not None:
+                raise ValueError("a meal's length follows its meal type and venue")
         return self
 
 
@@ -107,7 +131,7 @@ class ChangeDiff(BaseModel):
 class ChangeSet(BaseModel):
     id: uuid.UUID
     itinerary_id: uuid.UUID
-    action: Literal["add_place", "remove_place"]
+    action: Literal["add_place", "remove_place", "add_restaurant"]
     target_name: str
     status: Literal["pending", "applied", "discarded", "expired"] = Field(
         description="pending: previewed, nothing changed yet. expired: the itinerary changed "
@@ -134,5 +158,5 @@ class ItineraryVersion(BaseModel):
     version: int
     replaced_at: datetime
     change_set_id: uuid.UUID | None = Field(description="Null when a hand edit replaced it")
-    action: Literal["add_place", "remove_place"] | None
+    action: Literal["add_place", "remove_place", "add_restaurant"] | None
     target_name: str | None

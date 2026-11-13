@@ -10,7 +10,7 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Phases 1 to 7 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
+**Phases 1 to 8 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
 service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment
 configuration (ADR 010). Phase 2 (ADR 011, ADR 012; `docs/data-model.md`): the `geo` and `app`
 schemas, the region import and GeoNames gazetteer commands and the "Import region" workflow, the
@@ -36,7 +36,13 @@ and removing a visit, through persisted change sets (preview with a diff, then a
 repair-based recalculation with a stability cost (`planner/recalc.py`), locked items fixed, an
 independent revision validator, itinerary versions (migration `0007`; removing the latest addition
 restores the previous version), and the app's add-place and preview screens; tried on synthetic
-fixtures only. **No budgets,
+fixtures only. **Phase 8 is built and awaits
+acceptance** (ADR 019, proposed): adding a restaurant (search the local data, then Photon through the
+backend, then manual entry with a pin or typed coordinates and optional cuisines and meals), up to
+three suggested day and meal slots with reasons, the estimated detour and which items move
+(`planner/restaurant_slots.py`), placed through the Phase 7 change sets (action `add_restaurant`,
+migration `0008`) and the app's add-a-restaurant screen; tried on synthetic fixtures only.
+**No budgets,
 currencies or prices** (ADR 017, accepted 2026-11-13): none in the app, the API or the database;
 bringing them back needs a new ADR. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),

@@ -4,8 +4,11 @@ import type {
   ChangeSetCreate,
   Itinerary,
   ItinerarySummary,
+  SlotRequest,
+  SlotSuggestions,
   UserPlace,
   UserPlaceCreate,
+  UserPlaceUpdate,
 } from "@detour/shared";
 import { useCallback } from "react";
 
@@ -33,6 +36,28 @@ export function useChangeActions() {
   const savePlace = useCallback(
     async (body: UserPlaceCreate): Promise<UserPlace> =>
       call(need().POST("/v1/user-places", { body })),
+    [need],
+  );
+
+  /** Changes a place the user saved (a restaurant being entered by hand, edited again). */
+  const updatePlace = useCallback(
+    async (id: string, body: UserPlaceUpdate): Promise<UserPlace> =>
+      call(
+        need().PATCH("/v1/user-places/{place_id}", { params: { path: { place_id: id } }, body }),
+      ),
+    [need],
+  );
+
+  /** Where a restaurant fits in the plan: up to three slots with reasons (Phase 8, ADR 019).
+   * Nothing is stored on the server. */
+  const suggestSlots = useCallback(
+    async (itineraryId: string, body: SlotRequest): Promise<SlotSuggestions> =>
+      call(
+        need().POST("/v1/itineraries/{itinerary_id}/restaurant-suggestions", {
+          params: { path: { itinerary_id: itineraryId } },
+          body,
+        }),
+      ),
     [need],
   );
 
@@ -103,5 +128,14 @@ export function useChangeActions() {
     [need, data],
   );
 
-  return { savePlace, preview, apply, discard, setLocked, connected: client !== null };
+  return {
+    savePlace,
+    updatePlace,
+    suggestSlots,
+    preview,
+    apply,
+    discard,
+    setLocked,
+    connected: client !== null,
+  };
 }

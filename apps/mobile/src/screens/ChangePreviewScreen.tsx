@@ -63,7 +63,7 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
     );
   }
 
-  const adding = data.action === "add_place";
+  const removing = data.action === "remove_place";
   const pending = data.status === "pending";
   const sections = diffSections(data.diff);
 
@@ -101,7 +101,7 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <ScreenHeader
-        title={adding ? `Add ${data.target_name}?` : `Remove ${data.target_name}?`}
+        title={removing ? `Remove ${data.target_name}?` : `Add ${data.target_name}?`}
         subtitle="Nothing changes until you accept."
         onBack={nav.back}
       />

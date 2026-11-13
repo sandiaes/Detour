@@ -386,6 +386,21 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
             }
           />
         ) : null}
+        {editable ? (
+          <Button
+            label="Add a restaurant"
+            variant="secondary"
+            testID="add-restaurant"
+            hint="Search or enter a restaurant; Detour suggests the best day and meal"
+            onPress={() =>
+              nav.push({
+                name: "addRestaurant",
+                tripId: route.tripId,
+                itineraryId: route.itineraryId,
+              })
+            }
+          />
+        ) : null}
         {selected ? (
           <Text style={styles.selectedBadge}>✓ Selected</Text>
         ) : (

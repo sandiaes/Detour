@@ -9,6 +9,7 @@ import type { CacheStore } from "./cache/store";
 import { DataProvider } from "./data/DataProvider";
 import { type Route, NavigationProvider, useNavigation } from "./nav/Navigator";
 import { AddPlaceScreen } from "./screens/AddPlaceScreen";
+import { AddRestaurantScreen } from "./screens/AddRestaurantScreen";
 import { ChangePreviewScreen } from "./screens/ChangePreviewScreen";
 import { CreateTripScreen } from "./screens/CreateTripScreen";
 import { ItineraryScreen } from "./screens/ItineraryScreen";
@@ -37,6 +38,8 @@ function CurrentScreen({ route }: { route: Route }) {
       return <ItineraryScreen key={route.itineraryId} route={route} />;
     case "addPlace":
       return <AddPlaceScreen route={route} />;
+    case "addRestaurant":
+      return <AddRestaurantScreen route={route} />;
     case "changePreview":
       return <ChangePreviewScreen key={route.changeSetId} route={route} />;
   }

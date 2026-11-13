@@ -136,6 +136,7 @@ def cache_key(
     country_codes: tuple[str, ...],
     lat: float | None,
     lon: float | None,
+    osm_tags: tuple[str, ...] = (),
 ) -> str:
     """Same question, same key. The bias point is rounded to 0.1 degree (about 11 km), which
     both improves cache hits and tells Photon less about where the user is."""
@@ -147,6 +148,7 @@ def cache_key(
         "cc": sorted(country_codes),
         "lat": None if lat is None else round(lat, 1),
         "lon": None if lon is None else round(lon, 1),
+        "osm_tags": sorted(osm_tags),
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
@@ -179,11 +181,12 @@ class PhotonClient:
         country_codes: tuple[str, ...] = (),
         lat: float | None = None,
         lon: float | None = None,
+        osm_tags: tuple[str, ...] = (),
     ) -> PhotonOutcome:
         if not self.enabled or self._engine is None:
             return PhotonOutcome("disabled")
         limit = max(1, min(limit, MAX_RESULTS))
-        key = cache_key(query, limit, lang, layers, country_codes, lat, lon)
+        key = cache_key(query, limit, lang, layers, country_codes, lat, lon, osm_tags)
         try:
             cached = self._cache_get(key)
             if cached is not None:
@@ -193,7 +196,7 @@ class PhotonClient:
             if not self._reserve_call():
                 log.warning("photon_budget_exhausted", budget=self._settings.photon_daily_budget)
                 return PhotonOutcome("budget_exhausted")
-            payload = self._fetch(query, limit, lang, layers, country_codes, lat, lon)
+            payload = self._fetch(query, limit, lang, layers, country_codes, lat, lon, osm_tags)
             results = parse_features(payload)
             self._cache_put(key, payload)
             return PhotonOutcome("ok", results)
@@ -213,6 +216,7 @@ class PhotonClient:
         country_codes: tuple[str, ...],
         lat: float | None,
         lon: float | None,
+        osm_tags: tuple[str, ...] = (),
     ) -> Any:
         params: list[tuple[str, str | int | float | bool | None]] = [
             ("q", query),
@@ -222,6 +226,9 @@ class PhotonClient:
             params.append(("lang", lang))
         params += [("layer", layer) for layer in layers]
         params += [("countrycode", cc) for cc in country_codes]
+        # Photon's (deprecated, still documented) tag filter, e.g. amenity:restaurant. Callers
+        # that need only some tags filter the results again: the filter may be ignored.
+        params += [("osm_tag", tag) for tag in osm_tags]
         if lat is not None and lon is not None:
             params += [("lat", f"{round(lat, 1)}"), ("lon", f"{round(lon, 1)}")]
         try:
