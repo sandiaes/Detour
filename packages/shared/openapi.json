@@ -1948,6 +1948,410 @@
         }
       }
     },
+    "/v1/itineraries/{itinerary_id}/change-sets": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Preview adding a place (it becomes a visit every recalculation keeps) or removing a visit. Returns the diff; nothing changes until the change set is applied.",
+        "operationId": "preview_change",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itinerary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Itinerary Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeSetCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSet"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/change-sets/{change_set_id}": {
+      "get": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "One change set.",
+        "operationId": "get_change_set",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Change Set Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSet"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/change-sets/{change_set_id}/apply": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Apply a previewed change: the itinerary gets a new version, exactly as previewed; the previous version is kept. 409 change_set_stale if the plan changed since the preview.",
+        "operationId": "apply_change_set",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Change Set Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSetApplied"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/change-sets/{change_set_id}/discard": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Discard a previewed change. The itinerary is not touched.",
+        "operationId": "discard_change_set",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Change Set Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSet"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/itineraries/{itinerary_id}/versions": {
+      "get": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Earlier versions of an itinerary, newest first, and what replaced each.",
+        "operationId": "list_versions",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itinerary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Itinerary Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ItineraryVersion"
+                  },
+                  "title": "Response List Versions"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/user-places": {
       "post": {
         "tags": [
@@ -2450,6 +2854,289 @@
         ],
         "title": "AttributionLine"
       },
+      "ChangeDiff": {
+        "properties": {
+          "added": {
+            "items": {
+              "$ref": "#/components/schemas/DiffItem"
+            },
+            "type": "array",
+            "title": "Added"
+          },
+          "removed": {
+            "items": {
+              "$ref": "#/components/schemas/DiffItem"
+            },
+            "type": "array",
+            "title": "Removed",
+            "description": "Items no longer in the plan (left out or removed)"
+          },
+          "moved": {
+            "items": {
+              "$ref": "#/components/schemas/DiffMove"
+            },
+            "type": "array",
+            "title": "Moved",
+            "description": "Visits that change day"
+          },
+          "retimed": {
+            "items": {
+              "$ref": "#/components/schemas/DiffRetime"
+            },
+            "type": "array",
+            "title": "Retimed",
+            "description": "Items on the same day at another time"
+          },
+          "base_changes": {
+            "items": {
+              "$ref": "#/components/schemas/DiffBase"
+            },
+            "type": "array",
+            "title": "Base Changes",
+            "description": "Days planned from another base city"
+          },
+          "days_changed": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Days Changed"
+          },
+          "travel_minutes_before": {
+            "type": "integer",
+            "title": "Travel Minutes Before"
+          },
+          "travel_minutes_after": {
+            "type": "integer",
+            "title": "Travel Minutes After"
+          },
+          "travel_minutes_added": {
+            "type": "integer",
+            "title": "Travel Minutes Added",
+            "description": "Negative when the plan travels less"
+          },
+          "estimated_legs": {
+            "items": {
+              "$ref": "#/components/schemas/DiffLeg"
+            },
+            "type": "array",
+            "title": "Estimated Legs",
+            "description": "Travel times in the changed days that are straight-line estimates, not routed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "added",
+          "removed",
+          "moved",
+          "retimed",
+          "base_changes",
+          "days_changed",
+          "travel_minutes_before",
+          "travel_minutes_after",
+          "travel_minutes_added",
+          "estimated_legs"
+        ],
+        "title": "ChangeDiff",
+        "description": "What applying the change set does to the plan."
+      },
+      "ChangeSet": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "itinerary_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Itinerary Id"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "add_place",
+              "remove_place"
+            ],
+            "title": "Action"
+          },
+          "target_name": {
+            "type": "string",
+            "title": "Target Name"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "applied",
+              "discarded",
+              "expired"
+            ],
+            "title": "Status",
+            "description": "pending: previewed, nothing changed yet. expired: the itinerary changed after the preview (or a newer preview was made); preview again"
+          },
+          "base_version": {
+            "type": "integer",
+            "title": "Base Version",
+            "description": "The itinerary version the preview was made from"
+          },
+          "restores_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restores Version",
+            "description": "Set when applying restores an earlier version exactly (removing a place right after adding it)"
+          },
+          "result_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Version",
+            "description": "The version created by applying it"
+          },
+          "diff": {
+            "$ref": "#/components/schemas/ChangeDiff"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanNote"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "itinerary_id",
+          "action",
+          "target_name",
+          "status",
+          "base_version",
+          "restores_version",
+          "result_version",
+          "diff",
+          "notes",
+          "created_at",
+          "decided_at"
+        ],
+        "title": "ChangeSet"
+      },
+      "ChangeSetApplied": {
+        "properties": {
+          "change_set": {
+            "$ref": "#/components/schemas/ChangeSet"
+          },
+          "itinerary": {
+            "$ref": "#/components/schemas/Itinerary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "change_set",
+          "itinerary"
+        ],
+        "title": "ChangeSetApplied"
+      },
+      "ChangeSetCreate": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "add_place",
+              "remove_place"
+            ],
+            "title": "Action"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id",
+            "description": "add_place: an imported attraction"
+          },
+          "user_place_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Place Id",
+            "description": "add_place: one of your places (kind city or location)"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 720.0,
+                "minimum": 5.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes",
+            "description": "add_place: how long to stay. Required for your own places; for an attraction the category's default length is used when it is not given"
+          },
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id",
+            "description": "remove_place: the visit to remove"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "ChangeSetCreate",
+        "description": "Preview adding a place (an imported attraction, or one of your own places of kind city or\nlocation) or removing a visit. Nothing changes until the change set is applied."
+      },
       "ClientConfig": {
         "properties": {
           "config_version": {
@@ -2830,6 +3517,244 @@
           "external"
         ],
         "title": "DestinationSearchResponse"
+      },
+      "DiffBase": {
+        "properties": {
+          "day": {
+            "type": "integer",
+            "title": "Day"
+          },
+          "old_base_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Base Name"
+          },
+          "new_base_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Base Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "old_base_name",
+          "new_base_name"
+        ],
+        "title": "DiffBase"
+      },
+      "DiffItem": {
+        "properties": {
+          "day": {
+            "type": "integer",
+            "title": "Day"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "visit",
+              "meal"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "meal_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "breakfast",
+                  "lunch",
+                  "dinner",
+                  "snack"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Type"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "time",
+            "title": "End Time"
+          },
+          "added_by_you": {
+            "type": "boolean",
+            "title": "Added By You",
+            "description": "True for the place you add (and places you added)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "kind",
+          "name",
+          "meal_type",
+          "start_time",
+          "end_time",
+          "added_by_you"
+        ],
+        "title": "DiffItem"
+      },
+      "DiffLeg": {
+        "properties": {
+          "day": {
+            "type": "integer",
+            "title": "Day"
+          },
+          "from_name": {
+            "type": "string",
+            "title": "From Name"
+          },
+          "to_name": {
+            "type": "string",
+            "title": "To Name"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "drive"
+            ],
+            "title": "Mode"
+          },
+          "minutes": {
+            "type": "integer",
+            "title": "Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "from_name",
+          "to_name",
+          "mode",
+          "minutes"
+        ],
+        "title": "DiffLeg"
+      },
+      "DiffMove": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "visit",
+              "meal"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "from_day": {
+            "type": "integer",
+            "title": "From Day"
+          },
+          "to_day": {
+            "type": "integer",
+            "title": "To Day"
+          },
+          "old_start_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Old Start Time"
+          },
+          "new_start_time": {
+            "type": "string",
+            "format": "time",
+            "title": "New Start Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "from_day",
+          "to_day",
+          "old_start_time",
+          "new_start_time"
+        ],
+        "title": "DiffMove"
+      },
+      "DiffRetime": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "visit",
+              "meal"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "day": {
+            "type": "integer",
+            "title": "Day"
+          },
+          "meal_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "breakfast",
+                  "lunch",
+                  "dinner",
+                  "snack"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Type"
+          },
+          "old_start_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Old Start Time"
+          },
+          "new_start_time": {
+            "type": "string",
+            "format": "time",
+            "title": "New Start Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "day",
+          "meal_type",
+          "old_start_time",
+          "new_start_time"
+        ],
+        "title": "DiffRetime"
       },
       "ErrorBody": {
         "properties": {
@@ -3881,6 +4806,67 @@
           "created_at"
         ],
         "title": "ItinerarySummary"
+      },
+      "ItineraryVersion": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "replaced_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Replaced At"
+          },
+          "change_set_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Set Id",
+            "description": "Null when a hand edit replaced it"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "add_place",
+                  "remove_place"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "target_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "replaced_at",
+          "change_set_id",
+          "action",
+          "target_name"
+        ],
+        "title": "ItineraryVersion"
       },
       "MapConfig": {
         "properties": {

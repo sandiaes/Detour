@@ -351,6 +351,91 @@ export interface paths {
     patch: operations["update_item"];
     trace?: never;
   };
+  "/v1/itineraries/{itinerary_id}/change-sets": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Preview adding a place (it becomes a visit every recalculation keeps) or removing a visit. Returns the diff; nothing changes until the change set is applied. */
+    post: operations["preview_change"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/change-sets/{change_set_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One change set. */
+    get: operations["get_change_set"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/change-sets/{change_set_id}/apply": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Apply a previewed change: the itinerary gets a new version, exactly as previewed; the previous version is kept. 409 change_set_stale if the plan changed since the preview. */
+    post: operations["apply_change_set"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/change-sets/{change_set_id}/discard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Discard a previewed change. The itinerary is not touched. */
+    post: operations["discard_change_set"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/itineraries/{itinerary_id}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Earlier versions of an itinerary, newest first, and what replaced each. */
+    get: operations["list_versions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/user-places": {
     parameters: {
       query?: never;
@@ -435,6 +520,138 @@ export interface components {
       text: string;
       /** Url */
       url: string;
+    };
+    /**
+     * ChangeDiff
+     * @description What applying the change set does to the plan.
+     */
+    ChangeDiff: {
+      /** Added */
+      added: components["schemas"]["DiffItem"][];
+      /**
+       * Removed
+       * @description Items no longer in the plan (left out or removed)
+       */
+      removed: components["schemas"]["DiffItem"][];
+      /**
+       * Moved
+       * @description Visits that change day
+       */
+      moved: components["schemas"]["DiffMove"][];
+      /**
+       * Retimed
+       * @description Items on the same day at another time
+       */
+      retimed: components["schemas"]["DiffRetime"][];
+      /**
+       * Base Changes
+       * @description Days planned from another base city
+       */
+      base_changes: components["schemas"]["DiffBase"][];
+      /** Days Changed */
+      days_changed: number[];
+      /** Travel Minutes Before */
+      travel_minutes_before: number;
+      /** Travel Minutes After */
+      travel_minutes_after: number;
+      /**
+       * Travel Minutes Added
+       * @description Negative when the plan travels less
+       */
+      travel_minutes_added: number;
+      /**
+       * Estimated Legs
+       * @description Travel times in the changed days that are straight-line estimates, not routed
+       */
+      estimated_legs: components["schemas"]["DiffLeg"][];
+    };
+    /** ChangeSet */
+    ChangeSet: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Itinerary Id
+       * Format: uuid
+       */
+      itinerary_id: string;
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "add_place" | "remove_place";
+      /** Target Name */
+      target_name: string;
+      /**
+       * Status
+       * @description pending: previewed, nothing changed yet. expired: the itinerary changed after the preview (or a newer preview was made); preview again
+       * @enum {string}
+       */
+      status: "pending" | "applied" | "discarded" | "expired";
+      /**
+       * Base Version
+       * @description The itinerary version the preview was made from
+       */
+      base_version: number;
+      /**
+       * Restores Version
+       * @description Set when applying restores an earlier version exactly (removing a place right after adding it)
+       */
+      restores_version: number | null;
+      /**
+       * Result Version
+       * @description The version created by applying it
+       */
+      result_version: number | null;
+      diff: components["schemas"]["ChangeDiff"];
+      /** Notes */
+      notes: components["schemas"]["PlanNote"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Decided At */
+      decided_at: string | null;
+    };
+    /** ChangeSetApplied */
+    ChangeSetApplied: {
+      change_set: components["schemas"]["ChangeSet"];
+      itinerary: components["schemas"]["Itinerary"];
+    };
+    /**
+     * ChangeSetCreate
+     * @description Preview adding a place (an imported attraction, or one of your own places of kind city or
+     *     location) or removing a visit. Nothing changes until the change set is applied.
+     */
+    ChangeSetCreate: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "add_place" | "remove_place";
+      /**
+       * Place Id
+       * @description add_place: an imported attraction
+       */
+      place_id?: string | null;
+      /**
+       * User Place Id
+       * @description add_place: one of your places (kind city or location)
+       */
+      user_place_id?: string | null;
+      /**
+       * Duration Minutes
+       * @description add_place: how long to stay. Required for your own places; for an attraction the category's default length is used when it is not given
+       */
+      duration_minutes?: number | null;
+      /**
+       * Item Id
+       * @description remove_place: the visit to remove
+       */
+      item_id?: string | null;
     };
     /** ClientConfig */
     ClientConfig: {
@@ -579,6 +796,108 @@ export interface components {
       /** Results */
       results: components["schemas"]["DestinationResult"][];
       external: components["schemas"]["ExternalStatus"];
+    };
+    /** DiffBase */
+    DiffBase: {
+      /** Day */
+      day: number;
+      /** Old Base Name */
+      old_base_name: string | null;
+      /** New Base Name */
+      new_base_name: string | null;
+    };
+    /** DiffItem */
+    DiffItem: {
+      /** Day */
+      day: number;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "visit" | "meal";
+      /** Name */
+      name: string;
+      /** Meal Type */
+      meal_type: ("breakfast" | "lunch" | "dinner" | "snack") | null;
+      /**
+       * Start Time
+       * Format: time
+       */
+      start_time: string;
+      /**
+       * End Time
+       * Format: time
+       */
+      end_time: string;
+      /**
+       * Added By You
+       * @description True for the place you add (and places you added)
+       */
+      added_by_you: boolean;
+    };
+    /** DiffLeg */
+    DiffLeg: {
+      /** Day */
+      day: number;
+      /** From Name */
+      from_name: string;
+      /** To Name */
+      to_name: string;
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "walk" | "drive";
+      /** Minutes */
+      minutes: number;
+    };
+    /** DiffMove */
+    DiffMove: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "visit" | "meal";
+      /** Name */
+      name: string;
+      /** From Day */
+      from_day: number;
+      /** To Day */
+      to_day: number;
+      /**
+       * Old Start Time
+       * Format: time
+       */
+      old_start_time: string;
+      /**
+       * New Start Time
+       * Format: time
+       */
+      new_start_time: string;
+    };
+    /** DiffRetime */
+    DiffRetime: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "visit" | "meal";
+      /** Name */
+      name: string;
+      /** Day */
+      day: number;
+      /** Meal Type */
+      meal_type: ("breakfast" | "lunch" | "dinner" | "snack") | null;
+      /**
+       * Old Start Time
+       * Format: time
+       */
+      old_start_time: string;
+      /**
+       * New Start Time
+       * Format: time
+       */
+      new_start_time: string;
     };
     /** ErrorBody */
     ErrorBody: {
@@ -982,6 +1301,25 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /** ItineraryVersion */
+    ItineraryVersion: {
+      /** Version */
+      version: number;
+      /**
+       * Replaced At
+       * Format: date-time
+       */
+      replaced_at: string;
+      /**
+       * Change Set Id
+       * @description Null when a hand edit replaced it
+       */
+      change_set_id: string | null;
+      /** Action */
+      action: ("add_place" | "remove_place") | null;
+      /** Target Name */
+      target_name: string | null;
     };
     /** MapConfig */
     MapConfig: {
@@ -2754,6 +3092,300 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["Item"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  preview_change: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChangeSetCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanningErrorBody"];
+        };
+      };
+    };
+  };
+  get_change_set: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        change_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  apply_change_set: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        change_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSetApplied"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  discard_change_set: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        change_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  list_versions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ItineraryVersion"][];
         };
       };
       /** @description Unauthorized */

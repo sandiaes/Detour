@@ -149,5 +149,11 @@ class TravelLookup:
             self._implicit[(a, b)] = found
         return found
 
+    def seed(self, values: dict[Cell, TravelTime]) -> None:
+        """Times the source returned earlier (the stored transfers of a plan being recalculated):
+        an unchanged pair keeps its value. A seeded estimate is asked again with the provider."""
+        for cell, value in values.items():
+            self._answers.setdefault(cell, value)
+
     def known(self) -> dict[Cell, TravelTime]:
         return {**self._implicit, **self._answers}

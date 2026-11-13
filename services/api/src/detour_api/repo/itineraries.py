@@ -5,8 +5,9 @@ Manual itineraries are stored and edited by hand (Phase 2); engine itineraries a
 nothing about rows that belong to someone else: a foreign or unknown identifier is simply "not
 found".
 
-Hand edits do not recompute transfers (recalculation is Phase 7). A transfer that no longer joins
-two consecutive items of a day is deleted, so a stale travel time is never shown.
+Hand edits do not recompute transfers (recalculation is the change-set flow, ``repo/changes.py``).
+A transfer that no longer joins two consecutive items of a day is deleted, so a stale travel time
+is never shown. Each hand edit keeps the version it replaces (``app.itinerary_version``).
 """
 
 import uuid
@@ -31,7 +32,7 @@ from detour_api.models.trips import (
 )
 from detour_api.planner.durations import visit_minutes
 from detour_api.planner.reasons import ITEM_TEMPLATES, NOTE_TEMPLATES, item_text, note_text
-from detour_api.repo import geo, trips, user_places
+from detour_api.repo import geo, plan_state, trips, user_places
 
 MAX_ITINERARIES_PER_TRIP = 5
 MAX_ITEMS_PER_DAY = 40
@@ -382,6 +383,7 @@ def create_item(
 ) -> Item:
     ctx = _day_context(conn, installation_id, itinerary_id, day_index)
     name, lat, lon, default_minutes = _resolve_place(conn, installation_id, body)
+    plan_state.snapshot(conn, itinerary_id)
     if body.duration_minutes is not None:
         minutes, source = body.duration_minutes, "user"
     elif default_minutes is not None:
@@ -481,6 +483,7 @@ def update_item(
     if row.trip_status == "past":
         raise conflict("trip_archived", "a past trip cannot be changed")
     changed = body.model_fields_set
+    plan_state.snapshot(conn, row.itinerary_id)
     if "meal_type" in changed and row.type != "meal":
         raise invalid("not_a_meal", "meal_type can only be changed on a meal")
     if "meal_type" in changed and body.meal_type is None:
@@ -576,6 +579,7 @@ def delete_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID
         raise not_found("item")
     if row.trip_status == "past":
         raise conflict("trip_archived", "a past trip cannot be changed")
+    plan_state.snapshot(conn, row.itinerary_id)
     conn.execute(text("DELETE FROM app.itinerary_item WHERE id = :i"), {"i": item_id})
     conn.execute(
         text(

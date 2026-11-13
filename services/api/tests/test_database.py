@@ -60,10 +60,12 @@ GEO_TABLES = [
     "travel_time",
 ]
 APP_TABLES = [
+    "change_set",
     "installation",
     "itinerary",
     "itinerary_day",
     "itinerary_item",
+    "itinerary_version",
     "provider_cache",
     "provider_usage",
     "transfer",

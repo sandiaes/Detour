@@ -99,6 +99,9 @@ class Settings(BaseSettings):
     # waiting on the provider; transfers not reached are estimated and labelled. Our own limits.
     planner_use_provider: bool = True
     planner_provider_max_seconds: float = Field(default=3.0, ge=0, le=30)
+    # Recalculation after an added or removed place (Phase 7, ADR 018): the time a preview may
+    # wait on the provider for the changed days' legs (the KPI is 3 s for the whole preview).
+    recalc_provider_max_seconds: float = Field(default=2.0, ge=0, le=30)
 
     # Client configuration served by GET /v1/config. The app holds none of these as constants.
     config_version: str = "1"
