@@ -27,6 +27,7 @@ export type DestinationResult = components["schemas"]["DestinationResult"];
 export type DestinationSearchResponse = components["schemas"]["DestinationSearchResponse"];
 export type AttributionEntry = components["schemas"]["AttributionEntry"];
 export type PlaceSummary = components["schemas"]["PlaceSummary"];
+export type PlaceDetail = components["schemas"]["PlaceDetail"];
 export type PlaceSearchResponse = components["schemas"]["PlaceSearchResponse"];
 export type ExternalPlace = components["schemas"]["ExternalPlace"];
 export type UserPlace = components["schemas"]["UserPlace"];

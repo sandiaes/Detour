@@ -163,19 +163,16 @@ test("create a trip, compare the proposals, select one, read its days, see it on
     // Choosing a plan makes it the trip's active itinerary; the trip opens on its overview.
     expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
     expect(selected).toBe(ESSENTIALS_ID);
+    // The itinerary and its map are tabs of the trip.
     await fireEvent.press(screen.getByRole("button", { name: "Open the itinerary" }));
-    expect(await screen.findByRole("header", { name: "Essentials plan" })).toBeOnTheScreen();
     expect(await screen.findByText("Schönbrunn Palace")).toBeOnTheScreen();
     expect(screen.getAllByText("Estimated").length).toBeGreaterThan(0);
 
-    await fireEvent.press(screen.getByRole("button", { name: "Show the map" }));
+    await fireEvent.press(screen.getByRole("tab", { name: "Map" }));
     expect(await screen.findByTestId("map")).toBeOnTheScreen();
     expect(screen.getByText("Data from OpenStreetMap")).toBeOnTheScreen();
 
-    // Back to the trip, then to the list of trips: the selected plan is shown there without
-    // refetching the list.
-    await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-    expect(await screen.findByRole("header", { name: "Vienna, 2 days" })).toBeOnTheScreen();
+    // Back to the list of trips: the selected plan is shown there without refetching the list.
     await fireEvent.press(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
     expect(screen.getAllByText("Upcoming")).toHaveLength(2); // the tab and the trip's badge

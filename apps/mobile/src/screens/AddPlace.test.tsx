@@ -337,6 +337,8 @@ test("lock and remove items from the plan", async () => {
       <AppContent />
     </Harness>,
   );
+  // A stop's actions appear when it is chosen in the list.
+  await fireEvent.press(await screen.findByTestId("stop-i1"));
   await fireEvent.press(await screen.findByLabelText("Lock Schönbrunn Palace"));
   expect(client.calls.find((c) => c.method === "PATCH")?.body).toEqual({ locked: true });
   expect(await screen.findByText("Locked")).toBeOnTheScreen();
@@ -344,6 +346,7 @@ test("lock and remove items from the plan", async () => {
   expect(screen.getByLabelText("Remove Schönbrunn Palace")).toBeDisabled();
   expect(screen.getByLabelText("Unlock Schönbrunn Palace")).toBeOnTheScreen();
 
+  await fireEvent.press(screen.getByTestId("stop-i2"));
   await fireEvent.press(screen.getByLabelText("Remove Belvedere"));
   const preview = client.calls.find((c) => c.path.endsWith("/change-sets"));
   expect(preview?.body).toEqual({ action: "remove_place", item_id: "i2" });

@@ -27,9 +27,12 @@ export type Route =
       tripId: string;
       itineraryId: string;
       view: "days" | "map";
-      /** 1-based day shown on the map. */
+      /** 1-based day shown. */
       day: number;
+      /** A stop to highlight on arrival (from a place's details). */
+      itemId?: string;
     }
+  | { name: "placeDetail"; tripId: string; itineraryId: string; itemId: string }
   | { name: "addPlace"; tripId: string; itineraryId: string }
   | { name: "addRestaurant"; tripId: string; itineraryId: string }
   | { name: "changePreview"; tripId: string; itineraryId: string; changeSetId: string };

@@ -52,6 +52,7 @@ test("trips are listed with destination, dates, status and what the plan contain
   expect(screen.getByText("Planning")).toBeOnTheScreen();
   expect(screen.getByText("Vienna · No plan chosen yet")).toBeOnTheScreen();
   expect(screen.getAllByText("Upcoming")).toHaveLength(2); // the tab and the badge
+  expect(screen.queryByRole("tab", { name: "Archived" })).toBeNull();
   // The counts come from the active plan, read once and shared with the plan screen.
   expect(
     await screen.findByText(/^Vienna · 2 cities · \d+ places · \d+ restaurants$/),
@@ -65,7 +66,7 @@ test("trips are listed with destination, dates, status and what the plan contain
   ).toBeOnTheScreen();
 });
 
-test("the tabs split upcoming and past trips; Archived explains it is not built yet", async () => {
+test("the tabs split upcoming and past trips", async () => {
   const client = createFakeClient({
     ...trips([makeTrip(), makePastTrip({ id: "p1", title: "Graz last spring" })]),
     "GET /v1/trips/{trip_id}/archive": () => makeArchiveInfo(),
@@ -86,10 +87,6 @@ test("the tabs split upcoming and past trips; Archived explains it is not built 
   expect(screen.queryByText("Vienna, 2 days")).toBeNull();
   // A past trip keeps its cities and attractions, not its restaurants (ADR 006).
   expect(await screen.findByText(/· 2 cities · 3 places$/)).toBeOnTheScreen();
-
-  await fireEvent.press(screen.getByRole("tab", { name: "Archived" }));
-  expect(await screen.findByText("Nothing archived")).toBeOnTheScreen();
-  expect(screen.getByText(/planned but not built yet/)).toBeOnTheScreen();
 });
 
 test("each interactive control is at least 48 dp tall", async () => {

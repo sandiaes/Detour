@@ -239,6 +239,8 @@ A proposed or selected plan. Variants of one generation share a `generation_id`.
 itineraries), and the inter-city leg that starts the first day at a new base city of an area
 (ADR 016): `arrival_mode`, `arrival_seconds`, `arrival_meters`, `arrival_confidence`, all null or all
 set (a CHECK enforces it). The leg always comes from the previous day's base city.
+The API's `Day` adds the base city's position (`base_city_lat`, `base_city_lon`), read from
+`geo.city` by `base_city_id` when the plan is read; it is not stored on the day (ADR 021).
 
 | `itinerary_item` | Notes |
 |---|---|

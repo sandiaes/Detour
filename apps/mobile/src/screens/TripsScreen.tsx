@@ -97,10 +97,6 @@ const EMPTY_TEXT: Record<TripTab, { title: string; text: string }> = {
     title: "No past trips yet",
     text: "A trip moves here two days after its last day, or when you mark it as past in the trip's menu.",
   },
-  archived: {
-    title: "Nothing archived",
-    text: "Archiving a trip to hide it from your lists is planned but not built yet.",
-  },
 };
 
 export function TripsScreen() {
@@ -144,7 +140,6 @@ export function TripsScreen() {
           items={[
             { key: "upcoming", label: "Upcoming" },
             { key: "past", label: "Past" },
-            { key: "archived", label: "Archived" },
           ]}
           value={tab}
           onChange={setTab}

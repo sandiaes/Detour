@@ -17,6 +17,7 @@ import { ExploreScreen } from "./screens/ExploreScreen";
 import { ItineraryScreen } from "./screens/ItineraryScreen";
 import { MoreScreen } from "./screens/MoreScreen";
 import { PastTripScreen } from "./screens/PastTripScreen";
+import { PlaceDetailScreen } from "./screens/PlaceDetailScreen";
 import { PhotosScreen } from "./screens/PhotosScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TripOverviewScreen } from "./screens/TripOverviewScreen";
@@ -53,6 +54,15 @@ function CurrentScreen({ route }: { route: Route }) {
     case "itinerary":
       // Keyed so that a different plan never reuses another plan's state.
       return <ItineraryScreen key={route.itineraryId} route={route} />;
+    case "placeDetail":
+      return (
+        <PlaceDetailScreen
+          key={route.itemId}
+          tripId={route.tripId}
+          itineraryId={route.itineraryId}
+          itemId={route.itemId}
+        />
+      );
     case "addPlace":
       return <AddPlaceScreen route={route} />;
     case "addRestaurant":

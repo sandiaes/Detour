@@ -1,8 +1,9 @@
-# ADR 021: Trip manager redesign, steps 1 and 2 (design system, navigation, trips, trip overview)
+# ADR 021: Trip manager redesign (design system, navigation, trips, trip overview, itinerary and map, place detail)
 
-- **Status:** **Proposed** on 2026-11-13, at the owner's request. Steps 1 and 2 of five are built
-  and tested in the mobile app only; no backend, API or database change. The owner confirms or
-  changes the decisions below before step 3 starts.
+- **Status:** **Proposed** on 2026-11-13, at the owner's request. Steps 1 and 2 are built (mobile
+  app only). On 2026-11-13 the owner answered the open questions (see "Owner decisions") and asked
+  for step 3, which is built: see "Step 3" below. Step 3 adds one read-only field pair to the API;
+  there is no database change. Steps 4 and 5 wait for the owner.
 - **Date:** 2026-11-13
 - **Related:** [`020-trip-centred-app.md`](020-trip-centred-app.md) (extended),
   [`015-phase-5-mobile-shell.md`](015-phase-5-mobile-shell.md) (decision 9, design, superseded),
@@ -104,6 +105,53 @@ not built and are recorded here as references for later (see "Not built" below).
     whose colours and hills are chosen from the destination identifier, so a trip always looks the
     same. `Cover` already takes a photo `uri` for later; nothing is fetched today.
 
+## Owner decisions (2026-11-13)
+
+1. **No budgets, currencies or prices**, as ADR 017 says: the planned-versus-actual budget and the
+   expected and actual restaurant prices from the request are dropped, not deferred.
+2. **Photos:** the owner deals with them later; covers stay illustrations.
+3. **Archived:** dropped; Past is enough. The Archived tab is removed from the trips list.
+4. **Share and Delete in More:** as proposed (no Share; Delete stays in the trip's settings).
+
+## Step 3: itinerary, map and place detail
+
+14. **One day at a time.** A shared view (`components/plan/DayPlan.tsx`) shows a plan a day at a
+    time: a day selector (tabs "Day 1, Sat 1 May"), the day's header (date, base city, totals) and
+    its stops in time order (time, a numbered disc that matches the map marker, name, "Attraction ·
+    2 h" or "Lunch · Restaurant · 1 h", cuisine for meals) with the walk or drive between them and
+    its Routed or Estimated tag. It replaces the long list of all days; a day has at most 40 stops,
+    so it is plain views, not a virtualised list.
+15. **Map and list share one selection.** In map mode the map fills the top and the day's list sits
+    in a sheet under it. Tapping a marker selects its stop and scrolls the list to it; tapping a
+    stop selects its marker (dark fill, yellow ring, announced as selected) and eases the map to it.
+    A chosen stop expands to show its duration basis, the reasons it is in the plan, and Lock and
+    Remove (Phase 7, unchanged: removing goes through the preview). The map key (shapes, line
+    styles, "not the road path") moved behind a "Map key" button on the map.
+16. **Transport markers.** The only transport in a plan is the journey that starts a day at a new
+    base city (area trips, ADR 016). It is shown as the day's first row ("To Graz · Drive from
+    Vienna · 2 h 20 min · 191 km", Estimated or Routed) and, on the map, as a navy square marker
+    with a transport icon at the new base city and a line from the previous one. To place it, the
+    API's `Day` gains **`base_city_lat` and `base_city_lon`**: read from `geo.city` by
+    `base_city_id` when the plan is read (a join, not a copy; no migration), null when the city is
+    not in the gazetteer, in which case no marker is placed and the row still shows the journey.
+    Additive: no existing field or endpoint changes. Stations and other transport hubs are not part
+    of plans, so they have no markers.
+17. **Where it appears.** The trip overview's *Itinerary* tab shows the active itinerary in list
+    mode inside the page; its *Map* tab switches the overview to a compact header (back, title,
+    menu, tabs) over the map and list. The overview's day timeline and its "Itinerary" and "Map"
+    buttons open those tabs at a day. The plan screen (`itinerary` route, reached from the
+    proposals) uses the same view, with List and Map, Select, Add a place and Add a restaurant.
+18. **Place detail** (`placeDetail` route, from a stop's chevron "Details of …"): an illustrated
+    cover with the kind and name; when (day, start and end), duration and what it is based on,
+    location (the open data's address, else the town, else the coordinates), and for sights
+    "Opening hours: Not checked" (ADR 003); for places to eat the meal, venue type, cuisine ("Cuisine
+    not specified" when the data has none) and diet tags from the data; the reasons it is in the
+    plan; Locked and "Added by you"; Show on the map (opens the day's map with the stop
+    highlighted), Lock and Remove; the data source and licence (`GET /v1/places/{id}`), or "A place
+    you added" (`GET /v1/user-places/{id}`). No description, rating, price or opening hours are
+    shown because the data has none. Notes, photos, tickets and (for places to eat) reservation
+    details are a "not built yet" card.
+
 ## Not built (kept as references for later steps)
 
 | Item from the request or screens | Why not now | Where it goes |
@@ -113,9 +161,11 @@ not built and are recorded here as references for later (see "Not built" below).
 | Documents (tickets, bookings, insurance) linked to a place, day or leg | Step 5; needs storage and a data model | Step 5 |
 | Notes and upcoming reservations on the overview | Needs a data model | Step 5 |
 | Transport, Note, Document in Add | Needs data models | Steps 3 to 5 |
-| Archived tab contents, Archive trip, Export trip, Saved places, Travel preferences | Need fields, endpoints or decisions | Step 5 or later |
+| Archived tab (removed, owner 2026-11-13), Archive trip, Export trip, Saved places, Travel preferences | Need fields, endpoints or decisions | Step 5 or later |
 | Explore | Needs a product decision; no new provider without an ADR | Later |
-| Planned-versus-actual budget (screen 9), prices on place detail | **Conflicts with ADR 017** (accepted: no budgets, currencies or prices) | Only after a new ADR approved by the owner |
+| Planned-versus-actual budget (screen 9), expected and actual prices on place detail | ADR 017; the owner confirmed on 2026-11-13: not wanted | Dropped |
+| A place's description | No description in the data; none is invented | Only with a source that has one |
+| Station or airport markers | Plans contain no transport hubs | A later decision |
 | Ratings, opening hours shown as fact | Never invented (CLAUDE.md rule 5); opening hours are not checked (ADR 003) | Shown only when the data has them |
 | Share trip, Delete from More (screen 10) | Sharing is not a stated goal; Delete stays in the trip's settings | Owner's decision |
 
@@ -134,10 +184,15 @@ not built and are recorded here as references for later (see "Not built" below).
 - Owner action: build and install a new APK (new native module).
 - The trips list makes one more request per visible trip with a chosen plan (its itinerary) or a
   past trip (its archive figures), once, then served from the cache for 10 minutes and offline.
+- Step 3 tests: `components/ItineraryMap.test.tsx` (selection, camera, transport marker and leg),
+  `screens/ItineraryScreen.test.tsx` (one day at a time, shared selection, details),
+  `screens/PlaceDetail.test.tsx`, `screens/TripOverview.test.tsx` (Itinerary and Map tabs),
+  `domain/itinerary.test.ts` (transport points), the accessibility test (place detail, a chosen
+  stop, the map key), and the backend's area-plan test (`base_city_lat`/`lon` match `geo.city`).
 - Tests: `domain/trips.test.ts`, `components/ds/ds.test.tsx`, `nav/BottomNav.test.tsx`,
   `screens/TripOverview.test.tsx`; the accessibility test covers the new screens, tabs and sheets;
   the trips, proposals, settings and end-to-end flow tests follow the new navigation.
 - **Not verified:** the redesign has not been seen on a phone, in a screenshot or with a screen
   reader; the Metro bundle builds, and the tests check labels, roles, states and touch sizes.
   The Maestro end-to-end flow (`apps/mobile/e2e/trip-flow.yaml`) is updated to the new path
-  (select, overview, day list, map, back to the list) but has not been run.
+  (select, overview, Itinerary tab, Map tab and its key, back to the list) but has not been run.

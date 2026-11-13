@@ -789,6 +789,16 @@ export interface components {
        * @description The city the day is planned from (a snapshot)
        */
       base_city_name?: string | null;
+      /**
+       * Base City Lat
+       * @description The base city's position, read from the gazetteer by base_city_id when the plan is read (not stored on the day); null when the city is not in the gazetteer
+       */
+      base_city_lat?: number | null;
+      /**
+       * Base City Lon
+       * @description See base_city_lat
+       */
+      base_city_lon?: number | null;
       /** @description Travel from the previous day's base city at the start of the day; null when the base does not change */
       arrival?: components["schemas"]["Arrival"] | null;
       /** Items */

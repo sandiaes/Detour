@@ -85,13 +85,10 @@ test("trips list", async () => {
   checkControls();
 });
 
-test("trips list: Past and Archived tabs", async () => {
+test("trips list: the Past tab", async () => {
   await show({ name: "trips" }, "Vienna, 2 days");
   await fireEvent.press(screen.getByRole("tab", { name: "Past" }));
   await screen.findByText("No past trips yet");
-  checkControls();
-  await fireEvent.press(screen.getByRole("tab", { name: "Archived" }));
-  await screen.findByText("Nothing archived");
   checkControls();
 });
 
@@ -122,6 +119,31 @@ test("trip overview, each of its tabs, its menu and the Add sheet", async () => 
   await fireEvent.press(screen.getAllByRole("button", { name: "Close" })[1] as Host);
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   await screen.findByRole("header", { name: "Add to this trip" });
+  checkControls();
+});
+
+test("place detail", async () => {
+  await show(
+    { name: "placeDetail", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID, itemId: "m1" },
+    "Regional, coffee shop",
+  );
+  checkControls();
+});
+
+test("trip overview: the Itinerary tab with a stop chosen", async () => {
+  await render(
+    <Harness
+      client={createFakeClient({
+        "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
+        "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
+      })}
+      initial={{ name: "tripOverview", tripId: TRIP_ID, section: "itinerary" }}
+    >
+      <AppContent />
+    </Harness>,
+  );
+  await fireEvent.press(await screen.findByTestId("stop-i1"));
+  await screen.findByLabelText("Lock Schönbrunn Palace");
   checkControls();
 });
 
@@ -157,9 +179,12 @@ test("day list", async () => {
 test("map with markers and the attribution links", async () => {
   await show(
     { name: "itinerary", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID, view: "map", day: 1 },
-    "Tap a numbered stop for details. ",
+    "Schönbrunn Palace",
   );
   expect(screen.getAllByLabelText(/^Stop \d+, (Attraction|Restaurant|Café): /).length).toBe(5);
+  checkControls();
+  await fireEvent.press(screen.getByRole("button", { name: "Map key" }));
+  await screen.findByText("Solid line: travel time routed");
   checkControls();
 });
 

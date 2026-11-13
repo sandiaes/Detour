@@ -3,7 +3,7 @@ import type { ArchiveInfo, Itinerary, Trip } from "@detour/shared";
 // What the trips list and the trip overview say about a trip (ADR 021). Pure functions over what
 // the backend returns: nothing is estimated or made up, and a figure that is not known is null.
 
-export type TripTab = "upcoming" | "past" | "archived";
+export type TripTab = "upcoming" | "past";
 
 export type TripPhase = "planning" | "upcoming" | "inProgress" | "past";
 
@@ -35,11 +35,9 @@ export function tripPhase(trip: Trip, today: string = localToday()): TripPhase {
 
 /**
  * The trips in one tab. Upcoming: every trip that is not past, the soonest first and undated ones
- * last (newest first). Past: the most recent first. Archived: hiding a trip in an archive is not
- * built yet (ADR 021), so the tab is always empty.
+ * last (newest first). Past: the most recent first.
  */
 export function tripsInTab(trips: Trip[], tab: TripTab): Trip[] {
-  if (tab === "archived") return [];
   if (tab === "upcoming") {
     return trips
       .filter((t) => t.status !== "past")

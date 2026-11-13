@@ -60,9 +60,6 @@ describe("tripsInTab", () => {
   test("past: most recent first", () => {
     expect(tripsInTab(all, "past").map((t) => t.id)).toEqual(["p2", "p1"]);
   });
-  test("archived: not built yet, so always empty", () => {
-    expect(tripsInTab(all, "archived")).toEqual([]);
-  });
   test("the input is not reordered", () => {
     const copy = [...all];
     tripsInTab(all, "upcoming");

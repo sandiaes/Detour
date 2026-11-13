@@ -22,10 +22,10 @@ import {
 import { ResourceNotices } from "../components/ResourceNotices";
 import {
   Card,
-  Chip,
   EmptyState,
   ErrorState,
   LoadingState,
+  Notice,
   ScreenHeader,
   WakingServer,
   useAnnounceOnMount,
@@ -45,7 +45,9 @@ import {
 import { type TripSection, useNavigation } from "../nav/Navigator";
 import { colors, radius, spacing, type } from "../theme";
 import { pluralise } from "../util/format";
-import { dayTitle } from "./ItineraryScreen";
+import { useBackend } from "../api/BackendProvider";
+import { PlanDayView, dayTitle } from "../components/plan/DayPlan";
+import { useItemActions } from "../data/itemActions";
 import { PastTripScreen } from "./PastTripScreen";
 
 // A trip's home (ADR 021): its cover, dates and status, then five tabs. Once a plan is chosen it is
@@ -113,9 +115,7 @@ function statsOf(counts: TripCounts): Stat[] {
   return all.filter((s): s is Stat => s !== null);
 }
 
-function DayTimeline({ trip, days }: { trip: Trip; days: Day[] }) {
-  const nav = useNavigation();
-  const planId = trip.selected_itinerary_id as string;
+function DayTimeline({ days, onOpen }: { days: Day[]; onOpen: (dayIndex: number) => void }) {
   return (
     <View style={styles.timeline}>
       {days.map((day, i) => {
@@ -128,15 +128,7 @@ function DayTimeline({ trip, days }: { trip: Trip; days: Day[] }) {
             accessibilityRole="button"
             accessibilityLabel={`${title}.${base ? ` ${base}.` : ""} ${contents}.`}
             accessibilityHint="Opens this day of the itinerary"
-            onPress={() =>
-              nav.push({
-                name: "itinerary",
-                tripId: trip.id,
-                itineraryId: planId,
-                view: "days",
-                day: day.day_index,
-              })
-            }
+            onPress={() => onOpen(day.day_index)}
             style={({ pressed }) => [styles.dayRow, pressed && styles.pressed]}
             testID={`day-row-${day.day_index}`}
           >
@@ -210,7 +202,10 @@ export function TripOverviewScreen({
   const { counts, plan } = useTripCounts(trip);
   const [section, setSection] = useState<TripSection>(initialSection);
   const [menu, setMenu] = useState(false);
+  const [dayIndex, setDayIndex] = useState<number | null>(null);
   const titleRef = useAnnounceOnMount();
+  const { state } = useBackend();
+  const items = useItemActions(tripId, trip?.selected_itinerary_id ?? "");
 
   if (trips.data === undefined) {
     return (
@@ -244,8 +239,32 @@ export function TripOverviewScreen({
   const phase = tripPhase(trip);
   const hasPlan = trip.selected_itinerary_id !== null;
   const planId = trip.selected_itinerary_id as string;
-  const openPlan = (view: "days" | "map", day = 1) =>
-    nav.push({ name: "itinerary", tripId, itineraryId: planId, view, day });
+  const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
+  // The day shown in the Itinerary and Map tabs: today's during the trip, else the first.
+  const day =
+    dayIndex ?? (plan.data ? (previewDays(trip, plan.data, undefined, 1)[0]?.day_index ?? 1) : 1);
+  const openDay = (d: number, target: TripSection = "itinerary") => {
+    setDayIndex(d);
+    setSection(target);
+  };
+  const editable = plan.data?.profile !== "manual" && items.connected;
+  const planView = (mode: "list" | "map") =>
+    plan.data ? (
+      <PlanDayView
+        key={mode}
+        days={plan.data.days}
+        dayIndex={day}
+        onDayChange={setDayIndex}
+        mode={mode}
+        map={mapConfig}
+        embedded={mode === "list"}
+        onDetails={(item) =>
+          nav.push({ name: "placeDetail", tripId, itineraryId: planId, itemId: item.id })
+        }
+        actions={editable ? items.actions : undefined}
+        onShowList={() => setSection("itinerary")}
+      />
+    ) : null;
 
   let content;
   if (section === "photos") {
@@ -296,7 +315,7 @@ export function TripOverviewScreen({
               icon="list"
               testID="open-itinerary"
               accessibilityLabel="Open the itinerary"
-              onPress={() => openPlan("days")}
+              onPress={() => openDay(day)}
             />
             <Button
               label="Map"
@@ -304,7 +323,7 @@ export function TripOverviewScreen({
               variant="secondary"
               testID="open-map"
               accessibilityLabel="Open the itinerary map"
-              onPress={() => openPlan("map")}
+              onPress={() => openDay(day, "map")}
             />
           </View>
         </Card>
@@ -321,7 +340,7 @@ export function TripOverviewScreen({
             ) : undefined
           }
         />
-        <DayTimeline trip={trip} days={previewDays(trip, data)} />
+        <DayTimeline days={previewDays(trip, data)} onOpen={(d) => openDay(d)} />
         <PlannedFeature
           icon="note"
           title="Notes and reservations"
@@ -331,50 +350,86 @@ export function TripOverviewScreen({
       </>
     );
   } else if (section === "itinerary") {
-    const days = [...plan.data.days].sort((a, b) => a.day_index - b.day_index);
     content = (
       <>
         <ResourceNotices resource={plan} noun="this itinerary" />
-        <SectionTitle
-          title={pluralise(days.length, "day")}
-          action={
-            <Button
-              label="Full day list"
-              variant="quiet"
-              accessibilityLabel="Open the full day list"
-              onPress={() => openPlan("days")}
-            />
-          }
-        />
-        <DayTimeline trip={trip} days={days} />
+        {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
+        {planView("list")}
       </>
     );
-  } else {
-    const days = [...plan.data.days].sort((a, b) => a.day_index - b.day_index);
-    content = (
-      <Card>
-        <View style={styles.planHead}>
-          <Icon name="map" color={colors.primary} />
-          <Text accessibilityRole="header" style={[styles.cardTitle, styles.flex]}>
-            Map of each day
-          </Text>
+  }
+
+  const menuSheet = menu ? (
+    <Sheet visible title="Trip menu" onClose={() => setMenu(false)}>
+      <RowGroup>
+        <ListRow
+          icon="history"
+          title={hasPlan ? "Original proposals" : "Proposals"}
+          detail={
+            hasPlan
+              ? "The plans Detour proposed for this trip"
+              : "Compare the two plans and choose one"
+          }
+          testID="menu-proposals"
+          onPress={() => {
+            setMenu(false);
+            nav.push({ name: "trip", tripId });
+          }}
+        />
+        <ListRow
+          icon="settings"
+          title="Trip settings"
+          detail="New proposals, mark as past, delete"
+          testID="menu-settings"
+          onPress={() => {
+            setMenu(false);
+            nav.push({ name: "tripSettings", tripId });
+          }}
+        />
+      </RowGroup>
+    </Sheet>
+  ) : null;
+
+  const tabs = (
+    <Tabs<TripSection>
+      items={TRIP_SECTIONS}
+      value={section}
+      onChange={setSection}
+      scrollable
+      testID="trip-sections"
+    />
+  );
+
+  // The map fills the screen under a compact header, with the day's list beneath it.
+  if (section === "map" && hasPlan && plan.data) {
+    return (
+      <View style={styles.fill}>
+        <View style={styles.compactHead}>
+          <IconButton icon="back" label="Back" onPress={nav.back} />
+          <View
+            ref={titleRef}
+            style={styles.flex}
+            accessible
+            accessibilityRole="header"
+            accessibilityLabel={trip.title}
+          >
+            <Text style={styles.compactTitle} numberOfLines={1}>
+              {trip.title}
+            </Text>
+          </View>
+          <IconButton
+            icon="dots"
+            label="Trip menu"
+            hint="Original proposals and trip settings"
+            testID="trip-menu"
+            onPress={() => setMenu(true)}
+          />
         </View>
-        <Text style={styles.body}>
-          Sights are green circles and places to eat orange squares, numbered in the order of the
-          day. Choose a day to open its map.
-        </Text>
-        <View style={styles.chips}>
-          {days.map((d) => (
-            <Chip
-              key={d.id}
-              label={`Day ${d.day_index}`}
-              selected={false}
-              accessibilityLabel={`Open the map of day ${d.day_index}`}
-              onPress={() => openPlan("map", d.day_index)}
-            />
-          ))}
-        </View>
-      </Card>
+        {tabs}
+        {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
+        {planView("map")}
+        {menuSheet}
+      </View>
     );
   }
 
@@ -418,48 +473,11 @@ export function TripOverviewScreen({
             </View>
           </View>
         </Cover>
-        <View style={styles.tabs}>
-          <Tabs<TripSection>
-            items={TRIP_SECTIONS}
-            value={section}
-            onChange={setSection}
-            scrollable
-            testID="trip-sections"
-          />
-        </View>
+        <View style={styles.tabs}>{tabs}</View>
         <ResourceNotices resource={trips} noun="trips" />
         <View style={styles.body2}>{content}</View>
       </ScrollView>
-      {menu ? (
-        <Sheet visible title="Trip menu" onClose={() => setMenu(false)}>
-          <RowGroup>
-            <ListRow
-              icon="history"
-              title={hasPlan ? "Original proposals" : "Proposals"}
-              detail={
-                hasPlan
-                  ? "The plans Detour proposed for this trip"
-                  : "Compare the two plans and choose one"
-              }
-              testID="menu-proposals"
-              onPress={() => {
-                setMenu(false);
-                nav.push({ name: "trip", tripId });
-              }}
-            />
-            <ListRow
-              icon="settings"
-              title="Trip settings"
-              detail="New proposals, mark as past, delete"
-              testID="menu-settings"
-              onPress={() => {
-                setMenu(false);
-                nav.push({ name: "tripSettings", tripId });
-              }}
-            />
-          </RowGroup>
-        </Sheet>
-      ) : null}
+      {menuSheet}
     </View>
   );
 }
@@ -499,6 +517,14 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   timeline: {},
+  compactHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
+  },
+  compactTitle: { ...type.heading, color: colors.text },
   dayRow: { flexDirection: "row", minHeight: 72 },
   rail: { width: 24, alignItems: "center" },
   railLine: { flex: 1, width: 2, backgroundColor: colors.border },

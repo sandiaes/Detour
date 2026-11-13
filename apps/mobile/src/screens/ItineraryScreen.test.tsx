@@ -33,29 +33,41 @@ async function openDays(client = server(), cache = createMemoryStore()) {
   return client;
 }
 
-test("days list items with times, durations and what the duration is", async () => {
+test("the list shows one day at a time, with times, kinds and durations", async () => {
   await openDays();
   expect(await screen.findByText("Day 1 · Sat 1 May")).toBeOnTheScreen();
   expect(
     screen.getByText("3 visits · 2 meals · 4 h 30 min at the sights · 37 min travelling"),
   ).toBeOnTheScreen();
   expect(screen.getByText("Schönbrunn Palace")).toBeOnTheScreen();
+  expect(screen.getAllByText("Attraction · 2 h").length).toBeGreaterThan(0);
+  // Day 2 is behind its tab in the day selector.
+  expect(screen.queryByText("Hofburg")).toBeNull();
+  await fireEvent.press(screen.getByRole("tab", { name: "Day 2, Sun 2 May" }));
+  expect(await screen.findByText("Hofburg")).toBeOnTheScreen();
+  expect(screen.queryByText("Schönbrunn Palace")).toBeNull();
+});
+
+test("choosing a stop shows why it is there and what its duration is based on", async () => {
+  await openDays();
+  expect(screen.queryByText("A well-known sight.")).toBeNull();
+  await fireEvent.press(await screen.findByTestId("stop-i1"));
+  expect(screen.getByTestId("stop-i1").props.accessibilityState).toMatchObject({ selected: true });
   expect(screen.getByText("2 h · typical visit length")).toBeOnTheScreen();
-  expect(screen.getByText("1 h 30 min · set by you")).toBeOnTheScreen();
   expect(screen.getByText("A well-known sight.")).toBeOnTheScreen();
   expect(screen.getByText("Close to the previous stop.")).toBeOnTheScreen();
-  expect(screen.getByText("Day 2 · Sun 2 May")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("stop-i2"));
+  expect(screen.getByText("1 h 30 min · set by you")).toBeOnTheScreen();
+  expect(screen.queryByText("A well-known sight.")).toBeNull();
 });
 
 test("meals show the meal, the venue type and the cuisine from the open data", async () => {
   await openDays();
   expect(await screen.findByText("Gasthaus Zum Test")).toBeOnTheScreen();
-  expect(screen.getByText("Lunch")).toBeOnTheScreen();
+  expect(screen.getByText("Lunch · Restaurant · 1 h")).toBeOnTheScreen();
   expect(screen.getByText("Regional, coffee shop")).toBeOnTheScreen();
-  expect(screen.getByText("1 h · typical meal length")).toBeOnTheScreen();
-  expect(screen.getByText("Lunch, planned between 12:00 and 14:30.")).toBeOnTheScreen();
   // Unknown cuisine is said plainly, never guessed; no price or rating is shown.
-  expect(screen.getByText("Dinner")).toBeOnTheScreen();
+  expect(screen.getByText("Dinner · Restaurant · 1 h 30 min")).toBeOnTheScreen();
   expect(screen.getByText("Cuisine not specified")).toBeOnTheScreen();
   expect(screen.queryByText(/€|EUR|price|rating/i)).toBeNull();
   expect(
@@ -64,19 +76,29 @@ test("meals show the meal, the venue type and the cuisine from the open data", a
         "1 h, typical meal length. Why: Lunch, planned between 12:00 and 14:30.",
     ),
   ).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("stop-m1"));
+  expect(screen.getByText("1 h · typical meal length")).toBeOnTheScreen();
+  expect(screen.getByText("Lunch, planned between 12:00 and 14:30.")).toBeOnTheScreen();
 });
 
-test("an area plan names each day's base city and the drive between them", async () => {
+test("an area plan names each day's base city and starts a new base with the journey", async () => {
   await openDays();
-  expect(await screen.findByText("Based in Vienna")).toBeOnTheScreen();
-  expect(screen.getByText("Based in Graz")).toBeOnTheScreen();
+  expect(await screen.findByText("Vienna")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("tab", { name: "Day 2, Sun 2 May" }));
+  expect(await screen.findByText("Graz")).toBeOnTheScreen();
+  expect(screen.getByText("To Graz")).toBeOnTheScreen();
   expect(screen.getByText("Drive from Vienna · 2 h 20 min · 191 km")).toBeOnTheScreen();
   expect(
     screen.getByLabelText(
-      "Day 2 · Sun 2 May. Based in Graz. 2 visits · 3 h at the sights · 2 h 25 min travelling. " +
-        "Starts with: Drive from Vienna · 2 h 20 min · 191 km, estimated, a straight-line " +
-        "estimate and not a measured route.",
+      "Day 2 · Sun 2 May. Based in Graz. 2 visits · 3 h at the sights · 2 h 25 min travelling.",
     ),
+  ).toBeOnTheScreen();
+  expect(
+    screen.getByRole("button", {
+      name:
+        "Transport. Drive from Vienna · 2 h 20 min · 191 km, estimated, a straight-line " +
+        "estimate and not a measured route. Arrives in Graz.",
+    }),
   ).toBeOnTheScreen();
 });
 
@@ -131,7 +153,7 @@ test("plan notes sit behind one control; estimated transfers are explained once,
   expect(screen.getByText(/Opening hours are not checked/)).toBeOnTheScreen();
 });
 
-test("the list is virtualised: a 14-day plan renders only what is near the screen", async () => {
+test("a long plan renders one day at a time: a 14-day plan shows 40 stops, not 560", async () => {
   const big = makeItinerary("essentials");
   big.days = Array.from({ length: 14 }, (_, d) => ({
     id: `day-${d}`,
@@ -149,9 +171,9 @@ test("the list is virtualised: a 14-day plan renders only what is near the scree
   }));
   await openDays(server({ "GET /v1/itineraries/{itinerary_id}": () => big }));
   expect(await screen.findByText("Place 1-1")).toBeOnTheScreen();
-  expect(screen.queryByText("Place 1-40")).toBeNull();
-  expect(screen.queryByText("Place 14-40")).toBeNull();
-  expect(screen.queryAllByText(/^Place \d+-\d+$/).length).toBeLessThan(40);
+  expect(screen.getByText("Place 1-40")).toBeOnTheScreen();
+  expect(screen.queryByText("Place 2-1")).toBeNull();
+  expect(screen.queryAllByText(/^Place \d+-\d+$/)).toHaveLength(40);
 });
 
 test("Select chooses this plan from the day list too", async () => {
@@ -211,13 +233,48 @@ test("the Android back button leaves the plan for the screen before it", async (
   expect(back.press()).toBe(false);
 });
 
-test("switching to the map keeps the same plan and shows a button per day", async () => {
+test("switching to the map keeps the same plan and day, with the day's list under it", async () => {
   await openDays();
+  await fireEvent.press(await screen.findByRole("tab", { name: "Day 2, Sun 2 May" }));
   await fireEvent.press(await screen.findByRole("button", { name: "Show the map" }));
   expect(await screen.findByTestId("map")).toBeOnTheScreen();
-  expect(screen.getByRole("button", { name: "Show day 2 on the map" })).toBeOnTheScreen();
+  expect(screen.getByRole("tab", { name: "Day 2, Sun 2 May" }).props.accessibilityState).toEqual({
+    selected: true,
+  });
+  expect(screen.getByLabelText("Stop 1, Attraction: Hofburg")).toBeOnTheScreen();
+  expect(screen.getByText("Hofburg")).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Show the day list" }));
-  expect(await screen.findByText("Schönbrunn Palace")).toBeOnTheScreen();
+  expect(await screen.findByText("Hofburg")).toBeOnTheScreen();
+  expect(screen.queryByTestId("map")).toBeNull();
+});
+
+test("a marker and its stop in the list highlight each other", async () => {
+  await render(
+    <Harness client={server()} initial={route("map")}>
+      <AppContent />
+    </Harness>,
+  );
+  await screen.findByTestId("map");
+  // The map: tapping a marker selects the stop in the list.
+  await fireEvent.press(screen.getByTestId("marker-i3"));
+  expect(screen.getByTestId("stop-i3").props.accessibilityState).toMatchObject({ selected: true });
+  expect(
+    screen.getByLabelText("Stop 4, Attraction: St. Stephen's Cathedral").props.accessibilityState,
+  ).toEqual({ selected: true });
+  // The list: choosing a stop selects its marker.
+  await fireEvent.press(screen.getByTestId("stop-i1"));
+  expect(
+    screen.getByLabelText("Stop 1, Attraction: Schönbrunn Palace").props.accessibilityState,
+  ).toEqual({ selected: true });
+  expect(
+    screen.getByLabelText("Stop 4, Attraction: St. Stephen's Cathedral").props.accessibilityState,
+  ).toEqual({ selected: false });
+});
+
+test("a stop's details open from its row", async () => {
+  await openDays();
+  await fireEvent.press(await screen.findByRole("button", { name: "Details of Belvedere" }));
+  expect(await screen.findByRole("header", { name: "Belvedere" })).toBeOnTheScreen();
 });
 
 test("the map needs a connection and says so, offering the list", async () => {
@@ -235,8 +292,8 @@ test("the map needs a connection and says so, offering the list", async () => {
 test("sights and places to eat are told apart in words, not by colour alone", async () => {
   await openDays();
   await screen.findByText("Gasthaus Zum Test");
-  expect(screen.getAllByTestId("kind-attraction").length).toBeGreaterThan(0);
+  expect(screen.getAllByTestId("kind-attraction")).toHaveLength(3);
   expect(screen.getAllByTestId("kind-restaurant")).toHaveLength(2);
-  expect(screen.getAllByText("🍴 Restaurant")).toHaveLength(2);
-  expect(screen.getAllByText("Attraction").length).toBeGreaterThan(0);
+  expect(screen.getByText("Lunch · Restaurant · 1 h")).toBeOnTheScreen();
+  expect(screen.getAllByText("Attraction · 2 h").length).toBeGreaterThan(0);
 });

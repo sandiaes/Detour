@@ -197,6 +197,17 @@ def test_an_area_destination_is_planned_from_its_towns(api_env: ApiEnv) -> None:
         assert bases == {"Testburg"}
         assert any(n["code"] == "BASE_CITY" for n in plan["notes"])
         assert all(d["base_city_id"] is not None for d in plan["days"])
+        # Each day carries its base city's position from the gazetteer (ADR 021: the map's
+        # transport markers), read by identifier when the plan is read.
+        ((lat, lon),) = sql(
+            api_env,
+            "SELECT ST_Y(geom), ST_X(geom) FROM geo.city WHERE id = %s",
+            plan["days"][0]["base_city_id"],
+        )
+        for d in plan["days"]:
+            assert (d["base_city_lat"], d["base_city_lon"]) == (lat, lon)
+        fetched = api_env.client.get(f"/v1/itineraries/{plan['id']}", headers=api_env.headers)
+        assert fetched.json()["days"][0]["base_city_lat"] == lat
 
 
 def test_an_area_without_enough_sights_explains_why(api_env: ApiEnv) -> None:

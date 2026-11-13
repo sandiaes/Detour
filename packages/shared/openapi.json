@@ -3717,6 +3717,30 @@
             "title": "Base City Name",
             "description": "The city the day is planned from (a snapshot)"
           },
+          "base_city_lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base City Lat",
+            "description": "The base city's position, read from the gazetteer by base_city_id when the plan is read (not stored on the day); null when the city is not in the gazetteer"
+          },
+          "base_city_lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base City Lon",
+            "description": "See base_city_lat"
+          },
           "arrival": {
             "anyOf": [
               {

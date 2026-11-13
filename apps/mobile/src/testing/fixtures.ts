@@ -156,6 +156,8 @@ export function makeItinerary(
         date: "2027-05-01",
         base_city_id: 900101,
         base_city_name: "Vienna",
+        base_city_lat: 48.2082,
+        base_city_lon: 16.3738,
         arrival: null,
         items: [
           item(d1, 1, {
@@ -224,6 +226,8 @@ export function makeItinerary(
         date: "2027-05-02",
         base_city_id: 900102,
         base_city_name: "Graz",
+        base_city_lat: 47.0707,
+        base_city_lon: 15.4395,
         arrival: {
           from_base_city_id: 900101,
           from_base_city_name: "Vienna",
