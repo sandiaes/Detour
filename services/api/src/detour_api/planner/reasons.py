@@ -35,6 +35,12 @@ ITEM_TEMPLATES: dict[str, str] = {
     "PLACE_REPEATED": (
         "Already in this plan on an earlier day: no other suitable place to eat is near."
     ),
+    # A restaurant the user added (Phase 8, ADR 019).
+    "MEAL_SERVED_PER_YOU": "You said this place serves this meal.",
+    "MEAL_TYPE_NOT_SPECIFIED": (
+        "Which meals it serves was not given: it is placed by location and timing alone."
+    ),
+    "CUISINE_NOT_SPECIFIED_BY_YOU": "Cuisine not specified: none was given for this place.",
     # Phase 2 seed data.
     "SEED_DATA": "Illustrative seed data, not a planned visit.",
 }
@@ -106,6 +112,10 @@ NOTE_TEMPLATES: dict[str, str] = {
         "Day {day} is now based in {name}, {km} km from the nearest other base city, "
         "so that {place} can be visited."
     ),
+    "RESTAURANT_ADDED": (
+        "You added {name} as {meal} on day {day}; the day was laid out around it."
+    ),
+    "MEAL_REPLACED": "It replaces {name}, the {meal} planned for day {day}.",
     "VISITS_MOVED": "{count} visits moved to another day to make room.",
     "VISITS_DROPPED": "{count} visits were left out to make room.",
     "BASE_CITY_DAYS": "{name}: {days} days as a base, with {sights} sights within {radius_km} km.",
@@ -172,6 +182,52 @@ ISSUE_TEMPLATES: dict[str, str] = {
     "ITEM_LOCKED": "{name} is locked: unlock it before removing it.",
     "NOT_A_VISIT": "{name} is a meal; only visits can be removed here.",
     "ROUTED_TIMES_TOO_LONG": "With routed travel times, day {day} no longer has room for {name}.",
+    # Adding a restaurant (Phase 8, ADR 019).
+    "RESTAURANT_DOES_NOT_SERVE_MEAL": (
+        "{name} is not listed as serving {meal} (it serves: {served})."
+    ),
+    "DAY_HAS_NO_VISITS": "Day {day} has no visits, so there is nothing to place a meal between.",
+    "MEAL_SLOT_TAKEN": (
+        "Day {day} already has {name} as {meal}: a meal you added or locked stays where it is."
+    ),
+    "SLOT_NOT_FOUND": (
+        "The place for {meal} on day {day} is no longer in the plan; ask for suggestions again."
+    ),
+    "MEAL_DOES_NOT_FIT": (
+        "Day {day}: {name} does not fit as {meal} between {window_start} and {window_end} "
+        "without leaving a visit out; choose another slot."
+    ),
+    "NO_SLOT_FITS": (
+        "No day of this plan has room for {name} inside a meal window and the day's hours "
+        "without leaving a visit out."
+    ),
+}
+
+# Why a slot is suggested for a restaurant the user adds (Phase 8, ADR 019). Rendered with the
+# numbers the scoring computed; the order is the order of display.
+SLOT_TEMPLATES: dict[str, str] = {
+    "SLOT_WINDOW": (
+        "{meal} is planned between {window_start} and {window_end}; here it runs {start}-{end}."
+    ),
+    "SLOT_SERVES_MEAL_VENUE": "Its venue type ({venue}) serves {meal} in the map data.",
+    "SLOT_SERVES_MEAL_YOU": "You said it serves {meal}.",
+    "SLOT_MEAL_UNKNOWN": (
+        "Which meals it serves is not known, so {meal} is judged by place and timing alone."
+    ),
+    "SLOT_NEAR_PREVIOUS": "{minutes} min from {name}, the stop before it.",
+    "SLOT_NEAR_NEXT": "{minutes} min to {name}, the stop after it.",
+    "SLOT_END_OF_DAY": "It is the last stop of the day: no later visit is pushed back.",
+    "SLOT_TRAVEL": "Day {day} travel changes by {minutes:+d} min ({label}).",
+    "SLOT_REPLACES": "Replaces {name}, the {meal} planned for this day.",
+    "SLOT_EMPTY": "The day has no {meal} planned yet.",
+    "SLOT_WAIT": "{minutes} min of waiting before the meal window opens.",
+    "SLOT_SHIFTS": "{count} other items start at another time ({minutes} min in total).",
+    "SLOT_NO_SHIFT": "No other item moves.",
+    "SLOT_CUISINE_UNKNOWN": "Cuisine not specified, so variety cannot be judged.",
+    "SLOT_CUISINE_REPEAT": (
+        "Shares a cuisine ({cuisines}) with another meal on this or a nearby day."
+    ),
+    "SLOT_CUISINE_NEW": "Its cuisine ({cuisines}) is not in the meals of this or a nearby day.",
 }
 
 
@@ -190,3 +246,7 @@ def note_text(code: str, params: Mapping[str, object]) -> str:
 
 def issue_text(code: str, params: Mapping[str, object]) -> str:
     return _render(ISSUE_TEMPLATES, code, params)
+
+
+def slot_text(code: str, params: Mapping[str, object]) -> str:
+    return _render(SLOT_TEMPLATES, code, params)

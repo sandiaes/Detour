@@ -29,7 +29,7 @@ Measurement sources:
 | Locked-item stability | Locked items moved by a recalculation | 0 | Tests, logs |
 | Disruption on add | Existing items changing day after one added location in the same city | ≤ 20% | Fixture suite |
 | Diff fidelity | Accepted diffs whose applied result equals the preview | 100% | Tests |
-| Restaurant placement acceptance | Proposed slot accepted without choosing an alternative | ≥ 70% | Backend logs |
+| Restaurant placement acceptance | Proposed slot accepted without choosing an alternative | ≥ 70% | Backend logs: `restaurant_slots_suggested` (`slots`, best first) and `change_previewed` (`slot`) per itinerary |
 | Recalculation acceptance | Preview diffs accepted rather than discarded | ≥ 70% | Backend logs |
 
 ## 3. Performance

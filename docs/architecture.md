@@ -10,8 +10,9 @@ attractions and days, section 5, [ADR 014](decisions/014-phase-4-planner-v1.md))
 mobile shell, [ADR 015](decisions/015-phase-5-mobile-shell.md)) and Phase 6 (meals and area
 destinations, section 5, [ADR 016](decisions/016-phase-6-meals-and-area-destinations.md)) are built
 and await acceptance. Phase 7 (adding and removing places with recalculation, section 5.4,
-[ADR 018](decisions/018-phase-7-add-place-and-recalculation.md)) is built and awaits acceptance;
-adding a restaurant (Phase 8) is not built. Budgets, currencies, prices and
+[ADR 018](decisions/018-phase-7-add-place-and-recalculation.md)) and Phase 8 (adding a restaurant
+and placing it in the best slot, sections 4.2.6 and 5.4,
+[ADR 019](decisions/019-phase-8-add-a-restaurant.md)) are built and await acceptance. Budgets, currencies, prices and
 the FX job are removed for now ([ADR 017](decisions/017-no-budgets-currencies-or-prices.md)).
 
 ## 1. Principles
@@ -279,12 +280,27 @@ Any failure (adapter off, provider down, budget used, rate limit, time limit, un
 gives the labelled estimate, so planning stays available. Details and unverified assumptions:
 ADR 013.
 
+#### 4.2.6 Phase 8 API (ADR 019)
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /v1/restaurants/search` | Restaurants: imported places first (cuisines null when the data states none), then the user's saved restaurants, then, with `include_external` and only when both are empty, Photon through the backend (restaurants and cafés only, with venue type and meal types by the import's fixed rule, no cuisine). Manual entry is `POST /v1/user-places` with kind `restaurant` |
+| `POST /v1/itineraries/{id}/restaurant-suggestions` | Up to three day and meal slots for a restaurant (`place_id` or `user_place_id`, optionally limited to a `day` or `meal_type`): each with its times, the stops around it, the estimated detour and its label, the items that start at another time, the meal it replaces, a score and reasons rendered through fixed templates. Nothing is stored. `422 recalculation_impossible` with `issues` |
+| `POST /v1/itineraries/{id}/change-sets` | Action `add_restaurant` (`place_id` or `user_place_id`, `day`, `meal_type`, `after_item_id`) previews the chosen slot like any change set (ADR 018) |
+
+Code: `planner/restaurant_slots.py` (scoring, suggestions, placing), `Entry.floating` in
+`planner/recalc.py` (a meal whose time the layout finds inside its window),
+`revision_validator.py` (`added_meal`), `routers/restaurants.py`, `repo/changes.py`
+(`load_restaurant_context`, `load_dining`).
+
 ### 4.6 Other services
 
 - **Search service (built in Phase 2):** local trigram search over the gazetteer, the areas and
   the region's places; if nothing suitable is found and the caller asked for it, a Photon query
   through the backend (`adapters/photon.py`: User-Agent, timeout, cache, daily budget, pause on
-  failure); finally a manual entry (name plus map pin) saved as a user place.
+  failure); finally a manual entry (name plus map pin) saved as a user place. Restaurant search
+  (Phase 8) follows the same order with its own endpoint and a tag filter that is checked again on
+  the way back (ADR 019).
 - **FX service:** removed (ADR 017): the app has no currencies or prices.
 
 ## 5. Planning engine
@@ -296,8 +312,8 @@ the travel-time service returns (each transfer records whether its time was rout
 for areas (base cities, days per base, inter-city legs) and step 5 (meals in fixed windows at
 imported places to eat), with the validator checking meal windows and day length. Code:
 `planner/areas.py`, `planner/meals.py`, and the engine, validator and configuration below.
-Section 5.4: adding a city or location is built in Phase 7 (ADR 018); adding a restaurant is
-Phase 8.
+Section 5.4: adding a city or location is built in Phase 7 (ADR 018); adding a restaurant in
+Phase 8 (ADR 019).
 
 **Built in Phase 4 (v1, [ADR 014](decisions/014-phase-4-planner-v1.md)):** city destinations;
 steps 2, 3, 4, 6, 7 and 8 below, the two profiles and the diversity gate of section 5.3, and the
@@ -384,6 +400,17 @@ makes them distinct even when their visits overlap more than 60 %.
   how well the venue type suits the meal (opening hours are out of scope, ADR 003). The lowest-cost slot wins,
   ties are broken by earlier day then earlier slot, and the next-best alternatives are returned
   with their reason codes.
+
+  **As built (Phase 8, [ADR 019](decisions/019-phase-8-add-a-restaurant.md)):** the restaurant is a
+  meal the user adds. It is first a floating entry that the day's layout starts when its meal window
+  (ADR 016) opens or when the traveller arrives, and refuses if it would end after the window or the
+  profile's day end; the stored result is a fixed meal. Every day with visits and every meal type
+  the place serves is a slot; each slot's best position is chosen among the four with the least added
+  travel, and the slots are ranked by cost (added travel, straight-line detour, shifted items and
+  minutes, waiting for the window, replacing a planned meal, a repeated cuisine, unknown meal
+  types). The three cheapest come back with reason codes, the estimated detour and the items that
+  move. No visit is left out or moved to another day. Placing is a change set (preview, apply,
+  versions); the revision validator checks the window, the day and the place.
 
 ### 5.5 Is OR-Tools justified?
 

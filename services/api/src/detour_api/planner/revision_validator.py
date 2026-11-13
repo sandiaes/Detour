@@ -29,6 +29,7 @@ from detour_api.planner.config import PlannerConfig
 from detour_api.planner.durations import visit_minutes
 from detour_api.planner.reasons import ITEM_TEMPLATES, NOTE_TEMPLATES, note_text
 from detour_api.planner.recalc import Entry, Revision, RPlan
+from detour_api.planner.restaurant_slots import Dining
 from detour_api.planner.types import BaseCity, Candidate, Leg, Restaurant
 from detour_api.planner.validator import Violation
 from detour_api.travel.types import Coord, TravelTime, distance_m
@@ -83,6 +84,7 @@ def validate_revision(
     candidates: Mapping[str, Candidate],
     restaurants: Mapping[str, Restaurant],
     config: PlannerConfig,
+    added_meal: Dining | None = None,
 ) -> list[Violation]:
     new = revision.plan
     known = revision.known_times
@@ -194,6 +196,10 @@ def validate_revision(
                         out.append(Violation("MEALS_WITHOUT_VISITS", k, pos))
                     if (e.place_id in seen_meal_places) != ("PLACE_REPEATED" in e.reasons):
                         out.append(Violation("REPEATED_PLACE_REASON", k, pos))
+                elif added_meal is not None and e.key == added_meal.key:
+                    out.extend(_check_added_meal(e, added_meal, config, day_start, day_end, k, pos))
+                    if not has_visit:
+                        out.append(Violation("MEALS_WITHOUT_VISITS", k, pos))
             if not e.fixed:
                 if e.start_minute < day_start:
                     out.append(Violation("BEFORE_DAY_START", k, pos))
@@ -231,6 +237,47 @@ def validate_revision(
     )
     if (s.visits, s.meals, s.travel_minutes) != (visits, meals, travel):
         out.append(Violation("STATS_MISMATCH"))
+    return out
+
+
+def _check_added_meal(
+    e: Entry,
+    dining: Dining,
+    config: PlannerConfig,
+    day_start: int,
+    day_end: int,
+    day: int,
+    pos: int,
+) -> list[Violation]:
+    """The restaurant the user added (Phase 8): the place as given, serving the meal as far as
+    known, the table's length, **inside its meal window**, and **inside the day**."""
+    out: list[Violation] = []
+    meal = e.meal_type
+    if (e.name, e.lat, e.lon, e.category, e.cuisines, e.place_id, e.user_place_id) != (
+        dining.name,
+        dining.lat,
+        dining.lon,
+        dining.venue_type,
+        dining.cuisines,
+        dining.place_id,
+        dining.user_place_id,
+    ):
+        out.append(Violation("SNAPSHOT_MISMATCH", day, pos, e.key))
+    if meal is None:
+        return [*out, Violation("MEAL_TYPE_MISSING", day, pos)]
+    if not dining.serves(meal):
+        out.append(Violation("VENUE_DOES_NOT_SERVE_MEAL", day, pos))
+    if e.duration_minutes != config.meal_minutes(meal, dining.venue_type):
+        out.append(Violation("MEAL_LENGTH", day, pos))
+    w = config.meal_window(meal)
+    if e.start_minute < w.start_minute or e.end_minute > w.end_minute:
+        out.append(Violation("MEAL_OUTSIDE_WINDOW", day, pos))
+    if e.start_minute < day_start:
+        out.append(Violation("BEFORE_DAY_START", day, pos))
+    if e.end_minute > day_end:
+        out.append(Violation("AFTER_DAY_END", day, pos))
+    if e.floating or e.locked or e.origin != "user":
+        out.append(Violation("ADDED_MEAL_STATE", day, pos))
     return out
 
 

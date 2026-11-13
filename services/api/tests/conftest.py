@@ -144,6 +144,10 @@ def api_env(imported_template_name: str) -> Iterator[ApiEnv]:
             raise httpx.ConnectTimeout("simulated", request=request)
         if photon_mode["mode"] == "429":
             return httpx.Response(429, headers={"Retry-After": "10"})
+        if photon_mode["mode"] == "payload":  # a test's own recorded-style answer
+            return httpx.Response(
+                200, content=photon_mode["payload"], headers={"content-type": "application/json"}
+            )
         return httpx.Response(200, content=body, headers={"content-type": "application/json"})
 
     settings = Settings(

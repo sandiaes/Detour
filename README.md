@@ -17,10 +17,11 @@ deployment configuration.
 database schemas, a region import (manually started GitHub Actions workflow: Geofabrik extract,
 selection rule, data quality report and readiness gates), a GeoNames gazetteer import, destination
 and place search with Photon as the only external fallback, a seed trip, and endpoints for trips,
-user places and itinerary items. **Phases 3 to 7 are built and await acceptance:** travel times
+user places and itinerary items. **Phases 3 to 8 are built and await acceptance:** travel times
 (ADR 013), the planner (two itineraries for a city, ADR 014), the mobile screens with the day list
 and map (ADR 015), meals and area destinations (ADR 016), and adding or removing a place with a
-previewed recalculation and itinerary versions (ADR 018). The app has no budgets, currencies or
+previewed recalculation and itinerary versions (ADR 018), and adding a restaurant with its best day
+and meal slot (ADR 019). The app has no budgets, currencies or
 prices (ADR 017). Later work follows the phases in [`docs/app-plan.md`](docs/app-plan.md). The architecture, API strategy,
 hosting, licence and distribution are decided (see below).
 
