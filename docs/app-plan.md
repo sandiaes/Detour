@@ -1,6 +1,6 @@
 # App plan
 
-Status: **Phase 0, 1 and 2 are done; Phases 3, 4, 5 and 6 are built and await the owner's acceptance** (the owner reported on 2026-11-13 that the app works on the phone); Phase 7 onward is proposed. Budgets, currencies and prices are removed for now (ADR 017). Each phase is small enough to review on its own
+Status: **Phase 0, 1 and 2 are done; Phases 3, 4, 5, 6 and 7 are built and await the owner's acceptance** (the owner reported on 2026-11-13 that the app works on the phone); Phase 8 onward is proposed. Budgets, currencies and prices are removed for now (ADR 017). Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
 ## 1. Decisions
@@ -227,6 +227,22 @@ updated. **Tried on synthetic fixtures only.**
 
 ### Phase 7 — Add a city or location, with recalculation
 
+**Status: built on 2026-11-13, not yet accepted** (ADR 018, proposed). The user searches sights near
+the trip, towns, or (when nothing matches) Photon through the backend, or drops a pin; the place
+becomes a mandatory visit. The plan is repaired, not planned again: the day with the lowest
+stability cost takes it, locked items keep their day and times, items the user added are never left
+out, meals are laid out again in their windows at imported places to eat; a place over 20 km from
+every base gets one day at a new base city (nearest town within 25 km) with ADR 016's inter-city
+legs, taken from a base with at least two days; Japan stays single-city. The preview is a stored
+change set with a diff (added, left out, moved, new times, base changes, travel change, estimated
+legs); accept or discard; nothing changes before. Every replaced version is kept (30 per
+itinerary); removing the place the latest change added restores the previous version exactly.
+Infeasible changes return each conflicting constraint. Lock, unlock and remove are on every visit
+in the app. Migration `0007`. Tests: locked items never move, diff equals the applied result, add
+then remove restores the plan, a distant addition re-allocates a day, infeasible additions are
+explained. **Tried on synthetic fixtures only:** every addition changed one day and moved no visit
+to another day; 12 to 690 ms in the engine.
+
 **Goal:** the plan absorbs an addition with minimal disruption.
 
 - **Deliverables:** add-place flow (search, pin); user places; mandatory-visit handling;
@@ -318,8 +334,9 @@ to reconsider later. Ideas discussed, none decided or built:
 
 ## 7. Recommended next task
 
-**Accept Phases 3 to 6, then Phase 7 (add a city or location), when the owner asks for it
-(CLAUDE.md).** For Phase 6: confirm or change the meal windows, the profiles' meals and the
+**Accept Phases 3 to 7, then Phase 8 (add a restaurant), when the owner asks for it
+(CLAUDE.md).** For Phase 7: confirm or change the stability costs and the 20 km / 25 km distances
+of ADR 018 on a real imported city, and try adding a sight, a pin and a distant town on the phone. For Phase 6: confirm or change the meal windows, the profiles' meals and the
 base-city rules of ADR 016 on a real imported area.
 Phase 2 is accepted. For Phase 3: confirm or change the numbers in ADR 013 (especially the walking
 detour factor). For Phase 4: import Austria, generate plans for two or three Austrian cities, and

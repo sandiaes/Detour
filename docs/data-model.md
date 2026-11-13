@@ -5,7 +5,8 @@ Status: **implemented in Phase 2** (Alembic migrations `0002_geo_schema` and `00
 fills the engine columns of `app.itinerary` and `app.transfer` without a schema change. Migration
 `0006_meals_areas_no_budgets` (2026-11-13) adds the meal type `snack` and each day's base city
 name and inter-city leg (ADR 016), and removes the trip's currency, meal budget and price bands,
-`app.price_record` and `geo.fx_rate` (ADR 017).
+`app.price_record` and `geo.fx_rate` (ADR 017). Migration `0007_change_sets_and_versions`
+(Phase 7, ADR 018) adds `app.change_set` and `app.itinerary_version` (section 3.7).
 Where the built schema differs from the earlier proposal, the difference is listed in section 9
 and decided in [ADR 012](decisions/012-phase-2-data-and-search-choices.md). Photos (section 8) are
 still reserved, not built.
@@ -35,6 +36,7 @@ geo.travel_time (end points, mode)     geo.admin_code
 app.installation ──< app.trip ──< app.itinerary ──< app.itinerary_day ──< app.itinerary_item
 app.installation ──< app.user_place              app.itinerary_item ──< app.transfer (to the next item)
 app.trip ──< app.trip_visit (past trips)
+app.itinerary ──< app.change_set, app.itinerary_version (Phase 7)
 app.provider_cache, app.provider_usage (external provider answers and daily call counters)
 app.photo >── trip, day, city, item        (future phase)
 ```
@@ -224,8 +226,8 @@ A proposed or selected plan. Variants of one generation share a `generation_id`.
 |---|---|
 | `profile` | `essentials`, `wider`, or `manual` (an empty plan filled by hand; the only kind before Phase 4) |
 | `status` | `proposed`, `selected`, `superseded`; at most one `selected` per trip (kept by the API when the selection changes) |
-| `version` | Starts at 1; incremented by every accepted item edit |
-| `engine_version`, `config_version` | `manual` for manual itineraries; for engine itineraries for example `planner-1.0.0` and `2026-11-12.2+durations-2026-11-12.1` |
+| `version` | Starts at 1; incremented by every accepted item edit and every applied change set. The version it replaces is kept in `app.itinerary_version` (section 3.7) |
+| `engine_version`, `config_version` | `manual` for manual itineraries; for engine itineraries for example `planner-1.0.0` and `2026-11-12.2+durations-2026-11-12.1`; after a recalculation (ADR 018) `planner-2.0.0+recalc-1.0.0` and `<config>+recalc-2026-11-13.1` |
 | `import_run_id` | The data version used; null for manual itineraries; not a foreign key |
 | `seed`, `diversity_score`, `summary` | Engine itineraries (Phase 4, ADR 014): `seed` 0 (no randomness is used); `diversity_score` the Jaccard similarity of the generation's two variants (null with one); `summary` holds `stats` (visits, minutes, transfers by label, day utilisation and travel share in permille), `notes` (codes with parameters, rendered by fixed templates when read), `sequencer`, `estimate_version`, `jaccard_permille`; since ADR 016 the stats also hold `meals`, `meal_minutes` and `intercity_legs` (itineraries written before have a `currency_code` key, unused). `{}` for manual itineraries |
 
@@ -243,20 +245,21 @@ set (a CHECK enforces it). The leg always comes from the previous day's base cit
 | `display_name`, `display_point` | Snapshot at creation (name or, for an unnamed place, its category); user-place renames are propagated |
 | `start_time`, `end_time` | Local time at the destination; both null or both set, `end > start`, same day. Unscheduled is allowed. Timed items of a day may touch but not overlap |
 | `duration_minutes`, `duration_source` | 1 to 1440; `user` or `category_default`. Engine items and imported attractions added without a duration take the category default (ADR 014); a meal or a user place needs a duration |
-| `origin`, `locked`, `reasons` | `engine` or `user`; locked items are never moved by recalculation; reason codes from the fixed template table (`planner/reasons.py`; `SEED_DATA` on seed items) |
+| `origin`, `locked`, `reasons` | `engine` or `user`; a locked item keeps its day, start and end in every recalculation and is never removed by one; an item with origin `user` (added by hand or through a change set) is mandatory: never left out (ADR 018); reason codes from the fixed template table (`planner/reasons.py`; `SEED_DATA` on seed items) |
 
 `transfer`: `from_item_id` (unique: one outgoing transfer per item), `to_item_id`, `mode`,
 `seconds`, `meters`, `confidence` (`routed`, `estimated`), `geometry`. Written by the planner for
 every pair of consecutive visits (Phase 4), with the values and label the travel-time service
 returned; `geometry` stays null (route lines are fetched for the selected itinerary only, ADR 013).
 A hand edit deletes the transfers that no longer join an item to the next one; they are not
-recomputed before Phase 7.
+recomputed. A recalculation (ADR 018) writes the transfers of the days it changes.
 
 ### 3.4 `app.user_place`
 A place the user added that is not in `geo.place`: `kind` (`city`, `location`, `restaurant`),
 `name`, `geom`, `cuisines` and `meal_types` (restaurants only; meal types may include `snack`),
-`source` (`manual_pin`, `search_result`), and `search_provider` (`photon`) with `search_ref`
-(for example `N123`, an OSM node) **iff** the source is a search result. At most 500 per
+`source` (`manual_pin`, `search_result`), and `search_provider` (`photon`, or `geonames` for a
+town from destination search saved to add it to a plan, ADR 018) with `search_ref` (for example
+`N123`, an OSM node, or a GeoNames id) **iff** the source is a search result. At most 500 per
 installation.
 
 ### 3.5 `app.trip_visit`: the past-trip archive (ADR 006)
@@ -270,6 +273,27 @@ Answers from the one external provider (Photon) and its daily call counter (arch
 6). They live in `app` because an import does not rebuild them. `provider_cache` holds
 `cache_key` (a hash of the normalised question), the provider's `response`, and `expires_at`; it
 never holds an installation identifier. `provider_usage` is `(provider, usage_date, calls)`.
+
+### 3.7 `app.change_set` and `app.itinerary_version` (Phase 7, ADR 018)
+
+| `change_set` | Notes |
+|---|---|
+| `itinerary_id` | fk, `ON DELETE CASCADE` |
+| `base_version` | The itinerary version the preview was made from; apply refuses if it changed |
+| `action` | `add_place` (with `place_id` **or** `user_place_id`, and `duration_minutes` if given) or `remove_place` (with `item_id`) |
+| `target_name` | Snapshot of the place's name |
+| `status` | `pending` (previewed), `applied`, `discarded`, `expired` (the itinerary changed, or a newer preview replaced it); `decided_at` iff not pending; `result_version` iff applied |
+| `restores_version` | Set when applying restores that stored version exactly (removing the place the latest change added) |
+| `proposal` | The plan rows to write (same shape as a version's `state`); **cleared once decided** |
+| `diff`, `notes` | What the preview showed, kept after the decision |
+
+| `itinerary_version` | Notes |
+|---|---|
+| `(itinerary_id, version)` | pk; the itinerary fk cascades |
+| `state` | The version's days, items and transfers as rows, with its summary and engine, configuration and data versions. Items keep only their own name and point snapshots; venue types and cuisines stay in `geo` |
+| `replaced_at`, `change_set_id` | When it was replaced, and by which change set (null: a hand edit) |
+
+Every replaced version is kept, up to 30 per itinerary (the oldest are removed first).
 
 ## 4. Restaurant prices
 
@@ -287,11 +311,14 @@ carry venue type, cuisines and meal types only. Bringing prices back needs a new
 | **First API call of an installation** | Creates its `app.installation` row |
 | **Delete a trip** | Cascades to its itineraries, days, items, transfers and archive rows. User places stay |
 | **Delete an itinerary** | Cascades to days, items and transfers; clears the trip's selection if it was selected |
-| **Delete an item** | Later items of the day move up; the itinerary version increases |
+| **Delete an item** | Later items of the day move up; the itinerary version increases (the replaced version is kept) |
+| **Preview a change** (ADR 018) | Stores a `pending` change set; expires the itinerary's other pending one; the itinerary is not touched |
+| **Apply a change** | Keeps the current version in `itinerary_version`, writes the proposal, increments the version, clears the proposal |
+| **Discard a change** | The change set becomes `discarded` and loses its proposal |
 | **Delete a user place** | Refused (409) while an item uses it |
 | **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per city and visit item of the *selected* itinerary (or the destination city if there is none); then **every** itinerary of the trip is deleted (transfers, route geometry, versions, seeds go with them); the trip becomes `past`. One-way. A past trip is read-only except deletion and clearing visits |
 | **Delete an installation** (no endpoint; operator action) | Cascades to everything it owns. Tokens are stateless, so the app would register a new installation |
-| **Limits** | 100 trips per installation, 5 itineraries per trip, 40 items per day, 500 user places |
+| **Limits** | 100 trips per installation, 5 itineraries per trip, 40 items per day, 500 user places, 30 kept versions per itinerary, one pending change set per itinerary |
 
 Not built: archiving a trip automatically after its last day (ADR 006 allows it; it needs a
 scheduled job), and a backup of `app` (ADR 005: Supabase Free has none).

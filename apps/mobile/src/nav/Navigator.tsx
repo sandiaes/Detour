@@ -1,7 +1,7 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
 
-// A small stack navigator held in React state (ADR 015). The app has two root tabs and four
+// A small stack navigator held in React state (ADR 015). The app has two root tabs and six
 // pushed screens, so a navigation library (and its native screens module) is not needed. The
 // Android back button pops the stack, then returns from Settings to Trips, then leaves the app.
 
@@ -17,7 +17,9 @@ export type Route =
       view: "days" | "map";
       /** 1-based day shown on the map. */
       day: number;
-    };
+    }
+  | { name: "addPlace"; tripId: string; itineraryId: string }
+  | { name: "changePreview"; tripId: string; itineraryId: string; changeSetId: string };
 
 export type Navigation = {
   route: Route;

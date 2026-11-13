@@ -103,7 +103,11 @@ class UserPlaceCreate(StrictModel):
     cuisines: list[str] | None = Field(default=None, max_length=10, description="Restaurants only")
     meal_types: list[str] | None = Field(default=None, max_length=4, description="Restaurants only")
     source: Literal["manual_pin", "search_result"]
-    search_provider: Literal["photon"] | None = None
+    search_provider: Literal["photon", "geonames"] | None = Field(
+        default=None,
+        description="photon: an external search result (ref like N123). geonames: a town from "
+        "destination search, saved to add it to a plan (ref: its gazetteer id)",
+    )
     search_ref: str | None = Field(default=None, min_length=1, max_length=64)
 
     @model_validator(mode="after")

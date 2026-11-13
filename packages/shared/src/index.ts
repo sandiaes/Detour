@@ -26,6 +26,17 @@ export type GenerationResult = components["schemas"]["GenerationResult"];
 export type DestinationResult = components["schemas"]["DestinationResult"];
 export type DestinationSearchResponse = components["schemas"]["DestinationSearchResponse"];
 export type AttributionEntry = components["schemas"]["AttributionEntry"];
+export type PlaceSummary = components["schemas"]["PlaceSummary"];
+export type PlaceSearchResponse = components["schemas"]["PlaceSearchResponse"];
+export type ExternalPlace = components["schemas"]["ExternalPlace"];
+export type UserPlace = components["schemas"]["UserPlace"];
+export type UserPlaceCreate = components["schemas"]["UserPlaceCreate"];
+
+// Adding and removing places (Phase 7, ADR 018).
+export type ChangeSet = components["schemas"]["ChangeSet"];
+export type ChangeSetCreate = components["schemas"]["ChangeSetCreate"];
+export type ChangeSetApplied = components["schemas"]["ChangeSetApplied"];
+export type ChangeDiff = components["schemas"]["ChangeDiff"];
 
 export type ApiClientOptions = {
   /** Bearer token of the anonymous installation, read on every request. */

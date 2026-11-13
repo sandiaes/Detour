@@ -9,7 +9,9 @@ section 4.5, [ADR 013](decisions/013-phase-3-travel-time-service.md)), Phase 4 (
 attractions and days, section 5, [ADR 014](decisions/014-phase-4-planner-v1.md)), Phase 5 (the
 mobile shell, [ADR 015](decisions/015-phase-5-mobile-shell.md)) and Phase 6 (meals and area
 destinations, section 5, [ADR 016](decisions/016-phase-6-meals-and-area-destinations.md)) are built
-and await acceptance. Recalculation (section 5.4) is not built yet. Budgets, currencies, prices and
+and await acceptance. Phase 7 (adding and removing places with recalculation, section 5.4,
+[ADR 018](decisions/018-phase-7-add-place-and-recalculation.md)) is built and awaits acceptance;
+adding a restaurant (Phase 8) is not built. Budgets, currencies, prices and
 the FX job are removed for now ([ADR 017](decisions/017-no-budgets-currencies-or-prices.md)).
 
 ## 1. Principles
@@ -171,8 +173,8 @@ transaction before the response is sent.
 | `GET /v1/itineraries/{id}`, `GET /v1/trips/{id}/itineraries` | Now also the generation id, seed, diversity score, plan notes and statistics; per item the rendered reasons and the transfer to the next item (mode, seconds, metres, `routed` or `estimated`) |
 
 The engine is `detour_api/planner/` (section 5); its reads and writes are `repo/planning.py`. Hand
-edits of items delete transfers that no longer join neighbours (they are not recomputed before
-Phase 7).
+edits of items delete transfers that no longer join neighbours (they are not recomputed; adding or
+removing a place through a change set, section 4.2.5, recalculates the days it changes).
 
 #### 4.2.4 Phase 6 API (ADR 016)
 
@@ -183,6 +185,21 @@ Phase 7).
   drive from the previous base (mode, seconds, metres, `routed` or `estimated`).
 - Statistics add `meals`, `meal_minutes` and `intercity_legs`.
 - Destination search adds `unavailable_reason` (`region_not_available`, `area_single_city_only`).
+
+#### 4.2.5 Phase 7 API (ADR 018)
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /v1/itineraries/{id}/change-sets` | Preview `add_place` (an imported sight by `place_id`, or a user place of kind `city` or `location` by `user_place_id` with `duration_minutes`) or `remove_place` (`item_id`) on a planned itinerary. Stores the change set with its proposal and returns the diff (added, left out, moved, new times, base changes, travel change, estimated legs) and notes. Nothing in the itinerary changes. `422 recalculation_impossible` with `issues`; `409 not_recalculable` for a hand-made itinerary |
+| `GET /v1/change-sets/{id}` | One change set: `pending`, `applied`, `discarded` or `expired` |
+| `POST /v1/change-sets/{id}/apply` | Keeps the current version, writes the previewed proposal exactly, increments the version; returns the change set and the itinerary. `409 change_set_stale` if the itinerary changed since the preview |
+| `POST /v1/change-sets/{id}/discard` | Closes the change set; the itinerary is untouched |
+| `GET /v1/itineraries/{id}/versions` | Earlier versions, newest first, with what replaced each (a change set or a hand edit) |
+
+Code: `planner/recalc.py` (the repair), `planner/diff.py`, `planner/revision_validator.py`,
+`planner/change_service.py` (read, recalculate outside a transaction, write, with per-stage
+timings), `repo/changes.py` and `repo/plan_state.py`. User places may now carry `search_provider`
+`geonames` (a town from destination search, saved to add it to a plan).
 
 ### 4.3 Data stores
 
@@ -278,8 +295,9 @@ the travel-time service returns (each transfer records whether its time was rout
 **Built in Phase 6 (v2, [ADR 016](decisions/016-phase-6-meals-and-area-destinations.md)):** step 1
 for areas (base cities, days per base, inter-city legs) and step 5 (meals in fixed windows at
 imported places to eat), with the validator checking meal windows and day length. Code:
-`planner/areas.py`, `planner/meals.py`, and the engine, validator and configuration below. Not
-built: section 5.4 (Phase 7 and 8).
+`planner/areas.py`, `planner/meals.py`, and the engine, validator and configuration below.
+Section 5.4: adding a city or location is built in Phase 7 (ADR 018); adding a restaurant is
+Phase 8.
 
 **Built in Phase 4 (v1, [ADR 014](decisions/014-phase-4-planner-v1.md)):** city destinations;
 steps 2, 3, 4, 6, 7 and 8 below, the two profiles and the diversity gate of section 5.3, and the
@@ -348,6 +366,18 @@ makes them distinct even when their visits overlap more than 60 %.
   a **stability cost** that penalises moving existing items to another day or reordering them,
   and never moves locked items. If the place is another city, day allocation is recomputed. The
   response is a diff (added, moved, removed, time changes) that the user accepts or discards.
+
+  **As built (Phase 7, [ADR 018](decisions/018-phase-7-add-place-and-recalculation.md)):** the plan
+  is repaired, not planned again. A place within 20 km of a base city is inserted into the day at
+  that base with the lowest stability cost (travel weight x added travel minutes, 300 per visit
+  that changes day, value + 200 per visit left out, 5 per item retimed); visits it pushes out move
+  to another day at the same base if they fit, else they are left out and shown. A place farther
+  away takes one day from a base with at least two (first or last of its run) for a new base city,
+  the nearest town within 25 km, with ADR 016's inter-city legs; Japan stays single-city (D4).
+  Locked items keep their day and times; items the user added are never left out; meals are laid
+  out again in their windows at imported places to eat. Unchanged days are copied exactly. An
+  independent validator checks every proposal. Removing the place the latest accepted change added
+  restores the stored previous version exactly (undo through versioning).
 - **Add a restaurant.** For each day and each meal slot, the engine computes: the extra travel
   caused by inserting it between the
   neighbouring items; the shift imposed on later items; whether the slot already has a meal; and

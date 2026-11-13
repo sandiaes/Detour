@@ -20,6 +20,7 @@ from detour_api.db import make_engine
 from detour_api.errors import install_handlers
 from detour_api.logging import configure_logging, get_logger
 from detour_api.routers import (
+    changes,
     config,
     health,
     installations,
@@ -124,5 +125,6 @@ def create_app(
     app.include_router(search.router)
     app.include_router(trips.router)
     app.include_router(itineraries.router)
+    app.include_router(changes.router)
     app.include_router(user_places.router)
     return app

@@ -10,6 +10,8 @@ from collections.abc import Mapping
 
 # Why a visit or a meal is in the plan (stored in app.itinerary_item.reasons). Parameter-free.
 ITEM_TEMPLATES: dict[str, str] = {
+    # Recalculation (Phase 7, ADR 018). First, so it is the first reason shown.
+    "ADDED_BY_YOU": "You added this place: every recalculation keeps it in the plan.",
     "WIKIDATA_LINKED": "Linked to a Wikidata entry, a sign that it is notable.",
     "WIKIPEDIA_ARTICLE": "Has a Wikipedia article.",
     "WIKIDATA_SITELINKS": "Described in many Wikipedia language editions.",
@@ -96,6 +98,17 @@ NOTE_TEMPLATES: dict[str, str] = {
         "Day {day}: {minutes} min by car from {from_name} to {to_name} ({label})."
     ),
     "DISTINCT_ALLOCATION": "The two plans divide the days between different base cities.",
+    # Recalculation (Phase 7, ADR 018). Replaced by the next recalculation's notes.
+    "PLACE_ADDED": "You added {name} on day {day}; the plan was recalculated around it.",
+    "PLACE_REMOVED": "You removed {name}; day {day} was recalculated without it.",
+    "PLAN_RESTORED": "You removed {name}, which restores the plan as it was before you added it.",
+    "NEW_BASE_DAY": (
+        "Day {day} is now based in {name}, {km} km from the nearest other base city, "
+        "so that {place} can be visited."
+    ),
+    "VISITS_MOVED": "{count} visits moved to another day to make room.",
+    "VISITS_DROPPED": "{count} visits were left out to make room.",
+    "BASE_CITY_DAYS": "{name}: {days} days as a base, with {sights} sights within {radius_km} km.",
     "DURATIONS_ARE_DEFAULTS": (
         "Visit lengths are defaults for each kind of place; you can change any of them."
     ),
@@ -119,6 +132,46 @@ ISSUE_TEMPLATES: dict[str, str] = {
         "No town in {destination} has at least {min_sights} named sights within {radius_km} km "
         "in the imported data."
     ),
+    # Recalculation (Phase 7, ADR 018): why a place cannot be added or removed.
+    "ALREADY_IN_PLAN": "{name} is already in this plan, on day {day}.",
+    "ADDITION_LONGER_THAN_DAY": (
+        "{name} takes {minutes} min, but a day of this plan has at most {day_minutes} min "
+        "for visits once its meals are planned."
+    ),
+    "DAY_FULL_OF_FIXED_ITEMS": (
+        "Day {day}: {name} ({minutes} min) does not fit around the items that cannot move "
+        "({items}), even with every other visit of the day left out."
+    ),
+    "DAY_TOO_SHORT_FOR_ADDITION": (
+        "Day {day}: {name} ({minutes} min) does not fit with the day's meals, even with every "
+        "other visit of the day left out."
+    ),
+    "NO_TOWN_NEAR_ADDITION": (
+        "{name} is {km} km from the plan's base cities, and no town lies within {radius_km} km "
+        "of it to be based in."
+    ),
+    "NO_DAY_FOR_NEW_BASE": (
+        "{name} is {km} km from the plan's base cities and needs a day based near it, but every "
+        "base city has only one day ({bases}); taking one would remove a city from the plan."
+    ),
+    "SINGLE_CITY_ONLY": (
+        "{name} is {km} km from the plan's city; trips here are planned in one city for now "
+        "(travel between cities is mostly by rail, which the planner does not model)."
+    ),
+    "DAY_HAS_FIXED_ITEMS": (
+        "Day {day} cannot be based elsewhere: it has locked items or items you added ({items})."
+    ),
+    "DRIVE_LEAVES_NO_TIME": (
+        "Day {day}: after the {drive_minutes} min drive to {base}, {name} ({minutes} min) "
+        "no longer fits in the day."
+    ),
+    "UNSCHEDULED_ITEMS": (
+        "Day {day}: {items} have no time or no place; recalculation needs a time and a place "
+        "for every item."
+    ),
+    "ITEM_LOCKED": "{name} is locked: unlock it before removing it.",
+    "NOT_A_VISIT": "{name} is a meal; only visits can be removed here.",
+    "ROUTED_TIMES_TOO_LONG": "With routed travel times, day {day} no longer has room for {name}.",
 }
 
 

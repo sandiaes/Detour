@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { ScrollView, SectionList, StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
-import { call, describeError } from "../api/unwrap";
+import { call, describeError, planningIssues } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { ItineraryMap } from "../components/ItineraryMap";
 import { ResourceNotices } from "../components/ResourceNotices";
@@ -18,6 +18,7 @@ import {
   WakingServer,
 } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
+import { useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
 import { PROFILE_LABEL } from "../domain/compare";
 import {
@@ -102,7 +103,22 @@ function DayHeader({ day, showBase }: { day: Day; showBase: boolean }) {
   );
 }
 
-export function ItemRow({ item, ordinal }: { item: Item; ordinal: number | null }) {
+export type ItemActions = {
+  onToggleLock: (item: Item) => void;
+  onRemove: (item: Item) => void;
+  /** The item whose lock or removal is being sent. */
+  busyId: string | null;
+};
+
+export function ItemRow({
+  item,
+  ordinal,
+  actions,
+}: {
+  item: Item;
+  ordinal: number | null;
+  actions?: ItemActions;
+}) {
   const start = formatClock(item.start_time);
   const end = formatClock(item.end_time);
   const duration = formatMinutes(item.duration_minutes);
@@ -124,37 +140,68 @@ export function ItemRow({ item, ordinal }: { item: Item; ordinal: number | null 
   const cuisine = meal ? formatCuisines(item.restaurant?.cuisines) : null;
   const when = start ? (end ? `${start} to ${end}` : start) : "Time not set";
   const reasons = item.reason_texts.join(" ");
+  const tags = [item.locked ? "Locked" : null, item.origin === "user" ? "Added by you" : null]
+    .filter(Boolean)
+    .join(" · ");
   const label =
     `${ordinal ? `Stop ${ordinal}. ` : ""}${kind ? `${kind}. ` : ""}${item.display_name}. ` +
-    `${cuisine ? `${cuisine}. ` : ""}${when}. ` +
+    `${tags ? `${tags}. ` : ""}${cuisine ? `${cuisine}. ` : ""}${when}. ` +
     `${duration}, ${source}.${reasons ? ` Why: ${reasons}` : ""}`;
+  const busy = actions?.busyId === item.id;
   return (
-    <View style={styles.itemRow} accessible accessibilityLabel={label}>
+    <View style={styles.itemRow}>
       <View style={styles.timeCol}>
         <Text style={styles.time}>{start ?? "–"}</Text>
         {end ? <Text style={styles.timeEnd}>{end}</Text> : null}
       </View>
       <View style={styles.itemBody}>
-        <View style={styles.titleRow}>
-          {ordinal ? (
-            <View style={styles.ordinal}>
-              <Text style={styles.ordinalText} maxFontSizeMultiplier={1.3}>
-                {ordinal}
-              </Text>
-            </View>
-          ) : null}
-          <Text style={styles.itemTitle}>{item.display_name}</Text>
-        </View>
-        {kind ? <Text style={styles.itemMeta}>{kind}</Text> : null}
-        {cuisine ? <Text style={styles.itemMeta}>{cuisine}</Text> : null}
-        <Text style={styles.itemMeta}>
-          {duration} · {source}
-        </Text>
-        {item.reason_texts.map((r) => (
-          <Text key={r} style={styles.reason}>
-            {r}
+        <View accessible accessibilityLabel={label} style={styles.itemText}>
+          <View style={styles.titleRow}>
+            {ordinal ? (
+              <View style={styles.ordinal}>
+                <Text style={styles.ordinalText} maxFontSizeMultiplier={1.3}>
+                  {ordinal}
+                </Text>
+              </View>
+            ) : null}
+            <Text style={styles.itemTitle}>{item.display_name}</Text>
+          </View>
+          {kind ? <Text style={styles.itemMeta}>{kind}</Text> : null}
+          {cuisine ? <Text style={styles.itemMeta}>{cuisine}</Text> : null}
+          <Text style={styles.itemMeta}>
+            {duration} · {source}
           </Text>
-        ))}
+          {tags ? <Text style={styles.itemTags}>{tags}</Text> : null}
+          {item.reason_texts.map((r) => (
+            <Text key={r} style={styles.reason}>
+              {r}
+            </Text>
+          ))}
+        </View>
+        {actions && item.type === "visit" ? (
+          <View style={styles.itemActions}>
+            <Button
+              label={item.locked ? "Unlock" : "Lock"}
+              variant="quiet"
+              disabled={busy}
+              accessibilityLabel={`${item.locked ? "Unlock" : "Lock"} ${item.display_name}`}
+              hint={
+                item.locked
+                  ? "Recalculations may move it again."
+                  : "Keeps its day and time when the plan is recalculated."
+              }
+              onPress={() => actions.onToggleLock(item)}
+            />
+            <Button
+              label="Remove"
+              variant="quiet"
+              disabled={busy || item.locked}
+              accessibilityLabel={`Remove ${item.display_name}`}
+              hint={item.locked ? "Unlock it first." : "Shows what would change first."}
+              onPress={() => actions.onRemove(item)}
+            />
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -186,6 +233,9 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
   const nav = useNavigation();
   const { state } = useBackend();
   const actions = useTripActions();
+  const changeActions = useChangeActions();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [issues, setIssues] = useState<string[]>([]);
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const itinerary = useResource<Itinerary>(
     keys.itinerary(route.itineraryId),
@@ -214,6 +264,48 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
       setSelecting(false);
     }
   }, [actions, route.tripId, route.itineraryId]);
+
+  const toggleLock = useCallback(
+    async (item: Item) => {
+      setBusyId(item.id);
+      setProblem(null);
+      setIssues([]);
+      try {
+        await changeActions.setLocked(route.itineraryId, item.id, !item.locked);
+      } catch (e) {
+        setProblem(describeError(e));
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [changeActions, route.itineraryId],
+  );
+
+  const remove = useCallback(
+    async (item: Item) => {
+      setBusyId(item.id);
+      setProblem(null);
+      setIssues([]);
+      try {
+        const change = await changeActions.preview(route.itineraryId, {
+          action: "remove_place",
+          item_id: item.id,
+        });
+        nav.push({
+          name: "changePreview",
+          tripId: route.tripId,
+          itineraryId: route.itineraryId,
+          changeSetId: change.id,
+        });
+      } catch (e) {
+        setProblem(describeError(e));
+        setIssues(planningIssues(e));
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [changeActions, nav, route.itineraryId, route.tripId],
+  );
 
   const data = itinerary.data;
   const sections = useMemo(
@@ -253,6 +345,11 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
   const selected = data.status === "selected";
   const stats = data.stats;
   const day = data.days.find((d) => d.day_index === route.day) ?? data.days[0];
+  // Planned itineraries of an active trip can be changed; a plan made by hand cannot be recalculated.
+  const editable = data.profile !== "manual" && trip?.status !== "past" && changeActions.connected;
+  const itemActions: ItemActions | undefined = editable
+    ? { onToggleLock: (i) => void toggleLock(i), onRemove: (i) => void remove(i), busyId }
+    : undefined;
 
   const header = (
     <View>
@@ -262,7 +359,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
         onBack={nav.back}
       />
       <ResourceNotices resource={itinerary} noun="this plan" />
-      {problem ? <Notice tone="error">{problem}</Notice> : null}
+      {problem ? <Notice tone="error">{[problem, ...issues].join(" ")}</Notice> : null}
       <View style={styles.toolbar}>
         <Chip
           label="Days"
@@ -278,6 +375,17 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
           accessibilityLabel="Show the map"
         />
         <View style={styles.spacer} />
+        {editable ? (
+          <Button
+            label="Add a place"
+            variant="secondary"
+            testID="add-place"
+            hint="Search or drop a pin; you see what would change first"
+            onPress={() =>
+              nav.push({ name: "addPlace", tripId: route.tripId, itineraryId: route.itineraryId })
+            }
+          />
+        ) : null}
         {selected ? (
           <Text style={styles.selectedBadge}>✓ Selected</Text>
         ) : (
@@ -357,7 +465,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
       renderSectionHeader={({ section }) => <DayHeader day={section.day} showBase={showBase} />}
       renderItem={({ item: row }) =>
         row.kind === "item" ? (
-          <ItemRow item={row.item} ordinal={row.ordinal} />
+          <ItemRow item={row.item} ordinal={row.ordinal} actions={itemActions} />
         ) : (
           <TransferRow row={row} />
         )
@@ -437,6 +545,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   titleRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  itemText: { gap: spacing.xs },
+  itemTags: { ...type.small, fontWeight: "700", color: colors.primary },
+  itemActions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   ordinal: {
     minWidth: 28,
     height: 28,
