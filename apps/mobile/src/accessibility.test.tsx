@@ -85,6 +85,55 @@ test("trips list", async () => {
   checkControls();
 });
 
+test("trips list: Past and Archived tabs", async () => {
+  await show({ name: "trips" }, "Vienna, 2 days");
+  await fireEvent.press(screen.getByRole("tab", { name: "Past" }));
+  await screen.findByText("No past trips yet");
+  checkControls();
+  await fireEvent.press(screen.getByRole("tab", { name: "Archived" }));
+  await screen.findByText("Nothing archived");
+  checkControls();
+});
+
+test("trip overview, each of its tabs, its menu and the Add sheet", async () => {
+  await render(
+    <Harness
+      client={createFakeClient({
+        "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
+        "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
+      })}
+      initial={{ name: "tripOverview", tripId: TRIP_ID }}
+    >
+      <AppContent />
+    </Harness>,
+  );
+  await screen.findByRole("header", { name: "Your itinerary" });
+  checkControls();
+  for (const tab of ["Itinerary", "Map", "Trip photos", "Trip documents"]) {
+    await fireEvent.press(screen.getByRole("tab", { name: tab }));
+    expect(screen.getByRole("tab", { name: tab }).props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+    checkControls();
+  }
+  await fireEvent.press(screen.getByRole("button", { name: "Trip menu" }));
+  await screen.findByRole("header", { name: "Trip menu" });
+  checkControls();
+  await fireEvent.press(screen.getAllByRole("button", { name: "Close" })[1] as Host);
+  await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
+  await screen.findByRole("header", { name: "Add to this trip" });
+  checkControls();
+});
+
+test.each([
+  ["explore", "Explore is planned"],
+  ["photos", "Trip photos are planned"],
+  ["more", "Settings"],
+] as const)("the %s tab", async (name, ready) => {
+  await show({ name }, ready);
+  checkControls();
+});
+
 test("create trip form with search results", async () => {
   await show({ name: "createTrip" }, "Details");
   await fireEvent.changeText(screen.getByLabelText("Destination"), "Vie");

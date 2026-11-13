@@ -1,13 +1,23 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
 
-// A small stack navigator held in React state (ADR 015). The app has two root tabs and eight
-// pushed screens, so a navigation library (and its native screens module) is not needed. The
-// Android back button pops the stack, then returns from Settings to Trips, then leaves the app.
+// A small stack navigator held in React state (ADR 015). The app has four root tabs (ADR 021:
+// Trips, Explore, Photos, More; Add is an action, not a screen) and a handful of pushed screens, so
+// a navigation library (and its native screens module) is not needed. The Android back button pops
+// the stack, then returns from another root tab to Trips, then leaves the app.
+
+/** The tabs of one trip (ADR 021). */
+export type TripSection = "overview" | "itinerary" | "map" | "photos" | "documents";
+
+export type RootName = "trips" | "explore" | "photos" | "more";
 
 export type Route =
   | { name: "trips" }
+  | { name: "explore" }
+  | { name: "photos" }
+  | { name: "more" }
   | { name: "settings" }
+  | { name: "tripOverview"; tripId: string; section?: TripSection }
   | { name: "createTrip" }
   | { name: "trip"; tripId: string }
   | { name: "tripSettings"; tripId: string }
@@ -35,7 +45,7 @@ export type Navigation = {
   /** Replace the whole stack (the first route is the root). */
   resetTo: (routes: Route[]) => void;
   /** Show a root tab and drop everything above it. */
-  switchRoot: (route: Route & { name: "trips" | "settings" }) => void;
+  switchRoot: (route: Route & { name: RootName }) => void;
 };
 
 const NavigationContext = createContext<Navigation | null>(null);
@@ -60,7 +70,7 @@ export function NavigationProvider({
       setStack((s) => s.slice(0, -1));
       return true;
     }
-    if (stack[0]?.name === "settings") {
+    if (stack[0]?.name !== "trips") {
       setStack([{ name: "trips" }]);
       return true;
     }

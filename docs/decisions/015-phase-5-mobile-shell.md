@@ -55,7 +55,8 @@ addendum already replaced them with release-variant APKs.
    way.
 8. **Screens removed.** The Phase 1 placeholders for Map (the style-URL check, replaced by the plan
    map) and Saved Places (Phase 7) are gone; the Phase 1 shell tests were replaced.
-9. **Design.** Warm paper background, one green accent, system type, 14 dp radius cards, no heavy
+9. **Design.** (Superseded on 2026-11-13 by [ADR 021](021-trip-manager-redesign.md): new tokens,
+   line icons, illustrated covers, soft shadows; still no photos.) Warm paper background, one green accent, system type, 14 dp radius cards, no heavy
    shadows, no photos or illustrations. Text and control contrasts are asserted in `theme.test.ts`
    (4.5:1 and 3:1). English only; light theme only.
 10. **Accessibility.** Controls are at least 48 dp (asserted over every screen in

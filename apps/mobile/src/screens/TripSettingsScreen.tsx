@@ -55,8 +55,12 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
     setProblem(null);
     try {
       await actions.generate(trip.id);
-      // The proposals are the screen to see now; going back from it returns to the trips.
-      nav.resetTo([{ name: "trips" }, { name: "trip", tripId: trip.id }]);
+      // The proposals are the screen to see now; going back from it returns to the trip.
+      nav.resetTo([
+        { name: "trips" },
+        { name: "tripOverview", tripId: trip.id },
+        { name: "trip", tripId: trip.id },
+      ]);
     } catch (e) {
       setProblem(describeError(e));
       setBusy(null);

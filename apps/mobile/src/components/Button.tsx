@@ -1,11 +1,14 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
 
 import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { Icon, type IconName } from "./ds/Icon";
 
 type Props = {
   label: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "quiet";
+  variant?: "primary" | "secondary" | "quiet" | "accent" | "ink";
+  /** A line icon before the label. */
+  icon?: IconName;
   disabled?: boolean;
   loading?: boolean;
   /** Read after the label by a screen reader, for example what the button will do. */
@@ -26,8 +29,11 @@ export function Button({
   accessibilityLabel,
   fill = false,
   testID,
+  icon,
 }: Props) {
   const inactive = disabled || loading;
+  const filled = variant === "primary" || variant === "accent" || variant === "ink";
+  const labelColor = filled ? colors.onPrimary : colors.primary;
   return (
     <Pressable
       accessibilityRole="button"
@@ -42,18 +48,19 @@ export function Button({
         variant === "primary" && styles.primary,
         variant === "secondary" && styles.secondary,
         variant === "quiet" && styles.quiet,
+        variant === "accent" && styles.accent,
+        variant === "ink" && styles.ink,
         fill && styles.fill,
         inactive && styles.inactive,
         pressed && styles.pressed,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={variant === "primary" ? colors.onPrimary : colors.primary} />
-      ) : null}
+      {loading ? <ActivityIndicator color={labelColor} /> : null}
+      {icon && !loading ? <Icon name={icon} size={20} color={labelColor} /> : null}
       <Text
         style={[
           styles.label,
-          variant === "primary" ? styles.labelOnPrimary : styles.labelOnLight,
+          filled ? styles.labelOnPrimary : styles.labelOnLight,
           // Disabled is shown by a lighter fill AND by the state read aloud, never colour alone:
           // the label stays at full contrast.
         ]}
@@ -78,6 +85,8 @@ const styles = StyleSheet.create({
   },
   fill: { alignSelf: "stretch" },
   primary: { backgroundColor: colors.primary },
+  accent: { backgroundColor: colors.accent },
+  ink: { backgroundColor: colors.ink },
   secondary: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary },
   quiet: { backgroundColor: "transparent" },
   inactive: { opacity: 0.55 },

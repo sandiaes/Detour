@@ -202,7 +202,7 @@ test("the Android back button leaves the plan for the screen before it", async (
     </Harness>,
   );
   await fireEvent.press(await screen.findByText("Vienna, 2 days"));
-  expect(await screen.findByText("Not planned yet")).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Choose a plan" })).toBeOnTheScreen();
   await act(async () => {
     expect(back.press()).toBe(true);
   });

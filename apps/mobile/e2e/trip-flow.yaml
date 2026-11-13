@@ -1,5 +1,6 @@
 # The one end-to-end flow (docs/development.md, "End-to-end test"): create a trip, compare the two
-# proposals, select one, read its days, open the map, and find the trip again in the list.
+# proposals, select one (it becomes the trip's active itinerary and the trip's overview opens, ADR
+# 021), read its days, open the map, and find the trip again in the list.
 # It runs on an Android emulator against the seeded fixture backend (services/api/tests/e2e_seed.py:
 # the invented city Testburg, no real map data) with routing switched off, so every transfer is a
 # labelled estimate. Controls are found by testID, which React Native exposes as the resource id.
@@ -46,9 +47,12 @@ appId: io.github.sandiaes.detour
       id: "select-essentials"
 - tapOn:
     id: "select-essentials"
-- assertVisible: "✓ Selected"
+- runFlow: dismiss-system-dialogs.yaml
+- extendedWaitUntil:
+    visible: "Your itinerary"
+    timeout: 30000
 - tapOn:
-    id: "view-days-essentials"
+    id: "open-itinerary"
 - runFlow: dismiss-system-dialogs.yaml
 - extendedWaitUntil:
     visible: "Day 1.*"
@@ -60,8 +64,11 @@ appId: io.github.sandiaes.detour
 - assertVisible: "Solid line: travel time routed"
 - assertVisible: "Data from OpenStreetMap"
 - back
+- extendedWaitUntil:
+    visible: "Your itinerary"
+    timeout: 20000
 - back
 - extendedWaitUntil:
     visible: "Testburg, 3 days"
     timeout: 20000
-- assertVisible: "✓ Plan selected"
+- assertVisible: "Upcoming"

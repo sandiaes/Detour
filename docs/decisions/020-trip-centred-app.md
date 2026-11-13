@@ -8,6 +8,10 @@
   [`015-phase-5-mobile-shell.md`](015-phase-5-mobile-shell.md),
   [`../product-brief.md`](../product-brief.md)
 
+> **Extended on 2026-11-13 by [ADR 021](021-trip-manager-redesign.md):** a trip with a chosen plan
+> now opens on its Trip Overview, built around that plan (the active itinerary); "Trip settings" and
+> "Original proposals" are in the overview's menu.
+
 ## Context
 
 Until now the app centred on *drafting* a plan: opening a trip always showed the two proposals and

@@ -213,8 +213,10 @@ test("a past trip in the list opens its places, not a plan", async () => {
       <AppContent />
     </Harness>,
   );
-  const card = await screen.findByRole("button", { name: /Styria, 4 days\..*Past trip\./ });
-  expect(within(card).getByText("Past trip")).toBeOnTheScreen();
+  await fireEvent.press(await screen.findByRole("tab", { name: "Past" }));
+  const card = await screen.findByRole("button", { name: /Styria, 4 days\..*Past\./ });
+  expect(within(card).getByText("Past")).toBeOnTheScreen();
+  expect(screen.queryByText("Prague")).toBeNull();
   await fireEvent.press(card);
   expect(await screen.findByText("2 cities and 3 attractions visited")).toBeOnTheScreen();
 });

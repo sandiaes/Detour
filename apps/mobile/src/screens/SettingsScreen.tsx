@@ -6,6 +6,7 @@ import { call } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { ScreenHeader } from "../components/ui";
 import { useResource } from "../data/DataProvider";
+import { useNavigation } from "../nav/Navigator";
 import { colors, spacing, type } from "../theme";
 
 function CreditLink({ text, url }: { text: string; url: string }) {
@@ -23,6 +24,7 @@ function CreditLink({ text, url }: { text: string; url: string }) {
 
 export function SettingsScreen() {
   const { state, apiUrl, retry } = useBackend();
+  const nav = useNavigation();
   // Credits for the data in use (OpenStreetMap, GeoNames, tiles). Saved on the device, so they
   // are still readable offline.
   const credits = useResource<AttributionEntry[]>("attributions", (c) =>
@@ -31,7 +33,7 @@ export function SettingsScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader title="Settings" />
+      <ScreenHeader title="Settings" onBack={nav.depth > 1 ? nav.back : undefined} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.section}>
           <Text accessibilityRole="header" style={styles.heading}>

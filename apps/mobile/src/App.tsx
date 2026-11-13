@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { BackendProvider } from "./api/BackendProvider";
@@ -7,30 +7,41 @@ import { BackendBanner } from "./components/BackendBanner";
 import { deviceCacheStore } from "./cache/sqliteStore";
 import type { CacheStore } from "./cache/store";
 import { DataProvider } from "./data/DataProvider";
+import { BottomNav, showsBottomNav } from "./nav/BottomNav";
 import { type Route, NavigationProvider, useNavigation } from "./nav/Navigator";
 import { AddPlaceScreen } from "./screens/AddPlaceScreen";
 import { AddRestaurantScreen } from "./screens/AddRestaurantScreen";
 import { ChangePreviewScreen } from "./screens/ChangePreviewScreen";
 import { CreateTripScreen } from "./screens/CreateTripScreen";
+import { ExploreScreen } from "./screens/ExploreScreen";
 import { ItineraryScreen } from "./screens/ItineraryScreen";
+import { MoreScreen } from "./screens/MoreScreen";
 import { PastTripScreen } from "./screens/PastTripScreen";
+import { PhotosScreen } from "./screens/PhotosScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { TripOverviewScreen } from "./screens/TripOverviewScreen";
 import { TripScreen } from "./screens/TripScreen";
 import { TripSettingsScreen } from "./screens/TripSettingsScreen";
 import { TripsScreen } from "./screens/TripsScreen";
-import { TOUCH, colors, spacing, type } from "./theme";
-
-const TABS = [
-  { key: "trips", label: "Trips" },
-  { key: "settings", label: "Settings" },
-] as const;
+import { colors } from "./theme";
 
 function CurrentScreen({ route }: { route: Route }) {
   switch (route.name) {
     case "trips":
       return <TripsScreen />;
+    case "explore":
+      return <ExploreScreen />;
+    case "photos":
+      return <PhotosScreen />;
+    case "more":
+      return <MoreScreen />;
     case "settings":
       return <SettingsScreen />;
+    case "tripOverview":
+      // Keyed so that another trip never reuses this one's tab state.
+      return (
+        <TripOverviewScreen key={route.tripId} tripId={route.tripId} section={route.section} />
+      );
     case "createTrip":
       return <CreateTripScreen />;
     case "trip":
@@ -53,7 +64,6 @@ function CurrentScreen({ route }: { route: Route }) {
 
 export function AppContent() {
   const nav = useNavigation();
-  const showTabs = nav.depth === 1;
   return (
     <SafeAreaView style={styles.fill}>
       <StatusBar style="dark" />
@@ -61,27 +71,7 @@ export function AppContent() {
       <View style={styles.fill}>
         <CurrentScreen route={nav.route} />
       </View>
-      {showTabs ? (
-        <View style={styles.tabBar} accessibilityRole="tablist">
-          {TABS.map((tab) => {
-            const active = nav.route.name === tab.key;
-            return (
-              <Pressable
-                key={tab.key}
-                accessibilityRole="tab"
-                accessibilityLabel={tab.label}
-                accessibilityState={{ selected: active }}
-                style={styles.tab}
-                onPress={() => nav.switchRoot({ name: tab.key })}
-              >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
-                {/* The active tab has an underline as well as a colour. */}
-                <View style={[styles.tabLine, active && styles.tabLineActive]} />
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
+      {showsBottomNav(nav.route, nav.depth) ? <BottomNav /> : null}
     </SafeAreaView>
   );
 }
@@ -102,21 +92,4 @@ export default function App({ cache = deviceCacheStore }: { cache?: CacheStore }
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.background },
-  tabBar: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  tab: {
-    flex: 1,
-    minHeight: TOUCH + 8,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-  },
-  tabText: { ...type.small, color: colors.muted, fontWeight: "600" },
-  tabTextActive: { color: colors.primary, fontWeight: "700" },
-  tabLine: { height: 3, width: 32, borderRadius: 2, backgroundColor: "transparent" },
-  tabLineActive: { backgroundColor: colors.primary },
 });

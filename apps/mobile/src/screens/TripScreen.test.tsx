@@ -87,10 +87,12 @@ test("the plans are in a horizontal, snapping list so they can be swiped", async
   expect(pager.props.snapToInterval).toBeGreaterThan(0);
 });
 
-test("selecting a plan opens it, and Back from there goes to the trips", async () => {
+test("selecting a plan opens the trip's overview on it, and Back from there goes to the trips", async () => {
   const client = await openTrip();
   await fireEvent.press(await screen.findByRole("button", { name: "Select the Essentials plan" }));
-  expect(await screen.findByRole("header", { name: "Essentials plan" })).toBeOnTheScreen();
+  // The chosen plan is now the trip's active itinerary (ADR 021).
+  expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
+  expect(screen.getByText("Essentials plan")).toBeOnTheScreen();
   const patch = client.calls.find((c) => c.method === "PATCH");
   expect(patch?.body).toEqual({ selected_itinerary_id: ESSENTIALS_ID });
   expect(patch?.params).toMatchObject({ trip_id: TRIP_ID });
