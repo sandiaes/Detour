@@ -8,6 +8,8 @@ import { deviceCacheStore } from "./cache/sqliteStore";
 import type { CacheStore } from "./cache/store";
 import { DataProvider } from "./data/DataProvider";
 import { type Route, NavigationProvider, useNavigation } from "./nav/Navigator";
+import { AddPlaceScreen } from "./screens/AddPlaceScreen";
+import { ChangePreviewScreen } from "./screens/ChangePreviewScreen";
 import { CreateTripScreen } from "./screens/CreateTripScreen";
 import { ItineraryScreen } from "./screens/ItineraryScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
@@ -33,6 +35,10 @@ function CurrentScreen({ route }: { route: Route }) {
     case "itinerary":
       // Keyed so that a different plan never reuses another plan's state.
       return <ItineraryScreen key={route.itineraryId} route={route} />;
+    case "addPlace":
+      return <AddPlaceScreen route={route} />;
+    case "changePreview":
+      return <ChangePreviewScreen key={route.changeSetId} route={route} />;
   }
 }
 

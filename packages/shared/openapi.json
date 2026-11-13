@@ -6086,13 +6086,17 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "photon"
+                "enum": [
+                  "photon",
+                  "geonames"
+                ]
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Search Provider"
+            "title": "Search Provider",
+            "description": "photon: an external search result (ref like N123). geonames: a town from destination search, saved to add it to a plan (ref: its gazetteer id)"
           },
           "search_ref": {
             "anyOf": [

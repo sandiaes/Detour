@@ -49,6 +49,11 @@ const MESSAGES: Record<string, string> = {
   limit_reached: "You have reached a limit (100 trips, 5 plans per trip). Delete one first.",
   trip_archived: "This is a past trip and can no longer be planned.",
   not_found: "That item no longer exists.",
+  recalculation_impossible: "This change does not fit the plan:",
+  change_set_stale: "The plan changed after this preview. Preview the change again.",
+  change_set_closed: "This preview was already accepted, discarded or replaced.",
+  not_recalculable: "Plans made by hand are not recalculated.",
+  wrong_place_kind: "Only sights, towns and your own places can be added here.",
 };
 
 /** Each reason a plan cannot be made (`planning_impossible` carries them as `issues`). */

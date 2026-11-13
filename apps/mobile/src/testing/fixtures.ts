@@ -1,4 +1,10 @@
-import type { DestinationResult, Itinerary, ItinerarySummary, Trip } from "@detour/shared";
+import type {
+  ChangeSet,
+  DestinationResult,
+  Itinerary,
+  ItinerarySummary,
+  Trip,
+} from "@detour/shared";
 
 export const TRIP_ID = "00000000-0000-4000-8000-0000000000a1";
 export const ESSENTIALS_ID = "00000000-0000-4000-8000-0000000000e1";
@@ -269,4 +275,80 @@ export function makeDestination(over: Partial<DestinationResult> = {}): Destinat
     match: "exact",
     ...over,
   } as DestinationResult;
+}
+
+export const CHANGE_ID = "00000000-0000-4000-8000-0000000000c1";
+
+export function makeChangeSet(over: Partial<ChangeSet> = {}): ChangeSet {
+  return {
+    id: CHANGE_ID,
+    itinerary_id: ESSENTIALS_ID,
+    action: "add_place",
+    target_name: "Prater",
+    status: "pending",
+    base_version: 1,
+    restores_version: null,
+    result_version: null,
+    diff: {
+      added: [
+        {
+          day: 1,
+          kind: "visit",
+          name: "Prater",
+          meal_type: null,
+          start_time: "15:10:00",
+          end_time: "16:10:00",
+          added_by_you: true,
+        },
+      ],
+      removed: [
+        {
+          day: 1,
+          kind: "visit",
+          name: "St. Stephen's Cathedral",
+          meal_type: null,
+          start_time: "14:03:00",
+          end_time: "15:03:00",
+          added_by_you: false,
+        },
+      ],
+      moved: [
+        {
+          kind: "visit",
+          name: "Belvedere",
+          from_day: 1,
+          to_day: 2,
+          old_start_time: "11:21:00",
+          new_start_time: "10:05:00",
+        },
+      ],
+      retimed: [
+        {
+          kind: "meal",
+          name: "Gasthaus Zum Test",
+          day: 1,
+          meal_type: "lunch",
+          old_start_time: "13:01:00",
+          new_start_time: "12:30:00",
+        },
+      ],
+      base_changes: [],
+      days_changed: [1, 2],
+      travel_minutes_before: 40,
+      travel_minutes_after: 58,
+      travel_minutes_added: 18,
+      estimated_legs: [
+        { day: 1, from_name: "Schönbrunn Palace", to_name: "Prater", mode: "drive", minutes: 22 },
+      ],
+    },
+    notes: [
+      {
+        code: "PLACE_ADDED",
+        text: "You added Prater on day 1; the plan was recalculated around it.",
+      },
+    ],
+    created_at: "2026-11-13T10:00:00Z",
+    decided_at: null,
+    ...over,
+  } as ChangeSet;
 }

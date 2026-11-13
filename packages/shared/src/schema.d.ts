@@ -1781,8 +1781,11 @@ export interface components {
        * @enum {string}
        */
       source: "manual_pin" | "search_result";
-      /** Search Provider */
-      search_provider?: "photon" | null;
+      /**
+       * Search Provider
+       * @description photon: an external search result (ref like N123). geonames: a town from destination search, saved to add it to a plan (ref: its gazetteer id)
+       */
+      search_provider?: ("photon" | "geonames") | null;
       /** Search Ref */
       search_ref?: string | null;
     };
