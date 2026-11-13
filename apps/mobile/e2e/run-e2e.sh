@@ -7,6 +7,9 @@ set -u
 TMP="${RUNNER_TEMP:-/tmp}"
 
 adb install "$TMP/app-release.apk" || exit 1
+# Do not show "isn't responding" dialogs (System UI, the launcher) on this slow emulator.
+adb shell settings put global hide_error_dialogs 1
+adb shell settings put secure anr_show_background 0
 # Let the freshly booted system settle before the first screen is driven.
 sleep 30
 maestro test --format junit --output "$TMP/maestro-report.xml" \
