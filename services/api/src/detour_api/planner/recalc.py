@@ -248,6 +248,8 @@ class RecalcInput:
     candidates: Sequence[Candidate]  # sights around the bases (and the addition)
     restaurants: Sequence[Restaurant]
     towns: Sequence[BaseCity] = ()  # possible new bases near the addition
+    # A country planned as single-city trips (Japan, app plan D4): no new base cities.
+    single_city: bool = False
 
 
 @dataclass(frozen=True)
@@ -770,6 +772,10 @@ def add_place(
         days = [d.day_index for d in inp.plan.days if d.base_city_id in near_bases]
         option = _same_base(work, x, days)
     else:
+        if inp.single_city:
+            raise PlanningImpossible(
+                [Issue("SINGLE_CITY_ONLY", {"name": x.name, "km": _km(nearest)})]
+            )
         town = _nearest_town(addition, inp.towns, rconfig)
         if town is None:
             raise PlanningImpossible(

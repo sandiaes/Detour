@@ -379,3 +379,16 @@ def test_recalculation_latency_is_within_the_kpi() -> None:
     start = time.perf_counter()
     recalc.add_place(recalc_input(plan, rp, req, CANDS, RESTS), add, FixedTravelSource())
     assert time.perf_counter() - start < 1.0  # the KPI is 3 s for the whole request
+
+
+def test_a_single_city_country_gets_no_new_base() -> None:
+    town, far_sights, far_eat = _far_world()
+    req = ph.request("city-large", 3)
+    plan, rp = generated(req, CANDS, RESTS)
+    inp = replace(
+        recalc_input(plan, rp, req, CANDS + far_sights, RESTS + far_eat, towns=[town]),
+        single_city=True,
+    )
+    with pytest.raises(PlanningImpossible) as info:
+        recalc.add_place(inp, _addition(far_sights[0]), FixedTravelSource())
+    assert [i.code for i in info.value.issues] == ["SINGLE_CITY_ONLY"]

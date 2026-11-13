@@ -10,7 +10,7 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Phases 1 to 6 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
+**Phases 1 to 7 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
 service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment
 configuration (ADR 010). Phase 2 (ADR 011, ADR 012; `docs/data-model.md`): the `geo` and `app`
 schemas, the region import and GeoNames gazetteer commands and the "Import region" workflow, the
@@ -30,7 +30,13 @@ trip, comparison of two proposals, day list, plan map, selection, on-device read
 Android end-to-end workflow (`e2e-android.yml`) runs **by hand only**. **Phase 6 is built and
 awaits acceptance** (ADR 016, proposed): meals in fixed windows at imported places to eat
 (`planner/meals.py`), area destinations with base cities and inter-city legs (`planner/areas.py`),
-Japan single-city only, migration `0006`; tried on synthetic fixtures only. **No budgets,
+Japan single-city only, migration `0006`; tried on synthetic fixtures only. **Phase 7 is built and
+awaits acceptance** (ADR 018, proposed): adding a sight, town or pinned place to a planned itinerary
+and removing a visit, through persisted change sets (preview with a diff, then apply or discard), a
+repair-based recalculation with a stability cost (`planner/recalc.py`), locked items fixed, an
+independent revision validator, itinerary versions (migration `0007`; removing the latest addition
+restores the previous version), and the app's add-place and preview screens; tried on synthetic
+fixtures only. **No budgets,
 currencies or prices** (ADR 017, accepted 2026-11-13): none in the app, the API or the database;
 bringing them back needs a new ADR. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),

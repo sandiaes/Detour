@@ -154,6 +154,10 @@ ISSUE_TEMPLATES: dict[str, str] = {
         "{name} is {km} km from the plan's base cities and needs a day based near it, but every "
         "base city has only one day ({bases}); taking one would remove a city from the plan."
     ),
+    "SINGLE_CITY_ONLY": (
+        "{name} is {km} km from the plan's city; trips here are planned in one city for now "
+        "(travel between cities is mostly by rail, which the planner does not model)."
+    ),
     "DAY_HAS_FIXED_ITEMS": (
         "Day {day} cannot be based elsewhere: it has locked items or items you added ({items})."
     ),

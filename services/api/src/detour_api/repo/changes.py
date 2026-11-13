@@ -244,6 +244,7 @@ def load_context(
         candidates=tuple(cands[k] for k in sorted(cands)),
         restaurants=tuple(rests[k] for k in sorted(rests)),
         towns=tuple(towns),
+        single_city=not geo.area_planning_allowed(dest),
     )
     return Context(
         **common,

@@ -10,7 +10,7 @@ confirmed.
 **Changed on 2026-11-13 (owner):** no budgets, currencies or prices in the app for now
 ([ADR 017](decisions/017-no-budgets-currencies-or-prices.md)); the Android end-to-end workflow runs
 by hand only; every prompt below was rewritten to match, and each now starts with its status.
-Prompts 1 to 7 are done or built; the next one is Prompt 8.
+Prompts 1 to 8 are done or built; the next one is Prompt 9.
 
 ## 1. How to use this file
 
@@ -429,7 +429,7 @@ Scope guards:
 
 # Prompt 8 — Add a city or place, with recalculation (Phase 7)
 
-**Status:** next, when the owner asks for it.  
+**Status:** built on 2026-11-13 (ADR 018, proposed); awaits the owner's acceptance.  
 **Recommended model:** Claude Opus  
 **Effort:** High  
 **App-plan phase:** 7
@@ -470,7 +470,7 @@ Scope guards:
 
 # Prompt 9 — Add a restaurant (Phase 8)
 
-**Status:** after Prompt 8. Prices, budgets and currency conversion were removed from this prompt
+**Status:** next, when the owner asks for it. Prices, budgets and currency conversion were removed from this prompt
 by ADR 017 (2026-11-13).  
 **Recommended model:** Claude Sonnet  
 **Effort:** High  
