@@ -223,7 +223,7 @@ test("the Android back button leaves the plan for the screen before it", async (
   await act(async () => {
     expect(back.press()).toBe(true);
   });
-  expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Detour" })).toBeOnTheScreen();
   // On the first screen Android is left to close the app.
   expect(back.press()).toBe(false);
 });

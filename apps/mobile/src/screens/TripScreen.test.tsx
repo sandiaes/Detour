@@ -98,7 +98,7 @@ test("selecting a plan opens the trip's overview on it, and Back from there goes
   expect(patch?.params).toMatchObject({ trip_id: TRIP_ID });
   expect(client.count("GET /v1/trips")).toBe(1);
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-  expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Detour" })).toBeOnTheScreen();
 });
 
 test("after new proposals were asked for, the chosen plan is kept apart from the new pair", async () => {

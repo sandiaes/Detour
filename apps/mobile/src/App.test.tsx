@@ -41,7 +41,7 @@ test("the bottom bar has Trips, Explore, Add, Photos and More; Settings is under
       <AppContent />
     </Harness>,
   );
-  expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Detour" })).toBeOnTheScreen();
   for (const name of ["Trips", "Explore", "Photos", "More"]) {
     expect(screen.getByRole("tab", { name })).toBeOnTheScreen();
   }
@@ -174,7 +174,7 @@ test("create a trip, compare the proposals, select one, read its days, see it on
 
     // Back to the list of trips: the selected plan is shown there without refetching the list.
     await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-    expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
+    expect(await screen.findByRole("header", { name: "Detour" })).toBeOnTheScreen();
     expect(screen.getAllByText("Upcoming")).toHaveLength(2); // the tab and the trip's badge
     expect(screen.queryByText("Planning")).toBeNull();
     expect(client.count("GET /v1/trips")).toBe(1);

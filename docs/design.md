@@ -35,6 +35,14 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
 6. **Small type, large targets.** Body text is compact; every control is still at least 48 dp tall
    (the accessibility test enforces it, using height plus hit slop).
 
+### Brand
+
+The logo is in `docs/brand/` (`detour-logo.png`: mark and wordmark; `detour-mark.png`: the rounded
+mark alone). The launcher icon is the mark cut to a full-bleed square, `apps/mobile/assets/icon.png`,
+also used as the Android adaptive-icon foreground over the dark green `#1b3f36`
+(`apps/mobile/app.json`; `expo prebuild` in the "Android APK" workflow picks it up). The Trips
+screen header reads "Detour", the app name.
+
 ## 2. Tokens
 
 | Token | Value | Use |
