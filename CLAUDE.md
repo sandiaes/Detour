@@ -18,7 +18,8 @@ cuisine or meal types anywhere) and are added only through Photon or by hand, wi
 the day and time. The Phase 8 slot engine (`planner/restaurant_slots.py`, `restaurant-suggestions`,
 `add_restaurant`) is **to be removed**. Past trips will keep their days, not only a map. Next after
 that, in the owner's order: destinations outside the imported regions (ADR 027), then trip export
-(ADR 028). The build order is in ADR 026; until each step is built, the paragraphs below (written
+(ADR 028), then **Optimize a hand-made trip** (ADR 029, proposed: the engine reorders the user's
+stops for the least travel, within or across days, with a preview). The build order is in ADR 026; until each step is built, the paragraphs below (written
 before this decision) describe the code as it is, including meals and the restaurant import.
 
 **Phases 1 to 8 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI

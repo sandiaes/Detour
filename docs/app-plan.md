@@ -336,7 +336,10 @@ Not a numbered phase. In the owner's order: (1) sights-only plans with a midday 
 and cafés removed from the data, cuisine and meal types removed, slot engine retired, Add a
 restaurant through Photon and by hand; (3) past trips keep their days; (4) **destinations outside
 the imported regions** (ADR 027, to be written); (5) **export and import of a trip as a file**
-(ADR 028, to be written); then saved ideas, reordering, notes, trip summary and photos.
+(ADR 028, to be written); (6) **Optimize a hand-made trip** ([ADR 029](decisions/029-optimize-a-hand-made-trip.md),
+proposed): the engine reorders the stops for the least travel, within each day or across all days,
+restaurants within 60 minutes of their chosen time and never after 21:00, with a preview; then saved
+ideas, manual reordering, notes, trip summary and photos.
 
 ## 5. MVP exclusions
 

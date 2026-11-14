@@ -33,6 +33,9 @@ Measurement sources:
 | Empty trip to first place | Taps from the new-trip screen to a first place on a day of an empty trip | ≤ 8 | Manual walk-through, component test |
 | History kept | Past trips that keep every stop of their days, with day, time and visited mark | 100% | Archive tests |
 | Past trip without routing | Past trips that read with `app.transfer` and `geo.travel_time` absent | 100% | Archive tests |
+| Optimize never longer | Optimized plans whose total travel is higher than the plan before (ADR 029) | 0 | Property tests, validator |
+| Optimize keeps every stop | Stops lost, duplicated or moved to another city by an optimization | 0 | Property tests, validator |
+| Optimize latency | p95 time to return a preview for a plan of up to 30 stops | ≤ 5 s | Backend logs |
 | Restaurant add without cuisine | Restaurants added through Photon or by hand with no cuisine or meal field required | 100% | API and app tests |
 
 ## 2. Editing and recalculation

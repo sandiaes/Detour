@@ -140,8 +140,10 @@ This changes the product's emphasis and removes a set of built features, so it n
 25. **Second: export and import of a trip as a file** (trip, days, places, notes and, optionally,
     documents), because trips and documents live under an anonymous installation token and on the
     phone, so a reinstall loses the history (D5, ADR 023). Needs ADR 028. No accounts.
-26. **Then, in the owner's order:** saved ideas with no day, reordering and moving stops between
-    days, notes, the trip summary and photos.
+26. **Third: Optimize a hand-made trip** (ADR 029): the engine reorders the user's stops, across
+    days if asked, for the least travel, with a preview.
+27. **Then, in the owner's order:** saved ideas with no day, manual reordering and moving stops
+    between days, notes, the trip summary and photos.
 
 ## Build order
 
@@ -154,7 +156,7 @@ This changes the product's emphasis and removes a set of built features, so it n
 4. **Retire the slot engine** (item 17) and move Add a restaurant to Photon and manual entry.
 5. **History:** the archive keeps the day record (item 19), the past-trip screen shows days.
 6. **App:** the new-trip buttons, labels, proposals and overview figures.
-7. Then destinations (ADR 027), then export (ADR 028).
+7. Then destinations (ADR 027), then export (ADR 028), then Optimize (ADR 029).
 
 Each step ends green: ruff, mypy, pytest, typecheck, lint and jest; the OpenAPI export and the
 generated client are rebuilt whenever endpoints or models change.

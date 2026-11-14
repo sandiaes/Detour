@@ -443,6 +443,14 @@ makes them distinct even when their visits overlap more than 60 %.
 
 ### 5.4 Edits and recalculation
 
+> **Planned, ADR 029:** **Optimize** is a change-set action (`optimize`, scope `within_days` or
+> `across_days`) in a new `planner/optimize.py`. It reorders a hand-made or planned plan for the
+> least travel, starting from the current order and accepting only strict improvements, so it is
+> never longer. Every stop is kept; restaurants stay on their day within 60 minutes of their chosen
+> time and not after 21:00; locked and document-bearing (app-supplied `fixed_item_ids`) stops stay;
+> a stop stays in its own city's days. Travel uses cache and labelled estimates, then the provider
+> for the final days' legs. An independent revision validator checks the proposal.
+
 - **Add a city or location.** The new place becomes a mandatory visit. The engine re-solves with
   a **stability cost** that penalises moving existing items to another day or reordering them,
   and never moves locked items. If the place is another city, day allocation is recomputed. The
