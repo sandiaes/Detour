@@ -19,6 +19,8 @@ import {
 } from "../components/ui";
 import { keys } from "../data/actions";
 import { useItemActions } from "../data/itemActions";
+import { DocumentList } from "../components/documents/DocumentList";
+import { placeKey } from "../documents/model";
 import { useResource } from "../data/DataProvider";
 import { STOP_KIND_LABEL, isEatKind, stopKind } from "../domain/itinerary";
 import { useNavigation } from "../nav/Navigator";
@@ -302,13 +304,29 @@ export function PlaceDetailScreen({
             ) : null}
           </View>
 
+          {trip ? (
+            <View style={styles.section} testID="place-documents">
+              <SectionTitle title={eat ? "Bookings and documents" : "Tickets and documents"} />
+              <DocumentList
+                trip={trip}
+                filter={(link) => link.kind === "place" && link.key === placeKey(item)}
+                addLink={{
+                  kind: "place",
+                  key: placeKey(item),
+                  name: item.display_name,
+                  day: day.day_index,
+                }}
+              />
+            </View>
+          ) : null}
+
           <PlannedFeature
-            icon="document"
-            title={eat ? "Notes, photos, tickets and reservations" : "Notes, photos and tickets"}
+            icon="note"
+            title={eat ? "Notes, photos and reservations" : "Notes and photos"}
             text={
               eat
-                ? "Your notes, photos, attached documents and reservation details for this place will be kept here. Not built yet."
-                : "Your notes, photos and attached tickets or documents for this place will be kept here. Not built yet."
+                ? "Your notes, photos and reservation details for this place will be kept here. Not built yet."
+                : "Your notes and photos of this place will be kept here. Not built yet."
             }
             testID="place-planned"
           />

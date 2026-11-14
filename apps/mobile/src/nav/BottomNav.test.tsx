@@ -36,7 +36,7 @@ test("inside a trip, Add offers a place or restaurant through the adjustment flo
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   expect(await screen.findByRole("header", { name: "Add to this trip" })).toBeOnTheScreen();
   // Not built yet: transport, notes and documents say so and cannot be pressed.
-  for (const name of [/^Transport\./, /^Note\./, /^Document\./]) {
+  for (const name of [/^Transport\./, /^Note\./]) {
     const row = screen.getByRole("button", { name });
     expect(row.props.accessibilityState).toMatchObject({ disabled: true });
     expect(row.props.accessibilityLabel).toMatch(/Coming later$/);

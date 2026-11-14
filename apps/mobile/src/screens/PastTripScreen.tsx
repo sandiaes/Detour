@@ -149,6 +149,16 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
           {archive.data ? ` Stored: ${formatBytes(archive.data.size_bytes)}.` : ""}
         </Text>
       </View>
+      <View style={styles.documents}>
+        <Button
+          label="Documents"
+          icon="document"
+          variant="secondary"
+          testID="past-trip-documents"
+          hint="Tickets, bookings and other documents kept with this trip on this phone"
+          onPress={() => nav.push({ name: "tripDocuments", tripId })}
+        />
+      </View>
       <ResourceNotices resource={visits} noun="this trip" />
       {problem ? <Notice tone="error">{problem}</Notice> : null}
       <View style={styles.toolbar}>
@@ -323,6 +333,7 @@ function VisitRow({
 }
 
 const styles = StyleSheet.create({
+  documents: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   fill: { flex: 1 },
   list: { paddingBottom: spacing.xxl },
   facts: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.xs },

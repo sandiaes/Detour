@@ -391,6 +391,15 @@ sit outside the ODbL data.
 `geom` (only with the user's consent to keep location), `checksum`, `width`, `height`, `bytes`.
 In the first photo phase the files and this table live on the device only (D9).
 
+## 8a. On the device: trip documents (ADR 023)
+
+Not in either schema: trip documents (tickets, bookings, transport, insurance) live only on the
+phone. The app's SQLite database (`detour-cache.db`) has a `trip_document` table (`id`, `trip_id`,
+`json`, `created_at`) beside the read cache; each row holds the title, kind, link (whole trip, day
+number, a place key with its name and day as linked, or a journey's day and town), file name, type,
+size and the location of the copy in the app's private storage. Deleting a trip deletes its rows and
+files on the phone. The backend stores nothing about documents.
+
 ## 9. Differences from the earlier proposal
 
 | Earlier proposal | Built | Why |

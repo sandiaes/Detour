@@ -7,6 +7,11 @@ import { BackendBanner } from "./components/BackendBanner";
 import { deviceCacheStore } from "./cache/sqliteStore";
 import type { CacheStore } from "./cache/store";
 import { DataProvider } from "./data/DataProvider";
+import { deviceDocumentFiles, deviceDocumentStore } from "./documents/device";
+import { DocumentsProvider } from "./documents/DocumentsProvider";
+import { DocumentFormScreen } from "./screens/DocumentFormScreen";
+import { DocumentScreen } from "./screens/DocumentScreen";
+import { TripDocumentsScreen } from "./screens/TripDocumentsScreen";
 import { BottomNav, showsBottomNav } from "./nav/BottomNav";
 import { type Route, NavigationProvider, useNavigation } from "./nav/Navigator";
 import { AddPlaceScreen } from "./screens/AddPlaceScreen";
@@ -63,6 +68,25 @@ function CurrentScreen({ route }: { route: Route }) {
           itemId={route.itemId}
         />
       );
+    case "tripDocuments":
+      return <TripDocumentsScreen tripId={route.tripId} />;
+    case "document":
+      return (
+        <DocumentScreen
+          key={route.documentId}
+          tripId={route.tripId}
+          documentId={route.documentId}
+        />
+      );
+    case "documentForm":
+      return (
+        <DocumentFormScreen
+          key={route.documentId ?? "new"}
+          tripId={route.tripId}
+          documentId={route.documentId}
+          link={route.link}
+        />
+      );
     case "addPlace":
       return <AddPlaceScreen route={route} />;
     case "addRestaurant":
@@ -91,9 +115,11 @@ export default function App({ cache = deviceCacheStore }: { cache?: CacheStore }
     <SafeAreaProvider>
       <BackendProvider>
         <DataProvider cache={cache}>
-          <NavigationProvider>
-            <AppContent />
-          </NavigationProvider>
+          <DocumentsProvider store={deviceDocumentStore} files={deviceDocumentFiles}>
+            <NavigationProvider>
+              <AppContent />
+            </NavigationProvider>
+          </DocumentsProvider>
         </DataProvider>
       </BackendProvider>
     </SafeAreaProvider>

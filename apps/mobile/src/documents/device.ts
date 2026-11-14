@@ -1,0 +1,11 @@
+import { openDatabaseAsync } from "expo-sqlite";
+
+import { DATABASE_NAME } from "../cache/store";
+import { createDeviceFiles } from "./files";
+import { createSqliteDocumentStore } from "./store";
+
+/** The app's documents: listed in SQLite, kept in the app's private storage (ADR 023). */
+export const deviceDocumentStore = createSqliteDocumentStore(() =>
+  openDatabaseAsync(DATABASE_NAME),
+);
+export const deviceDocumentFiles = createDeviceFiles();

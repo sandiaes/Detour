@@ -114,6 +114,9 @@ All services except the tile host run from one Docker Compose file in developmen
   five seconds or on map interaction (OSMF attribution guidelines).
 - `expo-sqlite` holds a read cache of the user's trips so that an accepted itinerary is viewable
   without a connection. Planning and recalculation always need the backend.
+- **Trip documents stay on the device** (ADR 023): files copied into the app's private storage with
+  `expo-file-system`, listed in a `trip_document` table of the same SQLite database (apart from the
+  cache). They are never uploaded; the backend knows nothing of them.
 - No direct calls to any third-party API other than the tile host.
 - Platform-specific behaviour is limited to permissions and build configuration.
 - Navigation, server-state and form libraries: none (ADR 015).

@@ -123,13 +123,14 @@ test("the Map tab shows the map with the day's list under it, sharing the select
   expect(screen.getByLabelText("Stop 1, Attraction: Hofburg")).toBeOnTheScreen();
 });
 
-test("Photos and Documents say plainly that they are not built yet", async () => {
+test("Photos say plainly that they are not built yet; Documents start empty", async () => {
   await open();
   await fireEvent.press(await screen.findByRole("tab", { name: "Trip photos" }));
   expect(screen.getByTestId("trip-photos-planned")).toBeOnTheScreen();
   expect(screen.getByText(/Google Photos is not built yet/)).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("tab", { name: "Trip documents" }));
-  expect(screen.getByTestId("trip-documents-planned")).toBeOnTheScreen();
+  expect(await screen.findByText("No documents yet")).toBeOnTheScreen();
+  expect(screen.getByText(/stay on this phone only/)).toBeOnTheScreen();
 });
 
 test("a trip with no plan leads to the proposals", async () => {
