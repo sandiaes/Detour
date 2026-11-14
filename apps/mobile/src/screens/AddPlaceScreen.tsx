@@ -372,9 +372,11 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 {found.sights.map((p) => (
                   <ResultRow
                     key={p.id}
-                    icon="attraction"
-                    title={p.name ?? p.category}
+                    icon="sight"
+                    title={p.name_en ?? p.name ?? p.category}
                     meta={[
+                      // The English name leads; the name used locally stays visible beside it.
+                      p.name_en ? p.name : null,
                       p.category.replace(/_/g, " "),
                       p.city_name,
                       p.distance_m != null
@@ -394,7 +396,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 {found.eat.map((p) => (
                   <ResultRow
                     key={p.id}
-                    icon="restaurant"
+                    icon={p.venue_type === "cafe" ? "cafe" : "restaurant"}
                     eat
                     title={p.name ?? p.category}
                     meta={restaurantMeta(p)}

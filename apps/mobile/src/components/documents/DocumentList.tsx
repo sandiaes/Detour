@@ -1,21 +1,30 @@
 import type { Trip } from "@detour/shared";
-import { StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useTripDocuments } from "../../documents/DocumentsProvider";
 import {
+  CATEGORIES,
   CATEGORY_GROUP,
+  CATEGORY_HELP,
+  CATEGORY_LABEL,
   type DocCategory,
   type DocLink,
+  type DocSort,
+  SORT_LABEL,
+  type TripDocument,
   fileLine,
   groupByCategory,
   linkLabel,
+  sortDocuments,
 } from "../../documents/model";
 import { useNavigation } from "../../nav/Navigator";
-import { colors, spacing, type } from "../../theme";
+import { TOUCH, colors, docTones, radius, spacing, type } from "../../theme";
+import { formatDate } from "../../util/format";
 import { Button } from "../Button";
 import { Icon, type IconName } from "../ds/Icon";
-import { ListRow, RowGroup, SectionTitle } from "../ds/primitives";
-import { Notice } from "../ui";
+import { IconButton, ListRow, RowGroup, Sheet } from "../ds/primitives";
+import { Chip, Notice } from "../ui";
 
 export const CATEGORY_ICON: Record<DocCategory, IconName> = {
   ticket: "ticket",
@@ -29,9 +38,76 @@ export const CATEGORY_ICON: Record<DocCategory, IconName> = {
 export const DEVICE_ONLY_NOTE =
   "Documents stay on this phone only. They are not uploaded, and deleting the app or the trip deletes them.";
 
+type Filter = DocCategory | "all";
+
+/** The tinted square that says what kind a document is (the words beside it say it too). */
+export function KindTile({ category, size = 48 }: { category: DocCategory; size?: number }) {
+  const tone = docTones[category];
+  return (
+    <View style={[styles.tile, { width: size, height: size, backgroundColor: tone.bg }]}>
+      <Icon name={CATEGORY_ICON[category]} size={Math.round(size * 0.5)} color={tone.fg} />
+    </View>
+  );
+}
+
+function DocumentRow({
+  doc,
+  trip,
+  onOpen,
+  onMenu,
+}: {
+  doc: TripDocument;
+  trip: Trip;
+  onOpen: () => void;
+  onMenu: () => void;
+}) {
+  const image = doc.mimeType.startsWith("image/");
+  const about = doc.date ? formatDate(doc.date) : linkLabel(doc.link, trip.start_date);
+  const line = `${CATEGORY_LABEL[doc.category]} · ${fileLine(doc)}`;
+  return (
+    <View style={styles.row}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${doc.title}. ${line}. ${about}.`}
+        onPress={onOpen}
+        style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}
+        testID={`document-${doc.id}`}
+      >
+        <KindTile category={doc.category} />
+        <View style={styles.rowText}>
+          <Text style={styles.rowTitle} numberOfLines={1}>
+            {doc.title}
+          </Text>
+          <Text style={styles.rowLine} numberOfLines={1}>
+            {line}
+          </Text>
+          <Text style={styles.rowLine} numberOfLines={1}>
+            {about}
+          </Text>
+        </View>
+        {image ? (
+          <Image
+            source={{ uri: doc.uri }}
+            style={styles.thumb}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+            testID={`document-thumb-${doc.id}`}
+          />
+        ) : null}
+      </Pressable>
+      <IconButton
+        icon="dots"
+        label={`More for ${doc.title}`}
+        testID={`document-menu-${doc.id}`}
+        onPress={onMenu}
+      />
+    </View>
+  );
+}
+
 /**
- * A trip's documents, grouped by kind (ADR 023): tickets, bookings, transport, insurance, other.
- * Each row says what it is about (the whole trip, a day, a place, a journey) and the file.
+ * A trip's documents (ADR 023; reference screen 15): an empty state that offers each kind, or a
+ * filterable, sortable list. Each row says what kind it is, what it is about and the file.
  */
 export function DocumentList({
   trip,
@@ -46,7 +122,12 @@ export function DocumentList({
 }) {
   const nav = useNavigation();
   const { documents, error, reload } = useTripDocuments(trip.id);
-  const add = () => nav.push({ name: "documentForm", tripId: trip.id, link: addLink });
+  const [kind, setKind] = useState<Filter>("all");
+  const [sort, setSort] = useState<DocSort>("newest");
+  const [sorting, setSorting] = useState(false);
+  const [menu, setMenu] = useState<TripDocument | null>(null);
+  const add = (category?: DocCategory) =>
+    nav.push({ name: "documentForm", tripId: trip.id, link: addLink, category });
   const shown = documents?.filter((d) => (filter ? filter(d.link) : true));
 
   if (error) {
@@ -65,8 +146,9 @@ export function DocumentList({
       label={filter ? "Attach a document" : "Add a document"}
       icon="add"
       variant={filter ? "secondary" : "ink"}
+      fill={!filter}
       testID="add-document"
-      onPress={add}
+      onPress={() => add()}
     />
   );
 
@@ -74,28 +156,46 @@ export function DocumentList({
     if (filter) return addButton;
     return (
       <View style={styles.empty} testID="documents-empty">
-        <View style={styles.emptyIcon}>
-          <Icon name="document" size={28} color={colors.primary} />
+        <View style={styles.art} accessible={false} importantForAccessibility="no-hide-descendants">
+          <View style={styles.artCloud} />
+          <View style={styles.artCard}>
+            <Icon name="transport" size={34} color={colors.onPrimary} />
+          </View>
         </View>
-        <Text style={styles.emptyTitle}>No documents yet</Text>
-        <Text style={styles.emptyText}>
-          Keep tickets, bookings, transport documents and insurance with the trip, each linked to
-          the whole trip, a day, a place or a journey.
+        <Text accessibilityRole="header" style={styles.emptyTitle}>
+          No documents yet
         </Text>
+        <Text style={styles.emptyText}>
+          Add your tickets, reservations and other travel documents to keep everything in one place.
+        </Text>
+        <View style={styles.tiles}>
+          {CATEGORIES.map((c) => (
+            <Pressable
+              key={c}
+              accessibilityRole="button"
+              accessibilityLabel={`${CATEGORY_GROUP[c]}. ${CATEGORY_HELP[c]}. Adds one.`}
+              onPress={() => add(c)}
+              style={({ pressed }) => [styles.categoryTile, pressed && styles.pressed]}
+              testID={`start-${c}`}
+            >
+              <KindTile category={c} size={44} />
+              <Text style={styles.tileName}>{CATEGORY_GROUP[c]}</Text>
+              <Text style={styles.tileHelp}>{CATEGORY_HELP[c]}</Text>
+            </Pressable>
+          ))}
+        </View>
         {addButton}
         <Text style={styles.note}>{DEVICE_ONLY_NOTE}</Text>
       </View>
     );
   }
 
-  return (
-    <View style={styles.list} testID="documents-list">
-      {groupByCategory(shown).map((group) => (
-        <View key={group.category} style={styles.group}>
-          {filter ? null : (
-            <SectionTitle title={`${CATEGORY_GROUP[group.category]} (${group.docs.length})`} />
-          )}
-          <RowGroup>
+  // A place's documents: a short grouped list, no filters.
+  if (filter) {
+    return (
+      <View style={styles.list} testID="documents-list">
+        {groupByCategory(shown).map((group) => (
+          <RowGroup key={group.category}>
             {group.docs.map((doc) => (
               <ListRow
                 key={doc.id}
@@ -107,28 +207,193 @@ export function DocumentList({
               />
             ))}
           </RowGroup>
+        ))}
+        {addButton}
+      </View>
+    );
+  }
+
+  const present = new Set(shown.map((d) => d.category));
+  const visible = sortDocuments(
+    shown.filter((d) => kind === "all" || d.category === kind),
+    sort,
+  );
+  return (
+    <View style={styles.list} testID="documents-list">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filters}
+        accessibilityRole="tablist"
+      >
+        <Chip
+          label="All"
+          selected={kind === "all"}
+          onPress={() => setKind("all")}
+          testID="filter-all"
+        />
+        {CATEGORIES.map((c) => (
+          <Chip
+            key={c}
+            label={CATEGORY_GROUP[c] === "Other documents" ? "Other" : CATEGORY_GROUP[c]}
+            selected={kind === c}
+            accessibilityLabel={`${CATEGORY_GROUP[c]}${present.has(c) ? "" : ", none yet"}`}
+            onPress={() => setKind(c)}
+            testID={`filter-${c}`}
+          />
+        ))}
+      </ScrollView>
+      <View style={styles.listHead}>
+        <Text style={styles.listTitle}>
+          {kind === "all" ? "All documents" : CATEGORY_GROUP[kind]}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Sort. ${SORT_LABEL[sort]}`}
+          onPress={() => setSorting(true)}
+          style={styles.sortButton}
+          testID="sort-documents"
+        >
+          <Text style={styles.sortText}>Sort</Text>
+          <Icon name="list" size={16} color={colors.text} />
+        </Pressable>
+      </View>
+      {visible.length === 0 ? (
+        <Text style={styles.muted}>
+          No {CATEGORY_GROUP[kind as DocCategory].toLowerCase()} yet.
+        </Text>
+      ) : (
+        <View style={styles.group}>
+          {visible.map((doc) => (
+            <DocumentRow
+              key={doc.id}
+              doc={doc}
+              trip={trip}
+              onOpen={() => nav.push({ name: "document", tripId: trip.id, documentId: doc.id })}
+              onMenu={() => setMenu(doc)}
+            />
+          ))}
         </View>
-      ))}
+      )}
       {addButton}
-      {filter ? null : <Text style={styles.note}>{DEVICE_ONLY_NOTE}</Text>}
+      <Text style={styles.note}>{DEVICE_ONLY_NOTE}</Text>
+
+      {sorting ? (
+        <Sheet visible title="Sort documents" onClose={() => setSorting(false)}>
+          <RowGroup>
+            {(Object.keys(SORT_LABEL) as DocSort[]).map((s) => (
+              <ListRow
+                key={s}
+                icon={s === sort ? "check" : "list"}
+                title={SORT_LABEL[s]}
+                testID={`sort-${s}`}
+                onPress={() => {
+                  setSort(s);
+                  setSorting(false);
+                }}
+              />
+            ))}
+          </RowGroup>
+        </Sheet>
+      ) : null}
+      {menu ? (
+        <Sheet visible title={menu.title} onClose={() => setMenu(null)}>
+          <RowGroup>
+            <ListRow
+              icon="document"
+              title="Open"
+              detail="Details and the file"
+              testID="menu-open-document"
+              onPress={() => {
+                const doc = menu;
+                setMenu(null);
+                nav.push({ name: "document", tripId: trip.id, documentId: doc.id });
+              }}
+            />
+            <ListRow
+              icon="note"
+              title="Edit"
+              detail="Title, kind, date, notes"
+              testID="menu-edit-document"
+              onPress={() => {
+                const doc = menu;
+                setMenu(null);
+                nav.push({ name: "documentForm", tripId: trip.id, documentId: doc.id });
+              }}
+            />
+          </RowGroup>
+        </Sheet>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.lg },
-  group: { gap: spacing.xs },
+  list: { gap: spacing.md },
+  group: {},
+  listHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  listTitle: { ...type.heading, color: colors.text },
   muted: { ...type.small, color: colors.muted },
   note: { ...type.caption, color: colors.muted },
-  empty: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg },
-  emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  pressed: { opacity: 0.8 },
+  tile: { borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  filters: { gap: spacing.sm, paddingVertical: spacing.xs },
+  sortButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: spacing.xs,
+    minHeight: TOUCH,
+    paddingHorizontal: spacing.xs,
+  },
+  sortText: { ...type.small, fontWeight: "600", color: colors.text },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  rowMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    minHeight: TOUCH + 16,
+    paddingVertical: spacing.sm,
+  },
+  rowText: { flex: 1, gap: 1 },
+  rowTitle: { ...type.small, fontWeight: "700", color: colors.text },
+  rowLine: { ...type.caption, color: colors.muted },
+  thumb: { width: 40, height: 52, borderRadius: radius.sm, backgroundColor: colors.surfaceMuted },
+
+  empty: { alignItems: "center", gap: spacing.md, paddingVertical: spacing.lg },
+  art: { width: 150, height: 120, alignItems: "center", justifyContent: "center" },
+  artCloud: {
+    position: "absolute",
+    width: 130,
+    height: 90,
+    borderRadius: 45,
     backgroundColor: colors.primarySoft,
   },
-  emptyTitle: { ...type.heading, color: colors.text },
+  artCard: {
+    width: 76,
+    height: 96,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primary,
+    transform: [{ rotate: "6deg" }],
+  },
+  emptyTitle: { ...type.title, color: colors.text, textAlign: "center" },
   emptyText: { ...type.small, color: colors.muted, textAlign: "center" },
+  tiles: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: spacing.md },
+  categoryTile: {
+    width: "30%",
+    minWidth: 96,
+    minHeight: TOUCH,
+    alignItems: "center",
+    gap: spacing.xxs,
+    paddingVertical: spacing.sm,
+  },
+  tileName: { ...type.small, fontWeight: "700", color: colors.text, textAlign: "center" },
+  tileHelp: { ...type.caption, color: colors.muted, textAlign: "center" },
 });

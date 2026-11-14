@@ -15,6 +15,7 @@ import {
   makeTrip,
 } from "../testing/fixtures";
 import { Harness } from "../testing/harness";
+import { localToday } from "../domain/trips";
 
 const DOCS = { name: "tripOverview", tripId: TRIP_ID, section: "documents" } as const;
 
@@ -66,8 +67,13 @@ async function show(
 test("add a ticket for a place: pick, title from the file, kind, place; it is kept on the phone", async () => {
   const { documents, files } = await show(DOCS);
   await fireEvent.press(await screen.findByTestId("add-document"));
-  expect(await screen.findByRole("header", { name: "Add a document" })).toBeOnTheScreen();
-  expect(screen.getByTestId("save-document")).toBeDisabled();
+  // Step one: how to add. Only the phone's file picker is built; the others say so.
+  expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();
+  expect(screen.queryByTestId("save-document")).toBeNull();
+  for (const id of ["take-photo", "add-link", "create-document"]) {
+    expect(screen.getByTestId(id).props.accessibilityState).toMatchObject({ disabled: true });
+  }
+  expect(screen.getByText("Your documents stay private")).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByTestId("choose-file"));
   expect(await screen.findByText("Train_ticket-Vienna.pdf")).toBeOnTheScreen();
@@ -98,12 +104,11 @@ test("add a ticket for a place: pick, title from the file, kind, place; it is ke
     uri: files.kept[0],
   });
 
-  // Back on the trip, the list has it under Tickets.
+  // Back on the trip, the list has it, with its kind, file and what it is about.
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-  expect(await screen.findByText("Tickets (1)")).toBeOnTheScreen();
   expect(
-    screen.getByRole("button", {
-      name: "Train ticket Vienna. Schönbrunn Palace · day 1 · PDF · 245.0 kB",
+    await screen.findByRole("button", {
+      name: "Train ticket Vienna. Ticket · PDF · 245.0 kB. Schönbrunn Palace · day 1.",
     }),
   ).toBeOnTheScreen();
 });
@@ -182,7 +187,8 @@ test("a place shows only its own documents, and a new one starts linked to it", 
   expect(await screen.findByText("Palace tickets")).toBeOnTheScreen();
   expect(screen.queryByText("Insurance")).toBeNull();
   await fireEvent.press(screen.getByRole("button", { name: "Attach a document" }));
-  expect(await screen.findByRole("header", { name: "Add a document" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("choose-file"));
   expect(screen.getByTestId("link-place").props.accessibilityState).toMatchObject({
     selected: true,
   });
@@ -196,7 +202,7 @@ test("Add on a trip offers a document", async () => {
   await screen.findByRole("header", { name: "Your itinerary" });
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   await fireEvent.press(await screen.findByTestId("add-sheet-document"));
-  expect(await screen.findByRole("header", { name: "Add a document" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();
 });
 
 test("deleting a trip deletes its documents and their files, and no other trip's", async () => {
@@ -232,6 +238,59 @@ test("a past trip keeps its documents, reached from its screen", async () => {
   );
   await fireEvent.press(await screen.findByTestId("past-trip-documents"));
   expect(await screen.findByRole("header", { name: "Documents" })).toBeOnTheScreen();
-  expect(await screen.findByText("Bookings (1)")).toBeOnTheScreen();
-  expect(screen.getByText("Hotel booking")).toBeOnTheScreen();
+  expect(await screen.findByText("Hotel booking")).toBeOnTheScreen();
+});
+
+test("the empty tab offers each kind; the list filters, sorts, and its menu opens or edits", async () => {
+  const empty = await show(DOCS);
+  expect(await screen.findByTestId("documents-empty")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("start-insurance"));
+  await fireEvent.press(await screen.findByTestId("choose-file"));
+  // The kind chosen on the tile is already selected.
+  expect(screen.getByRole("button", { name: "Insurance" }).props.accessibilityState).toMatchObject({
+    selected: true,
+  });
+  expect(empty.documents).toBeDefined();
+});
+
+test("the document list filters by kind and sorts", async () => {
+  const documents = createMemoryDocumentStore([
+    saved({ id: "a", title: "Bus to Graz", category: "transport", createdAt: 1 }),
+    saved({ id: "b", title: "Palace tickets", category: "ticket", createdAt: 3 }),
+    saved({ id: "c", title: "Hotel", category: "booking", createdAt: 2, date: "2027-05-01" }),
+  ]);
+  await show(DOCS, { documents });
+  expect(await screen.findByText("Palace tickets")).toBeOnTheScreen();
+  // A document's own date is shown when it has one.
+  expect(
+    screen.getByLabelText(/^Hotel\. Booking · PDF · 120\.0 kB\. Sat 1 May 2027\./),
+  ).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("filter-ticket"));
+  expect(screen.getByText("Palace tickets")).toBeOnTheScreen();
+  expect(screen.queryByText("Bus to Graz")).toBeNull();
+  await fireEvent.press(screen.getByTestId("filter-all"));
+  await fireEvent.press(screen.getByTestId("sort-documents"));
+  await fireEvent.press(await screen.findByTestId("sort-title"));
+  const titles = screen
+    .getAllByText(/^(Bus to Graz|Hotel|Palace tickets)$/)
+    .map((n) => n.props.children);
+  expect(titles).toEqual(["Bus to Graz", "Hotel", "Palace tickets"]);
+  // The row's menu opens the document's page.
+  await fireEvent.press(screen.getByTestId("document-menu-a"));
+  await fireEvent.press(await screen.findByTestId("menu-edit-document"));
+  expect(await screen.findByRole("header", { name: "Edit document" })).toBeOnTheScreen();
+});
+
+test("a document can carry a date and notes, and both are kept", async () => {
+  const { documents } = await show({ name: "documentForm", tripId: TRIP_ID });
+  await fireEvent.press(await screen.findByTestId("choose-file"));
+  await fireEvent.press(screen.getByRole("button", { name: "Booking" }));
+  await fireEvent.changeText(screen.getByTestId("document-notes"), "Window seat");
+  expect(screen.getByText("11/500")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("document-date"));
+  await fireEvent.press(screen.getByTestId(`cal-${localToday().slice(0, 8)}20`));
+  await fireEvent.press(screen.getByTestId("save-document"));
+  expect(await screen.findByLabelText("Notes: Window seat")).toBeOnTheScreen();
+  const [stored] = await documents.list(TRIP_ID);
+  expect(stored).toMatchObject({ notes: "Window seat", date: `${localToday().slice(0, 8)}20` });
 });

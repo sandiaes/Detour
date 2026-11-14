@@ -38,14 +38,22 @@ export const colors = {
   /** Restaurants and cafés on the map and in the day list: white on this. */
   eat: "#b5511c",
   eatSoft: "#f9e8dc",
-  /** Text and icons drawn over a cover image, on its dark lower band or a scrim. */
+  /** Icons drawn over a cover image, on a dark translucent disc (never text: text goes beside it). */
   onImage: "#ffffff",
   /** The translucent disc behind icon buttons that sit on a cover image. */
   imageButton: "rgba(20, 36, 58, 0.55)",
-  /** The darkening band under text on a cover photo. */
-  scrim: "rgba(14, 24, 36, 0.62)",
   shadow: "#14243a",
 };
+
+/** The tinted tile behind a document's kind (docs/design.md): the icon colour on its soft ground,
+ * each pair checked in theme.test.ts. The kind is always said in words beside it. */
+export const docTones = {
+  ticket: { bg: "#e2eeeb", fg: "#2b6b64" },
+  booking: { bg: "#f9e8dc", fg: "#8a3b12" },
+  transport: { bg: "#e2ecf6", fg: "#1f5f8f" },
+  insurance: { bg: "#ece6f5", fg: "#5b3f94" },
+  other: { bg: "#f2f2f0", fg: "#56616c" },
+} as const;
 
 export const spacing = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
 export const radius = { sm: 8, md: 14, lg: 20, pill: 999 };

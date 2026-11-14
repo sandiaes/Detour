@@ -1,6 +1,6 @@
 import type { RestaurantResult } from "@detour/shared";
 
-import type { DocLink } from "../documents/model";
+import type { DocCategory, DocLink } from "../documents/model";
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
 
@@ -40,7 +40,14 @@ export type Route =
   | { name: "tripDocuments"; tripId: string }
   | { name: "document"; tripId: string; documentId: string }
   /** Add a document (with an optional link already chosen), or edit one. */
-  | { name: "documentForm"; tripId: string; documentId?: string; link?: DocLink }
+  | {
+      name: "documentForm";
+      tripId: string;
+      documentId?: string;
+      link?: DocLink;
+      /** The kind to start with (a tile on the empty Documents tab). */
+      category?: DocCategory;
+    }
   | { name: "addPlace"; tripId: string; itineraryId: string }
   | {
       name: "addRestaurant";

@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
-import { Cover, PhotoCredit } from "../components/ds/Cover";
+import { Cover } from "../components/ds/Cover";
 import { Icon } from "../components/ds/Icon";
 import {
   Badge,
@@ -34,13 +34,7 @@ import { useResource } from "../data/DataProvider";
 import { useTripCounts } from "../data/tripCounts";
 import { PROFILE_EMPHASIS, PROFILE_LABEL, planFacts } from "../domain/compare";
 import { dayTotals } from "../domain/itinerary";
-import {
-  TRIP_PHASE_LABEL,
-  type TripCounts,
-  localToday,
-  shortSpan,
-  tripPhase,
-} from "../domain/trips";
+import { type TripCounts, localToday, shortSpan } from "../domain/trips";
 import { type TripSection, useNavigation } from "../nav/Navigator";
 import { TOUCH, colors, radius, spacing, type } from "../theme";
 import { pluralise } from "../util/format";
@@ -92,7 +86,7 @@ function statsOf(counts: TripCounts): Stat[] {
     counts.places !== null
       ? {
           key: "places",
-          icon: "attraction",
+          icon: "sight",
           value: counts.places,
           label: counts.places === 1 ? "Place" : "Places",
         }
@@ -246,7 +240,6 @@ export function TripOverviewScreen({
   // A trip that became past while open: its plans are gone, the visited places remain (ADR 006).
   if (trip.status === "past") return <PastTripScreen tripId={tripId} />;
 
-  const phase = tripPhase(trip);
   const hasPlan = trip.selected_itinerary_id !== null;
   const planId = trip.selected_itinerary_id as string;
   const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
@@ -415,8 +408,9 @@ export function TripOverviewScreen({
     </>
   );
 
-  // Itinerary and Map have no cover (reference screen 12): a compact header, the tabs, then the
-  // days as a timeline, or the map of one day with its stops beneath.
+  // Only the Map tab leaves the cover behind (it needs the room): a compact header, the tabs, then
+  // the map of one day with its stops beneath. Overview and Itinerary share one layout: the trip's
+  // header, its photo, then the tabs and their content on a sheet.
   if (section === "map" && hasPlan && plan.data) {
     return (
       <View style={styles.fill}>
@@ -427,67 +421,44 @@ export function TripOverviewScreen({
       </View>
     );
   }
-  if (section === "itinerary" && hasPlan && plan.data) {
-    return (
-      <View style={styles.fill}>
-        {compactHead}
-        <ScrollView contentContainerStyle={styles.scroll}>{content}</ScrollView>
-        {menuSheet}
-      </View>
-    );
-  }
-
   return (
     <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.scroll} stickyHeaderIndices={[1]}>
+      <ScrollView contentContainerStyle={styles.scroll} stickyHeaderIndices={[2]}>
+        <View style={styles.header}>
+          <IconButton icon="back" label="Back" onPress={nav.back} />
+          <View
+            ref={titleRef}
+            style={styles.headerText}
+            accessible
+            accessibilityRole="header"
+            accessibilityLabel={`${trip.title}. ${shortSpan(trip)}.`}
+          >
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {trip.title}
+            </Text>
+            <Text style={styles.headerMeta} numberOfLines={1}>
+              {shortSpan(trip)}
+            </Text>
+          </View>
+          <IconButton
+            icon="dots"
+            label="Trip menu"
+            hint="Original proposals and trip settings"
+            testID="trip-menu"
+            onPress={() => setMenu(true)}
+          />
+        </View>
         <Cover
           seedKey={trip.destination.ref}
           photo={trip.cover_image}
-          height={248}
+          height={210}
           testID="trip-cover"
-        >
-          <View style={styles.heroTop}>
-            <IconButton icon="back" label="Back" onImage onPress={nav.back} />
-            <IconButton
-              icon="dots"
-              label="Trip menu"
-              hint="Original proposals and trip settings"
-              onImage
-              testID="trip-menu"
-              onPress={() => setMenu(true)}
-            />
-          </View>
-          <View style={styles.heroText}>
-            <Badge
-              label={TRIP_PHASE_LABEL[phase]}
-              tone={phase === "inProgress" ? "accent" : phase === "upcoming" ? "primary" : "solid"}
-            />
-            <View
-              ref={titleRef}
-              accessible
-              accessibilityRole="header"
-              accessibilityLabel={trip.title}
-            >
-              <Text style={styles.heroTitle} numberOfLines={2}>
-                {trip.title}
-              </Text>
-            </View>
-            <View style={styles.heroMeta}>
-              <Icon name="calendar" size={16} color={colors.onImage} />
-              <Text style={styles.heroMetaText}>{shortSpan(trip)}</Text>
-            </View>
-            <View style={styles.heroMeta}>
-              <Icon name="pin" size={16} color={colors.onImage} />
-              <Text style={styles.heroMetaText}>{trip.destination.name}</Text>
-            </View>
-          </View>
-        </Cover>
+        />
         {/* The tabs and what follows sit on a white sheet whose top corners curve over the photo. */}
         <View style={styles.sheetTop}>{tabs}</View>
         <View style={styles.sheetBody}>
           <ResourceNotices resource={trips} noun="trips" />
           <View style={styles.body2}>{content}</View>
-          <PhotoCredit photo={trip.cover_image} />
         </View>
       </ScrollView>
       {menuSheet}
@@ -502,22 +473,17 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
   pressed: { opacity: 0.8 },
-  heroTop: {
+  // The trip's name and dates sit above its photo, centred, never over it (reference screen 08).
+  header: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  heroText: {
-    position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
-    bottom: spacing.lg,
+    alignItems: "center",
     gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  heroTitle: { ...type.display, color: colors.onImage },
-  heroMeta: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  heroMetaText: { ...type.small, color: colors.onImage, fontWeight: "500" },
+  headerText: { flex: 1, alignItems: "center" },
+  headerTitle: { ...type.heading, color: colors.text, textAlign: "center" },
+  headerMeta: { ...type.small, color: colors.muted, textAlign: "center" },
   sheetTop: {
     marginTop: -SHEET_RADIUS,
     backgroundColor: colors.background,

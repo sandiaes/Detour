@@ -44,7 +44,41 @@ export type TripDocument = {
   /** The copy in the app's private storage. */
   uri: string;
   createdAt: number;
+  /** The date the document is about (a flight's day, a check-in), ISO; optional. Documents saved
+   * before this field existed have none. */
+  date?: string | null;
+  /** The user's own note, at most `NOTES_MAX` characters; optional. */
+  notes?: string | null;
 };
+
+export const NOTES_MAX = 500;
+
+/** One line under each kind on the empty Documents tab: what belongs there. */
+export const CATEGORY_HELP: Record<DocCategory, string> = {
+  ticket: "Entry and activity tickets",
+  booking: "Hotels, tables, tours",
+  transport: "Flights, trains, buses",
+  insurance: "Travel and health",
+  other: "Visas, itineraries, more",
+};
+
+export type DocSort = "newest" | "oldest" | "title";
+export const SORT_LABEL: Record<DocSort, string> = {
+  newest: "Newest first",
+  oldest: "Oldest first",
+  title: "Title, A to Z",
+};
+
+/** The documents in the order asked for; ties are broken by identifier so it is stable. */
+export function sortDocuments(docs: TripDocument[], sort: DocSort): TripDocument[] {
+  const by =
+    sort === "title"
+      ? (a: TripDocument, b: TripDocument) => a.title.localeCompare(b.title)
+      : sort === "oldest"
+        ? (a: TripDocument, b: TripDocument) => a.createdAt - b.createdAt
+        : (a: TripDocument, b: TripDocument) => b.createdAt - a.createdAt;
+  return [...docs].sort((a, b) => by(a, b) || a.id.localeCompare(b.id));
+}
 
 /** A file the user picked, before it is copied into the app's storage. */
 export type PickedFile = { uri: string; name: string; mimeType: string; size: number | null };

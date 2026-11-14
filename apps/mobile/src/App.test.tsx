@@ -158,7 +158,7 @@ test("create a trip, compare the proposals, select one, read its days, see it on
     await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
     await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
 
-    expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+    expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Select the Essentials plan" }));
     // Choosing a plan makes it the trip's active itinerary; the trip opens on its overview.
     expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();

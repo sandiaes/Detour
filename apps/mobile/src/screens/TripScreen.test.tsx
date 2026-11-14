@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import * as ReactNative from "react-native";
 
 import { AppContent } from "../App";
 import { createMemoryStore } from "../cache/store";
@@ -13,16 +12,7 @@ import {
   makeTrip,
 } from "../testing/fixtures";
 import { Harness } from "../testing/harness";
-import { SIDE_BY_SIDE_MIN_WIDTH, visiblePlans } from "./TripScreen";
-
-function windowWidth(width: number) {
-  ReactNative.Dimensions.set({
-    window: { width, height: 740, scale: 2, fontScale: 1 },
-    screen: { width, height: 740, scale: 2, fontScale: 1 },
-  });
-}
-
-beforeEach(() => windowWidth(360));
+import { visiblePlans } from "./TripScreen";
 
 const open = { name: "trip", tripId: TRIP_ID } as const;
 
@@ -53,8 +43,17 @@ async function openTrip(client = server(), cache = createMemoryStore()) {
   return client;
 }
 
-test("two proposals are compared with a structured summary of how they differ", async () => {
+test("two proposals are shown as two cards, and the comparison is one tap away", async () => {
   await openTrip();
+  expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
+  expect(screen.getByText("Classic Vienna")).toBeOnTheScreen();
+  expect(screen.getByText("Vienna & beyond")).toBeOnTheScreen();
+  expect(screen.getByText("5 places")).toBeOnTheScreen();
+  expect(screen.getByText("8 places")).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: "Select the Essentials plan" })).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: "Select the Wider plan" })).toBeOnTheScreen();
+  expect(screen.queryByText("How they differ")).toBeNull();
+  await fireEvent.press(screen.getByRole("button", { name: "Compare itineraries" }));
   expect(await screen.findByText("How they differ")).toBeOnTheScreen();
   expect(screen.getByLabelText("Visits: Essentials 5. Wider 8.")).toBeOnTheScreen();
   expect(
@@ -62,29 +61,6 @@ test("two proposals are compared with a structured summary of how they differ", 
   ).toBeOnTheScreen();
   expect(screen.getByText("• Wider has 3 visits more than Essentials.")).toBeOnTheScreen();
   expect(screen.getByText("• About 40 % of the visits are in both plans.")).toBeOnTheScreen();
-  // Both can be reached without swiping: a button per plan.
-  expect(
-    screen.getByRole("button", { name: "Show the Essentials plan, 1 of 2" }),
-  ).toBeOnTheScreen();
-  expect(screen.getByRole("button", { name: "Show the Wider plan, 2 of 2" })).toBeOnTheScreen();
-  expect(screen.getByRole("button", { name: "Select the Essentials plan" })).toBeOnTheScreen();
-});
-
-test("on a wide screen the two plans sit side by side instead of in a swipe list", async () => {
-  windowWidth(SIDE_BY_SIDE_MIN_WIDTH + 80);
-  await openTrip();
-  await screen.findByText("How they differ");
-  expect(screen.getByRole("button", { name: "Select the Essentials plan" })).toBeOnTheScreen();
-  expect(screen.getByRole("button", { name: "Select the Wider plan" })).toBeOnTheScreen();
-  expect(screen.queryByRole("button", { name: /Show the Essentials plan/ })).toBeNull();
-});
-
-test("the plans are in a horizontal, snapping list so they can be swiped", async () => {
-  await openTrip();
-  await screen.findByText("How they differ");
-  const pager = screen.getByTestId("plan-pager");
-  expect(pager.props.horizontal).toBe(true);
-  expect(pager.props.snapToInterval).toBeGreaterThan(0);
 });
 
 test("selecting a plan opens the trip's overview on it, and Back from there goes to the trips", async () => {
@@ -134,32 +110,21 @@ test("a failed selection says so and leaves the choice open", async () => {
   expect(screen.queryByText("✓ Selected")).toBeNull();
 });
 
-test("View days and View map open the plan in that view", async () => {
-  await openTrip();
-  await fireEvent.press(
-    await screen.findByRole("button", { name: "View the days of the Wider plan" }),
-  );
-  expect(await screen.findByRole("header", { name: "Wider plan" })).toBeOnTheScreen();
-  expect(await screen.findByRole("tab", { name: "Day 1, Sat 1 May" })).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
-  await fireEvent.press(
-    screen.getByRole("button", { name: "View the Essentials plan on the map" }),
-  );
-  expect(await screen.findByTestId("map")).toBeOnTheScreen();
-});
-
-test("opening a plan again makes no second request for it", async () => {
+test("View details opens the plan on its map, with the day pills under the map", async () => {
   const client = await openTrip();
   await fireEvent.press(
-    await screen.findByRole("button", { name: "View the days of the Wider plan" }),
+    await screen.findByRole("button", { name: "View the details of the Wider plan" }),
+  );
+  expect(await screen.findByTestId("map")).toBeOnTheScreen();
+  expect(await screen.findByRole("tab", { name: "Day 1, Sat 1 May" })).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: "Select the Wider plan" })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+  expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
+  // Opening it again makes no second request for it.
+  await fireEvent.press(
+    await screen.findByRole("button", { name: "View the details of the Wider plan" }),
   );
   await screen.findByRole("tab", { name: "Day 1, Sat 1 May" });
-  await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-  await fireEvent.press(
-    await screen.findByRole("button", { name: "View the days of the Wider plan" }),
-  );
-  expect(await screen.findByRole("tab", { name: "Day 1, Sat 1 May" })).toBeOnTheScreen();
   expect(client.count("GET /v1/itineraries/{itinerary_id}")).toBe(1);
   expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBe(1);
 });
@@ -200,7 +165,7 @@ test("a destination that supports one plan shows it with the backend's explanati
   expect(
     await screen.findByText("This destination supports only one distinct plan."),
   ).toBeOnTheScreen();
-  expect(screen.queryByText("How they differ")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Compare itineraries" })).toBeNull();
 });
 
 test("a trip with no plans offers to plan it, and the new plans appear", async () => {
@@ -222,7 +187,7 @@ test("a trip with no plans offers to plan it, and the new plans appear", async (
   });
   await openTrip(client);
   await fireEvent.press(await screen.findByRole("button", { name: "Plan this trip" }));
-  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+  expect(await screen.findByTestId("plan-wider")).toBeOnTheScreen();
 });
 
 test("a trip that is past shows its saved places, not proposals", async () => {
@@ -252,7 +217,7 @@ test("offline, saved plans are shown with a notice", async () => {
       <AppContent />
     </Harness>,
   );
-  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+  expect(await screen.findByTestId("plan-essentials")).toBeOnTheScreen();
   expect(
     screen.getAllByText(/You can read them, but changes need a connection/).length,
   ).toBeGreaterThan(0);

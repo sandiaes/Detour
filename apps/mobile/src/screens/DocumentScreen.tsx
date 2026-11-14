@@ -4,8 +4,7 @@ import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call } from "../api/unwrap";
 import { Button } from "../components/Button";
-import { CATEGORY_ICON } from "../components/documents/DocumentList";
-import { Icon } from "../components/ds/Icon";
+import { KindTile } from "../components/documents/DocumentList";
 import { Badge } from "../components/ds/primitives";
 import { EmptyState, LoadingState, Notice, ScreenHeader } from "../components/ui";
 import { keys } from "../data/actions";
@@ -78,6 +77,8 @@ export function DocumentScreen({ tripId, documentId }: { tripId: string; documen
     ["About", linkLabel(doc.link, trip?.start_date ?? null)],
     ["File", doc.fileName],
     ["Type and size", fileLine(doc)],
+    ...(doc.date ? ([["Date", formatDate(doc.date)]] as [string, string][]) : []),
+    ...(doc.notes ? ([["Notes", doc.notes]] as [string, string][]) : []),
     ["Added", formatDate(localToday(new Date(doc.createdAt)))],
   ];
 
@@ -87,7 +88,7 @@ export function DocumentScreen({ tripId, documentId }: { tripId: string; documen
         <ScreenHeader title={doc.title} subtitle={trip?.title} onBack={nav.back} />
         <View style={styles.body}>
           <View style={styles.kind}>
-            <Icon name={CATEGORY_ICON[doc.category]} size={18} color={colors.primary} />
+            <KindTile category={doc.category} size={32} />
             <Badge label={CATEGORY_LABEL[doc.category]} tone="primary" />
           </View>
           {problem ? <Notice tone="error">{problem}</Notice> : null}

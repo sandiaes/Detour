@@ -21,6 +21,7 @@ from sqlalchemy import Connection, text
 from detour_api.errors import ApiError, conflict, invalid
 from detour_api.models.trips import GenerationResult
 from detour_api.planner.config import PlannerConfig
+from detour_api.planner.dedupe import collapse_duplicates
 from detour_api.planner.reasons import ITEM_TEMPLATES
 from detour_api.planner.types import (
     BaseCity,
@@ -130,7 +131,12 @@ def _box(lat: float, lon: float, radius_m: int) -> dict[str, float]:
 
 
 _CANDIDATE_SQL = """
-    SELECT p.id, p.name, p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
+    SELECT p.id,
+           -- The source's English name when it has one (never translated by us); the search
+           -- finds the place by either name.
+           COALESCE(CASE WHEN p.name_en_norm IS NOT NULL THEN p.names_i18n->>'en' END, p.name)
+               AS name,
+           p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
            s.osm_signals, s.sitelink_count
     FROM geo.place p LEFT JOIN geo.place_signal s ON s.place_id = p.id
     WHERE p.is_active AND p.kind = 'attraction' AND p.name IS NOT NULL
@@ -154,7 +160,7 @@ _IN_AREA = "ST_Intersects(p.geom, (SELECT a.geom FROM geo.admin_area a WHERE a.i
 
 
 def _candidates(rows: Any) -> list[Candidate]:
-    return [
+    return collapse_duplicates(
         Candidate(
             place_id=str(r.id),
             name=r.name,
@@ -165,7 +171,7 @@ def _candidates(rows: Any) -> list[Candidate]:
             sitelink_count=r.sitelink_count,
         )
         for r in rows
-    ]
+    )
 
 
 def _restaurants(rows: Any) -> list[Restaurant]:

@@ -85,6 +85,7 @@ function CurrentScreen({ route }: { route: Route }) {
           tripId={route.tripId}
           documentId={route.documentId}
           link={route.link}
+          category={route.category}
         />
       );
     case "addPlace":

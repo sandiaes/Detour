@@ -30,7 +30,7 @@ export function formatClock(time: string | null | undefined): string | null {
   return time.slice(0, 5);
 }
 
-function parseIsoDate(iso: string): Date | null {
+export function parseIsoDate(iso: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!match) return null;
   const [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];

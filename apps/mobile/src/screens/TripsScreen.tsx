@@ -37,7 +37,8 @@ const PHASE_TONE: Record<TripPhase, BadgeTone> = {
 
 const CARD_HEIGHT = 148;
 
-/** Just the cover, the trip's name, its dates and its length (docs/design.md): nothing under it. */
+/** The cover, then the trip's name, its dates and its length under it (docs/design.md): nothing
+ * else, and nothing drawn over the photo but the status. */
 export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   const phase = tripPhase(trip);
   const label = TRIP_PHASE_LABEL[phase];
@@ -66,15 +67,15 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
         <View style={styles.cardBadge}>
           <Badge label={label} tone={PHASE_TONE[phase]} />
         </View>
-        <View style={styles.cardText}>
-          <Text style={styles.cardTitle} numberOfLines={1}>
-            {trip.title}
-          </Text>
-          <Text style={styles.cardMeta} numberOfLines={1}>
-            {span}
-          </Text>
-        </View>
       </Cover>
+      <View style={styles.cardText}>
+        <Text style={styles.cardTitle} numberOfLines={1}>
+          {trip.title}
+        </Text>
+        <Text style={styles.cardMeta} numberOfLines={1}>
+          {span}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -181,18 +182,12 @@ export function TripsScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   list: { padding: spacing.lg, gap: spacing.lg },
-  card: { borderRadius: radius.lg, overflow: "hidden", minHeight: 48 },
+  card: { minHeight: 48, gap: spacing.sm },
   pressed: { opacity: 0.88 },
   cardBadge: { position: "absolute", top: spacing.md, right: spacing.md },
-  cardText: {
-    position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
-    bottom: spacing.md,
-    gap: spacing.xxs,
-  },
-  cardTitle: { ...type.title, color: colors.onImage },
-  cardMeta: { ...type.small, color: colors.onImage, fontWeight: "500" },
+  cardText: { gap: spacing.xxs, paddingHorizontal: spacing.xs },
+  cardTitle: { ...type.title, color: colors.text },
+  cardMeta: { ...type.small, color: colors.muted, fontWeight: "500" },
   empty: { paddingVertical: spacing.xxl, gap: spacing.sm, alignItems: "center" },
   emptyTitle: { ...type.heading, color: colors.text, textAlign: "center" },
   emptyText: { ...type.body, color: colors.muted, textAlign: "center" },

@@ -74,7 +74,7 @@ async function show(initial: Parameters<typeof Harness>[0]["initial"], ready: st
   await screen.findByText(ready);
 }
 
-// A phone-width window: the two plans are then swiped, not side by side.
+// A phone-width window.
 beforeEach(() =>
   Dimensions.set({
     window: { width: 360, height: 740, scale: 2, fontScale: 1 },
@@ -192,7 +192,7 @@ test("documents: the list, the form with a place chosen, and a document", async 
       <AppContent />
     </Harness>,
   );
-  await screen.findByText("Insurance (1)");
+  await screen.findByText("Travel insurance");
   checkControls();
   await fireEvent.press(screen.getByTestId("add-document"));
   await fireEvent.press(await screen.findByTestId("choose-file"));
@@ -247,7 +247,7 @@ test("create trip form with search results", async () => {
 });
 
 test("proposals", async () => {
-  await show({ name: "trip", tripId: TRIP_ID }, "How they differ");
+  await show({ name: "trip", tripId: TRIP_ID }, "Choose your itinerary");
   checkControls();
 });
 
@@ -308,10 +308,13 @@ test("settings", async () => {
 });
 
 test("nothing is conveyed by colour alone: states carry words or marks", async () => {
-  await show({ name: "trip", tripId: TRIP_ID }, "How they differ");
+  await show({ name: "trip", tripId: TRIP_ID }, "Choose your itinerary");
   // Selected, estimated and offline each have a word in the text, checked elsewhere; this guards
-  // the shared controls: a selected chip reads "selected" and shows a check mark.
-  const chip = screen.getByRole("button", { name: "Show the Essentials plan, 1 of 2" });
-  expect(chip.props.accessibilityState).toMatchObject({ selected: true });
-  expect(within(chip).getByText("✓ Essentials")).toBeOnTheScreen();
+  // the shared controls: an open comparison is announced as expanded and changes its icon.
+  const compare = screen.getByRole("button", { name: "Compare itineraries" });
+  expect(compare.props.accessibilityState).toMatchObject({ expanded: false });
+  await fireEvent.press(compare);
+  expect(
+    screen.getByRole("button", { name: "Compare itineraries" }).props.accessibilityState,
+  ).toMatchObject({ expanded: true });
 });

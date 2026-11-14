@@ -129,6 +129,7 @@ about 100 m): areas scope a destination, they are not for drawing borders.
 | `category` | Normalised: the `tourism` value, an allow-listed `historic` value (`historic_building` and the other generic classes carry the `historic_` prefix; `historic=yes` is `historic`), or `restaurant`/`cafe` |
 | `name`, `name_norm` | Null when the source has no name; both null or both set. Attractions without a name are not imported (ADR 011), so a null name occurs only for restaurants and cafes |
 | `names_i18n` | jsonb, language to name (`name:*` tags and `int_name` as `int`); null if none |
+| `name_en_norm` | The normalised English name (`names_i18n.en`), set only when it differs from `name_norm`; search matches it as well (migration `0010`, ADR 021 decision 40). The plan shows the English name when this is set |
 | `geom` | Representative point; areas are reduced to a point on their surface |
 | `address` | jsonb from `addr:*` (street, housenumber, postcode, city, country); null if none |
 | `city_id` | The nearest gazetteer city of the region's countries (planar distance picks five candidates, great-circle distance and then id decide); null until the gazetteer is loaded |
@@ -174,7 +175,7 @@ One row per source record that contributed to a place; the primary key is
 - Normalisation (`detour_api/textnorm.py`) is applied to the stored `name_norm` columns and to the
   query, so both sides agree. Accents are removed only from Latin letters; Japanese is untouched.
 - GiST on every geometry column; trigram (GIN) on `geo.city.name_norm`, `ascii_name`,
-  `alt_names_norm`, `geo.place.name_norm`, `geo.admin_area.name_norm`.
+  `alt_names_norm`, `geo.place.name_norm`, `geo.place.name_en_norm` (where set), `geo.admin_area.name_norm`.
 - `geo.place`: partial index `(region_id, kind) WHERE is_active`; `city_id`.
 
 ### 2.10 `geo.travel_time`

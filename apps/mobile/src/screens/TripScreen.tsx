@@ -1,22 +1,15 @@
 import type { ItinerarySummary, Trip } from "@detour/shared";
-import { useCallback, useRef, useState } from "react";
-import {
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from "react-native";
+import { useCallback, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
+import { Cover } from "../components/ds/Cover";
+import { Icon, type IconName } from "../components/ds/Icon";
+import { Badge } from "../components/ds/primitives";
 import { ResourceNotices } from "../components/ResourceNotices";
 import {
   Card,
-  Chip,
   EmptyState,
   ErrorState,
   LoadingState,
@@ -27,14 +20,11 @@ import {
 } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
-import { PROFILE_EMPHASIS, PROFILE_LABEL, buildComparison, planFacts } from "../domain/compare";
+import { PROFILE_EMPHASIS, PROFILE_LABEL, buildComparison, planNames } from "../domain/compare";
 import { useNavigation } from "../nav/Navigator";
 import { PastTripScreen } from "./PastTripScreen";
-import { colors, radius, spacing, type } from "../theme";
-import { formatTripSpan } from "../util/format";
-
-/** Wide enough to put the two plans next to each other instead of swiping. */
-export const SIDE_BY_SIDE_MIN_WIDTH = 720;
+import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { formatSeconds, formatTripSpan, pluralise } from "../util/format";
 
 /** Notes that need no space of their own: the profile is described on its card, the overlap in the
  * comparison, and a single plan's reason is shown on the card. */
@@ -56,12 +46,13 @@ export function visiblePlans(all: ItinerarySummary[]): ItinerarySummary[] {
   return shown.sort((a, b) => order[a.profile] - order[b.profile]);
 }
 
+/** The comparison, flat: hairline rows, no card. Opened from the "Compare itineraries" row. */
 function ComparisonTable({ a, b }: { a: ItinerarySummary; b: ItinerarySummary }) {
   const { rows, differences } = buildComparison(a, b);
   const nameA = PROFILE_LABEL[a.profile];
   const nameB = PROFILE_LABEL[b.profile];
   return (
-    <Card>
+    <View style={styles.compare}>
       <Text accessibilityRole="header" style={styles.sectionTitle}>
         How they differ
       </Text>
@@ -91,42 +82,69 @@ function ComparisonTable({ a, b }: { a: ItinerarySummary; b: ItinerarySummary })
           • {text}
         </Text>
       ))}
-    </Card>
+    </View>
+  );
+}
+
+function Fact({ icon, text }: { icon: IconName; text: string }) {
+  return (
+    <View style={styles.fact}>
+      <Icon name={icon} size={16} color={colors.muted} />
+      <Text style={styles.factText}>{text}</Text>
+    </View>
   );
 }
 
 function PlanCard({
   plan,
-  width,
+  trip,
   busy,
   onView,
-  onMap,
   onSelect,
 }: {
   plan: ItinerarySummary;
-  width?: number;
+  trip: Trip;
   busy: boolean;
   onView: () => void;
-  onMap: () => void;
   onSelect: () => void;
 }) {
   const label = PROFILE_LABEL[plan.profile];
   const selected = plan.status === "selected";
+  const names = planNames(plan, trip.destination.name);
+  const s = plan.stats;
   return (
-    <View style={width ? { width } : styles.flex}>
-      <Card accent={selected}>
-        <View style={styles.planHead}>
-          <Text accessibilityRole="header" style={styles.planTitle}>
-            {label}
-          </Text>
-          {selected ? <Text style={styles.badge}>✓ Selected</Text> : null}
+    <View style={styles.planCard} testID={`plan-${plan.profile}`}>
+      <Cover
+        seedKey={`${trip.destination.ref}:${plan.profile}`}
+        photo={trip.cover_image}
+        height={168}
+        rounded={radius.lg}
+      >
+        {names.badge || selected ? (
+          <View style={styles.planBadge}>
+            <Badge label={selected ? "Selected" : (names.badge as string)} tone="primary" />
+          </View>
+        ) : null}
+      </Cover>
+      <View style={styles.planBody}>
+        <View
+          accessible
+          accessibilityRole="header"
+          accessibilityLabel={`${label} plan. ${names.title}`}
+        >
+          <Text style={styles.planTitle}>{names.title}</Text>
+          <Text style={styles.planTagline}>{names.tagline}</Text>
         </View>
         <Text style={styles.body}>{PROFILE_EMPHASIS[plan.profile]}</Text>
-        {planFacts(plan).map((fact) => (
-          <Text key={fact} style={styles.fact}>
-            • {fact}
-          </Text>
-        ))}
+        {s ? (
+          <View style={styles.facts}>
+            <Fact icon="sight" text={pluralise(s.visits, "place")} />
+            {(s.meals ?? 0) > 0 ? (
+              <Fact icon="restaurant" text={pluralise(s.meals ?? 0, "restaurant")} />
+            ) : null}
+            <Fact icon="route" text={`${formatSeconds(s.travel_seconds)} travelling`} />
+          </View>
+        ) : null}
         {plan.notes
           .filter((n) => n.code === "SINGLE_PLAN")
           .map((n) => (
@@ -135,39 +153,38 @@ function PlanCard({
             </Text>
           ))}
         <View style={styles.actions}>
-          <Button
-            testID={`view-days-${plan.profile}`}
-            label="View days"
-            variant="secondary"
-            onPress={onView}
-            accessibilityLabel={`View the days of the ${label} plan`}
-          />
-          <Button
-            testID={`view-map-${plan.profile}`}
-            label="View map"
-            variant="secondary"
-            onPress={onMap}
-            accessibilityLabel={`View the ${label} plan on the map`}
-          />
-          <Button
-            testID={`select-${plan.profile}`}
-            label={selected ? "Selected" : "Select this plan"}
-            accessibilityLabel={
-              selected ? `The ${label} plan is selected` : `Select the ${label} plan`
-            }
-            disabled={selected}
-            loading={busy}
-            onPress={onSelect}
-          />
+          <View style={styles.flex}>
+            <Button
+              testID={`view-details-${plan.profile}`}
+              label="View details"
+              variant="secondary"
+              fill
+              onPress={onView}
+              accessibilityLabel={`View the details of the ${label} plan`}
+            />
+          </View>
+          <View style={styles.flex}>
+            <Button
+              testID={`select-${plan.profile}`}
+              label={selected ? "Selected" : "Choose this itinerary"}
+              variant="ink"
+              fill
+              accessibilityLabel={
+                selected ? `The ${label} plan is selected` : `Select the ${label} plan`
+              }
+              disabled={selected}
+              loading={busy}
+              onPress={onSelect}
+            />
+          </View>
         </View>
-      </Card>
+      </View>
     </View>
   );
 }
 
 export function TripScreen({ tripId }: { tripId: string }) {
   const nav = useNavigation();
-  const { width } = useWindowDimensions();
   const actions = useTripActions();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
@@ -179,8 +196,7 @@ export function TripScreen({ tripId }: { tripId: string }) {
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const pager = useRef<FlatList<ItinerarySummary>>(null);
+  const [comparing, setComparing] = useState(false);
 
   const run = useCallback(async (id: string, work: () => Promise<void>) => {
     setBusy(id);
@@ -207,8 +223,9 @@ export function TripScreen({ tripId }: { tripId: string }) {
       await actions.generate(tripId);
     });
 
-  const open = (p: ItinerarySummary, view: "days" | "map") =>
-    nav.push({ name: "itinerary", tripId, itineraryId: p.id, view, day: 1 });
+  // "View details": the plan's map with its days beneath (the list is one tap away there).
+  const open = (p: ItinerarySummary) =>
+    nav.push({ name: "itinerary", tripId, itineraryId: p.id, view: "map", day: 1 });
 
   if (trips.data === undefined) {
     return (
@@ -249,21 +266,14 @@ export function TripScreen({ tripId }: { tripId: string }) {
   );
   const proposals = shown.filter((p) => p !== kept);
   const pair = proposals.length >= 2 ? proposals.slice(0, 2) : null;
-  const sideBySide = width >= SIDE_BY_SIDE_MIN_WIDTH;
-  const pageWidth = Math.max(240, width - spacing.lg * 2);
 
-  const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setPage(Math.round(e.nativeEvent.contentOffset.x / (pageWidth + spacing.md)));
-  };
-
-  const renderPlan = (p: ItinerarySummary, w?: number) => (
+  const renderPlan = (p: ItinerarySummary) => (
     <PlanCard
       key={p.id}
       plan={p}
-      width={w}
+      trip={trip}
       busy={busy === p.id}
-      onView={() => open(p, "days")}
-      onMap={() => open(p, "map")}
+      onView={() => open(p)}
       onSelect={() => void select(p)}
     />
   );
@@ -308,68 +318,52 @@ export function TripScreen({ tripId }: { tripId: string }) {
             {renderPlan(kept)}
           </View>
         ) : null}
+        <View style={styles.pad}>
+          <View style={styles.stack}>{proposals.map((p) => renderPlan(p))}</View>
+        </View>
         {pair ? (
-          <>
-            <View style={styles.pad}>
+          <View style={styles.pad}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Compare itineraries"
+              accessibilityState={{ expanded: comparing }}
+              accessibilityHint="Shows how the two plans differ"
+              onPress={() => setComparing((v) => !v)}
+              style={({ pressed }) => [styles.compareRow, pressed && styles.pressed]}
+              testID="compare-toggle"
+            >
+              <Icon name="list" size={20} color={colors.primary} />
+              <View style={styles.flex}>
+                <Text style={styles.compareTitle}>Compare itineraries</Text>
+                <Text style={styles.compareText}>See how the two plans differ</Text>
+              </View>
+              <Icon name={comparing ? "close" : "chevronRight"} size={16} color={colors.muted} />
+            </Pressable>
+            {comparing ? (
               <ComparisonTable a={pair[0] as ItinerarySummary} b={pair[1] as ItinerarySummary} />
-            </View>
-            {sideBySide ? (
-              <View style={[styles.pad, styles.row]}>{pair.map((p) => renderPlan(p))}</View>
-            ) : (
-              <>
-                <View style={[styles.pad, styles.row]}>
-                  {pair.map((p, i) => (
-                    <Chip
-                      key={p.id}
-                      label={PROFILE_LABEL[p.profile]}
-                      selected={page === i}
-                      accessibilityLabel={`Show the ${PROFILE_LABEL[p.profile]} plan, ${i + 1} of 2`}
-                      onPress={() => {
-                        setPage(i);
-                        pager.current?.scrollToIndex({ index: i, animated: true });
-                      }}
-                    />
-                  ))}
-                </View>
-                <FlatList
-                  ref={pager}
-                  testID="plan-pager"
-                  data={pair}
-                  horizontal
-                  pagingEnabled={false}
-                  snapToInterval={pageWidth + spacing.md}
-                  decelerationRate="fast"
-                  showsHorizontalScrollIndicator={false}
-                  keyExtractor={(p) => p.id}
-                  renderItem={({ item }) => renderPlan(item, pageWidth)}
-                  contentContainerStyle={styles.pagerContent}
-                  ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
-                  onMomentumScrollEnd={onScrollEnd}
-                  getItemLayout={(_, index) => ({
-                    length: pageWidth + spacing.md,
-                    offset: (pageWidth + spacing.md) * index,
-                    index,
-                  })}
-                  accessibilityHint="Swipe sideways for the other plan"
-                />
-              </>
-            )}
-          </>
-        ) : (
-          <View style={styles.pad}>{proposals.map((p) => renderPlan(p))}</View>
-        )}
+            ) : null}
+          </View>
+        ) : null}
+        <View style={styles.adjustLine}>
+          <Icon name="info" size={16} color={colors.muted} />
+          <Text style={styles.note}>You can always adjust your itinerary later.</Text>
+        </View>
       </View>
     );
   }
 
-  const subtitle = `${trip.destination.name} · ${formatTripSpan(trip.start_date, trip.end_date, trip.duration_days)}`;
+  const days = trip.duration_days;
+  const subtitle = pair
+    ? `We've created two options for your ${pluralise(days, "day")} trip to ${trip.destination.name}. Pick the one that fits your style, or look at both.`
+    : `${trip.destination.name}`;
+  const span = formatTripSpan(trip.start_date, trip.end_date, trip.duration_days);
 
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <ScreenHeader
-          title={trip.selected_itinerary_id ? "Original proposals" : "Proposals"}
-          subtitle={`${trip.title} · ${subtitle}`}
+          title={trip.selected_itinerary_id ? "Original proposals" : "Choose your itinerary"}
+          subtitle={subtitle}
           onBack={nav.back}
           right={
             <Button
@@ -380,6 +374,10 @@ export function TripScreen({ tripId }: { tripId: string }) {
             />
           }
         />
+        <View style={styles.spanLine}>
+          <Icon name="calendar" size={18} color={colors.muted} />
+          <Text style={styles.spanText}>{span}</Text>
+        </View>
         <ResourceNotices resource={trips} noun="trips" />
         {problem ? <Notice tone="error">{problem}</Notice> : null}
         {plans.data !== undefined ? <ResourceNotices resource={plans} noun="plans" /> : null}
@@ -394,42 +392,59 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   flex: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
-  stack: { gap: spacing.md },
+  pressed: { opacity: 0.8 },
+  stack: { gap: spacing.xl },
   pad: { paddingHorizontal: spacing.lg },
-  row: { flexDirection: "row", gap: spacing.md, flexWrap: "wrap" },
-  pagerContent: { paddingHorizontal: spacing.lg },
+  spanLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  spanText: { ...type.small, fontWeight: "600", color: colors.text },
   sectionTitle: { ...type.heading, color: colors.text },
+  planCard: { gap: spacing.md },
+  planBadge: { position: "absolute", top: spacing.md, left: spacing.md },
+  planBody: { gap: spacing.sm },
+  planTitle: { ...type.title, color: colors.text },
+  planTagline: { ...type.small, color: colors.muted },
+  body: { ...type.small, color: colors.text },
+  facts: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.lg, rowGap: spacing.xs },
+  fact: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  factText: { ...type.caption, color: colors.muted },
+  note: { ...type.small, color: colors.muted },
+  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
+  compareRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    minHeight: TOUCH,
+    paddingVertical: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  compareTitle: { ...type.small, fontWeight: "700", color: colors.text },
+  compareText: { ...type.caption, color: colors.muted },
+  compare: { gap: spacing.xs, paddingTop: spacing.md },
+  adjustLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    marginTop: spacing.lg,
+  },
   tableHead: { flexDirection: "row", gap: spacing.sm },
   tableRow: {
     flexDirection: "row",
     gap: spacing.sm,
     paddingVertical: spacing.sm,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
   cellLabel: { flex: 1.1, ...type.small, color: colors.muted },
   cell: { flex: 1, ...type.small, color: colors.text },
   headText: { fontWeight: "700", color: colors.text },
   difference: { ...type.small, color: colors.text },
-  planHead: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  planTitle: { ...type.title, color: colors.text, flexShrink: 1 },
-  badge: {
-    ...type.caption,
-    fontWeight: "700",
-    color: colors.primary,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    overflow: "hidden",
-  },
-  body: { ...type.body, color: colors.text },
-  fact: { ...type.small, color: colors.text },
-  note: { ...type.small, color: colors.muted },
-  actions: { gap: spacing.sm, marginTop: spacing.sm, alignItems: "stretch" },
 });

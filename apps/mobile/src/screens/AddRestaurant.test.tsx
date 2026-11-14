@@ -204,7 +204,7 @@ test("search the map data, see three slots with reasons, preview, accept", async
   expect(await screen.findByText("Add Zur Alten Post?")).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("accept-change"));
   expect(client.count("POST /v1/change-sets/{change_set_id}/apply")).toBe(1);
-  expect(await screen.findByText("Essentials plan")).toBeOnTheScreen();
+  expect(await screen.findByText(/^Essentials plan/)).toBeOnTheScreen();
 });
 
 test("a restaurant entered by hand without a cuisine stays 'Cuisine not specified'", async () => {

@@ -1,11 +1,13 @@
 import type { Trip } from "@detour/shared";
-import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { type ReactNode, useState } from "react";
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { call } from "../api/unwrap";
 import { Button } from "../components/Button";
-import { CATEGORY_ICON, DEVICE_ONLY_NOTE } from "../components/documents/DocumentList";
+import { DEVICE_ONLY_NOTE, KindTile } from "../components/documents/DocumentList";
+import { CalendarSheet } from "../components/ds/Calendar";
 import { Icon } from "../components/ds/Icon";
+import { IconButton, ListRow, RowGroup } from "../components/ds/primitives";
 import { Chip, EmptyState, Field, LoadingState, Notice, ScreenHeader } from "../components/ui";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
@@ -14,6 +16,7 @@ import { useDocument, useDocumentActions } from "../documents/DocumentsProvider"
 import {
   CATEGORIES,
   CATEGORY_LABEL,
+  NOTES_MAX,
   type DocCategory,
   type DocLink,
   type PickedFile,
@@ -25,8 +28,9 @@ import {
   titleFromFileName,
 } from "../documents/model";
 import { useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, spacing, type } from "../theme";
-import { formatDayLabel } from "../util/format";
+import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { localToday, shortSpan } from "../domain/trips";
+import { formatDate, formatDayLabel } from "../util/format";
 
 type LinkKind = DocLink["kind"];
 
@@ -46,10 +50,12 @@ export function DocumentFormScreen({
   tripId,
   documentId,
   link,
+  category,
 }: {
   tripId: string;
   documentId?: string;
   link?: DocLink;
+  category?: DocCategory;
 }) {
   const nav = useNavigation();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
@@ -76,17 +82,21 @@ export function DocumentFormScreen({
       </View>
     );
   }
-  return <Form trip={trip} existing={existing ?? null} initialLink={link} />;
+  return (
+    <Form trip={trip} existing={existing ?? null} initialLink={link} initialCategory={category} />
+  );
 }
 
 function Form({
   trip,
   existing,
   initialLink,
+  initialCategory,
 }: {
   trip: Trip;
   existing: TripDocument | null;
   initialLink?: DocLink;
+  initialCategory?: DocCategory;
 }) {
   const nav = useNavigation();
   const actions = useDocumentActions();
@@ -99,7 +109,12 @@ function Form({
   const start = existing?.link ?? initialLink ?? { kind: "trip" as const };
   const [picked, setPicked] = useState<PickedFile | null>(null);
   const [title, setTitle] = useState(existing?.title ?? "");
-  const [category, setCategory] = useState<DocCategory | null>(existing?.category ?? null);
+  const [category, setCategory] = useState<DocCategory | null>(
+    existing?.category ?? initialCategory ?? null,
+  );
+  const [date, setDate] = useState(existing?.date ?? "");
+  const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [calendar, setCalendar] = useState(false);
   const [kind, setKind] = useState<LinkKind>(start.kind);
   const [day, setDay] = useState<number | null>(start.kind === "day" ? start.day : null);
   const [place, setPlace] = useState<{ key: string; name: string; day: number | null } | null>(
@@ -169,7 +184,7 @@ function Form({
     if (!category || !chosenLink) return;
     setBusy("save");
     setProblem(null);
-    const fields = { title, category, link: chosenLink };
+    const fields = { title, category, link: chosenLink, date: date || null, notes };
     try {
       if (existing) {
         await actions.update(existing, fields);
@@ -186,49 +201,111 @@ function Form({
     }
   };
 
+  // Step one (reference screen 16, left): how to add. Only the phone's file picker is built; it
+  // also reaches Google Drive, because Android's picker lists it.
+  if (!existing && !picked) {
+    return (
+      <View style={styles.fill}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <ScreenHeader
+            title="Add document"
+            subtitle={`${trip.title} · ${shortSpan(trip)}`}
+            onBack={nav.back}
+          />
+          <View style={styles.body}>
+            {problem ? <Notice tone="error">{problem}</Notice> : null}
+            <Text style={styles.lead}>
+              Keep your tickets, bookings and other travel documents in one place.
+            </Text>
+            <RowGroup>
+              <ListRow
+                icon="export"
+                title="Upload from device"
+                detail="Add a PDF or a picture from your phone, or from Google Drive through the phone's file picker."
+                testID="choose-file"
+                onPress={() => void pick()}
+              />
+              <ListRow
+                icon="photos"
+                title="Take a photo"
+                detail="Scan a ticket, reservation or document with the camera."
+                disabled
+                testID="take-photo"
+              />
+              <ListRow
+                icon="route"
+                title="Add a link"
+                detail="A link to a ticket, a booking or a confirmation email."
+                disabled
+                testID="add-link"
+              />
+            </RowGroup>
+            <View style={styles.or}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>or create manually</Text>
+              <View style={styles.orLine} />
+            </View>
+            <RowGroup>
+              <ListRow
+                icon="document"
+                title="Create a document"
+                detail="A name, a kind and notes; you add the file later."
+                disabled
+                testID="create-document"
+              />
+            </RowGroup>
+            {busy === "pick" ? <Text style={styles.muted}>Opening the file picker…</Text> : null}
+            <View style={styles.privacy}>
+              <Icon name="shield" size={22} color={colors.primary} />
+              <View style={styles.fileText}>
+                <Text style={styles.privacyTitle}>Your documents stay private</Text>
+                <Text style={styles.muted}>{DEVICE_ONLY_NOTE}</Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  const fileName = existing?.fileName ?? (picked as PickedFile).name;
+  const fileText = existing
+    ? fileLine(existing)
+    : fileLine({ ...(picked as PickedFile), sizeBytes: picked?.size ?? null });
+  const fileUri = existing?.uri ?? picked?.uri ?? null;
+  const fileIsImage = (existing?.mimeType ?? picked?.mimeType ?? "").startsWith("image/");
+
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <ScreenHeader
-          title={existing ? "Edit document" : "Add a document"}
-          subtitle={trip.title}
+          title={existing ? "Edit document" : "Add document"}
+          subtitle={`${trip.title} · ${shortSpan(trip)}`}
           onBack={nav.back}
         />
         <View style={styles.body}>
           {problem ? <Notice tone="error">{problem}</Notice> : null}
 
-          {existing ? (
-            <FileRow name={existing.fileName} line={fileLine(existing)} />
-          ) : picked ? (
-            <View style={styles.gap}>
-              <FileRow name={picked.name} line={fileLine({ ...picked, sizeBytes: picked.size })} />
-              <Button label="Choose another file" variant="quiet" onPress={() => void pick()} />
-            </View>
-          ) : (
-            <View style={styles.gap}>
-              <Button
-                label="Choose a file"
-                icon="document"
-                variant="secondary"
-                testID="choose-file"
-                loading={busy === "pick"}
-                hint="Opens the phone's file picker: a PDF or a picture"
-                onPress={() => void pick()}
-              />
-              <Text style={styles.muted}>A PDF or a picture: a ticket, a booking, a policy.</Text>
-            </View>
-          )}
-
-          <Field
-            label="Title"
-            value={title}
-            onChangeText={setTitle}
-            maxLength={80}
-            hint="For example “Train to Salzburg” or “Travel insurance”."
+          <FileRow
+            name={fileName}
+            line={fileText}
+            uri={fileIsImage ? fileUri : null}
+            category={category ?? "other"}
+            action={
+              existing ? null : (
+                <Button
+                  label="Replace file"
+                  variant="secondary"
+                  testID="replace-file"
+                  loading={busy === "pick"}
+                  onPress={() => void pick()}
+                />
+              )
+            }
           />
 
           <View style={styles.gap}>
-            <Text style={styles.label}>Kind</Text>
+            <Text style={styles.label}>Document type</Text>
             <View style={styles.row}>
               {CATEGORIES.map((c) => (
                 <Chip
@@ -241,8 +318,18 @@ function Form({
             </View>
           </View>
 
+          <Field
+            label="Title"
+            value={title}
+            onChangeText={setTitle}
+            maxLength={80}
+            hint="For example “Train to Salzburg” or “Travel insurance”."
+          />
+
           <View style={styles.gap}>
-            <Text style={styles.label}>About</Text>
+            <Text style={styles.label}>
+              Related to <Text style={styles.optional}>(optional)</Text>
+            </Text>
             <View style={styles.row}>
               {kinds.map((k) => (
                 <Chip
@@ -290,8 +377,76 @@ function Form({
               : null}
           </View>
 
+          <View style={styles.gap}>
+            <Text style={styles.label}>
+              Date <Text style={styles.optional}>(optional)</Text>
+            </Text>
+            <View style={styles.dateRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={date ? `Date, ${formatDate(date)}` : "Date, not set"}
+                accessibilityHint="Opens a calendar"
+                onPress={() => setCalendar(true)}
+                style={styles.dateField}
+                testID="document-date"
+              >
+                <Icon name="calendar" size={22} color={colors.text} />
+                <Text style={[styles.dateText, !date && styles.placeholder]}>
+                  {date ? formatDate(date) : "Choose a date"}
+                </Text>
+              </Pressable>
+              {date ? (
+                <IconButton
+                  icon="close"
+                  label="Clear the date"
+                  testID="clear-document-date"
+                  onPress={() => setDate("")}
+                />
+              ) : null}
+            </View>
+          </View>
+          <CalendarSheet
+            visible={calendar}
+            title="Date of the document"
+            value={date}
+            today={localToday()}
+            onPick={(iso) => {
+              setDate(iso);
+              setCalendar(false);
+            }}
+            onClear={() => {
+              setDate("");
+              setCalendar(false);
+            }}
+            onClose={() => setCalendar(false)}
+          />
+
+          <View style={styles.gap}>
+            <Text style={styles.label}>
+              Notes <Text style={styles.optional}>(optional)</Text>
+            </Text>
+            <TextInput
+              accessibilityLabel="Notes (optional)"
+              value={notes}
+              onChangeText={setNotes}
+              maxLength={NOTES_MAX}
+              multiline
+              textAlignVertical="top"
+              placeholder="For example: outbound flight, confirmation email from the airline"
+              placeholderTextColor={colors.muted}
+              style={styles.notes}
+              testID="document-notes"
+            />
+            <Text
+              style={styles.counter}
+              accessibilityLabel={`${notes.length} of ${NOTES_MAX} characters`}
+            >
+              {notes.length}/{NOTES_MAX}
+            </Text>
+          </View>
+
           <Button
-            label={existing ? "Save" : "Add the document"}
+            label="Save document"
             variant="ink"
             fill
             testID="save-document"
@@ -306,16 +461,42 @@ function Form({
   );
 }
 
-function FileRow({ name, line }: { name: string; line: string }) {
+function FileRow({
+  name,
+  line,
+  uri,
+  category,
+  action,
+}: {
+  name: string;
+  line: string;
+  /** The picture itself, for an image; a PDF shows its kind's tile. */
+  uri: string | null;
+  category: DocCategory;
+  action: ReactNode;
+}) {
   return (
-    <View style={styles.file} accessible accessibilityLabel={`File: ${name}. ${line}`}>
-      <Icon name={CATEGORY_ICON.other} color={colors.primary} />
-      <View style={styles.fileText}>
-        <Text style={styles.fileName} numberOfLines={1}>
-          {name}
-        </Text>
-        <Text style={styles.muted}>{line}</Text>
+    <View style={styles.file}>
+      <View accessible accessibilityLabel={`File: ${name}. ${line}`} style={styles.fileHead}>
+        {uri ? (
+          <Image
+            source={{ uri }}
+            style={styles.filePicture}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+            testID="file-picture"
+          />
+        ) : (
+          <KindTile category={category} size={64} />
+        )}
+        <View style={styles.fileText}>
+          <Text style={styles.fileName} numberOfLines={2}>
+            {name}
+          </Text>
+          <Text style={styles.muted}>{line}</Text>
+        </View>
       </View>
+      {action}
     </View>
   );
 }
@@ -359,14 +540,55 @@ const styles = StyleSheet.create({
   label: { ...type.small, fontWeight: "700", color: colors.text },
   muted: { ...type.small, color: colors.muted },
   note: { ...type.caption, color: colors.muted },
-  file: {
+  lead: { ...type.body, color: colors.muted },
+  optional: { fontWeight: "400", color: colors.muted },
+  or: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  orText: { ...type.small, color: colors.muted },
+  privacy: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+  },
+  privacyTitle: { ...type.small, fontWeight: "700", color: colors.text },
+  file: {
     gap: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  fileHead: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  filePicture: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+  },
+  dateRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  dateField: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    minHeight: TOUCH,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.outline,
+  },
+  dateText: { ...type.body, color: colors.text },
+  placeholder: { color: colors.muted },
+  notes: {
+    ...type.body,
+    color: colors.text,
+    minHeight: 96,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.outline,
+    borderRadius: radius.md,
+  },
+  counter: { ...type.caption, color: colors.muted, textAlign: "right" },
   fileText: { flex: 1, gap: spacing.xxs },
   fileName: { ...type.body, fontWeight: "600", color: colors.text },
   choice: {

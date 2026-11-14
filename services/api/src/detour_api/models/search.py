@@ -107,6 +107,11 @@ class PlaceSource(BaseModel):
 class PlaceSummary(BaseModel):
     id: uuid.UUID
     name: str | None = Field(description="Null when the source has no name")
+    name_en: str | None = Field(
+        default=None,
+        description="The English name the source gives (OpenStreetMap name:en), only when it "
+        "differs from the name; null = none. Never machine-translated.",
+    )
     kind: Literal["attraction", "restaurant", "transport_hub", "other"]
     category: str
     lat: float
