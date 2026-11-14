@@ -1,7 +1,8 @@
 # ADR 024 — Multi-city trips with stops the user chooses
 
-- **Status:** **Proposed** 2026-11-14. Nothing is built. The owner's answers of 2026-11-14 (in the
-  brief) are folded in; two points remain for the owner to confirm (see "Open for the owner").
+- **Status:** **Approved** by the owner on 2026-11-14 ("Approved, go ahead with your defaults. For
+  2 - Finer names."), **built and awaiting acceptance** (see "Built" at the end); tried on synthetic
+  fixtures only.
 - **Date:** 2026-11-14
 - **Related:** [`../briefs/multi-city-trips-and-photos.md`](../briefs/multi-city-trips-and-photos.md)
   (Part 1), [`016-phase-6-meals-and-area-destinations.md`](016-phase-6-meals-and-area-destinations.md)
@@ -226,3 +227,35 @@ has no public transport (Phase 10).
   in Austria (and in Czechia, Hungary and Italy once imported) before that.
 - Build order (after the photo work of the ADR 022 amendment): data and API; planner, validator and
   goldens; recalculation and stop edits; app.
+
+## Built (2026-11-14, awaiting acceptance)
+
+The owner's answers to "Open for the owner": the arrival day after an unknown leg is planned as a
+normal day and marked (decision 11, as proposed); trips across countries get **finer names** than
+continents (decision 22); Japan's names wait for the dry-run figures (decision 25).
+
+Where the build differs from the decisions above, and why:
+
+- **Names (decision 22):** the regions and continents are a fixed table in code
+  (`detour_api/naming.py`: Central, Western, Northern, Southern and Eastern Europe, the Balkans, East,
+  Southeast and South Asia, the Middle East, North Africa, North America, Australia and New Zealand),
+  keyed by the stops' GeoNames country codes, so no `geo.country.continent` column and no gazetteer
+  re-run were needed. Country names come from `geo.country.name`. "Unless the user has renamed the
+  trip" is not built: the name always follows the cities.
+- **Region refusal (decisions 7, 21):** `region_not_available` is **409**, as it already is for a
+  single destination, not 422.
+- **Stop edits (decision 19):** the preview is `POST /v1/trips/{id}/stops/preview` (a change set
+  with action `edit_stops`, applied and discarded with the usual endpoints), not an action of
+  `POST /v1/itineraries/{id}/change-sets`. A trip without a chosen plan changes its stops directly
+  with `PUT /v1/trips/{id}/stops`. **A locked item on a day that a shorter stay drops stops the
+  edit** (`LOCKED_ON_DROPPED_DAY`: unlock it or keep the day); moving it into the remaining days is
+  not built. A manual plan keeps its days as they are, with empty new days and no layout.
+- **New days** are filled by the planner's own plan of that city (the engine on the city, the plan's
+  profile, leaving out places the trip has), then every changed day is laid out again by the
+  recalculation and checked by the revision validator against the assembled plan.
+- **Reordering in the app** is Up and Down buttons on each row, not a drag handle (no gesture
+  library is added; the buttons are larger targets and work with a screen reader).
+- **Japan (decision 25)** is not measured yet: the dry-run import of Japan, with the share of names
+  that have Latin letters or an English name, is still to be run by the operator.
+- Migration `0012` also relaxes `change_set_place_xor` for `edit_stops`; `CONFIG_VERSION` is
+  `2026-11-14.2`; the existing goldens changed only by the new `arrival_unknown: false` field.

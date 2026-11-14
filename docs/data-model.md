@@ -216,13 +216,25 @@ and `last_seen_at` is refreshed at most hourly. No token or hash is stored.
 |---|---|
 | `id`, `installation_id` | fk, `ON DELETE CASCADE` |
 | `title` | 1 to 120 characters |
-| `destination_kind`, `destination_ref` | `city` (a `geo.city.id`) or `area` (a `geo.admin_area.id`); existence and region availability are checked by the API |
+| `destination_kind`, `destination_ref` | `city` (a `geo.city.id`), `area` (a `geo.admin_area.id`) or `route` (a multi-city trip, ADR 024: the first stop's city id); existence and region availability are checked by the API |
+| `stops_version` | Counts applied stop edits of a multi-city trip (migration `0012`); 0 otherwise |
 | `destination_name`, `destination_point` | Snapshot taken at creation |
 | `duration_days` | 1 to 30; cannot change once the trip has itineraries |
 | `start_date` | Optional; when set or changed, itinerary day dates follow |
 | `selected_itinerary_id` | fk, `ON DELETE SET NULL` |
 | `status`, `archived_at` | `active`, `past`; a past trip has `archived_at` (check constraint) |
 | `is_seed`, `created_at`, `updated_at` | |
+
+### 3.2a `app.trip_stop`: the cities of a multi-city trip (ADR 024, migration `0012`)
+
+`id`, `trip_id` (fk, `ON DELETE CASCADE`), `position` (1 to 6, unique per trip), `city_id` (a
+`geo.city.id`, **no foreign key**), snapshots of `city_name`, `country_iso2` and `point` (GiST
+index), `days` (at least 1). The stops' days add up to the trip's `duration_days`.
+`app.itinerary.stops_version` records the trip's stop version a plan was made for (null for city and
+area trips); a plan whose version is not the trip's cannot be chosen. An `itinerary_day` arrival leg
+may be `unknown` (mode and confidence) with no seconds or metres: a leg into or out of a country
+travelled by rail. `app.change_set.action` gains `edit_stops`, whose proposal also carries the trip's
+new stops, name and length; applying it may add or delete day rows.
 
 ### 3.3 `app.itinerary`, `app.itinerary_day`, `app.itinerary_item`, `app.transfer`
 A proposed or selected plan. Variants of one generation share a `generation_id`.

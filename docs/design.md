@@ -100,7 +100,10 @@ cover with the status badge on its own pill at the top right, and the trip's **n
 cover's soft gradient (owner, 2026-11-14, as screen 01). No footer, no counts, no destination line, no extra request per card. A button "New trip" ends the Upcoming list.
 
 **A trip is named after its destination** (the country, region or city chosen), never with its
-length: "Austria", not "Austria, 8 days".
+length: "Austria", not "Austria, 8 days". A multi-city trip is named by the server from its cities
+(owner, 2026-11-14): "Vienna to Salzburg" for two, "Multi-city Austria" for three or more in one
+country, else "Multi-city Central Europe" (a fixed table of regions), "Multi-city Europe" or
+"Multi-city trip". The name follows edits of the cities.
 
 ### Create new trip (screen 13)
 
@@ -109,7 +112,14 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
 1. **Destination:** a pin icon, the search field (a city or area in an imported region), results as
    hairline rows with the reason when one cannot be chosen. Once chosen, the name with its kind and
    country, an X to clear it, and the destination's cover illustration beneath.
-2. **Start date** (optional) and **Duration** (days, with minus and plus) side by side. The start
+   **Add another city** (a quiet text button under a chosen city) makes it a **multi-city trip**
+   (ADR 024): a sheet searches cities only, and the cities become hairline rows (a navy number
+   disc, the name, minus and plus for its days, Up and Down to reorder, an X to remove) with
+   "3 cities · 7 days in all" under them and "Add another city" again, up to six. The days are split
+   evenly when the second city is added. With one city left it is an ordinary city trip again.
+   Areas cannot be stops. "Change photo" offers one tab per city.
+2. **Start date** (optional) and **Duration** (days, with minus and plus) side by side; for a
+   multi-city trip the duration is the cities' total and cannot be set on its own. The start
    date opens a **month calendar** in a sheet (Monday first, today ringed, "Clear the date"); a date
    is chosen, never typed.
 3. **Travel style:** Relaxed, Balanced, Active (chips).
@@ -162,6 +172,9 @@ not asked; it is the destination.
   2 h", "Lunch · Restaurant · 1 h"), a chevron to the place's details. The names are English where
   the source has an English name; the local name is on the place's details. Selecting a stop tints its row and
   highlights its marker, and the map moves to it; nothing opens under it. Lock and Remove are on the place's details.
+- **A journey to the next city whose time is not known** (into or out of Japan, ADR 024) reads
+  "Travel from Tokyo · time not calculated: public transport is not built yet"; its transport marker
+  stays, with no line to it.
 - **Travel between stops** is written into a hairline: a line, "Walk · 3 min · 170 m" in muted caption,
   a line. A stop row has no hairline of its own, so that travel line is the only divider between two stops. No Routed or Estimated tag (the spoken label still says when a time is an estimate).
 - **Type sizes here are small** (name 14, details 13) so more stops show at once.
@@ -246,6 +259,14 @@ anything changes. Outside a trip it starts a new trip.
   "Bookings and documents" (places to eat), with "Attach a document".
 - **A past trip** is a flat page: a compact header with the settings icon, a summary, a Documents
   row, underlined Map and List tabs, and hairline rows by city with plain Skip and Restore actions.
+
+### Edit cities (multi-city trips, ADR 024)
+
+Trip settings shows "Your cities" with the list in words and **Edit cities**: the same rows as the
+new-trip screen. With a chosen plan the dark button is "Preview the change", which opens the change
+preview ("Change your cities?", the diff, and a note naming what leaves with a removed day, marked
+"added by you" or "locked"); without one it is "Save cities". Proposals made for the earlier cities
+say "Made for the trip's earlier cities" and their "Choose this itinerary" is disabled.
 
 ### Photos, Explore, More (screens 07, 10, 11)
 

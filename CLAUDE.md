@@ -98,7 +98,11 @@ diagnosis in `docs/spikes/apk-photos-diagnosis.md`): **the ADR 022 amendment is 
 Commons categories; portrait photos accepted and cropped to fit on screen; a background resolver on the API
 (`images/background.py`, advisory lock, no workflow needed); "Change photo" with up to 12 candidates and
 backend previews; "Image credits" under More; day thumbnails; coverage not yet measured, not checked on a
-device). **ADR 024 (multi-city trips, proposed and approved) is being built.** Do not start the next phase until the
+device). **ADR 024 (multi-city trips) is built and awaits acceptance** (migration
+`0012`, `app.trip_stop`; 2 to 6 cities in the user's order with their days; the planner plans each
+city and drives between them, legs into or out of Japan have no time; names from a fixed table in
+`naming.py`; additions stay near the stops; cities edited through `edit_stops` change sets; the app's
+"Add another city" and "Edit cities"; tried on synthetic fixtures only; Japan not imported). Do not start the next phase until the
 owner asks for it.
 
 ## Read first

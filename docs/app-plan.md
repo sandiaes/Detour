@@ -302,6 +302,11 @@ ADR 019).
 
 GTFS-Realtime is considered only after Phase 10, and only for same-day use.
 
+**Multi-city trips (ADR 024, built 2026-11-14, awaiting acceptance).** A trip can be an ordered list
+of 2 to 6 cities chosen by the user, with the days of each; the planner plans each city and the legs
+between them, and the cities can be edited later through change sets. Legs into or out of Japan stay
+without a time until Phase 10 fills them in. Japan itself is not imported yet (gate 5, ADR 009).
+
 ### Note: which regions are loaded (2026-11-12, owner)
 
 The five pilot regions are loaded ahead of time by the operator (workflow "Import region"); the
