@@ -73,10 +73,12 @@ an empty trip", and meals aimed at lunch 13:00 and dinner 20:00 (day window to 2
 to an empty trip is not built yet (it needs the owner's approval). Covers are illustrations,
 not photos, until ADR 022 (accepted 2026-11-14: Wikimedia Commons photos through Wikidata, stored in
 Supabase Storage, a "Change photo" choice on the new-trip screen and an automatic photo otherwise)
-has its step 2 built and awaiting acceptance (migration `0009`, `adapters/wikimedia.py`, the image
+has its steps 2 and 3 built and awaiting acceptance (migration `0009`, `adapters/wikimedia.py`, the image
 resolver and `python -m detour_api.importer images`, the "Resolve images" workflow run by hand,
-`GET /v1/images/{id}`; tried on recorded responses only, nothing has called Wikimedia from the
-code yet); the API fields, the automatic cover and "Change photo" are steps 3 and 4. **No budgets,
+`GET /v1/images/{id}`, `Trip.cover_image` and `Item.image`, photos on the trip card, the trip
+overview and the place detail with a credit link; the resolver has run on Austria, 114 photos
+stored); "Change photo", the automatic photo after a trip is created and the image-credits list are
+step 4. **No budgets,
 currencies or prices** (ADR 017, accepted 2026-11-13): none in the app, the API or the database;
 bringing them back needs a new ADR. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),

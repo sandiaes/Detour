@@ -32,7 +32,7 @@ from detour_api.models.trips import (
 )
 from detour_api.planner.durations import visit_minutes
 from detour_api.planner.reasons import ITEM_TEMPLATES, NOTE_TEMPLATES, item_text, note_text
-from detour_api.repo import geo, plan_state, trips, user_places
+from detour_api.repo import geo, images, plan_state, trips, user_places
 
 MAX_ITINERARIES_PER_TRIP = 5
 MAX_ITEMS_PER_DAY = 40
@@ -236,9 +236,12 @@ def get_itinerary(
         {"i": itinerary_id},
     ).all()
     transfers = _transfers(conn, [it.id for it in items])
+    photos = images.place_photos(conn, [it.place_id for it in items if it.place_id is not None])
     by_day: dict[uuid.UUID, list[Item]] = {}
     for it in items:
-        by_day.setdefault(it.day_id, []).append(_item(it, transfers.get(it.id)))
+        item = _item(it, transfers.get(it.id))
+        item.image = photos.get(it.place_id) if it.place_id is not None else None
+        by_day.setdefault(it.day_id, []).append(item)
     summary = _summary(row)
     out: list[Day] = []
     for n, d in enumerate(days):
@@ -460,7 +463,12 @@ def get_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -
         ),
         {"i": item_id, "n": installation_id},
     ).first()
-    return None if row is None else _item(row, _transfers(conn, [row.id]).get(row.id))
+    if row is None:
+        return None
+    item = _item(row, _transfers(conn, [row.id]).get(row.id))
+    if row.place_id is not None:
+        item.image = images.place_photos(conn, [row.place_id]).get(row.place_id)
+    return item
 
 
 def require_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -> Item:

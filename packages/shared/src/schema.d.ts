@@ -1336,6 +1336,8 @@ export interface components {
       transfer?: components["schemas"]["Transfer"] | null;
       /** @description Meals only: the place to eat as the open data describes it */
       restaurant?: components["schemas"]["RestaurantInfo"] | null;
+      /** @description Photo of an imported place, when one was found (restaurants have none yet) */
+      image?: components["schemas"]["Photo"] | null;
     };
     /** ItemCreate */
     ItemCreate: {
@@ -1560,6 +1562,54 @@ export interface components {
        * Format: time
        */
       new_start_time: string;
+    };
+    /** Photo */
+    Photo: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Url
+       * @description Path on this API (GET /v1/images/{id}): a JPEG, at most 1080 px on its longest side. The app prefixes its API base URL; it never calls the photo's origin
+       */
+      url: string;
+      /**
+       * Color
+       * @description Average colour, #rrggbb: the placeholder while it loads
+       */
+      color: string;
+      /** Width */
+      width: number;
+      /** Height */
+      height: number;
+      credit: components["schemas"]["PhotoCredit"];
+    };
+    /**
+     * PhotoCredit
+     * @description What the licence requires the app to show next to a photo.
+     */
+    PhotoCredit: {
+      /** Author */
+      author: string;
+      /**
+       * Licence
+       * @description Short licence name, for example CC BY-SA 4.0
+       */
+      licence: string;
+      /** Licence Url */
+      licence_url: string | null;
+      /**
+       * Source Url
+       * @description The file's page on Wikimedia Commons
+       */
+      source_url: string;
+      /**
+       * Text
+       * @description The credit line, from a fixed template
+       */
+      text: string;
     };
     /** PlaceDetail */
     PlaceDetail: {
@@ -2190,6 +2240,8 @@ export interface components {
        * @description True for the illustrative seed trip; not user data
        */
       is_seed: boolean;
+      /** @description The trip's photo: the one the user chose, else the one found for the destination city; null when there is none (the app then shows its illustration) */
+      cover_image?: components["schemas"]["Photo"] | null;
       /**
        * Created At
        * Format: date-time

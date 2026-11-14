@@ -62,6 +62,8 @@ _QID = re.compile(r"^Q[0-9]+$")
 # Fixed vocabulary of reasons a photo is not used (stored in ``geo.image_lookup.reason``).
 REASON_NO_ITEM = "no_wikidata_item"
 REASON_NO_IMAGE = "no_image_property"
+REASON_CITY_NO_MATCH = "no_item_for_geonames_id"
+REASON_CITY_AMBIGUOUS = "several_items_for_geonames_id"
 REASON_NOT_PHOTO = "not_a_jpeg_or_png"
 REASON_TOO_SMALL = "too_small"
 REASON_NOT_LANDSCAPE = "not_landscape"
@@ -84,8 +86,12 @@ class WikimediaBudgetExhausted(WikimediaError):
 @dataclass(frozen=True)
 class EntityImage:
     qid: str
-    file: str | None  # the first preferred (else normal) image of the item, without "File:"
+    files: tuple[str, ...]  # image candidates, best first, without "File:" (P18, then P948)
     sitelinks: int
+
+    @property
+    def file(self) -> str | None:
+        return self.files[0] if self.files else None
 
 
 @dataclass(frozen=True)
@@ -122,19 +128,24 @@ def parse_entities(payload: Any) -> dict[str, EntityImage]:
         if not isinstance(entity, dict) or not _QID.match(str(qid)) or "missing" in entity:
             continue
         claims = entity.get("claims")
-        statements = claims.get("P18") if isinstance(claims, dict) else None
+        claims = claims if isinstance(claims, dict) else {}
+        # The item's image (P18) first, then its page banner (P948): a city often has only a banner.
+        files = list(
+            dict.fromkeys(_ranked_files(claims.get("P18")) + _ranked_files(claims.get("P948")))
+        )
         sitelinks = entity.get("sitelinks")
         found[qid] = EntityImage(
             qid=qid,
-            file=_pick_file(statements),
+            files=tuple(files),
             sitelinks=len(sitelinks) if isinstance(sitelinks, dict) else 0,
         )
     return found
 
 
-def _pick_file(statements: Any) -> str | None:
+def _ranked_files(statements: Any) -> list[str]:
+    """File names of the non-deprecated statements, preferred rank first, then statement order."""
     if not isinstance(statements, list):
-        return None
+        return []
     ranked: list[tuple[int, int, str]] = []
     for index, statement in enumerate(statements):
         if not isinstance(statement, dict) or statement.get("rank") == "deprecated":
@@ -143,7 +154,7 @@ def _pick_file(statements: Any) -> str | None:
         value = snak.get("datavalue", {}).get("value") if isinstance(snak, dict) else None
         if isinstance(value, str) and value.strip():
             ranked.append((0 if statement.get("rank") == "preferred" else 1, index, value.strip()))
-    return min(ranked)[2] if ranked else None
+    return [name for _, _, name in sorted(ranked)]
 
 
 def parse_imageinfo(payload: Any) -> dict[str, FileInfo]:
@@ -280,9 +291,9 @@ class WikimediaClient:
         }
         return parse_imageinfo(self._api(self._settings.commons_api_url, params))
 
-    def city_item(self, geonames_id: int) -> str | None:
-        """The Wikidata item whose GeoNames-ID property (P1566) is ``geonames_id``: exactly one
-        match, else ``None`` (an ambiguous answer is not guessed)."""
+    def city_item(self, geonames_id: int) -> tuple[str | None, str | None]:
+        """The Wikidata item whose GeoNames-ID property (P1566) is ``geonames_id``, with the reason
+        there is none. Exactly one match is used; none or several are not guessed."""
         params = {
             "action": "query",
             "list": "search",
@@ -294,8 +305,14 @@ class WikimediaClient:
         hits = payload.get("query", {}).get("search") if isinstance(payload, dict) else None
         if not isinstance(hits, list):
             raise WikimediaError("unexpected search answer")
-        titles = [h.get("title") for h in hits if isinstance(h, dict)]
-        return titles[0] if len(titles) == 1 and _QID.match(str(titles[0])) else None
+        titles = [
+            str(h.get("title"))
+            for h in hits
+            if isinstance(h, dict) and _QID.match(str(h.get("title")))
+        ]
+        if len(titles) == 1:
+            return titles[0], None
+        return None, REASON_CITY_NO_MATCH if not titles else REASON_CITY_AMBIGUOUS
 
     def download(self, url: str) -> bytes:
         """The image bytes, capped in size, only from a Wikimedia image host."""

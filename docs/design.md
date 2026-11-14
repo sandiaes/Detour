@@ -22,11 +22,14 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    forms and figures have no cards.
 3. **Near-white page, dark navy text, one calm accent.** Colour carries state and kind (a place to
    eat is orange), never decoration, and never alone: a word or a shape says it too.
-4. **Illustrated covers, no invented photos.** Destinations get a generated illustration until
-   ADR 022 (accepted) is built; then a real photo (Wikimedia Commons, with its credit)
-   replaces the illustration wherever the source has one, and the illustration stays as the fallback.
-   The "Change photo" control of screen 13 is not built yet; ADR 022, decision 15, describes it. A
-   photo is never shown without its author and licence, and never as a map marker.
+4. **Photos where the source has one, illustrations everywhere else, nothing invented.** A trip's
+   cover on the Trips card and the trip header, and the photo of a place on its detail screen, are
+   Wikimedia Commons photos the backend sends (ADR 022, step 3); a trip or place with none keeps the
+   generated illustration. A photo has the scrim under the text and its average colour behind it
+   while it loads, is never shown without its author and licence (a quiet "Photo: author, licence,
+   Wikimedia Commons (resized)" link under the hero of a place and at the end of the trip overview),
+   and is never a map marker. The "Change photo" control of screen 13 is not built yet (ADR 022,
+   decision 15).
 5. **Honest about what is not built.** A control that does nothing yet says so in words
    ("Not built yet", "saved for later"). Nothing is faked.
 6. **Small type, large targets.** Body text is compact; every control is still at least 48 dp tall

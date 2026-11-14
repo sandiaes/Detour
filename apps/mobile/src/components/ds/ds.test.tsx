@@ -1,6 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import type { ReactNode } from "react";
+import { Linking } from "react-native";
 
-import { Cover, coverSeed, coverTone } from "./Cover";
+import { BackendContext } from "../../api/BackendProvider";
+import { makePhoto } from "../../testing/fixtures";
+
+import { Cover, PhotoCredit, coverSeed, coverTone } from "./Cover";
 import { ICON_NAMES, Icon } from "./Icon";
 import { Badge, ListRow, StatRow, Tabs } from "./primitives";
 
@@ -65,4 +70,52 @@ test("statistics read as one phrase each; badges carry a word", async () => {
   );
   expect(screen.getByLabelText("5 cities")).toBeOnTheScreen();
   expect(screen.getByText("Upcoming")).toBeOnTheScreen();
+});
+
+const withApi = (apiUrl: string, children: ReactNode) => (
+  <BackendContext.Provider
+    value={{ state: { phase: "connecting", waking: false }, apiUrl, retry: () => {} }}
+  >
+    {children}
+  </BackendContext.Provider>
+);
+
+test("a photo from the backend is shown from the API address, over its average colour", async () => {
+  const photo = makePhoto();
+  await render(
+    withApi(
+      "https://api.example.org/",
+      <Cover seedKey="x" height={100} photo={photo} testID="c" />,
+    ),
+  );
+  expect(screen.getByTestId("cover-photo").props.source).toEqual({
+    uri: `https://api.example.org/v1/images/${photo.id}`,
+  });
+  expect(screen.getByTestId("c")).toHaveStyle({ backgroundColor: "#336699" });
+});
+
+test("without an API address or a photo the illustration stays: nothing is invented", async () => {
+  await render(withApi("", <Cover seedKey="x" height={100} photo={makePhoto()} />));
+  expect(screen.queryByTestId("cover-photo", { includeHiddenElements: true })).toBeNull();
+  await render(withApi("https://api.example.org", <Cover seedKey="x" height={100} photo={null} />));
+  expect(screen.queryByTestId("cover-photo", { includeHiddenElements: true })).toBeNull();
+});
+
+test("the credit names the author and licence and opens the photo's page", async () => {
+  const open = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
+  await render(withApi("https://api.example.org", <PhotoCredit photo={makePhoto()} />));
+  const link = screen.getByRole("link", { name: /Jane Doe, CC BY-SA 4.0/ });
+  expect(
+    screen.getByText("Photo: Jane Doe, CC BY-SA 4.0, Wikimedia Commons (resized)"),
+  ).toBeOnTheScreen();
+  await fireEvent.press(link);
+  expect(open).toHaveBeenCalledWith("https://commons.wikimedia.org/wiki/File:Vienna.jpg");
+  open.mockRestore();
+});
+
+test("no credit is drawn without a photo, or where the photo itself is not shown", async () => {
+  await render(withApi("https://api.example.org", <PhotoCredit photo={null} />));
+  expect(screen.queryByTestId("photo-credit")).toBeNull();
+  await render(withApi("", <PhotoCredit photo={makePhoto()} />));
+  expect(screen.queryByTestId("photo-credit")).toBeNull();
 });

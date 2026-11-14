@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
-import { Cover } from "../components/ds/Cover";
+import { Cover, PhotoCredit } from "../components/ds/Cover";
 import { Icon } from "../components/ds/Icon";
 import {
   Badge,
@@ -440,7 +440,12 @@ export function TripOverviewScreen({
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.scroll} stickyHeaderIndices={[1]}>
-        <Cover seedKey={trip.destination.ref} height={248} testID="trip-cover">
+        <Cover
+          seedKey={trip.destination.ref}
+          photo={trip.cover_image}
+          height={248}
+          testID="trip-cover"
+        >
           <View style={styles.heroTop}>
             <IconButton icon="back" label="Back" onImage onPress={nav.back} />
             <IconButton
@@ -482,6 +487,7 @@ export function TripOverviewScreen({
         <View style={styles.sheetBody}>
           <ResourceNotices resource={trips} noun="trips" />
           <View style={styles.body2}>{content}</View>
+          <PhotoCredit photo={trip.cover_image} />
         </View>
       </ScrollView>
       {menuSheet}

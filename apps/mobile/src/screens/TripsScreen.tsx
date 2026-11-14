@@ -57,7 +57,12 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       testID={`trip-card-${trip.id}`}
     >
-      <Cover seedKey={trip.destination.ref} height={CARD_HEIGHT} rounded={radius.lg}>
+      <Cover
+        seedKey={trip.destination.ref}
+        photo={trip.cover_image}
+        height={CARD_HEIGHT}
+        rounded={radius.lg}
+      >
         <View style={styles.cardBadge}>
           <Badge label={label} tone={PHASE_TONE[phase]} />
         </View>

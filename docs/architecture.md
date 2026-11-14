@@ -187,6 +187,7 @@ transaction before the response is sent.
 |---|---|
 | `POST /v1/trips/{id}/itineraries/generate` | Plan a city or area trip: one generation of two itineraries (Essentials, Wider), or one with the reason; replaces earlier unselected proposals. `422 area_single_city_only` (an area in Japan, D4), `422 planning_impossible` (with `issues`), `409` for a past trip, an unavailable region or the limit of 5 |
 | `GET /v1/itineraries/{id}`, `GET /v1/trips/{id}/itineraries` | Now also the generation id, seed, diversity score, plan notes and statistics; per item the rendered reasons and the transfer to the next item (mode, seconds, metres, `routed` or `estimated`) |
+| `GET /v1/images/{id}`, `Trip.cover_image`, `Item.image` | Photos (ADR 022): the backend streams the stored JPEG from Supabase Storage (public, immutable cache headers, no token) so the app never calls the storage host; trips and items carry a `Photo` (path, average colour, size, credit line) found in `geo.image_lookup`, never a hidden one. The resolver (`python -m detour_api.importer images`, the "Resolve images" workflow) is the only caller of Wikidata and Commons |
 
 The engine is `detour_api/planner/` (section 5); its reads and writes are `repo/planning.py`. Hand
 edits of items delete transfers that no longer join neighbours (they are not recomputed; adding or

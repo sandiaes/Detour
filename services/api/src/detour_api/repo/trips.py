@@ -8,6 +8,7 @@ import structlog
 from sqlalchemy import Connection, text
 
 from detour_api.errors import conflict, invalid, not_found
+from detour_api.models.images import Photo
 from detour_api.models.trips import (
     ArchiveInfo,
     Destination,
@@ -17,6 +18,7 @@ from detour_api.models.trips import (
     TripVisit,
     end_date_of,
 )
+from detour_api.repo import images
 
 MAX_TRIPS_PER_INSTALLATION = 100
 
@@ -39,7 +41,7 @@ def ensure_installation(conn: Connection, installation_id: uuid.UUID) -> None:
     )
 
 
-def _trip(row: Any) -> Trip:
+def _trip(row: Any, cover: Photo | None = None) -> Trip:
     return Trip(
         id=row.id,
         title=row.title,
@@ -57,6 +59,7 @@ def _trip(row: Any) -> Trip:
         status=row.status,
         archived_at=row.archived_at,
         is_seed=row.is_seed,
+        cover_image=cover,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -67,7 +70,9 @@ def get_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -
         text(f"SELECT {_TRIP_COLUMNS} FROM app.trip t WHERE t.id = :t AND t.installation_id = :i"),
         {"t": trip_id, "i": installation_id},
     ).first()
-    return None if row is None else _trip(row)
+    if row is None:
+        return None
+    return _trip(row, images.trip_covers(conn, [row.id]).get(row.id))
 
 
 def require_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
@@ -88,7 +93,8 @@ def list_trips(
         ),
         {"i": installation_id, "s": status},
     ).all()
-    return [_trip(r) for r in rows]
+    covers = images.trip_covers(conn, [r.id for r in rows])
+    return [_trip(r, covers.get(r.id)) for r in rows]
 
 
 def create_trip(

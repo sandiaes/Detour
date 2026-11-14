@@ -9,6 +9,7 @@ import {
   makeArchiveInfo,
   makeItinerary,
   makePastTrip,
+  makePhoto,
   makeTrip,
 } from "../testing/fixtures";
 import { Harness } from "../testing/harness";
@@ -247,4 +248,23 @@ test("a trip with no chosen plan opens on its overview, which leads to the propo
   expect(await screen.findByRole("header", { name: "Choose a plan" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "See the proposals" }));
   expect(await screen.findByText("Not planned yet")).toBeOnTheScreen();
+});
+
+test("a trip card shows the trip's photo from the API, and the illustration when there is none", async () => {
+  const photo = makePhoto();
+  const client = createFakeClient(
+    trips([
+      makeTrip({ cover_image: photo }),
+      makeTrip({ id: "t2", title: "Prague", cover_image: null }),
+    ]),
+  );
+  await render(
+    <Harness client={client}>
+      <AppContent />
+    </Harness>,
+  );
+  expect(await screen.findByText("Prague")).toBeOnTheScreen();
+  const photos = screen.getAllByTestId("cover-photo");
+  expect(photos).toHaveLength(1); // only the trip that has a photo
+  expect(photos[0]!.props.source).toEqual({ uri: `https://api.example.org${photo.url}` });
 });

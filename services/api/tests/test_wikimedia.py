@@ -65,6 +65,27 @@ def test_entities_give_the_image_file_and_the_number_of_sitelinks() -> None:
     assert found["Q105646502"].sitelinks == 0
 
 
+def test_the_banner_is_a_second_candidate_after_the_image() -> None:
+    def statement(name: str, rank: str = "normal") -> dict[str, Any]:
+        return {"rank": rank, "mainsnak": {"datavalue": {"value": name}}}
+
+    payload = {
+        "entities": {
+            "Q5": {
+                "claims": {
+                    "P18": [statement("A.jpg"), statement("B.jpg", "preferred")],
+                    "P948": [statement("Banner.jpg"), statement("A.jpg")],
+                }
+            },
+            "Q6": {"claims": {"P948": [statement("OnlyBanner.jpg")]}},
+        }
+    }
+    found = parse_entities(payload)
+    assert found["Q5"].files == ("B.jpg", "A.jpg", "Banner.jpg")  # preferred first, no repeats
+    assert found["Q5"].file == "B.jpg"
+    assert found["Q6"].files == ("OnlyBanner.jpg",)
+
+
 def test_entities_skip_missing_items_and_prefer_the_preferred_image() -> None:
     payload = {
         "entities": {
@@ -387,10 +408,13 @@ def test_a_city_is_matched_only_when_exactly_one_item_has_its_geonames_id(
 
         return handler
 
-    assert _client(answer(["Q34713"]), _Clock()).city_item(2766824) == "Q34713"
+    assert _client(answer(["Q34713"]), _Clock()).city_item(2766824) == ("Q34713", None)
     assert seen[0].url.params["srsearch"] == "haswbstatement:P1566=2766824"
-    assert _client(answer([]), _Clock()).city_item(1) is None
-    assert _client(answer(["Q1", "Q2"]), _Clock()).city_item(1) is None
+    assert _client(answer([]), _Clock()).city_item(1) == (None, "no_item_for_geonames_id")
+    assert _client(answer(["Q1", "Q2"]), _Clock()).city_item(1) == (
+        None,
+        "several_items_for_geonames_id",
+    )
 
 
 def test_downloads_are_limited_in_host_and_size(no_budget_counter: list[int]) -> None:
