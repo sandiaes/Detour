@@ -52,7 +52,7 @@ test("asking for new proposals plans again and shows them, keeping the chosen pl
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
   expect(await screen.findByRole("header", { name: "Vienna" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-  expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Detour" })).toBeOnTheScreen();
 });
 
 test("a failed new planning says so and stays on the settings", async () => {

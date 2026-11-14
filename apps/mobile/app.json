@@ -5,8 +5,13 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "android": {
-      "package": "io.github.sandiaes.detour"
+      "package": "io.github.sandiaes.detour",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundColor": "#1b3f36"
+      }
     },
-    "plugins": ["@maplibre/maplibre-react-native"]
+    "plugins": ["@maplibre/maplibre-react-native"],
+    "icon": "./assets/icon.png"
   }
 }

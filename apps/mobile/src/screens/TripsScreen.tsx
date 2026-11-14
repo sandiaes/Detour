@@ -172,7 +172,7 @@ export function TripsScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader title="Trips" />
+      <ScreenHeader title="Detour" />
       {body}
     </View>
   );
