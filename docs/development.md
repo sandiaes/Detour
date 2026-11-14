@@ -14,10 +14,11 @@ A local Docker Compose stack exists for any machine that can run it, but it is o
 | `infrastructure` | Docker Compose: PostgreSQL with PostGIS, and the API |
 | `tools` | Repository checks (dependency policy) |
 | `render.yaml` | Render Blueprint for the API ([`deployment.md`](deployment.md)) |
+| `services/api/src/detour_api/adapters/wikimedia.py`, `images/` | Wikidata and Commons adapter, photo resizing, Supabase Storage, the image resolver (ADR 022) |
 | `services/api/src/detour_api/importer` | Region import, gazetteer import, report and gates (Phase 2) |
 | `services/api/src/detour_api/travel`, `adapters/valhalla.py` | Travel-time service, request planner, estimator and the FOSSGIS Valhalla adapter (Phase 3) |
 | `services/api/src/detour_api/planner`, `repo/planning.py` | Planning engine v1: scoring, duration table, sequencer, validator, reason templates (Phase 4, ADR 014) |
-| `.github/workflows` | `ci.yml`, `import-region.yml` (manual), `android-apk.yml`, and the throwaway Phase 0 spike workflows |
+| `.github/workflows` | `ci.yml`, `import-region.yml` (manual), `resolve-images.yml` (manual, ADR 022), `android-apk.yml`, and the throwaway Phase 0 spike workflows |
 | `spikes`, `docs/spikes` | Phase 0 throwaway code and findings; not part of the product |
 
 ## What CI does

@@ -123,6 +123,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/images/{image_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The stored photo, streamed by the backend so the app never calls Supabase. */
+    get: operations["get_image"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/destinations/search": {
     parameters: {
       query?: never;
@@ -2517,6 +2534,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AttributionEntry"][];
+        };
+      };
+    };
+  };
+  get_image: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        image_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "image/jpeg": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

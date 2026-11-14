@@ -339,6 +339,17 @@ resolve, always through the backend, with cached results.
 - **MVP:** **Yes**, fetched at region-import time, never at request time. Tier **ANY**.
 - Sources: <https://www.wikidata.org/wiki/Wikidata:Data_access>, <https://www.wikidata.org/wiki/Wikidata:Licensing>, <https://wiki.openstreetmap.org/wiki/Key:wikidata>
 
+**Commons images (ADR 022, added 2026-11-14).** Photos come from Wikimedia Commons through the item's
+image property (P18). Terms read on 2026-11-14 and recorded in ADR 022: a User-Agent with contact
+information (`Detour-bot/<version> (+<repository url>) httpx/<version>`), at most 3 concurrent
+requests (the adapter makes one at a time), 200 requests a minute for an identified client,
+`Retry-After` obeyed on 429 and 503, batching with `|` and `maxlag` on API requests. Licences shown:
+CC0, public domain, CC BY, CC BY-SA, with author, licence and file page. The rate-limit page does not
+cover image downloads. Sources: <https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy>,
+<https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits>,
+<https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia>,
+<https://www.mediawiki.org/wiki/API:Etiquette>. Fallback: no photo (the illustration stays).
+
 ### 4.4 Overture Maps — places theme — ✅ Verified
 
 - **Use:** supplementary POI and business coverage (names, categories, addresses, websites, phones, existence confidence).

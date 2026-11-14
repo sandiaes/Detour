@@ -79,7 +79,7 @@ mechanically and a wrong licence is handled by `geo.image.hidden` (decision 21).
 
 9. **`geo.image`** (migration `0009`): `id`, `source` (`wikimedia_commons`), `commons_file`,
    `source_url`, `wikidata_id`, `author`, `licence` (short name), `licence_url`, `width`, `height`,
-   `bytes`, `blurhash`, `storage_key`, `fetched_date`, `hidden` (bool). Author and licence come from
+   `bytes`, `color`, `storage_key`, `fetched_date`, `hidden` (bool). Author and licence come from
    the file's Commons metadata, stored as text with HTML removed. Images are independently licensed
    content, not part of the ODbL OSM data; the table carries each licence.
 10. **`geo.image_lookup`**: `kind` (`place`, `city`), `ref_id`, `status` (`found`, `none`, `rejected`),
@@ -154,7 +154,7 @@ mechanically and a wrong licence is handled by `geo.image.hidden` (decision 21).
   imported region, how many places and cities have an image, the licence mix and the share that
   passes the quality gate, before the import step is built. No region has been imported into the real
   database yet, so the spike runs on a region import first.
-- New dependencies (Pillow, a blurhash encoder, `expo-image` in the app) are cross-platform and not
+- New dependencies (Pillow, pinned, in the backend; `expo-image` in the app) are cross-platform and not
   generative-AI; `tools/check_dependencies.py` must pass. `expo-image` needs a one-line check against
   the "no Android-only native dependency" rule: it is an Expo SDK module for both platforms.
 - New secrets: the Supabase service key and the bucket name, in Render's settings and in
@@ -170,3 +170,27 @@ mechanically and a wrong licence is handled by `geo.image.hidden` (decision 21).
 - Build order, each step awaiting the owner's acceptance: (1) read the unread terms and run the
   coverage spike; (2) migration, adapter, resolver and the image endpoint; (3) app: covers, place
   detail, credits; (4) "Change photo" on new trip and in the trip menu.
+
+## Amendments
+
+**2026-11-14, step 2 built** (migration `0009`, `adapters/wikimedia.py`, `images/`, the `images`
+command and the "Resolve images" workflow, `GET /v1/images/{id}`):
+
+- **`color` instead of a blurhash.** The placeholder while a photo loads is the image's average
+  colour (`#rrggbb`), computed with Pillow. A blurhash would need another dependency for a
+  marginal gain. `geo.image.color` replaces `blurhash` in decision 9.
+- **The thumbnail host is `thumb.wikimedia.org`**, not `upload.wikimedia.org`: the Commons API
+  returned that host for a 1,280 px thumbnail on 2026-11-14 (the recorded fixture shows it). The
+  adapter downloads only from those two hosts, follows the URL the API gives, never follows
+  redirects, and caps the download size. The thumbnail width (1,280) is assumed to be one of
+  Wikimedia's standard steps; the first real run confirms it, and a refusal shows as a failed
+  download, not as a wrong picture.
+- **Pilot figures** (2026-11-14, Austria, 45 places from the import's review sample, so small and
+  probably biased): 43 had an image on Wikidata; all 43 were JPEG; 30 passed the licence and
+  quality gate. The real coverage is the first report of the resolver.
+- **Cities** are matched through the GeoNames-ID property with one search request each; an item is
+  used only when exactly one matches.
+- **Not built yet in step 2:** the `cover_image` and `image` fields in the API, the automatic cover
+  after a trip is created, the candidates endpoint and "Change photo" (steps 3 and 4). The
+  Supabase Storage request shapes follow its Storage API and are unchecked against the live
+  service.

@@ -1,0 +1,145 @@
+{
+ "batchcomplete": "",
+ "query": {
+  "pages": {
+   "81070368": {
+    "pageid": 81070368,
+    "ns": 6,
+    "title": "File:Retz - Stadtmauer.JPG",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 10348848,
+      "width": 3803,
+      "height": 2446,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/Retz_-_Stadtmauer.JPG/1280px-Retz_-_Stadtmauer.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1280,
+      "thumbheight": 823,
+      "responsiveUrls": {
+       "2": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Retz_-_Stadtmauer.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+      },
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/Retz_-_Stadtmauer.JPG/1280px-Retz_-_Stadtmauer.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1280,
+       "height": 823,
+       "srcset": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Retz_-_Stadtmauer.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Retz_-_Stadtmauer.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Retz_-_Stadtmauer.JPG",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=81070368",
+      "extmetadata": {
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bwag\" title=\"User:Bwag\">C.Stadler/Bwag</a>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   "25785158": {
+    "pageid": 25785158,
+    "ns": 6,
+    "title": "File:Stadtmauer bei der Uferpromenade in Zwettl.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 3213309,
+      "width": 4500,
+      "height": 3000,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg/1280px-Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1280,
+      "thumbheight": 853,
+      "responsiveUrls": {
+       "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg/3840px-Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+      },
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg/1280px-Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1280,
+       "height": 853,
+       "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg/3840px-Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/51/Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Stadtmauer_bei_der_Uferpromenade_in_Zwettl.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=25785158",
+      "extmetadata": {
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Duke_of_W4\" title=\"User:Duke of W4\">Duke of W4</a>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0 at",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/3.0/at/deed.en",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   "70409496": {
+    "pageid": 70409496,
+    "ns": 6,
+    "title": "File:Wien, Zentralfriedhof, Karl-Borrom\u00e4us-Kirche -- 2018 -- 3211.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 15787810,
+      "width": 6428,
+      "height": 4366,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Wien%2C_Zentralfriedhof%2C_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg/1280px-Wien%2C_Zentralfriedhof%2C_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1280,
+      "thumbheight": 869,
+      "responsiveUrls": {
+       "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Wien%2C_Zentralfriedhof%2C_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg/3840px-Wien%2C_Zentralfriedhof%2C_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+      },
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Wien%2C_Zentralfriedhof%2C_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg/1280px-Wien%2C_Zentralfriedhof%2C_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1280,
+       "height": 869,
+       "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Wien%2C_Zentralfriedhof%2C_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg/3840px-Wien%2C_Zentralfriedhof%2C_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Wien%2C_Zentralfriedhof%2C_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Wien,_Zentralfriedhof,_Karl-Borrom%C3%A4us-Kirche_--_2018_--_3211.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=70409496",
+      "extmetadata": {
+       "Artist": {
+        "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q34788025\" class=\"extiw\" title=\"d:Q34788025\"><span title=\"German photographer and mathematician\">Dietmar Rabich</span></a></bdi>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   }
+  }
+ }
+}

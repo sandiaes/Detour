@@ -1,0 +1,125 @@
+{
+ "entities": {
+  "Q101514119": {
+   "type": "item",
+   "id": "Q101514119",
+   "claims": {
+    "P18": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P18",
+       "hash": "985eaf8774b89043c0e6b7d0ad92b65f371cd453",
+       "datavalue": {
+        "value": "Retz - Stadtmauer.JPG",
+        "type": "string"
+       },
+       "datatype": "commonsMedia"
+      },
+      "type": "statement",
+      "id": "Q101514119$3663d5c5-456a-27a0-3ca0-469760f174e6",
+      "rank": "normal"
+     }
+    ]
+   },
+   "sitelinks": {
+    "commonswiki": {
+     "site": "commonswiki",
+     "title": "Category:City wall of Retz",
+     "badges": []
+    },
+    "dewiki": {
+     "site": "dewiki",
+     "title": "Stadtbefestigung Retz",
+     "badges": []
+    }
+   }
+  },
+  "Q102203720": {
+   "type": "item",
+   "id": "Q102203720",
+   "claims": {
+    "P18": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P18",
+       "hash": "11fcd69a9b6140847e7940db83e616c304317e05",
+       "datavalue": {
+        "value": "Wien, Zentralfriedhof, Karl-Borrom\u00e4us-Kirche -- 2018 -- 3211.jpg",
+        "type": "string"
+       },
+       "datatype": "commonsMedia"
+      },
+      "type": "statement",
+      "id": "Q102203720$eb43f7e0-4495-2404-3ba2-4c1f8ab7bd0f",
+      "rank": "normal"
+     }
+    ]
+   },
+   "sitelinks": {
+    "commonswiki": {
+     "site": "commonswiki",
+     "title": "Category:Pr\u00e4sidentengruft",
+     "badges": []
+    },
+    "dewiki": {
+     "site": "dewiki",
+     "title": "Gruft der \u00d6sterreichischen Bundespr\u00e4sidenten",
+     "badges": [
+      "Q70894304"
+     ]
+    }
+   }
+  },
+  "Q105646502": {
+   "type": "item",
+   "id": "Q105646502",
+   "claims": {
+    "P18": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P18",
+       "hash": "a53853ababa51efd1185af6fb58721c1d4476716",
+       "datavalue": {
+        "value": "Stadtmauer bei der Uferpromenade in Zwettl.jpg",
+        "type": "string"
+       },
+       "datatype": "commonsMedia"
+      },
+      "type": "statement",
+      "qualifiers": {
+       "P585": [
+        {
+         "snaktype": "value",
+         "property": "P585",
+         "hash": "5429dc00b4ec4213c2f19c397ef6778be5be662e",
+         "datavalue": {
+          "value": {
+           "time": "+2013-04-27T00:00:00Z",
+           "timezone": 0,
+           "before": 0,
+           "after": 0,
+           "precision": 11,
+           "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+          },
+          "type": "time"
+         },
+         "datatype": "time"
+        }
+       ]
+      },
+      "qualifiers-order": [
+       "P585"
+      ],
+      "id": "Q105646502$5D2D5C19-03D7-4CDF-A696-D2FFCAD86056",
+      "rank": "normal"
+     }
+    ]
+   },
+   "sitelinks": {}
+  }
+ },
+ "success": 1
+}
