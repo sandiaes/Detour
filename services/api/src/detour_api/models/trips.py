@@ -7,6 +7,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, Field, model_validator
 
 from detour_api.models.common import Latitude, Longitude, StrictModel
+from detour_api.models.images import Photo
 
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]
 ALLOWED_MEAL_TYPES = ("breakfast", "lunch", "dinner", "snack")
@@ -53,6 +54,11 @@ class Trip(BaseModel):
     status: Literal["active", "past"]
     archived_at: datetime | None
     is_seed: bool = Field(description="True for the illustrative seed trip; not user data")
+    cover_image: Photo | None = Field(
+        default=None,
+        description="The trip's photo: the one the user chose, else the one found for the "
+        "destination city; null when there is none (the app then shows its illustration)",
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -278,6 +284,10 @@ class Item(BaseModel):
     )
     restaurant: RestaurantInfo | None = Field(
         default=None, description="Meals only: the place to eat as the open data describes it"
+    )
+    image: Photo | None = Field(
+        default=None,
+        description="Photo of an imported place, when one was found (restaurants have none yet)",
     )
 
 

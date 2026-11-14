@@ -5159,6 +5159,17 @@
               }
             ],
             "description": "Meals only: the place to eat as the open data describes it"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Photo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo of an imported place, when one was found (restaurants have none yet)"
           }
         },
         "type": "object",
@@ -5756,6 +5767,90 @@
           "new_start_time"
         ],
         "title": "MovedItem"
+      },
+      "Photo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Path on this API (GET /v1/images/{id}): a JPEG, at most 1080 px on its longest side. The app prefixes its API base URL; it never calls the photo's origin"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color",
+            "description": "Average colour, #rrggbb: the placeholder while it loads"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "credit": {
+            "$ref": "#/components/schemas/PhotoCredit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "color",
+          "width",
+          "height",
+          "credit"
+        ],
+        "title": "Photo"
+      },
+      "PhotoCredit": {
+        "properties": {
+          "author": {
+            "type": "string",
+            "title": "Author"
+          },
+          "licence": {
+            "type": "string",
+            "title": "Licence",
+            "description": "Short licence name, for example CC BY-SA 4.0"
+          },
+          "licence_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Licence Url"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url",
+            "description": "The file's page on Wikimedia Commons"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "The credit line, from a fixed template"
+          }
+        },
+        "type": "object",
+        "required": [
+          "author",
+          "licence",
+          "licence_url",
+          "source_url",
+          "text"
+        ],
+        "title": "PhotoCredit",
+        "description": "What the licence requires the app to show next to a photo."
       },
       "PlaceDetail": {
         "properties": {
@@ -7293,6 +7388,17 @@
             "type": "boolean",
             "title": "Is Seed",
             "description": "True for the illustrative seed trip; not user data"
+          },
+          "cover_image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Photo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The trip's photo: the one the user chose, else the one found for the destination city; null when there is none (the app then shows its illustration)"
           },
           "created_at": {
             "type": "string",
