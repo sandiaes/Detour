@@ -1,8 +1,9 @@
 # ADR 026 — Trip manager and history first; generated plans are sights only; no restaurants in the data
 
-- **Status:** **Proposed** on 2026-11-14, at the owner's request. This ADR is documentation only:
-  nothing below is built yet. The code follows in the order of "Build order". The owner confirms
-  or changes the numbers marked *proposed*.
+- **Status:** **Proposed** on 2026-11-14, at the owner's request. The documents were written first;
+  **build step 2 (the planner) and the slot-engine retirement of step 4 are built** (see "As built:
+  step 2" at the end); the data, history and app steps follow in the order of "Build order". The
+  owner confirms or changes the numbers marked *proposed*.
 - **Date:** 2026-11-14
 - **Related:** [`006-past-trips-archive.md`](006-past-trips-archive.md) (amended),
   [`009-region-readiness-thresholds.md`](009-region-readiness-thresholds.md) (amended),
@@ -160,6 +161,42 @@ This changes the product's emphasis and removes a set of built features, so it n
 
 Each step ends green: ruff, mypy, pytest, typecheck, lint and jest; the OpenAPI export and the
 generated client are rebuilt whenever endpoints or models change.
+
+## As built: step 2 (2026-11-14, awaiting acceptance)
+
+Built and tested on synthetic fixtures; engine `planner-3.0.0`, planner configuration
+`2026-11-14.3`, recalculation `recalc-2.0.0` (`RecalcConfig` `2026-11-14.1`).
+
+- **The midday gap is idle time, not an item.** A `free_time` item has no place, so it cannot join
+  the transfer chain (a transfer joins the next item), and `free_time` items stop a recalculation
+  today. The next stop starts 90 minutes later than its transfer needs. One rule,
+  `daylayout.gap_start`, decides where: before the first stop the traveller reaches at or after
+  12:30 (not after 14:00), or before the stop that would push the gap's start past 14:00; never
+  before the first stop of a day or after the last; a day that begins too late has none. Both the
+  engine and recalculation use it, and both validators check that any idle stretch is the gap and
+  that there is at most one a day. The app draws a "Free time" row for such an idle stretch (design
+  §5; app step 6).
+- **Day window 09:00 to 20:00; `free_minutes` 120 (Essentials) and 165 (Wider)**, so the visit budget
+  stays 450 and 405 minutes, as before 2026-11-14 (not 60 and 90: with a 20:00 end and a 90-minute
+  gap those would add sights). Measured on the fixtures: days end by about 18:00; day utilisation
+  (visits and travel over the 660-minute window) 59 to 67 %, travel share 6 to 29 %; the KPI band is
+  now 55 to 90 %.
+- **Restaurants and cafés are fixed stops in a recalculation** (a stop the user added or one a plan
+  made before this ADR holds): they keep their day and times, and the sights are laid out around
+  them; the midday gap is skipped on a day that has such a stop between 11:30 and 15:00. A
+  recalculation never creates a meal (`MEAL_CREATED` is a violation).
+- **Slot engine retired with this step** because it was built on the removed meal windows and
+  floating meals: `planner/restaurant_slots.py`, `POST /v1/itineraries/{id}/restaurant-suggestions`,
+  the `add_restaurant` request action, the request fields `meal_type` and `after_item_id`, and the
+  slot models are gone; the app's add-a-restaurant screen now always offers "Choose day and time".
+  Stored change sets with the action `add_restaurant` still read (the response models keep the
+  value); the migration `0008` columns stay until the data step.
+- **Reason and note templates of meals stay** (stored plans render them); `SIGHTS_ONLY` replaces
+  `MEALS_FROM_MAP_DATA` in new plans. `PlanStats.meals` and `meal_minutes` stay (a plan with
+  restaurants the user added counts them; generated plans have 0).
+- **Not built yet:** the data step (importer, migration, `geo.restaurant_profile`, cuisine and meal
+  type columns, `meal_type`), history, the app's Free-time row, buttons, labels and cuisine/meal
+  fields of the add-restaurant form (they still show; `ChooseSlot` still asks "Meal").
 
 ## Alternatives
 

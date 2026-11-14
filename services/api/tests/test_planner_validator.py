@@ -16,7 +16,7 @@ from detour_api.planner.travel import FixedTravelSource, TravelLookup
 from detour_api.planner.types import DayPlan, Generation, Note, Plan, PlannedItem
 from detour_api.planner.validator import validate_generation, validate_plan
 from detour_api.travel.types import Coord, Mode
-from tests.planner_helpers import candidates, request, restaurants, towns
+from tests.planner_helpers import candidates, request, towns
 
 START = date(2026, 5, 4)
 
@@ -27,7 +27,6 @@ def generation() -> Generation:
         request("city-large", 2, START),
         candidates("city-large"),
         FixedTravelSource(),
-        restaurants=restaurants("city-large"),
     )
 
 
@@ -37,7 +36,6 @@ def area_generation() -> Generation:
         request("area", 7, START),
         candidates("area"),
         FixedTravelSource(),
-        restaurants=restaurants("area"),
     )
 
 
@@ -56,12 +54,10 @@ def known_times(plan: Plan, fixture: str = "city-large") -> dict[Any, Any]:
 
 def check(plan: Plan, days: int = 2, fixture: str = "city-large") -> list[str]:
     by_id = {c.place_id: c for c in candidates(fixture)}
-    eat = {r.place_id: r for r in restaurants(fixture)}
     found = validate_plan(
         plan,
         request(fixture, days, START),
         by_id,
-        eat,
         known_times(plan, fixture),
         DEFAULT_CONFIG,
     )
@@ -91,7 +87,7 @@ def change_day(plan: Plan, day: int, **changes: Any) -> Plan:
 def test_generated_plans_pass(generation: Generation, area_generation: Generation) -> None:
     for plan in generation.plans:
         assert check(plan) == []
-        assert all(d.meals for d in plan.days), "every day with visits has its meals"
+        assert not any(d.meals for d in plan.days), "ADR 026: sights only"
     for plan in area_generation.plans:
         assert check(plan, 7, "area") == []
     assert validate_generation(generation, DEFAULT_CONFIG) == []
@@ -159,76 +155,71 @@ def test_items_outside_the_day_are_caught(generation: Generation) -> None:
     assert "AFTER_DAY_END" in check(change_item(plan, 0, last, late))
 
 
-# -- meals ---------------------------------------------------------------------------------------
+# -- sights only and the midday gap (ADR 026) ----------------------------------------------------
 
 
-def test_a_meal_outside_its_window_is_caught(generation: Generation) -> None:
+def test_a_meal_in_a_generated_plan_is_caught(generation: Generation) -> None:
     plan = generation.plans[0]
-    lunch = nth(plan, 0, "meal")
-    assert plan.days[0].items[lunch].meal_type == "lunch"
-
-    def early(m: PlannedItem) -> PlannedItem:
-        return dataclasses.replace(m, start_minute=11 * 60, end_minute=11 * 60 + 60)
-
-    assert "MEAL_OUTSIDE_WINDOW" in check(change_item(plan, 0, lunch, early))
-
-    def too_long_into_the_afternoon(m: PlannedItem) -> PlannedItem:
-        return dataclasses.replace(m, start_minute=14 * 60 + 30, end_minute=15 * 60 + 30)
-
-    assert "MEAL_OUTSIDE_WINDOW" in check(change_item(plan, 0, lunch, too_long_into_the_afternoon))
-
-
-def test_meal_length_type_and_venue_rules_are_caught(generation: Generation) -> None:
-    plan = generation.plans[0]
-    lunch = nth(plan, 0, "meal")
-    longer = change_item(
-        plan,
-        0,
-        lunch,
-        lambda m: dataclasses.replace(m, end_minute=m.end_minute + 5, duration_minutes=65),
+    pos = nth(plan, 0, "visit", 1)
+    as_meal = change_item(
+        plan, 0, pos, lambda v: dataclasses.replace(v, kind="meal", meal_type="lunch")
     )
-    assert "MEAL_LENGTH" in check(longer)
-    breakfast = change_item(plan, 0, lunch, lambda m: dataclasses.replace(m, meal_type="breakfast"))
-    assert "MEAL_TYPE_NOT_PLANNED" in check(breakfast)  # Essentials plans lunch and dinner
-    cafe = next(r for r in restaurants("city-large") if r.venue_type == "cafe")
-    at_a_cafe = change_item(plan, 0, lunch, lambda m: dataclasses.replace(
-        m, place_id=cafe.place_id, name=cafe.name, lat=cafe.lat, lon=cafe.lon, category="cafe",
-        cuisines=cafe.cuisines))  # fmt: skip
-    assert "VENUE_DOES_NOT_SERVE_MEAL" in check(at_a_cafe)  # a cafe serves breakfast and snacks
+    assert "NOT_A_SIGHT" in check(as_meal)
 
 
-def test_a_manufactured_place_to_eat_is_caught(generation: Generation) -> None:
+def _gap_position(plan: Plan, day: int) -> int:
+    """The position of the item that follows the day's midday gap."""
+    items = plan.days[day].items
+    for pos in range(1, len(items)):
+        a = items[pos - 1]
+        assert a.transfer is not None
+        if items[pos].start_minute > a.end_minute + a.transfer.minutes:
+            return pos
+    raise AssertionError("the day has no gap")
+
+
+def test_every_full_day_has_its_gap(generation: Generation) -> None:
+    gap = DEFAULT_CONFIG.midday_gap
+    for plan in generation.plans:
+        for day in range(len(plan.days)):
+            pos = _gap_position(plan, day)
+            item, before = plan.days[day].items[pos], plan.days[day].items[pos - 1]
+            assert before.transfer is not None
+            idle = item.start_minute - before.end_minute - before.transfer.minutes
+            assert idle == gap.minutes
+            assert item.start_minute >= gap.earliest_start + gap.minutes
+
+
+def test_idle_time_that_is_not_the_gap_is_caught(generation: Generation) -> None:
     plan = generation.plans[0]
-    lunch = nth(plan, 0, "meal")
-    invented = change_item(plan, 0, lunch, lambda m: dataclasses.replace(m, place_id="nowhere"))
-    assert "UNKNOWN_RESTAURANT" in check(invented)
-    renamed = change_item(plan, 0, lunch, lambda m: dataclasses.replace(m, cuisines=("fusion",)))
-    assert "SNAPSHOT_MISMATCH" in check(renamed)
+    day = plan.days[0]
+    # Delay every item from the first one on by ten minutes: the idle stretch is not the gap.
+    pos = 1
+
+    def later(v: PlannedItem) -> PlannedItem:
+        return dataclasses.replace(
+            v, start_minute=v.start_minute + 10, end_minute=v.end_minute + 10
+        )
+
+    broken = plan
+    for p in range(pos, len(day.items)):
+        broken = change_item(broken, 0, p, later)
+    assert "IDLE_NOT_THE_GAP" in check(broken)
 
 
-def test_the_same_place_to_eat_twice_a_day_and_unexplained_repeats_are_caught(
-    generation: Generation,
-) -> None:
+def test_a_gap_before_the_window_opens_is_caught(generation: Generation) -> None:
     plan = generation.plans[0]
-    lunch = plan.days[0].items[nth(plan, 0, "meal")]
-    dinner_pos = nth(plan, 0, "meal", -1)
-    same_place = change_item(plan, 0, dinner_pos, lambda m: dataclasses.replace(
-        m, place_id=lunch.place_id, name=lunch.name, lat=lunch.lat, lon=lunch.lon,
-        cuisines=lunch.cuisines))  # fmt: skip
-    assert "RESTAURANT_TWICE_A_DAY" in check(same_place)
-    next_day = change_item(plan, 1, nth(plan, 1, "meal"), lambda m: dataclasses.replace(
-        m, place_id=lunch.place_id, name=lunch.name, lat=lunch.lat, lon=lunch.lon,
-        cuisines=lunch.cuisines))  # fmt: skip
-    assert "REPEATED_PLACE_REASON" in check(next_day)  # repeated without saying so
+    pos = _gap_position(plan, 0)
+    gap = DEFAULT_CONFIG.midday_gap
 
+    def too_early(v: PlannedItem) -> PlannedItem:
+        shift = v.start_minute - (gap.earliest_start + gap.minutes - 30)
+        return dataclasses.replace(
+            v, start_minute=v.start_minute - shift, end_minute=v.end_minute - shift
+        )
 
-def test_meals_without_visits_and_twice_the_same_meal_are_caught(generation: Generation) -> None:
-    plan = generation.plans[0]
-    meals_only = change_day(plan, 0, items=plan.days[0].meals)
-    assert "MEALS_WITHOUT_VISITS" in check(meals_only)
-    dinner = nth(plan, 0, "meal", -1)
-    two_lunches = change_item(plan, 0, dinner, lambda m: dataclasses.replace(m, meal_type="lunch"))
-    assert "MEAL_TWICE_A_DAY" in check(two_lunches)
+    codes = check(change_item(plan, 0, pos, too_early))
+    assert "IDLE_NOT_THE_GAP" in codes or "OVERLAP" in codes
 
 
 # -- transfers -----------------------------------------------------------------------------------
@@ -347,8 +338,8 @@ def test_statistics_must_match_the_plan(generation: Generation) -> None:
     plan = generation.plans[0]
     inflated = dataclasses.replace(plan, stats=dataclasses.replace(plan.stats, visits=999))
     assert check(inflated) == ["STATS_MISMATCH"]
-    no_meals = dataclasses.replace(plan, stats=dataclasses.replace(plan.stats, meals=0))
-    assert check(no_meals) == ["STATS_MISMATCH"]
+    invented_meals = dataclasses.replace(plan, stats=dataclasses.replace(plan.stats, meals=2))
+    assert check(invented_meals) == ["STATS_MISMATCH"]
 
 
 def test_generation_rules(generation: Generation) -> None:

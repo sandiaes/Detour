@@ -32,26 +32,6 @@ class Candidate:
 
 
 @dataclass(frozen=True)
-class Restaurant:
-    """An imported place to eat (``geo.place`` of kind ``restaurant`` with its
-    ``geo.restaurant_profile``). Venue type, cuisines and meal types are what the open data says;
-    ``cuisines`` is ``None`` when the data states no cuisine. There is no price, rating or opening
-    hours."""
-
-    place_id: str
-    name: str
-    venue_type: str
-    lat: float
-    lon: float
-    meal_types: tuple[str, ...]
-    cuisines: tuple[str, ...] | None = None
-
-    @property
-    def coord(self) -> Coord:
-        return Coord.from_degrees(self.lat, self.lon)
-
-
-@dataclass(frozen=True)
 class BaseCity:
     """A gazetteer city (``geo.city``): the destination of a city trip, or a possible base of an
     area trip."""

@@ -32,7 +32,6 @@ from tests.planner_helpers import (
     GOLDEN,
     candidates,
     request,
-    restaurants,
     route_request,
     towns,
 )
@@ -65,7 +64,6 @@ def run_route(
         route_request(stops, start),
         candidates("area"),
         FixedTravelSource(),
-        restaurants=restaurants("area"),
     )
 
 
@@ -74,7 +72,6 @@ def run(name: str, days: int, start: date | None = None, **kw: Any) -> Generatio
         request(name, days, start),
         candidates(name),
         FixedTravelSource(),
-        restaurants=restaurants(name),
         **kw,
     )
 
@@ -87,7 +84,6 @@ def assert_valid(generation: Generation, name: str, days: int, start: date | Non
     """The validator, called again from the test (the engine already calls it)."""
     req = request(name, days, start)
     by_id = {c.place_id: c for c in candidates(name)}
-    eat = {r.place_id: r for r in restaurants(name)}
     lookup = TravelLookup(FixedTravelSource(), DEFAULT_CONFIG.walk_max_m)
     for plan in generation.plans:
         for d in plan.days:
@@ -97,7 +93,7 @@ def assert_valid(generation: Generation, name: str, days: int, start: date | Non
         for t2 in towns(name):
             lookup.get(t1.coord, t2.coord)
     for plan in generation.plans:
-        assert validate_plan(plan, req, by_id, eat, lookup.known(), DEFAULT_CONFIG) == []
+        assert validate_plan(plan, req, by_id, lookup.known(), DEFAULT_CONFIG) == []
     assert validate_generation(generation, DEFAULT_CONFIG) == []
 
 
@@ -140,7 +136,6 @@ def test_same_input_in_any_order_gives_identical_output() -> None:
             request("city-large", 3),
             shuffled[60:] + shuffled[:60],
             FixedTravelSource(),
-            restaurants=list(reversed(restaurants("city-large"))),
         )
     )
     assert first == again == third
@@ -148,7 +143,7 @@ def test_same_input_in_any_order_gives_identical_output() -> None:
 
 def test_versions_and_seed_are_on_every_generation() -> None:
     g = run("city-large", 3)
-    assert g.engine_version == "planner-2.0.0"
+    assert g.engine_version == "planner-3.0.0"
     assert g.config_version == DEFAULT_CONFIG.version and "durations-" in g.config_version
     assert g.data_version == "run-fixture" and g.seed == 0
 
@@ -202,10 +197,8 @@ def test_the_schedule_starts_at_nine_and_ends_by_the_profile_end() -> None:
             assert day.items[-1].end_minute <= end
             for v, nxt in zip(day.items, day.items[1:], strict=False):
                 assert v.transfer is not None
-                if nxt.kind == "visit":  # a visit follows at once; a meal may wait for its window
-                    assert nxt.start_minute == v.end_minute + v.transfer.minutes
-                else:
-                    assert nxt.start_minute >= v.end_minute + v.transfer.minutes
+                # A visit follows at once, except after the midday gap (ADR 026).
+                assert nxt.start_minute >= v.end_minute + v.transfer.minutes
 
 
 def test_every_visit_is_an_input_candidate_with_its_own_data() -> None:
@@ -243,14 +236,12 @@ def test_reasons_and_notes_render_through_their_templates() -> None:
         assert note_text(note.code, note.params)
     codes = {c for p in g.plans for d in p.days for v in d.visits for c in v.reasons}
     assert {"NEAR_PREVIOUS_ITEM", "WIKIDATA_LINKED", "NEAR_CENTRE", "ADDS_VARIETY"} <= codes
-    meal_codes = {c for p in g.plans for d in p.days for m in d.meals for c in m.reasons}
-    assert {"LUNCH_WINDOW", "DINNER_WINDOW", "SNACK_WINDOW", "VENUE_SUITS_MEAL"} <= meal_codes
-    assert {"NEW_CUISINE", "CUISINE_NOT_SPECIFIED", "ON_THE_WAY"} <= meal_codes
-    assert {n.code for n in g.notes} >= {
-        "DISTINCT_PLANS",
-        "NO_OPENING_HOURS",
-        "MEALS_FROM_MAP_DATA",
-    }
+    assert not [m for p in g.plans for d in p.days for m in d.meals]  # ADR 026: sights only
+    # The reasons and notes of meals stored before ADR 026 still render.
+    for code in ("LUNCH_WINDOW", "DINNER_WINDOW", "VENUE_SUITS_MEAL", "NEW_CUISINE"):
+        assert item_text(code)
+    assert note_text("MEALS_FROM_MAP_DATA", {})
+    assert {n.code for n in g.notes} >= {"DISTINCT_PLANS", "NO_OPENING_HOURS", "SIGHTS_ONLY"}
 
 
 # -- incomplete place data -------------------------------------------------------------------------
@@ -288,9 +279,9 @@ def test_a_destination_too_small_for_two_plans_says_so_and_returns_one() -> None
         "Only one plan is shown: 8 sights are available within 15 km, too few for two clearly "
         "different plans (overlap 100 %, at most 60 % allowed)."
     )
-    # A 4-hour theme park cannot share a day with lunch: two visits are left out, and said so.
-    removed = next(n for n in g.plans[0].notes if n.code == "VISITS_REMOVED_TO_FIT")
-    assert g.plans[0].stats.visits + int(removed.params["removed"]) == 8  # type: ignore[arg-type]
+    # Without meals a 4-hour theme park fits a day with the midday gap: nothing is left out.
+    assert g.plans[0].stats.visits == 8
+    assert not any(n.code == "VISITS_REMOVED_TO_FIT" for n in g.plans[0].notes)
 
 
 def test_days_without_visits_are_explained() -> None:
@@ -329,9 +320,10 @@ def test_visits_longer_than_any_day_are_explained() -> None:
     zoo_only = [dataclasses.replace(c, category="theme_park") for c in candidates("city-sparse")]
     short = dataclasses.replace(
         DEFAULT_CONFIG,
+        midday_gap=dataclasses.replace(DEFAULT_CONFIG.midday_gap, minutes=0),
         profiles=tuple(
             dataclasses.replace(
-                p, day_end_minute=DEFAULT_CONFIG.day_start_minute + 180, meals=(), free_minutes=0
+                p, day_end_minute=DEFAULT_CONFIG.day_start_minute + 180, free_minutes=0
             )
             for p in DEFAULT_CONFIG.profiles
         ),
@@ -373,10 +365,7 @@ def _slow_routed_table() -> dict[tuple[Coord, Coord], tuple[int, int]]:
 def test_routed_transfers_replace_estimates_and_the_day_still_fits() -> None:
     source = FixedTravelSource(_slow_routed_table(), provider_only=True)
     req = request("city-large", 3)
-    g = engine.generate(
-        req, candidates("city-large"), source, restaurants=restaurants("city-large"),
-        use_provider=True,
-    )  # fmt: skip
+    g = engine.generate(req, candidates("city-large"), source, use_provider=True)
     uses = [use for use, _ in source.calls]
     # The cache read, the provider call for the planned legs, at most two follow-ups for legs
     # joined by fitting a day.
@@ -417,7 +406,6 @@ def test_service_source_uses_the_travel_service_and_labels_estimates() -> None:
         request("city-sparse", 1),
         candidates("city-sparse"),
         source,
-        restaurants=restaurants("city-sparse"),
         use_provider=True,
     )
     legs = [v.transfer for p in g.plans for d in p.days for v in d.items if v.transfer]
@@ -552,22 +540,28 @@ def test_engine_latency_leaves_room_in_the_kpi_budget() -> None:
     assert elapsed < 1.5, f"engine took {elapsed:.2f} s for 7 days"
 
 
-def test_meals_are_aimed_at_lunch_13_and_dinner_20() -> None:
-    """A meal starts at its window's start at the earliest (owner request, 2026-11-14)."""
-    assert DEFAULT_CONFIG.meal_window("lunch").start_minute == 13 * 60
-    assert DEFAULT_CONFIG.meal_window("dinner").start_minute == 20 * 60
-    # The day runs to 22:00 so that a 90-minute dinner at 20:00 ends inside it.
-    assert DEFAULT_CONFIG.day_window_end_minute == 22 * 60
+def test_generated_plans_hold_sights_only_with_one_midday_gap() -> None:
+    """ADR 026: no meals and no places to eat; a day keeps one unplanned stretch around midday."""
+    gap = DEFAULT_CONFIG.midday_gap
+    assert (gap.earliest_start, gap.latest_start, gap.minutes) == (12 * 60 + 30, 14 * 60, 90)
+    assert DEFAULT_CONFIG.day_window_end_minute == 20 * 60
     for profile in DEFAULT_CONFIG.profiles:
-        assert profile.day_end_minute >= 20 * 60 + 90
+        assert profile.day_end_minute == 20 * 60
+    assert [DEFAULT_CONFIG.visit_budget(p) for p in DEFAULT_CONFIG.profiles] == [450, 405]
     g = run("city-large", 3)
+    gaps = 0
     for plan in g.plans:
+        assert plan.stats.meals == 0 and plan.stats.meal_minutes == 0
+        assert any(n.code == "SIGHTS_ONLY" for n in g.notes)
         for day in plan.days:
-            for meal in day.meals:
-                if meal.meal_type in ("lunch", "dinner"):
-                    assert (
-                        meal.start_minute >= DEFAULT_CONFIG.meal_window(meal.meal_type).start_minute
-                    )
+            assert all(i.kind == "visit" for i in day.items)
+            for a, b in itertools.pairwise(day.items):
+                assert a.transfer is not None
+                idle = b.start_minute - (a.end_minute + a.transfer.minutes)
+                if idle:
+                    gaps += 1
+                    assert idle >= gap.minutes and b.start_minute >= gap.earliest_start + idle
+    assert gaps, "a day with sights before and after midday has its gap"
 
 
 # -- multi-city trips (ADR 024) -----------------------------------------------------------------
@@ -609,13 +603,12 @@ def test_the_validator_refuses_a_route_out_of_order_or_with_an_invented_rail_tim
     generation = run_route([(990001, 1, "AT"), (990003, 1, "JP")])
     plan = generation.plans[0]
     by_id = {c.place_id: c for c in candidates("area")}
-    eat = {r.place_id: r for r in restaurants("area")}
     swapped = replace(plan, days=(replace(plan.days[0], base_city_id=990003), *plan.days[1:]))
-    codes = {v.code for v in validate_plan(swapped, req, by_id, eat, {}, DEFAULT_CONFIG)}
+    codes = {v.code for v in validate_plan(swapped, req, by_id, {}, DEFAULT_CONFIG)}
     assert "ROUTE_ORDER" in codes
     known = replace(plan, days=(plan.days[0], replace(plan.days[1], arrival_unknown=False)))
-    codes = {v.code for v in validate_plan(known, req, by_id, eat, {}, DEFAULT_CONFIG)}
+    codes = {v.code for v in validate_plan(known, req, by_id, {}, DEFAULT_CONFIG)}
     assert "ARRIVAL_MISMATCH" in codes
     driven = route_request([(990001, 1, "AT"), (990003, 1, "AT")])
-    codes = {v.code for v in validate_plan(plan, driven, by_id, eat, {}, DEFAULT_CONFIG)}
+    codes = {v.code for v in validate_plan(plan, driven, by_id, {}, DEFAULT_CONFIG)}
     assert "UNKNOWN_LEG_MISMATCH" in codes

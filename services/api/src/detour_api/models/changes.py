@@ -12,18 +12,15 @@ from detour_api.models.trips import Itinerary, MealType, PlanNote, StopIn
 
 class ChangeSetCreate(StrictModel):
     """Preview adding a place (an imported attraction, or one of your own places of kind city or
-    location), adding a restaurant to a meal slot, or removing a visit. Nothing changes until the
-    change set is applied."""
+    location) or removing a visit. Nothing changes until the change set is applied. A restaurant
+    or café is not added this way: its day and time are chosen by the user (ADR 026)."""
 
-    action: Literal["add_place", "remove_place", "add_restaurant"]
+    action: Literal["add_place", "remove_place"]
     place_id: uuid.UUID | None = Field(
-        default=None,
-        description="add_place: an imported attraction. add_restaurant: an imported place to eat",
+        default=None, description="add_place: an imported attraction"
     )
     user_place_id: uuid.UUID | None = Field(
-        default=None,
-        description="add_place: one of your places (kind city or location). add_restaurant: one "
-        "of your restaurants (kind restaurant)",
+        default=None, description="add_place: one of your places (kind city or location)"
     )
     duration_minutes: int | None = Field(
         default=None,
@@ -37,21 +34,13 @@ class ChangeSetCreate(StrictModel):
         default=None,
         ge=1,
         le=60,
-        description="add_restaurant: the day (a suggestion's day). add_place: optional, only this "
-        "day is tried (a place suggestion's day); without it the day that costs the plan least",
-    )
-    meal_type: MealType | None = Field(
-        default=None, description="add_restaurant: the meal (a suggestion's meal_type)"
-    )
-    after_item_id: uuid.UUID | None = Field(
-        default=None,
-        description="add_restaurant: the visit (or meal you fixed) the meal follows, as a "
-        "suggestion gives it; null puts the meal first in the day",
+        description="add_place: optional, only this day is tried (a place suggestion's day); "
+        "without it the day that costs the plan least",
     )
 
     @model_validator(mode="after")
     def _shape(self) -> Self:
-        slot = self.day is not None or self.meal_type is not None or self.after_item_id is not None
+        slot = self.day is not None
         if self.action == "remove_place":
             if self.item_id is None:
                 raise ValueError("remove_place needs item_id")
@@ -62,14 +51,6 @@ class ChangeSetCreate(StrictModel):
             raise ValueError(f"{self.action} needs exactly one of place_id and user_place_id")
         if self.item_id is not None:
             raise ValueError("item_id is only for remove_place")
-        if self.action == "add_place":
-            if self.meal_type is not None or self.after_item_id is not None:
-                raise ValueError("meal_type and after_item_id are only for add_restaurant")
-        else:
-            if self.day is None or self.meal_type is None:
-                raise ValueError("add_restaurant needs day and meal_type")
-            if self.duration_minutes is not None:
-                raise ValueError("a meal's length follows its meal type and venue")
         return self
 
 

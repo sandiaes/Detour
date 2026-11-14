@@ -2,8 +2,8 @@
 
 It re-reads a finished plan against the engine's inputs and checks it **without the engine's
 scheduling code**: times are re-added from the plan's own numbers, minutes are recomputed from
-seconds, the mode rule, the duration table, the meal windows and the meal lengths are applied
-again, and every transfer is compared with the value the travel source returned for that pair. A
+seconds, the mode rule and the duration table are applied again, the midday gap is checked, and
+every transfer is compared with the value the travel source returned for that pair. A
 violation is a bug in the engine: the plan is never shown (``PlanInvalid``).
 
 Checked:
@@ -15,11 +15,10 @@ Checked:
 * every visit is a candidate the engine was given (no manufactured attraction), with that
   candidate's name, point and category, at most once per plan; durations are the category
   defaults;
-* every meal is at a place to eat the engine was given, with its name, point, venue type and
-  cuisines; the place lists the meal type; the meal type is one of the profile's, at most once a
-  day; a place is used at most once a day, and again on a later day only with the reason
-  ``PLACE_REPEATED``; the length follows the meal-length table; **the meal starts
-  and ends inside its meal window**; meals only on days with visits;
+* **a generated plan holds sights only** (ADR 026): any other kind of item is a violation;
+* **the midday gap**: the idle time between two consecutive stops (what is left after the
+  transfer) is either nothing or the gap, at most one a day: it lasts at least the gap's length and
+  ends no earlier than the gap's earliest start plus its length;
 * ``end = start + duration``; every item lies inside the day window, after the inter-city leg, and
   ends by the profile's day end (**day length respected**);
 * items do not overlap, and the gap between two items holds the transfer;
@@ -37,7 +36,7 @@ from datetime import timedelta
 from detour_api.planner.config import PlannerConfig
 from detour_api.planner.durations import visit_minutes
 from detour_api.planner.reasons import ITEM_TEMPLATES, NOTE_TEMPLATES, note_text
-from detour_api.planner.types import Candidate, Generation, Leg, Plan, PlanRequest, Restaurant
+from detour_api.planner.types import Candidate, Generation, Leg, Plan, PlanRequest
 from detour_api.travel.types import Coord, TravelTime, distance_m
 
 
@@ -89,7 +88,6 @@ def validate_plan(
     plan: Plan,
     request: PlanRequest,
     candidates: Mapping[str, Candidate],
-    restaurants: Mapping[str, Restaurant],
     known_times: Mapping[tuple[Coord, Coord], TravelTime],
     config: PlannerConfig,
 ) -> list[Violation]:
@@ -114,8 +112,8 @@ def validate_plan(
     if len(plan.days) != request.days:
         out.append(Violation("DAY_COUNT", detail=f"{len(plan.days)} != {request.days}"))
     seen_visits: set[str] = set()
-    seen_meal_places: set[str] = set()  # on earlier days
-    visits = visit_min = meal_min = meals = 0
+    gap = config.midday_gap
+    visits = visit_min = 0
     travel_min = travel_sec = routed = estimated = with_visits = intercity = 0
     previous_base: int | None = None
     for expected_index, day in enumerate(plan.days, start=1):
@@ -187,9 +185,8 @@ def validate_plan(
         if day_visits:
             with_visits += 1
         elif day.items:
-            out.append(Violation("MEALS_WITHOUT_VISITS", d))
-        meal_types_today: set[str] = set()
-        meal_places_today: set[str] = set()
+            out.append(Violation("ITEMS_WITHOUT_VISITS", d))
+        idle_stretches = 0
         for pos, item in enumerate(day.items, start=1):
             if item.end_minute - item.start_minute != item.duration_minutes:
                 out.append(Violation("END_NOT_START_PLUS_DURATION", d, pos))
@@ -233,53 +230,9 @@ def validate_plan(
                     out.append(Violation("DUPLICATE_VISIT", d, pos, item.place_id))
                 seen_visits.add(item.place_id)
             else:
-                meals += 1
-                meal_min += item.duration_minutes
-                r = restaurants.get(item.place_id)
-                meal = item.meal_type
-                if r is None:
-                    out.append(Violation("UNKNOWN_RESTAURANT", d, pos, item.place_id))
-                elif (item.name, item.lat, item.lon, item.category, item.cuisines) != (
-                    r.name,
-                    r.lat,
-                    r.lon,
-                    r.venue_type,
-                    r.cuisines,
-                ):
-                    out.append(Violation("SNAPSHOT_MISMATCH", d, pos, item.place_id))
-                if meal is None or meal not in profile.meals:
-                    out.append(Violation("MEAL_TYPE_NOT_PLANNED", d, pos, str(meal)))
-                    continue
-                if r is not None and meal not in r.meal_types:
-                    out.append(Violation("VENUE_DOES_NOT_SERVE_MEAL", d, pos, meal))
-                if meal in meal_types_today:
-                    out.append(Violation("MEAL_TWICE_A_DAY", d, pos, meal))
-                meal_types_today.add(meal)
-                if item.place_id in meal_places_today:
-                    out.append(Violation("RESTAURANT_TWICE_A_DAY", d, pos, item.place_id))
-                meal_places_today.add(item.place_id)
-                if (item.place_id in seen_meal_places) != ("PLACE_REPEATED" in item.reasons):
-                    out.append(Violation("REPEATED_PLACE_REASON", d, pos, item.place_id))
-                venue = r.venue_type if r is not None else None
-                if item.duration_minutes != config.meal_minutes(meal, venue):
-                    out.append(Violation("MEAL_LENGTH", d, pos, str(item.duration_minutes)))
-                meal_window = config.meal_window(meal)
-                if (
-                    item.start_minute < meal_window.start_minute
-                    or item.end_minute > meal_window.end_minute
-                ):
-                    out.append(
-                        Violation(
-                            "MEAL_OUTSIDE_WINDOW",
-                            d,
-                            pos,
-                            f"{meal} {item.start_minute}-{item.end_minute}",
-                        )
-                    )
+                out.append(Violation("NOT_A_SIGHT", d, pos, item.kind))
 
             last = pos == len(day.items)
-            if last:
-                seen_meal_places.update(meal_places_today)
             leg = item.transfer
             if last:
                 if leg is not None:
@@ -296,15 +249,23 @@ def validate_plan(
             a = Coord.from_degrees(item.lat, item.lon)
             b = Coord.from_degrees(nxt.lat, nxt.lon)
             out.extend(_check_leg(leg, a, b, known_times, config, d, pos, "TRANSFER"))
-            if nxt.start_minute < item.end_minute + leg.minutes:
+            needs = item.end_minute + leg.minutes
+            if nxt.start_minute < needs:
                 out.append(
                     Violation(
                         "OVERLAP",
                         d,
                         pos,
-                        f"next starts {nxt.start_minute}, needs {item.end_minute + leg.minutes}",
+                        f"next starts {nxt.start_minute}, needs {needs}",
                     )
                 )
+            elif nxt.start_minute > needs:
+                idle = nxt.start_minute - needs
+                idle_stretches += 1
+                if idle < gap.minutes or nxt.start_minute < gap.earliest_start + gap.minutes:
+                    out.append(Violation("IDLE_NOT_THE_GAP", d, pos, f"{idle} minutes"))
+        if idle_stretches > 1:
+            out.append(Violation("MORE_THAN_ONE_GAP", d, detail=str(idle_stretches)))
 
     for note in plan.notes:
         problem = _check_note(note.code, note.params)
@@ -312,6 +273,7 @@ def validate_plan(
             out.append(Violation("BAD_NOTE", detail=problem))
 
     s = plan.stats
+    meals = meal_min = 0
     planned = visit_min + meal_min + travel_min
     window = request.days * (config.day_window_end_minute - config.day_start_minute)
     expected = (

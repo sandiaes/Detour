@@ -8,8 +8,6 @@ import type {
   Itinerary,
   ItemCreate,
   ItinerarySummary,
-  SlotRequest,
-  SlotSuggestions,
   UserPlace,
   UserPlaceCreate,
   UserPlaceUpdate,
@@ -48,19 +46,6 @@ export function useChangeActions() {
     async (id: string, body: UserPlaceUpdate): Promise<UserPlace> =>
       call(
         need().PATCH("/v1/user-places/{place_id}", { params: { path: { place_id: id } }, body }),
-      ),
-    [need],
-  );
-
-  /** Where a restaurant fits in the plan: up to three slots with reasons (Phase 8, ADR 019).
-   * Nothing is stored on the server. */
-  const suggestSlots = useCallback(
-    async (itineraryId: string, body: SlotRequest): Promise<SlotSuggestions> =>
-      call(
-        need().POST("/v1/itineraries/{itinerary_id}/restaurant-suggestions", {
-          params: { path: { itinerary_id: itineraryId } },
-          body,
-        }),
       ),
     [need],
   );
@@ -190,7 +175,6 @@ export function useChangeActions() {
     setDisplayName,
     savePlace,
     updatePlace,
-    suggestSlots,
     suggestPlaces,
     preview,
     apply,

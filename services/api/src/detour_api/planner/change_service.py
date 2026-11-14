@@ -18,7 +18,7 @@ from dataclasses import asdict
 import structlog
 
 from detour_api.deps import Session
-from detour_api.errors import ApiError, conflict, invalid
+from detour_api.errors import ApiError, conflict
 from detour_api.models.changes import (
     ChangeSet,
     ChangeSetApplied,
@@ -28,8 +28,7 @@ from detour_api.models.changes import (
     PlaceSuggestions,
     SuggestionReason,
 )
-from detour_api.models.restaurants import SlotRequest, SlotSuggestions
-from detour_api.planner import diff, recalc, restaurant_slots
+from detour_api.planner import diff, recalc
 from detour_api.planner.config import DEFAULT_CONFIG, ENGINE_VERSION, PlannerConfig
 from detour_api.planner.reasons import issue_text
 from detour_api.planner.recalc import DEFAULT_RECALC, RecalcConfig, Revision
@@ -82,7 +81,7 @@ def preview(
         itinerary_id=str(itinerary_id),
         change_set_id=str(result.id),
         action=ctx.action,
-        slot=None if ctx.slot_day is None else f"{ctx.slot_day}:{ctx.slot_meal}",
+        day=ctx.only_day,
         restores=ctx.restores is not None,
         days_changed=list(planned.days_changed),
         added=len(planned.added),
@@ -107,20 +106,7 @@ def _recalculate(
     assert ctx.recalc is not None  # noqa: S101
     source = ServiceTravelSource(travel, max_seconds=settings.recalc_provider_max_seconds)
     try:
-        if ctx.dining is not None:
-            assert ctx.slot_day is not None and ctx.slot_meal is not None  # noqa: S101
-            revision = restaurant_slots.add_restaurant(
-                ctx.recalc,
-                ctx.dining,
-                ctx.slot_day,
-                ctx.slot_meal,  # type: ignore[arg-type]
-                None if ctx.after_item_id is None else str(ctx.after_item_id),
-                source,
-                config=config,
-                rconfig=rconfig,
-                use_provider=settings.planner_use_provider,
-            )
-        elif ctx.addition is not None:
+        if ctx.addition is not None:
             revision = recalc.add_place(
                 ctx.recalc,
                 ctx.addition,
@@ -128,7 +114,7 @@ def _recalculate(
                 config=config,
                 rconfig=rconfig,
                 use_provider=settings.planner_use_provider,
-                only_day=ctx.slot_day,
+                only_day=ctx.only_day,
             )
         else:
             assert ctx.removed_key is not None  # noqa: S101
@@ -151,18 +137,10 @@ def _recalculate(
     problems = validate_revision(
         ctx.recalc.plan,
         revision,
-        added=(
-            ctx.dining.key
-            if ctx.dining is not None
-            else None
-            if ctx.addition is None
-            else ctx.addition.key
-        ),
+        added=None if ctx.addition is None else ctx.addition.key,
         removed=ctx.removed_key,
         candidates={c.place_id: c for c in ctx.recalc.candidates},
-        restaurants={r.place_id: r for r in ctx.recalc.restaurants},
         config=config,
-        added_meal=ctx.dining,
     )
     if problems:
         # A bug: never shown as a proposal.
@@ -213,61 +191,6 @@ def discard(session: Session, change_id: uuid.UUID) -> ChangeSet:
         result = changes.discard(conn, session.installation_id, change_id)
     log.info("change_discarded", change_set_id=str(change_id))
     return result
-
-
-def suggest_slots(
-    session: Session,
-    itinerary_id: uuid.UUID,
-    body: SlotRequest,
-    travel: TravelTimeService,
-    settings: Settings,
-    config: PlannerConfig = DEFAULT_CONFIG,
-    rconfig: RecalcConfig = DEFAULT_RECALC,
-) -> SlotSuggestions:
-    """Up to three slots for a restaurant, best first (ADR 019). Nothing is stored and no routing
-    provider is asked: times come from the cache and labelled estimates; the preview that follows
-    asks the provider for the changed day's legs."""
-    started = time.perf_counter()
-    with session.tx() as conn:
-        ctx = changes.load_restaurant_context(
-            conn,
-            session.installation_id,
-            itinerary_id,
-            body.place_id,
-            body.user_place_id,
-            config,
-            rconfig,
-        )
-    assert ctx.recalc is not None and ctx.dining is not None  # noqa: S101
-    days = len(ctx.state["days"])
-    if body.day is not None and body.day > days:
-        raise invalid("day_not_found", f"the plan has {days} days")
-    loaded = time.perf_counter()
-    source = ServiceTravelSource(travel, max_seconds=settings.recalc_provider_max_seconds)
-    try:
-        result = restaurant_slots.suggest(
-            ctx.recalc,
-            ctx.dining,
-            source,
-            day=body.day,
-            meal=body.meal_type,
-            config=config,
-            rconfig=rconfig,
-        )
-    except PlanningImpossible as exc:
-        raise changes.impossible(exc.issues) from exc
-    response = changes.slot_suggestions(ctx.dining, result)
-    log.info(
-        "restaurant_slots_suggested",
-        itinerary_id=str(itinerary_id),
-        suggestions=len(result.suggestions),
-        # Best first, "day:meal": with change_previewed's slot, the source of the acceptance KPI.
-        slots=[f"{x.day_index}:{x.meal_type}" for x in result.suggestions],
-        slots_considered=result.slots_considered,
-        load_ms=round((loaded - started) * 1000, 1),
-        engine_ms=round((time.perf_counter() - loaded) * 1000, 1),
-    )
-    return response
 
 
 MAX_PLACE_SUGGESTIONS = 3
@@ -341,9 +264,7 @@ def suggest_places(
             added=ctx.addition.key,
             removed=None,
             candidates={c.place_id: c for c in ctx.recalc.candidates},
-            restaurants={r.place_id: r for r in ctx.recalc.restaurants},
             config=config,
-            added_meal=None,
         )
         if problems:
             # A bug: never suggested.

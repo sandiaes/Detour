@@ -1,9 +1,7 @@
-import type { SlotSuggestion } from "@detour/shared";
+import { formatCuisines } from "../util/format";
 
-import { formatClock, formatCuisines, formatMinutes } from "../util/format";
-
-// Adding a restaurant (Phase 8, ADR 019): how the entry form and the suggested slots read. The
-// slots, reasons and numbers are the server's; nothing here scores or decides anything.
+// Adding a restaurant (Phase 8, ADR 019): how the entry form reads. The suggested slots of Phase 8
+// were retired by ADR 026: the user chooses the day and time.
 
 export const MEALS = ["breakfast", "lunch", "snack", "dinner"] as const;
 export type Meal = (typeof MEALS)[number];
@@ -59,38 +57,4 @@ export function restaurantMeta(r: {
   ]
     .filter(Boolean)
     .join(" · ");
-}
-
-const clock = (t: string) => formatClock(t) ?? t;
-
-/** "Day 2 · Lunch · 12:15–13:15". */
-export function suggestionTitle(s: SlotSuggestion): string {
-  return `Day ${s.day} · ${MEAL_LABEL[s.meal_type]} · ${clock(s.start_time)}–${clock(s.end_time)}`;
-}
-
-/** Where the meal sits between the stops of the day. */
-export function suggestionPlace(s: SlotSuggestion): string {
-  if (s.after_name && s.before_name) return `Between ${s.after_name} and ${s.before_name}`;
-  if (s.after_name) return `After ${s.after_name}, the last stop of the day`;
-  if (s.before_name) return `Before ${s.before_name}, the first stop of the day`;
-  return "On its own in the day";
-}
-
-/** The estimated detour, labelled routed or estimated like every travel time. */
-export function detourText(s: SlotSuggestion): string {
-  const label = s.travel_label === "estimated" ? "estimated" : "routed";
-  if (s.travel_minutes_added === 0) return `No extra travel (${label})`;
-  const sign = s.travel_minutes_added > 0 ? "+" : "−";
-  return `${sign}${formatMinutes(Math.abs(s.travel_minutes_added))} travel that day (${label})`;
-}
-
-/** Which other items move, in the server's words, or that nothing does. */
-export function movedLines(s: SlotSuggestion): string[] {
-  if (s.items_moved.length === 0) return ["No other item moves."];
-  return [
-    `${s.items_moved.length === 1 ? "1 other item starts" : `${s.items_moved.length} other items start`} at another time:`,
-    ...s.items_moved.map(
-      (m) => `${m.name} ${clock(m.old_start_time)} → ${clock(m.new_start_time)}`,
-    ),
-  ];
 }

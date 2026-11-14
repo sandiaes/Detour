@@ -48,9 +48,6 @@ export type ChangeDiff = components["schemas"]["ChangeDiff"];
 export type RestaurantResult = components["schemas"]["RestaurantResult"];
 export type ExternalRestaurant = components["schemas"]["ExternalRestaurant"];
 export type RestaurantSearchResponse = components["schemas"]["RestaurantSearchResponse"];
-export type SlotRequest = components["schemas"]["SlotRequest"];
-export type SlotSuggestion = components["schemas"]["SlotSuggestion"];
-export type SlotSuggestions = components["schemas"]["SlotSuggestions"];
 export type ChangeSetApplied = components["schemas"]["ChangeSetApplied"];
 
 // The past-trips archive (ADR 006).

@@ -372,7 +372,7 @@ ideas, manual reordering, notes, trip summary and photos.
 ## 7. Recommended next task
 
 **ADR 026 (2026-11-14, proposed):** documents are written; next is its build order, step 2 (the
-planner: sights only, the midday gap, day window, recalculation, validators, golden files), then the
+planner: **built**, with the slot-engine removal), then the
 data change, the retirement of the slot engine, the history record, the app, then destinations
 (ADR 027) and export (ADR 028). The text below is older and still stands for the phases it names,
 except where ADR 026 retires them (Phase 8's slot costs, the imported restaurants).

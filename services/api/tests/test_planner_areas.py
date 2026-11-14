@@ -1,8 +1,5 @@
-"""Meals and area destinations (Phase 6, ADR 016), without a database.
-
-Meals: every meal lies inside its window and the day's hours, at an imported place to eat whose
-venue type serves that meal; places are chosen by proximity, cuisine variety and venue type; a
-missing place to eat is said, never invented.
+"""Area destinations (Phase 6, ADR 016), without a database. (The meals of Phase 6 were removed by
+ADR 026.)
 
 Areas: base cities are chosen by sights and population, kept apart, given days in proportion and
 visited in travel-time order; the first day at a new base starts with the drive; long legs are
@@ -10,7 +7,6 @@ asked of the travel source like any other cell.
 """
 
 import dataclasses
-import re
 from datetime import date
 from typing import Any
 
@@ -18,18 +14,11 @@ import pytest
 
 from detour_api.planner import areas, engine
 from detour_api.planner.config import DEFAULT_CONFIG, PlannerConfig
-from detour_api.planner.meals import RestaurantIndex, choose
-from detour_api.planner.reasons import ITEM_TEMPLATES
 from detour_api.planner.travel import FixedTravelSource, TravelLookup
-from detour_api.planner.types import (
-    BaseCity,
-    Generation,
-    PlanningImpossible,
-    Restaurant,
-)
+from detour_api.planner.types import BaseCity, Generation, PlanningImpossible
 from detour_api.repo.geo import ResolvedDestination, area_planning_allowed
 from detour_api.travel.types import Coord, distance_m
-from tests.planner_helpers import candidates, request, restaurants, towns
+from tests.planner_helpers import candidates, request, towns
 
 ALL_CASES = [
     ("city-large", 3),
@@ -48,148 +37,12 @@ def run(name: str, days: int, **kw: Any) -> Generation:
         request(name, days, date(2026, 6, 1)),
         candidates(name),
         FixedTravelSource(),
-        restaurants=restaurants(name),
         **kw,
     )
 
 
 def hm(minute: int) -> str:
     return f"{minute // 60:02d}:{minute % 60:02d}"
-
-
-# -- meals ---------------------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(("name", "days"), ALL_CASES)
-def test_meals_are_inside_their_windows_and_the_day(name: str, days: int) -> None:
-    by_id = {r.place_id: r for r in restaurants(name)}
-    g = run(name, days)
-    for plan in g.plans:
-        profile = DEFAULT_CONFIG.profile(plan.profile)
-        planned = skipped = 0
-        for day in plan.days:
-            types = [m.meal_type for m in day.meals]
-            assert len(types) == len(set(types)), "each meal at most once a day"
-            assert types == [t for t in profile.meals if t in types], "meals in time order"
-            for meal in day.meals:
-                assert meal.meal_type is not None
-                window = DEFAULT_CONFIG.meal_window(meal.meal_type)
-                assert window.start_minute <= meal.start_minute
-                assert meal.end_minute <= min(window.end_minute, profile.day_end_minute)
-                place = by_id[meal.place_id]  # an imported place, never an invented one
-                assert meal.meal_type in place.meal_types
-                assert meal.duration_minutes == DEFAULT_CONFIG.meal_minutes(
-                    meal.meal_type, place.venue_type
-                )
-            if day.items:
-                assert day.items[-1].end_minute <= profile.day_end_minute
-            planned += len(day.meals)
-            skipped += (len(profile.meals) if day.visits else 0) - len(day.meals)
-        counts = [
-            n.params["count"]
-            for n in plan.notes
-            if n.code in ("MEALS_NOT_PLANNED", "MEALS_SKIPPED_FOR_TRAVEL")
-        ]
-        explained = sum(c for c in counts if isinstance(c, int))
-        assert skipped == explained, "every meal not planned is explained in a note"
-        assert plan.stats.meals == planned
-
-
-def test_venue_type_decides_which_meals_a_place_serves() -> None:
-    plan = run("city-large", 3).plans[1]  # Wider: lunch, snack, dinner
-    by_type: dict[str, set[str]] = {}
-    for day in plan.days:
-        for meal in day.meals:
-            assert meal.meal_type is not None
-            by_type.setdefault(meal.meal_type, set()).add(meal.category)
-    assert by_type == {"lunch": {"restaurant"}, "snack": {"cafe"}, "dinner": {"restaurant"}}
-
-
-def test_unknown_cuisine_is_kept_unknown() -> None:
-    meals = [m for p in run("city-large", 7).plans for d in p.days for m in d.meals]
-    unknown = [m for m in meals if m.cuisines is None]
-    assert unknown, "the fixture has places without a cuisine tag"
-    assert all("CUISINE_NOT_SPECIFIED" in m.reasons for m in unknown)
-    assert all("NEW_CUISINE" not in m.reasons for m in unknown)
-    assert ITEM_TEMPLATES["CUISINE_NOT_SPECIFIED"] == "Cuisine not specified in the map data."
-
-
-def test_the_meal_reason_templates_match_the_configured_windows() -> None:
-    for window in DEFAULT_CONFIG.meal_windows:
-        text = ITEM_TEMPLATES[f"{window.meal_type.upper()}_WINDOW"]
-        assert re.findall(r"\d\d:\d\d", text) == [hm(window.start_minute), hm(window.end_minute)]
-
-
-def test_without_places_to_eat_meals_are_not_planned_and_the_plan_says_so() -> None:
-    g = engine.generate(
-        request("city-large", 2), candidates("city-large"), FixedTravelSource(), restaurants=[]
-    )
-    for plan in g.plans:
-        assert all(not d.meals for d in plan.days)
-        note = next(n for n in plan.notes if n.code == "MEALS_NOT_PLANNED")
-        assert note.params["count"] == 2 * len(DEFAULT_CONFIG.profile(plan.profile).meals)
-
-
-def test_breakfast_can_be_planned_before_the_first_visit() -> None:
-    with_breakfast = dataclasses.replace(
-        DEFAULT_CONFIG,
-        profiles=tuple(
-            dataclasses.replace(p, meals=("breakfast", "lunch", "dinner"))
-            for p in DEFAULT_CONFIG.profiles
-        ),
-    )
-    g = run("city-large", 2, config=with_breakfast)
-    for plan in g.plans:
-        for day in plan.days:
-            first = day.items[0]
-            assert (first.kind, first.meal_type, first.category) == ("meal", "breakfast", "cafe")
-            assert first.start_minute == 9 * 60 and first.end_minute <= 10 * 60
-
-
-def _eatery(
-    pid: str, lat: float, cuisines: tuple[str, ...] | None, venue: str = "restaurant"
-) -> Restaurant:
-    meal_types = ("dinner", "lunch") if venue == "restaurant" else ("breakfast", "snack")
-    return Restaurant(pid, f"Place {pid}", venue, lat, 16.0, meal_types, cuisines)
-
-
-def test_choice_prefers_near_then_new_cuisine_then_known_cuisine() -> None:
-    here = Coord.from_degrees(48.0, 16.0)
-    index = RestaurantIndex(
-        [
-            _eatery("a", 48.0010, ("pizza",)),  # 111 m, a cuisine the plan already has
-            _eatery("b", 48.0012, ("greek",)),  # 133 m, a new cuisine
-            _eatery("c", 48.0011, None),  # 122 m, cuisine not stated
-            _eatery("d", 48.0001, ("cake",), venue="cafe"),  # nearest, but a cafe
-            _eatery("e", 48.0100, ("thai",)),  # 1.1 km: outside the first ring
-        ]
-    )
-    c = DEFAULT_CONFIG
-    pick = choose(index, "lunch", here, None, set(), {"pizza"}, c)
-    assert pick is not None and pick.restaurant.place_id == "b" and pick.ring == 0
-    # Without the pizza already in the plan, the nearest restaurant wins.
-    pick = choose(index, "lunch", here, None, set(), set(), c)
-    assert pick is not None and pick.restaurant.place_id == "a"
-    # A snack needs a cafe.
-    pick = choose(index, "snack", here, None, set(), set(), c)
-    assert pick is not None and pick.restaurant.place_id == "d"
-    # Places of earlier days are used again only when nothing unused is within reach.
-    pick = choose(index, "lunch", here, None, {"a", "b", "c"}, set(), c)
-    assert pick is not None and pick.restaurant.place_id == "e" and not pick.repeated
-    pick = choose(index, "lunch", here, None, {"a", "b", "c", "e"}, set(), c)
-    assert pick is not None and pick.repeated
-    # Never twice on the same day.
-    assert choose(index, "lunch", here, None, set(), set(), c, today={"a", "b", "c", "e"}) is None
-
-
-def test_choice_counts_the_detour_between_the_visits_before_and_after() -> None:
-    prev = Coord.from_degrees(48.0, 16.0)
-    nxt = Coord.from_degrees(48.0040, 16.0)
-    index = RestaurantIndex(
-        [_eatery("on-the-way", 48.0020, ("a",)), _eatery("behind", 47.9990, ("b",))]
-    )
-    pick = choose(index, "dinner", prev, nxt, set(), set(), DEFAULT_CONFIG)
-    assert pick is not None and pick.restaurant.place_id == "on-the-way" and pick.detour_m == 0
 
 
 # -- areas ---------------------------------------------------------------------------------------
@@ -275,9 +128,19 @@ def test_a_new_base_starts_its_first_day_with_the_drive() -> None:
                 assert note.params["label"] == day.arrival.confidence
             previous = day.base_city_id
         assert plan.stats.intercity_legs == sum(d.arrival is not None for d in plan.days)
-    skipped = [n for p in run("area", 14).plans for n in p.notes
-               if n.code == "MEALS_SKIPPED_FOR_TRAVEL"]  # fmt: skip
-    assert skipped, "the long drive to Town D (over 150 km) takes the time of lunch"
+    # The 330-minute drive to Town D leaves a day that starts at 14:30: too late for the midday gap
+    # (it must start by 14:00), so that day has none and is still valid.
+    late = [
+        d
+        for p in run("area", 14).plans
+        for d in p.days
+        if d.items and d.items[0].start_minute > DEFAULT_CONFIG.midday_gap.latest_start
+    ]
+    assert late
+    for d in late:
+        for x, y in zip(d.items, d.items[1:], strict=False):
+            assert x.transfer is not None
+            assert y.start_minute == x.end_minute + x.transfer.minutes
 
 
 def test_inter_city_legs_are_asked_of_the_travel_source_including_long_ones() -> None:
@@ -298,7 +161,6 @@ def test_inter_city_legs_are_asked_of_the_travel_source_including_long_ones() ->
         request("area", 14),
         candidates("area"),
         source,
-        restaurants=restaurants("area"),
         use_provider=True,
     )
     arrivals = [d.arrival for p in g.plans for d in p.days if d.arrival is not None]
@@ -352,7 +214,6 @@ def test_an_area_plan_is_deterministic() -> None:
         request("area", 7, date(2026, 6, 1)),
         list(reversed(candidates("area"))),
         FixedTravelSource(),
-        restaurants=list(reversed(restaurants("area"))),
     )
     assert engine.to_json(shuffled) == first
 

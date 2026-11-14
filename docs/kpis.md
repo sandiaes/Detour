@@ -21,8 +21,8 @@ Measurement sources:
 | Variant count | Share of plan requests returning at least two itineraries | ≥ 95% of fixtures; the rest return the explicit single-plan response | Fixture suite |
 | Variant diversity | Jaccard similarity of the visit sets of the two variants | ≤ 0.6, or different base cities or days per base (areas) | Fixture suite |
 | Feasibility | Generated itineraries passing the independent validator | 100% | Fixture suite, logs |
-| Day utilisation | Planned time (visits, transfers, inter-city drives; the midday gap is unplanned) as a share of the day window. *To change, ADR 026:* today visits, meals, transfers and drives over 09:00–22:00; proposed window 09:00–20:00 | 60–90% | Fixture suite |
-| Meals in their windows *(removed, ADR 026)* | Planned meals that start and end inside their meal window (ADR 016) | 100% | Validator |
+| Day utilisation | Planned time (visits, transfers, inter-city drives; the midday gap is unplanned) as a share of the 09:00–20:00 window (ADR 026, built) | 55–90% | Fixture suite |
+| Meals in their windows *(removed, ADR 026; the validator now checks the midday gap instead)* | Planned meals that start and end inside their meal window (ADR 016) | 100% | Validator |
 | Travel share | Transfer and inter-city time as a share of planned time, Essentials profile | ≤ 25% | Fixture suite |
 | Determinism | Identical output for identical input, data version and engine version | 100% | Golden tests |
 
@@ -105,6 +105,13 @@ engine time for two variants 54 ms (3 days), 176 ms (7 days), 610 ms (14 days); 
 plan through the API, without the routing provider. The routed-share KPI is not met on a cold cache
 (provider time is capped at 3 s per generation). Golden tests pin the output. Planner line coverage
 is 92 to 100 % per module. Not yet measured on real data or on Render.
+
+**Planner 3 (2026-11-14, synthetic fixtures; ADR 026):** generated plans hold sights only, each day
+with sights before and after midday has one 90-minute gap, days end by about 18:00 (window
+09:00–20:00); day utilisation 59 to 67 % (Essentials 66 to 67 %, Wider 59 to 60 %), travel share 6 to
+29 % (Essentials 9 to 26 %, route3 the highest); Jaccard 0.35 to 0.59; every plan passes the validator.
+The 59 % Wider figure is just under the old 60 % floor, hence the new 55 % band. Not yet measured on
+real data or on Render.
 
 ## 9. Review cadence
 

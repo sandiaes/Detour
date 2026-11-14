@@ -3306,94 +3306,6 @@
         }
       }
     },
-    "/v1/itineraries/{itinerary_id}/restaurant-suggestions": {
-      "post": {
-        "tags": [
-          "restaurants"
-        ],
-        "summary": "Where a restaurant fits in a planned itinerary: up to three day and meal slots, scored by location, neighbouring stops, meal type, meal window and travel, each with its reasons, the estimated detour and which items move. Nothing is stored.",
-        "operationId": "restaurant_suggestions",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "itinerary_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Itinerary Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SlotRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SlotSuggestions"
-                }
-              }
-            }
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlanningErrorBody"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        }
-      }
-    },
     "/v1/user-places": {
       "post": {
         "tags": [
@@ -4170,8 +4082,7 @@
             "type": "string",
             "enum": [
               "add_place",
-              "remove_place",
-              "add_restaurant"
+              "remove_place"
             ],
             "title": "Action"
           },
@@ -4186,7 +4097,7 @@
               }
             ],
             "title": "Place Id",
-            "description": "add_place: an imported attraction. add_restaurant: an imported place to eat"
+            "description": "add_place: an imported attraction"
           },
           "user_place_id": {
             "anyOf": [
@@ -4199,7 +4110,7 @@
               }
             ],
             "title": "User Place Id",
-            "description": "add_place: one of your places (kind city or location). add_restaurant: one of your restaurants (kind restaurant)"
+            "description": "add_place: one of your places (kind city or location)"
           },
           "duration_minutes": {
             "anyOf": [
@@ -4240,38 +4151,7 @@
               }
             ],
             "title": "Day",
-            "description": "add_restaurant: the day (a suggestion's day). add_place: optional, only this day is tried (a place suggestion's day); without it the day that costs the plan least"
-          },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type",
-            "description": "add_restaurant: the meal (a suggestion's meal_type)"
-          },
-          "after_item_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "After Item Id",
-            "description": "add_restaurant: the visit (or meal you fixed) the meal follows, as a suggestion gives it; null puts the meal first in the day"
+            "description": "add_place: optional, only this day is tried (a place suggestion's day); without it the day that costs the plan least"
           }
         },
         "additionalProperties": false,
@@ -4280,7 +4160,7 @@
           "action"
         ],
         "title": "ChangeSetCreate",
-        "description": "Preview adding a place (an imported attraction, or one of your own places of kind city or\nlocation), adding a restaurant to a meal slot, or removing a visit. Nothing changes until the\nchange set is applied."
+        "description": "Preview adding a place (an imported attraction, or one of your own places of kind city or\nlocation) or removing a visit. Nothing changes until the change set is applied. A restaurant\nor café is not added this way: its day and time are chosen by the user (ADR 026)."
       },
       "ClientConfig": {
         "properties": {
@@ -6428,40 +6308,6 @@
         ],
         "title": "MapConfig"
       },
-      "MovedItem": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "visit",
-              "meal"
-            ],
-            "title": "Kind"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "old_start_time": {
-            "type": "string",
-            "format": "time",
-            "title": "Old Start Time"
-          },
-          "new_start_time": {
-            "type": "string",
-            "format": "time",
-            "title": "New Start Time"
-          }
-        },
-        "type": "object",
-        "required": [
-          "kind",
-          "name",
-          "old_start_time",
-          "new_start_time"
-        ],
-        "title": "MovedItem"
-      },
       "Photo": {
         "properties": {
           "id": {
@@ -7767,338 +7613,6 @@
           "external"
         ],
         "title": "RestaurantSearchResponse"
-      },
-      "SlotReason": {
-        "properties": {
-          "code": {
-            "type": "string",
-            "title": "Code"
-          },
-          "text": {
-            "type": "string",
-            "title": "Text"
-          }
-        },
-        "type": "object",
-        "required": [
-          "code",
-          "text"
-        ],
-        "title": "SlotReason"
-      },
-      "SlotRequest": {
-        "properties": {
-          "place_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Place Id",
-            "description": "An imported place to eat"
-          },
-          "user_place_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Place Id",
-            "description": "One of your restaurants (kind restaurant)"
-          },
-          "day": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 60.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Day",
-            "description": "Only this day"
-          },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type",
-            "description": "Only this meal"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "SlotRequest",
-        "description": "Suggest where a restaurant fits in a planned itinerary."
-      },
-      "SlotRestaurant": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "venue_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Null: Cuisine not specified"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "breakfast",
-                    "lunch",
-                    "dinner",
-                    "snack"
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types",
-            "description": "Null: not known"
-          },
-          "meal_types_basis": {
-            "type": "string",
-            "enum": [
-              "venue_type",
-              "you",
-              "unknown"
-            ],
-            "title": "Meal Types Basis"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "venue_type",
-          "cuisines",
-          "meal_types",
-          "meal_types_basis"
-        ],
-        "title": "SlotRestaurant"
-      },
-      "SlotSuggestion": {
-        "properties": {
-          "rank": {
-            "type": "integer",
-            "title": "Rank",
-            "description": "1 is the best slot"
-          },
-          "day": {
-            "type": "integer",
-            "title": "Day"
-          },
-          "meal_type": {
-            "type": "string",
-            "enum": [
-              "breakfast",
-              "lunch",
-              "dinner",
-              "snack"
-            ],
-            "title": "Meal Type"
-          },
-          "start_time": {
-            "type": "string",
-            "format": "time",
-            "title": "Start Time"
-          },
-          "end_time": {
-            "type": "string",
-            "format": "time",
-            "title": "End Time"
-          },
-          "after_item_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "After Item Id",
-            "description": "Pass this, with day and meal_type, to the change-set preview to place the meal here. Null: first in the day"
-          },
-          "after_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "After Name",
-            "description": "The stop before the meal; null: first of the day"
-          },
-          "before_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Before Name",
-            "description": "The stop after the meal; null: last of the day"
-          },
-          "travel_minutes_added": {
-            "type": "integer",
-            "title": "Travel Minutes Added",
-            "description": "Travel the day gains (negative: less). Estimated from the cache and straight-line distance, not routed, unless travel_label says routed"
-          },
-          "travel_label": {
-            "type": "string",
-            "enum": [
-              "routed",
-              "estimated"
-            ],
-            "title": "Travel Label"
-          },
-          "detour_metres": {
-            "type": "integer",
-            "title": "Detour Metres",
-            "description": "Straight-line detour from the stops before and after the meal"
-          },
-          "replaces": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Replaces",
-            "description": "The meal of this type the plan has now, replaced"
-          },
-          "items_moved": {
-            "items": {
-              "$ref": "#/components/schemas/MovedItem"
-            },
-            "type": "array",
-            "title": "Items Moved",
-            "description": "Other items that start at another time"
-          },
-          "reasons": {
-            "items": {
-              "$ref": "#/components/schemas/SlotReason"
-            },
-            "type": "array",
-            "title": "Reasons"
-          },
-          "score": {
-            "type": "integer",
-            "title": "Score",
-            "description": "Lower is better; ties go to the earlier day, then the start"
-          }
-        },
-        "type": "object",
-        "required": [
-          "rank",
-          "day",
-          "meal_type",
-          "start_time",
-          "end_time",
-          "after_item_id",
-          "after_name",
-          "before_name",
-          "travel_minutes_added",
-          "travel_label",
-          "detour_metres",
-          "replaces",
-          "items_moved",
-          "reasons",
-          "score"
-        ],
-        "title": "SlotSuggestion"
-      },
-      "SlotSuggestions": {
-        "properties": {
-          "restaurant": {
-            "$ref": "#/components/schemas/SlotRestaurant"
-          },
-          "suggestions": {
-            "items": {
-              "$ref": "#/components/schemas/SlotSuggestion"
-            },
-            "type": "array",
-            "title": "Suggestions",
-            "description": "At most three, best first"
-          },
-          "slots_considered": {
-            "type": "integer",
-            "title": "Slots Considered",
-            "description": "Day and meal combinations that could be tried"
-          },
-          "issues": {
-            "items": {
-              "$ref": "#/components/schemas/SlotReason"
-            },
-            "type": "array",
-            "title": "Issues",
-            "description": "Why there is nothing to suggest, when empty"
-          }
-        },
-        "type": "object",
-        "required": [
-          "restaurant",
-          "suggestions",
-          "slots_considered",
-          "issues"
-        ],
-        "title": "SlotSuggestions"
       },
       "StopIn": {
         "properties": {

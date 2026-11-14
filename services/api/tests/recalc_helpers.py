@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from detour_api.planner import engine
 from detour_api.planner.recalc import Entry, RDay, RecalcInput, RPlan, entry_key
 from detour_api.planner.travel import FixedTravelSource
-from detour_api.planner.types import BaseCity, Candidate, Plan, PlanRequest, Restaurant
+from detour_api.planner.types import BaseCity, Candidate, Plan, PlanRequest
 
 
 def as_rplan(plan: Plan) -> RPlan:
@@ -29,7 +29,6 @@ def as_rplan(plan: Plan) -> RPlan:
                 place_id=i.place_id,
                 category=i.category,
                 meal_type=i.meal_type,
-                cuisines=i.cuisines,
                 item_id=f"item-{d.day_index}-{n}",
             )
             for n, i in enumerate(d.items)
@@ -51,10 +50,9 @@ def as_rplan(plan: Plan) -> RPlan:
 def generated(
     request: PlanRequest,
     candidates: Sequence[Candidate],
-    restaurants: Sequence[Restaurant],
     profile: str = "essentials",
 ) -> tuple[Plan, RPlan]:
-    gen = engine.generate(request, candidates, FixedTravelSource(), restaurants=restaurants)
+    gen = engine.generate(request, candidates, FixedTravelSource())
     plan = next(p for p in gen.plans if p.profile == profile)
     return plan, as_rplan(plan)
 
@@ -64,7 +62,6 @@ def recalc_input(
     rplan: RPlan,
     request: PlanRequest,
     candidates: Sequence[Candidate],
-    restaurants: Sequence[Restaurant],
     towns: Sequence[BaseCity] = (),
 ) -> RecalcInput:
     bases = {b.city_id: b for b in request.base_cities}
@@ -74,7 +71,6 @@ def recalc_input(
         notes=plan.notes,
         bases=bases,
         candidates=tuple(candidates),
-        restaurants=tuple(restaurants),
         towns=tuple(towns),
         route=request.kind == "route",
     )

@@ -1,28 +1,23 @@
-"""Adding a restaurant (Phase 8, ADR 019): search (local data, then Photon through the backend),
-and the best slots for it in a planned itinerary. Manual entry is a user place of kind restaurant
-(``POST /v1/user-places``); placing it is a change set (``POST /v1/itineraries/{id}/change-sets``
-with action ``add_restaurant``)."""
+"""Adding a restaurant (Phase 8, ADR 019): search (local data, then Photon through the backend).
+Manual entry is a user place of kind restaurant (``POST /v1/user-places``); the user chooses its day
+and time (``POST /v1/itineraries/{id}/days/{n}/items``). The slot suggestions of Phase 8 were
+retired by ADR 026; the local-data search goes with the imported restaurants (ADR 026, step 3)."""
 
-import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query
 from sqlalchemy import text
 
 from detour_api.adapters.photon import PhotonOutcome
 from detour_api.deps import SessionDep
 from detour_api.errors import invalid, not_found
 from detour_api.importer.derive import MEAL_TYPES_BY_VENUE
-from detour_api.models.common import PlanningErrorBody
 from detour_api.models.restaurants import (
     ExternalRestaurant,
     ExternalRestaurantStatus,
     RestaurantResult,
     RestaurantSearchResponse,
-    SlotRequest,
-    SlotSuggestions,
 )
-from detour_api.planner import change_service
 from detour_api.repo import geo, user_places
 from detour_api.routers.responses import ERRORS
 
@@ -141,22 +136,3 @@ def search_restaurants(
     else:
         external = ExternalRestaurantStatus(state="not_requested")
     return RestaurantSearchResponse(query=q, results=results, your_places=own, external=external)
-
-
-@router.post(
-    "/itineraries/{itinerary_id}/restaurant-suggestions",
-    summary="Where a restaurant fits in a planned itinerary: up to three day and meal slots, "
-    "scored by location, neighbouring stops, meal type, meal window and travel, each with its "
-    "reasons, the estimated detour and which items move. Nothing is stored.",
-    responses={**ERRORS, 422: {"model": PlanningErrorBody}},
-)
-def restaurant_suggestions(
-    session: SessionDep, request: Request, itinerary_id: uuid.UUID, body: SlotRequest
-) -> SlotSuggestions:
-    return change_service.suggest_slots(
-        session,
-        itinerary_id,
-        body,
-        request.app.state.travel_time,
-        request.app.state.settings,
-    )

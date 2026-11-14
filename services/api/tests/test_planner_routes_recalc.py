@@ -10,7 +10,7 @@ from detour_api.planner.recalc import Addition, RecalcInput, RPlan, entry_key
 from detour_api.planner.revision_validator import validate_revision
 from detour_api.planner.travel import FixedTravelSource
 from detour_api.planner.types import Plan, PlanningImpossible, PlanRequest
-from tests.planner_helpers import candidates, restaurants, route_request, towns
+from tests.planner_helpers import candidates, route_request, towns
 from tests.recalc_helpers import generated, lock, recalc_input
 
 STOPS = [(990001, 2, "AT"), (990005, 1, "AT"), (990002, 2, "AT")]  # A, E, B
@@ -18,8 +18,8 @@ STOPS = [(990001, 2, "AT"), (990005, 1, "AT"), (990002, 2, "AT")]  # A, E, B
 
 def _setup() -> tuple[PlanRequest, Plan, RPlan, RecalcInput]:
     req = route_request(STOPS)
-    plan, rplan = generated(req, candidates("area"), restaurants("area"))
-    inp = recalc_input(plan, rplan, req, candidates("area"), restaurants("area"))
+    plan, rplan = generated(req, candidates("area"))
+    inp = recalc_input(plan, rplan, req, candidates("area"))
     return req, plan, rplan, inp
 
 
@@ -92,7 +92,6 @@ def test_a_stop_edit_keeps_unchanged_stops_and_fills_new_days() -> None:
                 1,
                 "essentials",
                 inp.candidates,
-                inp.restaurants,
                 planned,
                 FixedTravelSource(),
             ),
@@ -110,7 +109,6 @@ def test_a_stop_edit_keeps_unchanged_stops_and_fills_new_days() -> None:
             added=None,
             removed=None,
             candidates={c.place_id: c for c in inp.candidates},
-            restaurants={r.place_id: r for r in inp.restaurants},
             config=DEFAULT_CONFIG,
         )
         == []

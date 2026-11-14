@@ -88,6 +88,10 @@ NOTE_TEMPLATES: dict[str, str] = {
     "NO_OPENING_HOURS": (
         "Opening hours are not checked: a place may be closed at the planned time."
     ),
+    "SIGHTS_ONLY": (
+        "The plan holds sights only: restaurants and cafes are not planned. Each day keeps free "
+        "time around midday; add a place to eat yourself."
+    ),
     "MEALS_FROM_MAP_DATA": (
         "Places to eat come from OpenStreetMap: venue type and cuisine only, with no prices, "
         "ratings or opening hours."

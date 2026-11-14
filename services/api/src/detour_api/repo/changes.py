@@ -1,8 +1,8 @@
 """Change sets and itinerary versions (Phase 7, ADR 018): the database side of recalculation.
 
 ``load_context`` reads what a preview needs (the itinerary's current state, the place to add or
-the item to remove, the sights and places to eat around the plan's bases and the addition, the
-towns near the addition). ``save`` stores a previewed change set; ``apply`` keeps the current
+the item to remove, the sights around the plan's bases and the addition, the towns near the
+addition). ``save`` stores a previewed change set; ``apply`` keeps the current
 version in ``app.itinerary_version`` and writes the proposal exactly as previewed; ``discard``
 closes it. The recalculation itself runs between ``load_context`` and ``save``, outside any
 transaction, because it may wait on the routing provider.
@@ -11,7 +11,6 @@ transaction, because it may wait on the routing provider.
 import json
 import math
 import uuid
-from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import time
 from typing import Any, Literal
@@ -31,22 +30,12 @@ from detour_api.models.changes import (
     DiffRetime,
     ItineraryVersion,
 )
-from detour_api.models.restaurants import (
-    MovedItem,
-    SlotReason,
-    SlotRestaurant,
-    SlotSuggestion,
-    SlotSuggestions,
-)
-from detour_api.names.store import PLACE_NAME_COLUMNS, resolve_place_row
-from detour_api.planner import restaurant_slots
 from detour_api.planner.config import PlannerConfig
 from detour_api.planner.diff import PlanDiff
 from detour_api.planner.durations import visit_minutes
-from detour_api.planner.reasons import issue_text, slot_text
+from detour_api.planner.reasons import issue_text
 from detour_api.planner.recalc import Addition, RecalcConfig, RecalcInput, entry_key
-from detour_api.planner.restaurant_slots import Dining, SlotResult
-from detour_api.planner.types import BaseCity, Candidate, Issue, Note, Restaurant
+from detour_api.planner.types import BaseCity, Candidate, Issue, Note
 from detour_api.repo import geo, itineraries, planning, user_places
 from detour_api.repo.geo import METERS_PER_DEGREE
 from detour_api.repo.plan_state import (
@@ -93,15 +82,11 @@ class Context:
     item_id: uuid.UUID | None = None
     duration_minutes: int | None = None
     restores: tuple[int, State] | None = None
-    # add_restaurant (Phase 8): the restaurant and the slot it was previewed for
-    dining: Dining | None = None
-    slot_day: int | None = None
-    slot_meal: str | None = None
-    after_item_id: uuid.UUID | None = None
+    # add_place: only this day was allowed (stored as ``slot_day``; ADR 021, step 4)
+    only_day: int | None = None
 
 
 def impossible(issues: list[Issue]) -> ApiError:
-    from detour_api.planner.reasons import issue_text
 
     params = [{"code": i.code, "text": issue_text(i.code, i.params)} for i in issues]
     return ApiError(
@@ -157,24 +142,6 @@ def _towns_near(conn: Connection, lat: float, lon: float, radius_m: int) -> list
     return [BaseCity(int(r.id), r.name, r.lat, r.lon, r.population) for r in rows]
 
 
-def _restaurant_info(
-    conn: Connection, ids: list[str]
-) -> dict[str, tuple[str | None, tuple[str, ...] | None]]:
-    if not ids:
-        return {}
-    rows = conn.execute(
-        text(
-            "SELECT place_id, venue_type, cuisines FROM geo.restaurant_profile"
-            " WHERE place_id = ANY(CAST(:ids AS uuid[]))"
-        ),
-        {"ids": ids},
-    ).all()
-    return {
-        str(r.place_id): (r.venue_type, None if r.cuisines is None else tuple(r.cuisines))
-        for r in rows
-    }
-
-
 def _head(
     conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID
 ) -> tuple[Any, geo.ResolvedDestination, State, dict[str, Any]]:
@@ -215,7 +182,6 @@ def load_context(
     row, dest, state, common = _head(conn, installation_id, itinerary_id)
 
     addition: Addition | None = None
-    dining: Dining | None = None
     removed_key: str | None = None
     if body.action == "remove_place":
         item = next((r for r in state["items"] if r["id"] == str(body.item_id)), None)
@@ -235,13 +201,6 @@ def load_context(
             )
         point = (item["lat"], item["lon"]) if item["lat"] is not None else None
         target_name = item["display_name"]
-    elif body.action == "add_restaurant":
-        dining = load_dining(conn, installation_id, body.place_id, body.user_place_id)
-        assert body.day is not None  # noqa: S101 - guaranteed by ChangeSetCreate
-        if not 1 <= body.day <= len(state["days"]):
-            raise invalid("day_not_found", f"the plan has {len(state['days'])} days")
-        point = (dining.lat, dining.lon)
-        target_name = dining.name
     else:
         addition = _addition(conn, installation_id, body)
         point = (addition.lat, addition.lon)
@@ -259,36 +218,7 @@ def load_context(
         user_place_id=body.user_place_id,
         item_id=body.item_id,
         duration_minutes=body.duration_minutes,
-        dining=dining,
-        slot_day=body.day,
-        slot_meal=body.meal_type,
-        after_item_id=body.after_item_id,
-    )
-
-
-def load_restaurant_context(
-    conn: Connection,
-    installation_id: uuid.UUID,
-    itinerary_id: uuid.UUID,
-    place_id: uuid.UUID | None,
-    user_place_id: uuid.UUID | None,
-    config: PlannerConfig,
-    rconfig: RecalcConfig,
-) -> Context:
-    """What suggesting slots for a restaurant needs (nothing is stored)."""
-    row, dest, state, common = _head(conn, installation_id, itinerary_id)
-    dining = load_dining(conn, installation_id, place_id, user_place_id)
-    recalc_input = _plan_input(
-        conn, row, dest, state, (dining.lat, dining.lon), None, config, rconfig
-    )
-    return Context(
-        **common,
-        action="add_restaurant",
-        target_name=dining.name,
-        recalc=recalc_input,
-        place_id=place_id,
-        user_place_id=user_place_id,
-        dining=dining,
+        only_day=body.day,
     )
 
 
@@ -306,16 +236,7 @@ def _plan_input(
     if issues:
         raise impossible(issues)
     assert dest.region_id is not None  # noqa: S101 - checked by _head
-    meal_places = [r["place_id"] for r in state["items"] if r["type"] == "meal" and r["place_id"]]
-    own_meals = [
-        r["user_place_id"] for r in state["items"] if r["type"] == "meal" and r["user_place_id"]
-    ]
-    rplan = _to_rplan(
-        state,
-        row.profile,
-        _restaurant_info(conn, meal_places),
-        user_cuisines=_user_cuisines(conn, own_meals),
-    )
+    rplan = _to_rplan(state, row.profile)
     base_ids = sorted({d.base_city_id for d in rplan.days if d.base_city_id is not None})
     bases = _cities(conn, base_ids)
     missing = [b for b in base_ids if b not in bases]
@@ -335,15 +256,10 @@ def _plan_input(
             if covering and covering[1] == "available" and covering[0] not in regions:
                 regions.append(covering[0])
     cands: dict[str, Candidate] = {}
-    rests: dict[str, Restaurant] = {}
     for region in regions:
         for lat, lon in points:
             for c in planning.load_candidates(conn, region, lat, lon, radius):
                 cands.setdefault(c.place_id, c)
-            for r in planning.load_restaurants(
-                conn, region, lat, lon, radius + config.meal_search_m[-1]
-            ):
-                rests.setdefault(r.place_id, r)
     towns: list[BaseCity] = []
     if addition is not None:
         towns = _towns_near(conn, addition.lat, addition.lon, rconfig.new_base_town_m)
@@ -354,7 +270,6 @@ def _plan_input(
         ),
         bases=bases,
         candidates=tuple(cands[k] for k in sorted(cands)),
-        restaurants=tuple(rests[k] for k in sorted(rests)),
         towns=tuple(towns),
         single_city=not route and not geo.area_planning_allowed(dest),
         route=route,
@@ -388,67 +303,6 @@ def _countries(conn: Connection, ids: list[int]) -> dict[int, str | None]:
     return {int(r.id): r.country_iso2 for r in rows}
 
 
-def _user_cuisines(conn: Connection, ids: list[str]) -> dict[str, tuple[str, ...] | None]:
-    if not ids:
-        return {}
-    rows = conn.execute(
-        text("SELECT id, cuisines FROM app.user_place WHERE id = ANY(CAST(:ids AS uuid[]))"),
-        {"ids": ids},
-    ).all()
-    return {str(r.id): None if not r.cuisines else tuple(r.cuisines) for r in rows}
-
-
-def load_dining(
-    conn: Connection,
-    installation_id: uuid.UUID,
-    place_id: uuid.UUID | None,
-    user_place_id: uuid.UUID | None,
-) -> Dining:
-    """The restaurant to add: an imported place to eat (venue type, cuisines and meal types as the
-    import stored them) or one of the user's own (what the user gave; unknown stays unknown)."""
-    if place_id is not None:
-        row = conn.execute(
-            text(
-                "SELECT p.id, p.kind, p.category, p.name, p.names_i18n, p.is_active,"
-                " ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,"
-                " rp.venue_type, rp.cuisines, rp.meal_types, "
-                + PLACE_NAME_COLUMNS
-                + " FROM geo.place p"
-                " LEFT JOIN geo.restaurant_profile rp ON rp.place_id = p.id WHERE p.id = :i"
-            ),
-            {"i": place_id, "inst": str(installation_id)},
-        ).first()
-        if row is None or not row.is_active:
-            raise invalid("place_not_found", "place_id is not an active place")
-        if row.kind != "restaurant" or row.venue_type is None:
-            raise invalid("wrong_place_kind", "only places to eat can be added as a restaurant")
-        if row.name is None:
-            raise invalid("unnamed_place", "this place has no name in the data; add it by hand")
-        return Dining(
-            name=resolve_place_row(row).display or row.name,
-            lat=row.lat,
-            lon=row.lon,
-            venue_type=row.venue_type,
-            cuisines=None if not row.cuisines else tuple(row.cuisines),
-            meal_types=None if not row.meal_types else tuple(row.meal_types),
-            place_id=str(place_id),
-        )
-    assert user_place_id is not None  # noqa: S101 - one of the two is always given
-    place = user_places.get(conn, installation_id, user_place_id)
-    if place is None:
-        raise invalid("user_place_not_found", "user_place_id is not one of your places")
-    if place.kind != "restaurant":
-        raise invalid("wrong_place_kind", "only a place of kind restaurant can be added as a meal")
-    return Dining(
-        name=place.name,
-        lat=place.lat,
-        lon=place.lon,
-        cuisines=None if not place.cuisines else tuple(place.cuisines),
-        meal_types=None if not place.meal_types else tuple(place.meal_types),
-        user_place_id=str(user_place_id),
-    )
-
-
 def _addition(conn: Connection, installation_id: uuid.UUID, body: ChangeSetCreate) -> Addition:
     if body.place_id is not None:
         found = geo.place_exists(conn, body.place_id, installation_id)
@@ -479,7 +333,8 @@ def _addition(conn: Connection, installation_id: uuid.UUID, body: ChangeSetCreat
         raise invalid("user_place_not_found", "user_place_id is not one of your places")
     if place.kind == "restaurant":
         raise invalid(
-            "wrong_place_kind", "a restaurant is added to a meal slot: use add_restaurant"
+            "wrong_place_kind",
+            "a restaurant or café is added by choosing its day and time, not through a recalculation",
         )
     if body.duration_minutes is None:
         raise invalid("duration_required", "say how long to stay at your own place")
@@ -594,53 +449,6 @@ def diff_model(d: PlanDiff) -> ChangeDiff:
     )
 
 
-def slot_suggestions(dining: Dining, result: SlotResult) -> SlotSuggestions:
-    """The suggestions as the API shows them: reasons rendered through the fixed templates."""
-
-    def reasons(items: Iterable[restaurant_slots.Reason]) -> list[SlotReason]:
-        return [SlotReason(code=r.code, text=slot_text(r.code, r.params)) for r in items]
-
-    return SlotSuggestions(
-        restaurant=SlotRestaurant(
-            name=dining.name,
-            venue_type=dining.venue_type,
-            cuisines=None if dining.cuisines is None else list(dining.cuisines),
-            meal_types=None if dining.meal_types is None else list(dining.meal_types),
-            meal_types_basis="venue_type" if dining.basis == "venue" else dining.basis,
-        ),
-        suggestions=[
-            SlotSuggestion(
-                rank=n,
-                day=s.day_index,
-                meal_type=s.meal_type,
-                start_time=_t(s.start_minute),
-                end_time=_t(s.end_minute),
-                after_item_id=None if s.after_item_id is None else uuid.UUID(s.after_item_id),
-                after_name=s.after_name,
-                before_name=s.before_name,
-                travel_minutes_added=s.travel_minutes_added,
-                travel_label="estimated" if s.estimated else "routed",
-                detour_metres=s.detour_m,
-                replaces=s.replaces,
-                items_moved=[
-                    MovedItem(
-                        kind=m.kind,
-                        name=m.name,
-                        old_start_time=_t(m.old_start_minute),
-                        new_start_time=_t(m.new_start_minute),
-                    )
-                    for m in s.shifts
-                ],
-                reasons=reasons(s.reasons),
-                score=s.cost,
-            )
-            for n, s in enumerate(result.suggestions, start=1)
-        ],
-        slots_considered=result.slots_considered,
-        issues=[SlotReason(code=i.code, text=issue_text(i.code, i.params)) for i in result.issues],
-    )
-
-
 # -- change sets ---------------------------------------------------------------------------------
 
 _CHANGE_COLUMNS = (
@@ -711,9 +519,9 @@ def save(
             "minutes": ctx.duration_minutes,
             "name": ctx.target_name,
             "restores": None if ctx.restores is None else ctx.restores[0],
-            "slot_day": ctx.slot_day,
-            "slot_meal": ctx.slot_meal,
-            "after": ctx.after_item_id,
+            "slot_day": ctx.only_day,
+            "slot_meal": None,
+            "after": None,
             "proposal": json.dumps(proposal, sort_keys=True),
             "diff": diff.model_dump_json(),
             "notes": json.dumps([{"code": n.code, "params": n.params} for n in notes]),

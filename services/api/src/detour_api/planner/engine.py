@@ -1,22 +1,21 @@
-"""The planning engine, version 2: attractions, meals and days, for a city or an area (ADR 014,
-ADR 016).
+"""The planning engine, version 3: sights and days, for a city, an area or a route of cities
+(ADR 014, ADR 016, ADR 024; ADR 026 removed the meals).
 
     1. scope: a city is one base for every day; an area gets base cities per profile, with days
        allocated to them and ordered by inter-city travel time (areas.py)
     2. score each base's candidates for the profile (scoring.py)
     3. read the cached travel times of a sparse cell set: each candidate against its nearest
        others (ADR 013); any other pair is the labelled estimate
-    4. solve Essentials, then Wider, base by base, keeping time for the profile's meals; if the
+    4. solve Essentials, then Wider, base by base, keeping time for the midday gap; if the
        visit sets overlap too much and the bases are the same, solve Wider again with the shared
        visits weighted down (the diversity gate, architecture section 5.3)
-    5. lay out each day: visits in order, meals in their windows at places to eat chosen by
-       proximity, cuisine variety and venue type (meals.py)
+    5. lay out each day: visits in order with one unplanned midday gap, no meals (daylayout.py)
     6. ask the travel source for the transfers and inter-city legs the plans actually use (the
        provider is called here, within a time limit, only if ``use_provider``)
     7. lay out again with those times; if a day no longer fits, drop its lowest-value visit
     8. reason codes, notes and statistics; the independent validator checks every plan
 
-Deterministic: candidates, places to eat and towns are handled in identifier order, every tie is
+Deterministic: candidates and towns are handled in identifier order, every tie is
 broken by identifier, there is no randomness and no clock. The only input that can change between
 two runs with the same data is what the travel source returns, and every transfer records which
 kind of value it is.
@@ -29,8 +28,8 @@ from typing import Any
 
 from detour_api.planner import areas, scoring
 from detour_api.planner.config import DEFAULT_CONFIG, ENGINE_VERSION, PlannerConfig, Profile
+from detour_api.planner.daylayout import DayLayout, lay_out_day
 from detour_api.planner.durations import visit_minutes
-from detour_api.planner.meals import DayLayout, RestaurantIndex, lay_out_day
 from detour_api.planner.reasons import ITEM_TEMPLATES
 from detour_api.planner.sequencer import HeuristicSequencer, Sequencer, SequencingProblem
 from detour_api.planner.travel import Cell, TravelLookup, TravelSource, minutes
@@ -47,7 +46,6 @@ from detour_api.planner.types import (
     PlanningImpossible,
     PlanRequest,
     PlanStats,
-    Restaurant,
 )
 from detour_api.planner.validator import validate_generation, validate_plan
 from detour_api.travel.types import Coord, TravelTime
@@ -58,14 +56,8 @@ _GENERAL_NOTES = (
     Note("NOTABILITY_FROM_TAGS"),
     Note("DURATIONS_ARE_DEFAULTS"),
     Note("NO_OPENING_HOURS"),
-    Note("MEALS_FROM_MAP_DATA"),
+    Note("SIGHTS_ONLY"),
 )
-_WINDOW_REASON = {
-    "breakfast": "BREAKFAST_WINDOW",
-    "lunch": "LUNCH_WINDOW",
-    "snack": "SNACK_WINDOW",
-    "dinner": "DINNER_WINDOW",
-}
 
 Allocation = tuple[tuple[int | None, int], ...]
 
@@ -173,7 +165,6 @@ def generate(
     candidates: Sequence[Candidate],
     source: TravelSource,
     *,
-    restaurants: Sequence[Restaurant] = (),
     config: PlannerConfig = DEFAULT_CONFIG,
     sequencer: Sequencer | None = None,
     use_provider: bool = False,
@@ -184,7 +175,6 @@ def generate(
     by_id = {c.place_id: c for c in candidates}
     if len(by_id) != len(candidates):
         raise ValueError("duplicate place ids among the candidates")
-    index = RestaurantIndex(restaurants)
     lookup = TravelLookup(source, config.walk_max_m)
 
     eligible: list[areas.EligibleBase] = []
@@ -252,7 +242,7 @@ def generate(
         chosen = [second]
 
     if use_provider:
-        lookup.fetch(_provider_cells(chosen, by_id, index, near, lookup, config), use_provider=True)
+        lookup.fetch(_provider_cells(chosen, by_id, near, lookup, config), use_provider=True)
         # Laying out a day after routing can join two places that were never asked about; ask
         # for those legs too (twice at most; any left over stay labelled estimates).
         for _ in range(FOLLOW_UP_FETCHES):
@@ -260,7 +250,7 @@ def generate(
                 {
                     cell
                     for state in chosen
-                    for day in _lay_out(state, by_id, index, lookup, config)
+                    for day in _lay_out(state, by_id, lookup, config)
                     for cell in _day_cells(day)
                     if not lookup.answered(*cell)
                 }
@@ -279,7 +269,7 @@ def generate(
         notes: list[Note] = []
         if state is second and adjusted is not None and distinct:
             notes.append(Note("DIVERSITY_ADJUSTED", {"kept_percent": adjusted}))
-        plans.append(_build_plan(request, state, by_id, index, lookup, config, notes))
+        plans.append(_build_plan(request, state, by_id, lookup, config, notes))
 
     general: list[Note] = []
     jaccard: int | None = None
@@ -330,7 +320,7 @@ def generate(
     )
     known = lookup.known()
     for plan in generation.plans:
-        violations = validate_plan(plan, request, by_id, index.by_id, known, config)
+        violations = validate_plan(plan, request, by_id, known, config)
         if violations:
             raise PlanInvalid(plan.profile, violations)
     problems = validate_generation(generation, config)
@@ -558,21 +548,17 @@ def _fit_day(
     route: list[str],
     value: dict[str, int],
     by_id: dict[str, Candidate],
-    index: RestaurantIndex,
     lookup: TravelLookup,
     config: PlannerConfig,
     profile: Profile,
     start: int,
-    used: frozenset[str],
-    seen: frozenset[str],
 ) -> tuple[list[str], DayLayout, int]:
-    """The route with its lowest-value visits removed until the day, with its meals, fits (only
-    needed when routed times are longer than the times it was planned with, or a meal does not
-    fit its window)."""
+    """The route with its lowest-value visits removed until the day fits (only needed when routed
+    times are longer than the times it was planned with)."""
     route = list(route)
     removed = 0
     while True:
-        layout = lay_out_day(route, by_id, index, lookup, config, profile, start, used, seen)
+        layout = lay_out_day(route, by_id, lookup, config, profile, start)
         if layout is not None:
             return route, layout, removed
         drop = min(route, key=lambda p: (value[p], p))
@@ -583,13 +569,10 @@ def _fit_day(
 def _lay_out(
     state: _ProfilePlan,
     by_id: dict[str, Candidate],
-    index: RestaurantIndex,
     lookup: TravelLookup,
     config: PlannerConfig,
 ) -> list[_LaidOutDay]:
     out: list[_LaidOutDay] = []
-    used: frozenset[str] = frozenset()
-    seen: frozenset[str] = frozenset()
     value = state.value()
     for seg in state.segments:
         arrival = _arrival(seg, lookup)
@@ -597,9 +580,8 @@ def _lay_out(
             leg = arrival if n == 0 else None
             start = config.day_start_minute + (minutes(leg[0].seconds) if leg else 0)
             fitted, layout, removed = _fit_day(
-                route, value, by_id, index, lookup, config, state.profile, start, used, seen
+                route, value, by_id, lookup, config, state.profile, start
             )
-            used, seen = layout.used, layout.seen
             out.append(
                 _LaidOutDay(
                     segment=seg,
@@ -624,7 +606,6 @@ def _day_cells(day: _LaidOutDay) -> list[Cell]:
 def _provider_cells(
     states: list[_ProfilePlan],
     by_id: dict[str, Candidate],
-    index: RestaurantIndex,
     near: dict[str, list[str]],
     lookup: TravelLookup,
     config: PlannerConfig,
@@ -635,11 +616,10 @@ def _provider_cells(
     cells: set[Cell] = set()
     source_modes: dict[str, set[str]] = {}
     for state in states:
-        for day in _lay_out(state, by_id, index, lookup, config):
+        for day in _lay_out(state, by_id, lookup, config):
             cells.update(_day_cells(day))
             for slot, (start, end) in zip(day.layout.slots, day.layout.cells, strict=False):
-                if slot.kind == "visit":
-                    source_modes.setdefault(slot.place_id, set()).add(lookup.mode(start, end))
+                source_modes.setdefault(slot.place_id, set()).add(lookup.mode(start, end))
     for pid, modes in source_modes.items():
         ca = by_id[pid].coord
         for other in near.get(pid, []):
@@ -664,7 +644,6 @@ def _build_plan(
     request: PlanRequest,
     state: _ProfilePlan,
     by_id: dict[str, Candidate],
-    index: RestaurantIndex,
     lookup: TravelLookup,
     config: PlannerConfig,
     notes: list[Note],
@@ -672,12 +651,10 @@ def _build_plan(
     profile = state.profile
     seen_categories: set[str] = set()
     days: list[DayPlan] = []
-    removed_total = without_place = during_travel = 0
+    removed_total = 0
     travel_notes: list[Note] = []
-    for number, day in enumerate(_lay_out(state, by_id, index, lookup, config), start=1):
+    for number, day in enumerate(_lay_out(state, by_id, lookup, config), start=1):
         removed_total += day.removed
-        without_place += day.layout.meals_without_place
-        during_travel += day.layout.meals_during_travel
         layout = day.layout
         items: list[PlannedItem] = []
         for pos, slot in enumerate(layout.slots):
@@ -685,68 +662,30 @@ def _build_plan(
             if pos < len(layout.legs):
                 leg = _leg(layout.legs[pos], *layout.cells[pos], lookup)
             prev_leg = items[-1].transfer if items else None
-            if slot.kind == "visit":
-                c = by_id[slot.place_id]
-                reasons = scoring.static_reasons(c, day.segment.pool.distance[c.place_id], config)
-                if (
-                    items
-                    and items[-1].kind == "visit"
-                    and prev_leg is not None
-                    and prev_leg.minutes <= config.near_previous_minutes
-                ):
-                    reasons.append("NEAR_PREVIOUS_ITEM")
-                if (
-                    profile.name == "wider"
-                    and seen_categories
-                    and c.category not in seen_categories
-                ):
-                    reasons.append("ADDS_VARIETY")
-                seen_categories.add(c.category)
-                if not reasons:
-                    reasons.append("NAMED_SIGHT")
-                items.append(
-                    PlannedItem(
-                        kind="visit",
-                        place_id=c.place_id,
-                        name=c.name,
-                        category=c.category,
-                        lat=c.lat,
-                        lon=c.lon,
-                        start_minute=slot.start,
-                        end_minute=slot.end,
-                        duration_minutes=slot.end - slot.start,
-                        reasons=_ordered(reasons),
-                        transfer=leg,
-                    )
+            c = by_id[slot.place_id]
+            reasons = scoring.static_reasons(c, day.segment.pool.distance[c.place_id], config)
+            if items and prev_leg is not None and prev_leg.minutes <= config.near_previous_minutes:
+                reasons.append("NEAR_PREVIOUS_ITEM")
+            if profile.name == "wider" and seen_categories and c.category not in seen_categories:
+                reasons.append("ADDS_VARIETY")
+            seen_categories.add(c.category)
+            if not reasons:
+                reasons.append("NAMED_SIGHT")
+            items.append(
+                PlannedItem(
+                    kind="visit",
+                    place_id=c.place_id,
+                    name=c.name,
+                    category=c.category,
+                    lat=c.lat,
+                    lon=c.lon,
+                    start_minute=slot.start,
+                    end_minute=slot.end,
+                    duration_minutes=slot.end - slot.start,
+                    reasons=_ordered(reasons),
+                    transfer=leg,
                 )
-            else:
-                assert slot.choice is not None and slot.meal_type is not None  # noqa: S101
-                r = slot.choice.restaurant
-                reasons = [_WINDOW_REASON[slot.meal_type], "VENUE_SUITS_MEAL"]
-                reasons.append("ON_THE_WAY" if slot.choice.ring == 0 else "NEAREST_SUITABLE")
-                if slot.choice.repeated:
-                    reasons.append("PLACE_REPEATED")
-                if r.cuisines is None:
-                    reasons.append("CUISINE_NOT_SPECIFIED")
-                elif not slot.seen_before.issuperset(r.cuisines):
-                    reasons.append("NEW_CUISINE")
-                items.append(
-                    PlannedItem(
-                        kind="meal",
-                        place_id=r.place_id,
-                        name=r.name,
-                        category=r.venue_type,
-                        lat=r.lat,
-                        lon=r.lon,
-                        start_minute=slot.start,
-                        end_minute=slot.end,
-                        duration_minutes=slot.end - slot.start,
-                        reasons=_ordered(reasons),
-                        transfer=leg,
-                        meal_type=slot.meal_type,
-                        cuisines=r.cuisines,
-                    )
-                )
+            )
         arrival = None
         if day.arrival is not None and day.arrival_cell is not None:
             arrival = _leg(day.arrival, *day.arrival_cell, lookup)
@@ -832,15 +771,6 @@ def _build_plan(
         )
     if removed_total:
         out.append(Note("VISITS_REMOVED_TO_FIT", {"removed": removed_total}))
-    if without_place:
-        out.append(
-            Note(
-                "MEALS_NOT_PLANNED",
-                {"count": without_place, "radius_km": _km(config.meal_search_m[-1])},
-            )
-        )
-    if during_travel:
-        out.append(Note("MEALS_SKIPPED_FOR_TRAVEL", {"count": during_travel}))
     transfers = stats.routed_transfers + stats.estimated_transfers
     if stats.estimated_transfers:
         out.append(

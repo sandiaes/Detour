@@ -2,9 +2,11 @@
 
 Everything the engine weighs is here, as integers, so a plan never depends on floating point
 rounding: the day window, the walking threshold, the two strategy profiles, the notability and
-category points, the diversity gate, the meal windows and meal lengths, and the rules for base
-cities of an area. ``CONFIG_VERSION`` is stored on every itinerary; change it
-whenever a value below (or the duration table) changes, and regenerate the golden files.
+category points, the diversity gate, the midday gap, and the rules for base cities of an area.
+Generated plans contain sights only (ADR 026): no meals, no places to eat; each day with visits
+keeps one unplanned stretch around midday instead. ``CONFIG_VERSION`` is stored on every
+itinerary; change it whenever a value below (or the duration table) changes, and regenerate the
+golden files.
 
 None of these numbers is a fact about a place. They are planning choices, to be tuned with the
 owner on real destinations (app plan, Phase 4 risks).
@@ -15,22 +17,25 @@ from typing import Literal
 
 from detour_api.planner.durations import DURATIONS_VERSION
 
-ENGINE_VERSION = "planner-2.0.0"
-CONFIG_VERSION = f"2026-11-14.2+durations-{DURATIONS_VERSION}"
+ENGINE_VERSION = "planner-3.0.0"
+CONFIG_VERSION = f"2026-11-14.3+durations-{DURATIONS_VERSION}"
 
 ProfileName = Literal["essentials", "wider"]
+# Plans stored before ADR 026 hold meals of these types; user-added restaurants have none.
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]
-MEAL_TYPES: tuple[MealType, ...] = ("breakfast", "lunch", "snack", "dinner")  # in time order
 
 
 @dataclass(frozen=True)
-class MealWindow:
-    """When a meal of this type may take place: it starts at or after ``start_minute`` and ends
-    by ``end_minute`` (minutes after midnight, local time at the destination)."""
+class MiddayGap:
+    """One unplanned stretch a day (ADR 026, item 5). It starts at ``earliest_start`` or when the
+    traveller reaches the next stop, whichever is later, and lasts ``minutes``; the next stop is
+    done first only if that does not push the gap's start past ``latest_start``. It names no place
+    and no meal and is not stored as an item: it is only time between two stops (minutes after
+    midnight, local time)."""
 
-    meal_type: MealType
-    start_minute: int
-    end_minute: int
+    earliest_start: int = 12 * 60 + 30
+    latest_start: int = 14 * 60
+    minutes: int = 90
 
 
 @dataclass(frozen=True)
@@ -40,7 +45,7 @@ class Profile:
     name: ProfileName
     # Candidates farther than this from the destination point are not used.
     radius_m: int
-    # Every item of the day (visits, meals, transfers) ends by this time (minutes after midnight).
+    # Every visit of the day, with its transfers, ends by this time (minutes after midnight).
     day_end_minute: int
     # Value units (tenths of a point) one minute of travel costs. Higher means compact days and
     # less travel: 10 means a 20-point sight is worth at most 20 minutes of travel.
@@ -51,15 +56,11 @@ class Profile:
     # Percent of value kept by the 1st, 2nd, 3rd, ... place of the same category (the last entry
     # repeats). Steeper means more variety of categories.
     repeat_category_pct: tuple[int, ...]
-    # The meals placed on every day with visits, in time order (a subset of MEAL_TYPES).
-    # Breakfast is not placed by default: the day starts at the first visit, after breakfast,
-    # because accommodation is not modelled (product brief section 9).
-    meals: tuple[MealType, ...] = ("lunch", "dinner")
-    # Minutes of each day the sequencer leaves unplanned, so days are not packed edge to edge
-    # (KPI: planned time 60-90 % of the day window). Lunch is aimed at 13:00 and dinner at 20:00
-    # (owner request, 2026-11-14), so the day runs to 22:00; the 90 and 60 minutes this added to
-    # Essentials and Wider are kept here, leaving the sightseeing volume as it was.
-    free_minutes: int = 60
+    # Minutes of each day the sequencer leaves unplanned besides the midday gap, so days are not
+    # packed edge to edge (KPI: planned time 60-90 % of the day window). With the 09:00-20:00 window
+    # and the 90-minute gap these keep the sightseeing volume (the visit budget) at what it was
+    # before ADR 026: 450 minutes for Essentials, 405 for Wider.
+    free_minutes: int = 120
     # Area destinations: one base city per this many days (rounded up). Fewer bases means fewer
     # moves; more bases means more cities.
     days_per_base: int = 4
@@ -68,24 +69,22 @@ class Profile:
 ESSENTIALS = Profile(
     name="essentials",
     radius_m=5_000,
-    day_end_minute=22 * 60,
+    day_end_minute=20 * 60,
     travel_weight=10,
     edge_value_pct=50,
     repeat_category_pct=(100, 85, 70, 60),
-    meals=("lunch", "dinner"),
-    free_minutes=150,
+    free_minutes=120,
     days_per_base=4,
 )
 
 WIDER = Profile(
     name="wider",
     radius_m=15_000,
-    day_end_minute=22 * 60,
+    day_end_minute=20 * 60,
     travel_weight=4,
     edge_value_pct=85,
     repeat_category_pct=(100, 60, 40, 30),
-    meals=("lunch", "snack", "dinner"),
-    free_minutes=150,
+    free_minutes=165,
     days_per_base=3,
 )
 
@@ -96,7 +95,7 @@ class PlannerConfig:
     # The day window (architecture section 5.1). Days start at the first visit (no accommodation,
     # product brief section 9). The validator holds every item inside it.
     day_start_minute: int = 9 * 60
-    day_window_end_minute: int = 22 * 60
+    day_window_end_minute: int = 20 * 60
     # A transfer up to this straight-line distance is walked, a longer one driven.
     walk_max_m: int = 2_000
     # How many candidates a profile plans with: base + per_day x days, at most cap.
@@ -171,38 +170,8 @@ class PlannerConfig:
     # Categories at or above this many points count as a "highlight" category (a reason code).
     highlight_category_points: int = 25
 
-    # -- meals (ADR 016) ---------------------------------------------------------------------
-    # Fixed windows by meal type. A meal starts inside its window and ends by its end (and by the
-    # profile's day end). Opening hours are not known (ADR 003): a window is a planning choice.
-    meal_windows: tuple[MealWindow, ...] = (
-        MealWindow("breakfast", 7 * 60 + 30, 10 * 60),
-        MealWindow("lunch", 13 * 60, 15 * 60),
-        MealWindow("snack", 15 * 60, 17 * 60 + 30),
-        MealWindow("dinner", 20 * 60, 22 * 60),
-    )
-    # Meal length in minutes by (meal type, venue type). The venue types are the ones the import
-    # stores (geo.restaurant_profile.venue_type); another venue type takes the meal type's
-    # default below.
-    meal_minutes_by_venue: dict[tuple[str, str], int] = field(
-        default_factory=lambda: {
-            ("breakfast", "cafe"): 30,
-            ("snack", "cafe"): 30,
-            ("lunch", "restaurant"): 60,
-            ("dinner", "restaurant"): 90,
-        }
-    )
-    meal_minutes_default: dict[str, int] = field(
-        default_factory=lambda: {"breakfast": 30, "lunch": 60, "snack": 30, "dinner": 90}
-    )
-    # Time the sequencer keeps free per meal for walking to and from the place to eat.
-    meal_allowance_minutes: int = 15
-    # Places to eat are looked for within these distances of the route (straight line), nearest
-    # ring first; none within the last ring means the meal is not planned (and a note says so).
-    meal_search_m: tuple[int, ...] = (600, 1_500, 3_000)
-    # Choosing among the places in a ring, by the detour they add in metres plus these penalties:
-    # a cuisine the plan already has, and a cuisine the data does not state (it may repeat one).
-    cuisine_repeat_penalty_m: int = 400
-    unknown_cuisine_penalty_m: int = 150
+    # -- the midday gap (ADR 026) ----------------------------------------------------------------
+    midday_gap: MiddayGap = field(default_factory=MiddayGap)
 
     # -- area destinations (ADR 016) -----------------------------------------------------------
     # A town of the area can be a base city if at least this many named sights lie within this
@@ -234,26 +203,9 @@ class PlannerConfig:
     def day_minutes(self, profile: Profile) -> int:
         return profile.day_end_minute - self.day_start_minute
 
-    def meal_window(self, meal_type: str) -> MealWindow:
-        for w in self.meal_windows:
-            if w.meal_type == meal_type:
-                return w
-        raise KeyError(meal_type)
-
-    def meal_minutes(self, meal_type: str, venue_type: str | None) -> int:
-        if venue_type is not None and (meal_type, venue_type) in self.meal_minutes_by_venue:
-            return self.meal_minutes_by_venue[(meal_type, venue_type)]
-        return self.meal_minutes_default[meal_type]
-
-    def meal_reserve(self, profile: Profile) -> int:
-        """Minutes of a day the sequencer keeps for the profile's meals."""
-        return sum(
-            self.meal_minutes_default[m] + self.meal_allowance_minutes for m in profile.meals
-        )
-
     def visit_budget(self, profile: Profile) -> int:
         """Minutes of a day for visits and the transfers between them."""
-        return max(0, self.day_minutes(profile) - self.meal_reserve(profile) - profile.free_minutes)
+        return max(0, self.day_minutes(profile) - self.midday_gap.minutes - profile.free_minutes)
 
 
 DEFAULT_CONFIG = PlannerConfig()

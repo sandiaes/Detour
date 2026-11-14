@@ -10,17 +10,21 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Direction change of 2026-11-14 (ADR 026, proposed; documents written, code not yet built):** Detour
+**Direction change of 2026-11-14 (ADR 026, proposed; the planner step and the slot-engine removal are
+built, the rest not yet):** Detour
 is a **trip manager and travel history first**. Trips usually start empty; generating itineraries is
 an optional helper that now produces **sights only** (no restaurants or cafés, one unplanned midday
 gap per day). Restaurants and cafés leave the imported data (`geo.restaurant_profile` is dropped, no
 cuisine or meal types anywhere) and are added only through Photon or by hand, with the user choosing
 the day and time. The Phase 8 slot engine (`planner/restaurant_slots.py`, `restaurant-suggestions`,
-`add_restaurant`) is **to be removed**. Past trips will keep their days, not only a map. Next after
+`add_restaurant`) is **removed**, and the planner (`planner-3.0.0`, `daylayout.py`) already makes sights-only plans with
+a 90-minute midday gap (idle time, not an item) in a 09:00–20:00 day; the data change (importer,
+migration), history and most app changes are still to do. Past trips will keep their days, not only a map. Next after
 that, in the owner's order: destinations outside the imported regions (ADR 027), then trip export
 (ADR 028), then **Optimize a hand-made trip** (ADR 029, proposed: the engine reorders the user's
-stops for the least travel, within or across days, with a preview). The build order is in ADR 026; until each step is built, the paragraphs below (written
-before this decision) describe the code as it is, including meals and the restaurant import.
+stops for the least travel, within or across days, with a preview). The build order is in ADR 026; the paragraphs below were written before this decision, so
+where they describe meals, meal windows, cuisines or the slot engine they are out of date (the
+restaurant import and `geo.restaurant_profile` still exist until the data step).
 
 **Phases 1 to 8 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
 service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment

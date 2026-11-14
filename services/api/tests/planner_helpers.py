@@ -8,12 +8,26 @@ from datetime import date
 from functools import cache
 from pathlib import Path
 
-from detour_api.planner.types import BaseCity, Candidate, PlanRequest, Restaurant, RouteStop
+from detour_api.planner.types import BaseCity, Candidate, PlanRequest, RouteStop
 
 PLANNER_FIXTURES = Path(__file__).parent / "fixtures" / "planner"
 GOLDEN = PLANNER_FIXTURES / "golden"
 # The gazetteer id given to the synthetic city in requests (the fixture has no real city).
 SYNTHETIC_CITY_ID = 900101
+
+
+@dataclass(frozen=True)
+class Restaurant:
+    """A synthetic place to eat. Only the database tests use them (to fill ``geo`` for the
+    restaurant search, until ADR 026 step 3 removes it); the planner no longer reads any."""
+
+    place_id: str
+    name: str
+    venue_type: str
+    lat: float
+    lon: float
+    meal_types: tuple[str, ...]
+    cuisines: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)

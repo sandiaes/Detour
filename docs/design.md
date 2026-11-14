@@ -283,9 +283,11 @@ Planned features and a menu of hairline rows. Items that are not built say "Comi
 
 ## 5. Plans and times
 
-- **Suggested plans have no meals (ADR 026, proposed; built in step 2).** Each day has one unplanned
-  "Free time" gap at midday (*proposed:* 90 minutes between 12:30 and 14:00), shown as a hairline
-  row with no kind icon and no place, and the day runs 09:00 to 20:00 (*proposed*). A restaurant or
+- **Suggested plans have no meals (ADR 026, planner built, app not yet).** Each day has one
+  unplanned gap at midday (90 minutes, starting 12:30 to 14:00). It is not an item: the app draws it
+  as a "Free time" hairline row with no kind icon and no place, derived from any idle stretch
+  between two stops that is longer than their transfer (app step 6; until then the day simply shows
+  the later start time). The day runs 09:00 to 20:00. A restaurant or
   café is a stop the user adds; it reads "Restaurant · 1 h 15 min" or "Café · 45 min", with no
   Lunch or Dinner label, no cuisine and no meal type. Everything below about meal times describes
   the app until step 2 is built.

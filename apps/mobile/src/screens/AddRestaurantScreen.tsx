@@ -3,9 +3,6 @@ import type {
   Itinerary,
   RestaurantResult,
   RestaurantSearchResponse,
-  SlotRequest,
-  SlotSuggestion,
-  SlotSuggestions,
   Trip,
   UserPlace,
 } from "@detour/shared";
@@ -26,21 +23,14 @@ import {
   MEALS,
   MEAL_LABEL,
   type Meal,
-  detourText,
   formatMealTypes,
   parseCoordinate,
   parseCuisines,
   restaurantMeta,
-  suggestionPlace,
-  suggestionTitle,
 } from "../domain/restaurants";
 import { type Route, useNavigation } from "../nav/Navigator";
 import { TOUCH, colors, radius, spacing, type } from "../theme";
-import { formatClock, formatCuisines } from "../util/format";
-import {
-  type AffectedLine,
-  SuggestionCard as DsSuggestionCard,
-} from "../components/ds/SuggestionCard";
+import { formatCuisines } from "../util/format";
 
 type AddRoute = Extract<Route, { name: "addRestaurant" }>;
 
@@ -96,12 +86,6 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
       }),
     ),
   );
-  // An empty (manual) plan cannot be recalculated, so it has no suggestions: the user picks the
-  // day, meal and time. On a planned one they may still choose.
-  const isManual = itinerary.data?.profile === "manual";
-  const [how, setHow] = useState<"suggest" | "choose">("suggest");
-  const choosing = isManual || how === "choose";
-
   const [mode, setMode] = useState<"search" | "hand">("search");
   const [query, setQuery] = useState(route.preset?.name ?? "");
   const [results, setResults] = useState<Record<string, RestaurantSearchResponse>>({});
@@ -114,9 +98,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   // The user place made for an external or hand-entered restaurant, so retrying does not save it
   // twice.
   const [savedId, setSavedId] = useState<string | null>(null);
-  const [slots, setSlots] = useState<SlotSuggestions | null>(null);
-  const [picked, setPicked] = useState<number | null>(null);
-  const [working, setWorking] = useState<"find" | "preview" | null>(null);
+  const [working, setWorking] = useState<"preview" | null>(null);
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
 
   const q = query.trim();
@@ -171,11 +153,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
     }
   };
 
-  const reset = () => {
-    setSlots(null);
-    setPicked(null);
-    setProblem(null);
-  };
+  const reset = () => setProblem(null);
 
   const pick = (c: Choice) => {
     setChoice(c);
@@ -213,7 +191,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   const ready = choice !== null && (!editable || handReady) && !working;
 
   /** The place reference the server wants; saves the user's own place first when needed. */
-  const reference = async (): Promise<Pick<SlotRequest, "place_id" | "user_place_id">> => {
+  const reference = async (): Promise<{ place_id?: string; user_place_id?: string }> => {
     if (!choice) throw new Error("nothing chosen");
     if (choice.kind === "imported") return { place_id: choice.place.id };
     if (choice.kind === "saved") return { user_place_id: choice.place.id };
@@ -245,49 +223,6 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
     });
     setSavedId(place.id);
     return { user_place_id: place.id };
-  };
-
-  const find = async () => {
-    setWorking("find");
-    reset();
-    try {
-      const ref = await reference();
-      const found = await changes.suggestSlots(route.itineraryId, ref);
-      setSlots(found);
-      setPicked(found.suggestions.length ? 0 : null);
-    } catch (e) {
-      setProblem({ message: describeError(e), issues: planningIssues(e) });
-    } finally {
-      setWorking(null);
-    }
-  };
-
-  const preview = async () => {
-    if (!slots || picked === null) return;
-    const slot = slots.suggestions[picked];
-    if (!slot) return;
-    setWorking("preview");
-    setProblem(null);
-    try {
-      const ref = await reference();
-      const change = await changes.preview(route.itineraryId, {
-        action: "add_restaurant",
-        ...ref,
-        day: slot.day,
-        meal_type: slot.meal_type,
-        after_item_id: slot.after_item_id,
-      });
-      nav.replace({
-        name: "changePreview",
-        tripId: route.tripId,
-        itineraryId: route.itineraryId,
-        changeSetId: change.id,
-      });
-    } catch (e) {
-      setProblem({ message: describeError(e), issues: planningIssues(e) });
-    } finally {
-      setWorking(null);
-    }
   };
 
   /** Adds the restaurant at the day, meal and time the user picked, with no proposal. */
@@ -329,8 +264,8 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
       />
       <View style={styles.section}>
         <Text style={styles.lead}>
-          Find a restaurant or enter it yourself. Detour then suggests the best day and meal for it,
-          and shows what would change before anything changes. Opening hours are not checked.
+          Find a restaurant or enter it yourself, then choose its day and time. Opening hours are
+          not checked.
         </Text>
         <View style={styles.row}>
           <Chip
@@ -547,18 +482,8 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
         </View>
       ) : null}
 
-      {choosing && choice ? (
+      {choice ? (
         <View style={styles.section}>
-          {isManual ? (
-            <Text style={styles.muted}>
-              This trip has no proposed plan yet, so pick the day, meal and time yourself.
-            </Text>
-          ) : (
-            <View style={styles.row}>
-              <Chip label="Suggest a slot" selected={false} onPress={() => setHow("suggest")} />
-              <Chip label="Choose day and time" selected testID="how-choose" onPress={() => {}} />
-            </View>
-          )}
           {itinerary.data ? (
             <ChooseSlot
               days={itinerary.data.days}
@@ -573,130 +498,12 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
           ) : (
             <Text style={styles.muted}>Reading the plan…</Text>
           )}
-        </View>
-      ) : slots === null ? (
-        <View style={styles.section}>
-          {!isManual ? (
-            <View style={styles.row}>
-              <Chip label="Suggest a slot" selected testID="how-suggest" onPress={() => {}} />
-              <Chip
-                label="Choose day and time"
-                selected={false}
-                testID="how-choose"
-                onPress={() => setHow("choose")}
-              />
-            </View>
-          ) : null}
-          <Button
-            label="Find the best day and meal"
-            testID="find-slots"
-            fill
-            disabled={!ready}
-            loading={working === "find"}
-            hint="Suggests up to three places in the plan. Nothing changes yet."
-            onPress={() => void find()}
-          />
-          {choice && !editable ? (
-            <Text style={styles.muted}>Chosen: {choiceName(choice, form)}</Text>
-          ) : null}
           {!changes.connected ? (
             <Text style={styles.muted}>Adding a restaurant needs a connection to the server.</Text>
           ) : null}
         </View>
-      ) : (
-        <Suggestions
-          slots={slots}
-          picked={picked}
-          onPick={setPicked}
-          working={working === "preview"}
-          onPreview={() => void preview()}
-        />
-      )}
+      ) : null}
     </ScrollView>
-  );
-}
-
-function Suggestions({
-  slots,
-  picked,
-  onPick,
-  working,
-  onPreview,
-}: {
-  slots: SlotSuggestions;
-  picked: number | null;
-  onPick: (n: number) => void;
-  working: boolean;
-  onPreview: () => void;
-}) {
-  if (slots.suggestions.length === 0) {
-    return (
-      <View style={styles.section}>
-        <Notice tone="warning">
-          {slots.issues.map((i) => i.text).join(" ") || "No slot fits this restaurant."}
-        </Notice>
-      </View>
-    );
-  }
-  return (
-    <View style={styles.section} testID="slot-suggestions">
-      <Text style={styles.heading} accessibilityRole="header">
-        Best places in the plan for {slots.restaurant.name}
-      </Text>
-      <Text style={styles.muted}>
-        {formatCuisines(slots.restaurant.cuisines)} · {formatMealTypes(slots.restaurant.meal_types)}
-      </Text>
-      {slots.suggestions.map((s, n) => (
-        <SuggestionCard
-          key={`${s.day}-${s.meal_type}`}
-          slot={s}
-          selected={picked === n}
-          onPress={() => onPick(n)}
-        />
-      ))}
-      <Button
-        label="Preview this change"
-        testID="preview-slot"
-        fill
-        disabled={picked === null}
-        loading={working}
-        hint="Shows what would change. Nothing changes until you accept."
-        onPress={onPreview}
-      />
-    </View>
-  );
-}
-
-function SuggestionCard({
-  slot,
-  selected,
-  onPress,
-}: {
-  slot: SlotSuggestion;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const affected: AffectedLine[] = [
-    ...(slot.replaces
-      ? [{ tone: "info" as const, text: `Replaces ${slot.replaces}, planned for this meal` }]
-      : []),
-    ...slot.items_moved.map((m) => ({
-      tone: "info" as const,
-      text: `${m.name}: ${formatClock(m.old_start_time) ?? m.old_start_time} → ${formatClock(m.new_start_time) ?? m.new_start_time}`,
-    })),
-  ];
-  return (
-    <DsSuggestionCard
-      rank={slot.rank}
-      title={suggestionTitle(slot)}
-      where={suggestionPlace(slot)}
-      impact={detourText(slot)}
-      affected={affected}
-      reasons={slot.reasons.map((r) => r.text)}
-      selected={selected}
-      onPress={onPress}
-      accessibilityLabel={`${slot.rank === 1 ? "Best: " : "Alternative: "}${suggestionTitle(slot)}`}
-    />
   );
 }
 

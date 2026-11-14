@@ -510,7 +510,7 @@ test("a place to eat found in the search opens the restaurant flow, already chos
   expect(await screen.findByText("Places to eat")).toBeOnTheScreen();
   await fireEvent.press(screen.getByLabelText(/^Schweizerhaus, Austrian/));
   expect(await screen.findByRole("header", { name: "Add a restaurant" })).toBeOnTheScreen();
-  expect(screen.getByTestId("find-slots")).toBeEnabled();
+  expect(screen.getByTestId("add-at-time")).toBeEnabled();
 });
 
 test("asking again after changing the length does not save the pin twice", async () => {

@@ -308,18 +308,10 @@ def unscheduled(state: State) -> list[Issue]:
     ]
 
 
-def to_rplan(
-    state: State,
-    profile: str,
-    restaurant_info: dict[str, tuple[str | None, tuple[str, ...] | None]] | None = None,
-    categories: dict[str, str] | None = None,
-    user_cuisines: dict[str, tuple[str, ...] | None] | None = None,
-) -> RPlan:
-    """The state as the recalculation sees it (``unscheduled`` must be empty). Venue types,
-    cuisines and categories come from ``geo`` at read time, when given; the cuisines of a
-    restaurant of the user's own (``user_cuisines``, by user place id) from ``app.user_place``."""
-    info = restaurant_info or {}
-    own = user_cuisines or {}
+def to_rplan(state: State, profile: str, categories: dict[str, str] | None = None) -> RPlan:
+    """The state as the recalculation sees it (``unscheduled`` must be empty). Categories come
+    from ``geo`` at read time, when given. Restaurant and café stops carry no venue type or cuisine
+    here: the recalculation keeps them as they are (ADR 026)."""
     cats = categories or {}
     transfers = {t["from_item_id"]: t for t in state["transfers"]}
     by_day: dict[str, list[dict[str, Any]]] = {}
@@ -331,9 +323,6 @@ def to_rplan(
         for r in sorted(by_day.get(d["id"], []), key=lambda r: r["position"]):
             kind = r["type"]
             t = transfers.get(r["id"])
-            venue, cuisines = info.get(r["place_id"] or "", (None, None))
-            if kind == "meal" and r["user_place_id"] is not None:
-                cuisines = own.get(r["user_place_id"])
             entries.append(
                 Entry(
                     key=entry_key(kind, r["place_id"], r["user_place_id"]),
@@ -351,9 +340,8 @@ def to_rplan(
                     transfer=None if t is None else _leg(t),
                     place_id=r["place_id"],
                     user_place_id=r["user_place_id"],
-                    category=venue if kind == "meal" else cats.get(r["place_id"] or ""),
+                    category=None if kind == "meal" else cats.get(r["place_id"] or ""),
                     meal_type=r["meal_type"],
-                    cuisines=cuisines if kind == "meal" else None,
                     item_id=r["id"],
                 )
             )

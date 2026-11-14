@@ -7,14 +7,14 @@ Checked:
 
 * the same days, in order, with the same dates; a day the recalculation did not change is
   identical to before;
-* **locked items never move**: every locked item is on the same day, at the same start and end,
-  with the same place and length;
+* **locked items and restaurant or café stops never move** (ADR 026): each is on the same day, at
+  the same start and end, with the same place and length; no restaurant or café stop is created;
 * every item the user added is still in the plan (mandatory); the added place is in it once, with
   the reason ``ADDED_BY_YOU``; a removed place is gone;
 * an item carried over keeps its place, name, point, length, origin and lock; a new visit is a
-  sight the recalculation was given, with its category's default length; a new meal is at a place
-  to eat it was given, which serves the meal, with the table's length, **inside its meal window**,
-  of a meal type the profile plans, at most once a day; a place to eat at most once a day;
+  sight the recalculation was given, with its category's default length;
+* **the midday gap**: idle time before a sight that is not fixed is nothing or the gap (as in
+  ``validator.py``), at most one a day;
 * every item that is not fixed lies inside the day (after the day's inter-city drive) and ends by
   the profile's day end; items do not overlap, the gap holds the transfer, and every transfer and
   drive is exactly what the travel source returned (mode, minutes rounded up, seconds, metres,
@@ -29,8 +29,7 @@ from detour_api.planner.config import PlannerConfig
 from detour_api.planner.durations import visit_minutes
 from detour_api.planner.reasons import ITEM_TEMPLATES, NOTE_TEMPLATES, note_text
 from detour_api.planner.recalc import Entry, Revision, RPlan
-from detour_api.planner.restaurant_slots import Dining
-from detour_api.planner.types import BaseCity, Candidate, Leg, Restaurant
+from detour_api.planner.types import BaseCity, Candidate, Leg
 from detour_api.planner.validator import Violation
 from detour_api.travel.types import Coord, TravelTime, distance_m
 
@@ -82,9 +81,7 @@ def validate_revision(
     added: str | None,
     removed: str | None,
     candidates: Mapping[str, Candidate],
-    restaurants: Mapping[str, Restaurant],
     config: PlannerConfig,
-    added_meal: Dining | None = None,
 ) -> list[Violation]:
     new = revision.plan
     known = revision.known_times
@@ -111,7 +108,7 @@ def validate_revision(
         for e in d.items:
             if e.key == removed:
                 continue
-            if e.locked:
+            if e.fixed:
                 same = [
                     n
                     for nd in new.days
@@ -119,9 +116,14 @@ def validate_revision(
                     for n in nd.items
                     if n.key == e.key
                 ]
-                if not same or (same[0].start_minute, same[0].end_minute) != (
-                    e.start_minute,
-                    e.end_minute,
+                if (
+                    not same
+                    or (same[0].start_minute, same[0].end_minute)
+                    != (
+                        e.start_minute,
+                        e.end_minute,
+                    )
+                    or same[0].duration_minutes != e.duration_minutes
                 ):
                     out.append(Violation("LOCKED_ITEM_MOVED", d.day_index, detail=e.key))
             elif e.origin == "user" and e.key not in present:
@@ -135,7 +137,7 @@ def validate_revision(
 
     old_days = {d.day_index: d for d in old.days}
     previous_base: int | None = None
-    seen_meal_places: set[str] = set()
+    gap = config.midday_gap
     for expected, day in enumerate(new.days, start=1):
         k = day.day_index
         before = old_days.get(k)
@@ -153,7 +155,6 @@ def validate_revision(
             if day != before:
                 out.append(Violation("UNCHANGED_DAY_DIFFERS", k))
             previous_base = day.base_city_id
-            seen_meal_places.update(e.place_id or "" for e in day.items if e.kind == "meal")
             continue
 
         day_start = config.day_start_minute
@@ -165,9 +166,7 @@ def validate_revision(
             day_start += day.arrival.minutes
         previous_base = day.base_city_id
 
-        meal_types: set[str] = set()
-        meal_places: set[str] = set()
-        has_visit = any(e.kind == "visit" for e in day.items)
+        idle_stretches = 0
         for pos, e in enumerate(day.items, start=1):
             if e.end_minute - e.start_minute != e.duration_minutes:
                 out.append(Violation("END_NOT_START_PLUS_DURATION", k, pos))
@@ -185,23 +184,8 @@ def validate_revision(
                     e.duration_minutes != visit_minutes(c.category)
                 ):
                     out.append(Violation("SNAPSHOT_MISMATCH", k, pos, e.key))
-            if e.kind == "meal":
-                if e.meal_type in meal_types:
-                    out.append(Violation("MEAL_TWICE_A_DAY", k, pos))
-                meal_types.add(e.meal_type or "")
-                if e.place_id in meal_places:
-                    out.append(Violation("RESTAURANT_TWICE_A_DAY", k, pos))
-                meal_places.add(e.place_id or "")
-                if not e.fixed:
-                    out.extend(_check_meal(e, restaurants, config, profile.meals, k, pos))
-                    if not has_visit:
-                        out.append(Violation("MEALS_WITHOUT_VISITS", k, pos))
-                    if (e.place_id in seen_meal_places) != ("PLACE_REPEATED" in e.reasons):
-                        out.append(Violation("REPEATED_PLACE_REASON", k, pos))
-                elif added_meal is not None and e.key == added_meal.key:
-                    out.extend(_check_added_meal(e, added_meal, config, day_start, day_end, k, pos))
-                    if not has_visit:
-                        out.append(Violation("MEALS_WITHOUT_VISITS", k, pos))
+            if e.kind == "meal" and carried is None:
+                out.append(Violation("MEAL_CREATED", k, pos, e.key))
             if not e.fixed:
                 if e.start_minute < day_start:
                     out.append(Violation("BEFORE_DAY_START", k, pos))
@@ -216,9 +200,16 @@ def validate_revision(
                 out.append(Violation("MISSING_TRANSFER", k, pos))
                 continue
             out.extend(_leg(e.transfer, e.coord, nxt.coord, known, config, k, pos, "TRANSFER"))
-            if nxt.start_minute < e.end_minute + e.transfer.minutes:
+            needs = e.end_minute + e.transfer.minutes
+            if nxt.start_minute < needs:
                 out.append(Violation("OVERLAP", k, pos))
-        seen_meal_places.update(meal_places)
+            elif nxt.start_minute > needs and not nxt.fixed:
+                idle = nxt.start_minute - needs
+                idle_stretches += 1
+                if idle < gap.minutes or nxt.start_minute < gap.earliest_start + gap.minutes:
+                    out.append(Violation("IDLE_NOT_THE_GAP", k, pos, f"{idle} minutes"))
+        if idle_stretches > 1:
+            out.append(Violation("MORE_THAN_ONE_GAP", k, detail=str(idle_stretches)))
 
     for note in revision.notes:
         if note.code not in NOTE_TEMPLATES:
@@ -239,78 +230,4 @@ def validate_revision(
     )
     if (s.visits, s.meals, s.travel_minutes) != (visits, meals, travel):
         out.append(Violation("STATS_MISMATCH"))
-    return out
-
-
-def _check_added_meal(
-    e: Entry,
-    dining: Dining,
-    config: PlannerConfig,
-    day_start: int,
-    day_end: int,
-    day: int,
-    pos: int,
-) -> list[Violation]:
-    """The restaurant the user added (Phase 8): the place as given, serving the meal as far as
-    known, the table's length, **inside its meal window**, and **inside the day**."""
-    out: list[Violation] = []
-    meal = e.meal_type
-    if (e.name, e.lat, e.lon, e.category, e.cuisines, e.place_id, e.user_place_id) != (
-        dining.name,
-        dining.lat,
-        dining.lon,
-        dining.venue_type,
-        dining.cuisines,
-        dining.place_id,
-        dining.user_place_id,
-    ):
-        out.append(Violation("SNAPSHOT_MISMATCH", day, pos, e.key))
-    if meal is None:
-        return [*out, Violation("MEAL_TYPE_MISSING", day, pos)]
-    if not dining.serves(meal):
-        out.append(Violation("VENUE_DOES_NOT_SERVE_MEAL", day, pos))
-    if e.duration_minutes != config.meal_minutes(meal, dining.venue_type):
-        out.append(Violation("MEAL_LENGTH", day, pos))
-    w = config.meal_window(meal)
-    if e.start_minute < w.start_minute or e.end_minute > w.end_minute:
-        out.append(Violation("MEAL_OUTSIDE_WINDOW", day, pos))
-    if e.start_minute < day_start:
-        out.append(Violation("BEFORE_DAY_START", day, pos))
-    if e.end_minute > day_end:
-        out.append(Violation("AFTER_DAY_END", day, pos))
-    if e.floating or e.locked or e.origin != "user":
-        out.append(Violation("ADDED_MEAL_STATE", day, pos))
-    return out
-
-
-def _check_meal(
-    e: Entry,
-    restaurants: Mapping[str, Restaurant],
-    config: PlannerConfig,
-    profile_meals: tuple[str, ...],
-    day: int,
-    pos: int,
-) -> list[Violation]:
-    out: list[Violation] = []
-    r = restaurants.get(e.place_id or "")
-    meal = e.meal_type
-    if r is None:
-        return [Violation("UNKNOWN_RESTAURANT", day, pos, e.key)]
-    if (e.name, e.lat, e.lon, e.category, e.cuisines) != (
-        r.name,
-        r.lat,
-        r.lon,
-        r.venue_type,
-        r.cuisines,
-    ):
-        out.append(Violation("SNAPSHOT_MISMATCH", day, pos, e.key))
-    if meal is None or meal not in profile_meals:
-        return [*out, Violation("MEAL_TYPE_NOT_PLANNED", day, pos)]
-    if meal not in r.meal_types:
-        out.append(Violation("VENUE_DOES_NOT_SERVE_MEAL", day, pos))
-    if e.duration_minutes != config.meal_minutes(meal, r.venue_type):
-        out.append(Violation("MEAL_LENGTH", day, pos))
-    w = config.meal_window(meal)
-    if e.start_minute < w.start_minute or e.end_minute > w.end_minute:
-        out.append(Violation("MEAL_OUTSIDE_WINDOW", day, pos))
     return out
