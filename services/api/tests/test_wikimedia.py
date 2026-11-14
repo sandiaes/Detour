@@ -291,7 +291,7 @@ def test_requests_carry_a_descriptive_user_agent_maxlag_and_one_batch(
     agent = request.headers["user-agent"]
     assert agent.startswith("Detour-bot/") and "github.com/sandiaes/Detour" in agent
     assert "httpx/" in agent and "@" not in agent  # contact is a URL, never a personal email
-    assert request.url.params["maxlag"] == "5"
+    assert request.url.params["maxlag"] == "30"
     assert request.url.params["ids"].count("|") == 49
     assert request.url.params["action"] == "wbgetentities"
 
@@ -341,7 +341,7 @@ def test_a_server_lagged_for_long_is_waited_for_then_reported_with_its_lag(
     lagged = {"error": {"code": "maxlag", "lag": 23.5, "host": "db1"}}
     clock = _Clock()
     client = _client(lambda r: httpx.Response(200, json=lagged), clock)
-    with pytest.raises(WikimediaError, match=r"lagged \(last reported lag 23.5 s, limit 5 s\)"):
+    with pytest.raises(WikimediaError, match=r"lagged \(last reported lag 23.5 s, limit 30 s\)"):
         client.entities(["Q1"])
     assert client.requests_made == wikimedia.MAXLAG_ATTEMPTS
     waits = [w for w in clock.sleeps if w >= 5.0]

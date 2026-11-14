@@ -200,5 +200,16 @@ the `maxlag` error, so nothing was resolved (cities 4 requests, places 4 more, t
 lagged"). The adapter gave up after four tries. It now waits for a lagged server (up to 10 tries,
 the server's `Retry-After` obeyed with at least 5 s, otherwise 5, 10, 20, 40 and then 60 s), names
 the lag the server reported when it gives up, and reads the limit from
-`DETOUR_WIKIMEDIA_MAXLAG_SECONDS` (default 5). Wikimedia's replica lag read from this session at the
+`DETOUR_WIKIMEDIA_MAXLAG_SECONDS` (default 5 at that point). Wikimedia's replica lag read from this session at the
 same hour was about 1 s, so the cause of the run's lag is unknown; the next report will say.
+
+**2026-11-14, second run** (after the patience fix): ten refusals for the cities and ten for the places,
+over about seven minutes each, with a reported lag of 13.95 s and 14.8 s against the limit of 5 s.
+So the lag was persistent, not a blip. The default `maxlag` is now **30 s**. The reasoning, and what
+is not known: the terms pages read for this ADR name `maxlag` as good practice for non-interactive
+tasks but give no required value (the 5 in the etiquette page is an example); the request volume of a
+resolver run is small (one request per second, batches of 50); and a limit of 5 s cannot be met
+when the reported lag sits at 14 s. Why Wikidata reported that lag is not established (the replica
+lag read from this session at about the same time was about 1 s; Wikidata may include other lag
+sources in the figure, which was not checked). A limit of 30 s still stops the run when the
+servers are really struggling, and `DETOUR_WIKIMEDIA_MAXLAG_SECONDS=5` restores the strict value.
