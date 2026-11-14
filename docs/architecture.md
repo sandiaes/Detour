@@ -14,6 +14,8 @@ and await acceptance. Phase 7 (adding and removing places with recalculation, se
 and placing it in the best slot, sections 4.2.6 and 5.4,
 [ADR 019](decisions/019-phase-8-add-a-restaurant.md)) are built and await acceptance. Budgets, currencies, prices and
 the FX job are removed for now ([ADR 017](decisions/017-no-budgets-currencies-or-prices.md)).
+Multilingual place names (section 4.7, [ADR 025](decisions/025-multilingual-place-names.md)) are
+built and await acceptance.
 
 ## 1. Principles
 
@@ -28,7 +30,8 @@ the FX job are removed for now ([ADR 017](decisions/017-no-budgets-currencies-or
 5. **Deterministic and explainable.** The same inputs and data version produce the same
    itineraries, and every placement carries the reasons for it.
 6. **Honest data.** Estimated travel times and unknown cuisines are shown as
-   estimated or unknown, never guessed silently. The app has no prices (ADR 017).
+   estimated or unknown, never guessed silently. The app has no prices (ADR 017). Place names are
+   never translated; a name Detour romanized itself says so (ADR 025).
 
 ## 2. Stack verdict
 
@@ -69,7 +72,7 @@ PostgreSQL + PostGIS   Valhalla (FOSSGIS     External, backend-only, cached:
 Offline pipeline (CLI, not request path):
  Geofabrik .osm.pbf ─┬─► POI/restaurant import ─► geo schema
                      └─► Valhalla tile build
- GeoNames dump ─► gazetteer      Wikidata ─► notability
+ GeoNames dump ─► gazetteer      Wikidata ─► notability, English names (ADR 025, lazy)
 ```
 
 All services except the tile host run from one Docker Compose file in development: `db`, `api`,
@@ -322,6 +325,34 @@ Code: `planner/restaurant_slots.py` (scoring, suggestions, placing), `Entry.floa
   (Phase 8) follows the same order with its own endpoint and a tag filter that is checked again on
   the way back (ADR 019).
 - **FX service:** removed (ADR 017): the app has no currencies or prices.
+
+### 4.7 Place names (ADR 025)
+
+Built 2026-11-14; full description in [`multilingual-place-names.md`](multilingual-place-names.md).
+One resolver (`detour_api/names/`) chooses the English-facing name of a place, city or area and keeps
+its original local name:
+
+| Order | Source | Confidence |
+|---|---|---|
+| 1 | The user's approved name (`app.place_name_override`, per installation) | 1.00 |
+| 2 | An English name the provider marks official (no source today) | 0.99 |
+| 3, 4 | Wikidata English label, English Wikipedia title (`geo.place_name`, fetched lazily) | 0.98, 0.97 |
+| 5 to 8 | OSM `name:en`, `official_name:en`, `brand:en`, `short_name:en`, Latin `int_name` | 0.93, 0.85 |
+| 9 | The source's romanization (`name:ja-Latn`, `name:zh-Latn-pinyin`, `name:ko_rm` …) | 0.85 |
+| 10, 11 | Detour's transliteration: language-specific, then generic, labelled "Automatically romanized" | 0.70, 0.35 |
+| 12 | The original local name | |
+
+Businesses keep their own name (only an official English, English brand or Latin international name
+replaces it). Han characters, Arabic script, Hebrew and Thai are never transliterated; nothing is
+machine-translated. Reads never call a provider: they combine the import's names, the stored Wikidata
+names (expired ones too) and the caller's override. The Wikidata lookups (labels, aliases, sitelink;
+a city through its GeoNames id; a place through its QID or Wikipedia sitelink; coordinates only as a
+controlled operator fallback) run in the background after a trip is created, generated or read, and
+from `python -m detour_api.importer names`, through the ADR 022 Wikimedia adapter; "no English name"
+is cached for 90 days. Plan generation uses the stored names and never waits for or calls Wikidata.
+Endpoints: `names` (`PlaceName`) on place search, place detail and items;
+`PUT`/`DELETE /v1/places/{id}/display-name` (Edit display name). Search matches every name and alias
+(`geo.place.alias_norm`, `geo.place_name`), normalised separately from display.
 
 ## 5. Planning engine
 

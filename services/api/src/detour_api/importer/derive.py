@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from detour_api.importer.selection import Decision
+from detour_api.names.search import place_alias_norm
 from detour_api.textnorm import normalize_text, stable_uuid
 
 OSM_TYPE_WORD = {"N": "node", "W": "way", "R": "relation"}
@@ -75,6 +76,9 @@ class PlaceRow:
     # The normalised English name (``name:en``), only when it differs from ``name_norm``: search
     # matches it as well, so a traveller can type either name.
     name_en_norm: str | None = None
+    # Normalised search aliases (other languages, romanizations, ASCII spellings), ``|``-joined
+    # (ADR 025). Search only; never shown.
+    alias_norm: str | None = None
 
 
 def source_ref(osm_type: str, osm_id: int) -> str:
@@ -203,4 +207,5 @@ def build_place(
         profile=profile,
         signal=build_signal(tags, name),
         name_en_norm=en_norm or None,
+        alias_norm=place_alias_norm(name, names, source_tags, en_norm or None),
     )

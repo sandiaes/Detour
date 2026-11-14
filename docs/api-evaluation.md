@@ -60,7 +60,7 @@ says happens above the free allowance.
 | Free-text place search | Own POI table, then Photon via backend proxy | PERSONAL / REPLACE | Self-hosted Photon; Geoapify free | Nominatim public (autocomplete forbidden) |
 | Reverse geocoding | PostGIS nearest-place query on own data | ANY | Photon reverse | Nominatim public |
 | Cities and admin areas | GeoNames dump | ANY | Overture divisions (polygons) | GeoNames web services |
-| Attractions and POIs | OSM regional extract in PostGIS + Wikidata notability | ANY | Overture Places, FSQ OS Places (later) | Overpass at runtime, OpenTripMap |
+| Attractions and POIs | OSM regional extract in PostGIS + Wikidata notability and English names (ADR 025) | ANY | Overture Places, FSQ OS Places (later) | Overpass at runtime, OpenTripMap |
 | Restaurants | OSM regional extract | ANY | Overture Places, FSQ OS Places (later) | Google Places, Yelp, Foursquare Places API |
 | Opening hours | Not used (out of scope, ADR 003) | n/a | n/a | n/a |
 | Walking and driving routes, matrices | Self-hosted Valhalla per region | ANY | Straight-line estimate with confidence flag | FOSSGIS demo, GraphHopper free, ORS hosted (unverified) |
@@ -357,6 +357,22 @@ User-Agent, budget and backoff. The Wikimedia rate limits apply across all Wikim
 held on Commons are used. Sources: <https://www.mediawiki.org/wiki/Extension:PageImages>,
 <https://www.mediawiki.org/wiki/API:Categorymembers>,
 <https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use>.
+
+**English place names (ADR 025, added 2026-11-14).** Wikidata is also the source of established
+English names: the item's English label and its English Wikipedia sitelink title, with aliases for
+search, asked through the same adapter, queue, User-Agent, `maxlag`, `Retry-After` and daily budget as
+the photos (terms as read for ADR 022 on 2026-11-14; no new provider). Requests:
+`action=wbgetentities&props=labels|aliases|sitelinks&sitefilter=enwiki&languages=en|mul|<local>` (50
+items per request); a Wikipedia page's item by `sites=<lang>wiki&titles=…`; a city's item by its
+GeoNames id (`haswbstatement:P1566=`, already used for photos); and, for the operator-only coordinate
+fallback, CirrusSearch `nearcoord:` plus `wbgetentities` claims and `wbgetclaims` P297. Only the names
+and identifiers are stored (CC0); "no English name" answers are cached for 90 days. No Wikipedia host
+is called for names. No machine translation or translation provider is used (none is evaluated here;
+rule 1 and rule 4). Sources: <https://www.wikidata.org/wiki/Wikidata:Licensing>,
+<https://www.mediawiki.org/wiki/API:Etiquette>,
+<https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits>. Note: from the development environment's
+shared address Wikidata answered 429 on 2026-11-14, so the tests use answers written in the documented
+shape, not recordings.
 
 ### 4.4 Overture Maps — places theme — ✅ Verified
 

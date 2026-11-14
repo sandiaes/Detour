@@ -102,8 +102,16 @@ device). **ADR 024 (multi-city trips) is built and awaits acceptance** (migratio
 `0012`, `app.trip_stop`; 2 to 6 cities in the user's order with their days; the planner plans each
 city and drives between them, legs into or out of Japan have no time; names from a fixed table in
 `naming.py`; additions stay near the stops; cities edited through `edit_stops` change sets; the app's
-"Add another city" and "Edit cities"; tried on synthetic fixtures only; Japan not imported). Do not start the next phase until the
-owner asks for it.
+"Add another city" and "Edit cities"; tried on synthetic fixtures only; Japan not imported). **ADR 025
+(multilingual place names) is built and awaits acceptance** (owner request of 2026-11-14; migration
+`0013`; `detour_api/names/`, described in `docs/multilingual-place-names.md`): one resolver chooses the
+English-facing name (the user's override, Wikidata label, English Wikipedia title, OSM `name:en` and
+related tags, the source's romanization, safe transliteration labelled "Automatically romanized", the
+original) and always keeps the local name; businesses keep their own name; Han, Arabic, Hebrew and Thai
+are never transliterated and nothing is translated; Wikidata names are fetched lazily in the background
+or by `python -m detour_api.importer names` and cached with a 90-day negative cache; search matches
+every name; "Edit display name" on the place screen; not yet run against the production database. Do
+not start the next phase until the owner asks for it.
 
 ## Read first
 
@@ -113,6 +121,7 @@ owner asks for it.
 | System design and planning engine | `docs/architecture.md` |
 | Which providers may be used, and on what terms | `docs/api-evaluation.md` |
 | Tables, the licence boundary, lifecycle | `docs/data-model.md` |
+| Place names in every language and script | `docs/multilingual-place-names.md` |
 | Phases, dependencies, exclusions | `docs/app-plan.md` |
 | Targets | `docs/kpis.md` |
 | How the app looks and behaves (screens, tokens, patterns) | `docs/design.md` |
@@ -208,6 +217,8 @@ Other:
 - `python -m tests.e2e_seed` (from `services/api`): the fixture database for the Android end-to-end
   test (the "E2E Android" workflow, started by hand)
 - `python -m detour_api.seed`: build the labelled seed trip from imported data
+- `python -m detour_api.importer names [<region>] [--no-network] [--places N]`: search aliases and
+  English place names from Wikidata (ADR 025)
 - The database tests also need `osm2pgsql` and `osmium` (CI installs them; locally the import
   tests are skipped without them)
 - `docker compose --env-file .env -f infrastructure/docker-compose.yml up --build --wait`:

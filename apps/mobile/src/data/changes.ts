@@ -1,4 +1,5 @@
 import type {
+  PlaceName,
   PlaceSuggestionRequest,
   PlaceSuggestions,
   ChangeSet,
@@ -148,7 +149,27 @@ export function useChangeActions() {
     [need, data],
   );
 
+  /** Edit display name (ADR 025): the name this user approved for one imported place, or null to
+   * go back to the resolved name. The original name is kept by the server; plans that name the
+   * place follow, so they are read again. */
+  const setDisplayName = useCallback(
+    async (placeId: string, name: string | null): Promise<PlaceName> => {
+      const params = { path: { place_id: placeId } };
+      const result =
+        name === null
+          ? await call(need().DELETE("/v1/places/{place_id}/display-name", { params }))
+          : await call(
+              need().PUT("/v1/places/{place_id}/display-name", { params, body: { name } }),
+            );
+      data.invalidate("itinerary:");
+      data.invalidate(`place:${placeId}`);
+      return result;
+    },
+    [need, data],
+  );
+
   return {
+    setDisplayName,
     savePlace,
     updatePlace,
     suggestSlots,

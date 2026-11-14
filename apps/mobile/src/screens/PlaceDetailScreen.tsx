@@ -1,5 +1,5 @@
 import type { Day, Itinerary, Item, PlaceDetail, Trip, UserPlace } from "@detour/shared";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
@@ -18,6 +18,7 @@ import { MEAL_LABEL, dayTitle } from "../components/plan/DayPlan";
 import {
   EmptyState,
   ErrorState,
+  Field,
   LoadingState,
   Notice,
   ScreenHeader,
@@ -25,6 +26,7 @@ import {
   useAnnounceOnMount,
 } from "../components/ui";
 import { keys } from "../data/actions";
+import { useChangeActions } from "../data/changes";
 import { useItemActions } from "../data/itemActions";
 import { DocumentList } from "../components/documents/DocumentList";
 import { placeKey } from "../documents/model";
@@ -77,6 +79,95 @@ function MetaLine({ icon, text }: { icon: IconName; text: string }) {
     <View style={styles.metaLine} accessible accessibilityLabel={text}>
       <Icon name={icon} size={16} color={colors.muted} />
       <Text style={styles.metaText}>{text}</Text>
+    </View>
+  );
+}
+
+/** Edit display name (ADR 025): the user's own name for this one place. The original name stays
+ * shown beside it, and "Use the usual name" takes the edit back. */
+function EditDisplayName({
+  placeId,
+  current,
+  overridden,
+  onSaved,
+}: {
+  placeId: string;
+  current: string;
+  overridden: boolean;
+  onSaved: () => void;
+}) {
+  const changes = useChangeActions();
+  const [draft, setDraft] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const send = async (name: string | null) => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      await changes.setDisplayName(placeId, name);
+      setDraft(null);
+      onSaved();
+    } catch (e) {
+      setProblem(describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (draft === null) {
+    return (
+      <View style={styles.nameActions}>
+        <Button
+          label="Edit display name"
+          icon="note"
+          variant="secondary"
+          size="compact"
+          testID="edit-display-name"
+          onPress={() => setDraft(current)}
+        />
+        {overridden ? (
+          <Button
+            label="Use the usual name"
+            variant="secondary"
+            size="compact"
+            disabled={busy}
+            testID="reset-display-name"
+            onPress={() => void send(null)}
+          />
+        ) : null}
+        {problem ? <Notice tone="error">{problem}</Notice> : null}
+      </View>
+    );
+  }
+  const trimmed = draft.trim();
+  return (
+    <View style={styles.nameEditor} testID="display-name-editor">
+      <Field
+        label="Display name"
+        value={draft}
+        onChangeText={setDraft}
+        maxLength={120}
+        autoFocus
+        hint="Only for this place, only on this phone's trips. The local name stays shown."
+        error={problem}
+      />
+      <View style={styles.nameActions}>
+        <Button
+          label="Save"
+          size="compact"
+          disabled={busy || trimmed.length === 0}
+          testID="save-display-name"
+          onPress={() => void send(trimmed)}
+        />
+        <Button
+          label="Cancel"
+          variant="secondary"
+          size="compact"
+          disabled={busy}
+          onPress={() => setDraft(null)}
+        />
+      </View>
     </View>
   );
 }
@@ -187,9 +278,15 @@ export function PlaceDetailScreen({
     item.origin === "user" ? "Added by you" : null,
   ].filter((t): t is string => t !== null);
   const source = detail?.sources?.[0];
-  // The plan shows the English name when the source has one; the name used locally stays visible.
-  const localName =
-    detail?.name && detail.name.trim() !== item.display_name.trim() ? detail.name : null;
+  // The English-facing name the server resolved (ADR 025), with the original local name under it;
+  // a name Detour romanized itself says so. Older data without names keeps the snapshot.
+  const title = item.names?.display ?? item.display_name;
+  const localName = item.names
+    ? (item.names.local ?? null)
+    : detail?.name && detail.name.trim() !== item.display_name.trim()
+      ? detail.name
+      : null;
+  const romanized = item.names?.auto_generated === true;
   const loadingSource =
     (placeId && place.data === undefined && place.status !== "error") ||
     (userPlaceId && userPlace.data === undefined && userPlace.status !== "error");
@@ -209,19 +306,30 @@ export function PlaceDetailScreen({
         </Cover>
 
         <View style={styles.body}>
-          <View
-            ref={titleRef}
-            accessible
-            accessibilityRole="header"
-            accessibilityLabel={item.display_name}
-          >
-            <Text style={styles.title}>{item.display_name}</Text>
+          <View ref={titleRef} accessible accessibilityRole="header" accessibilityLabel={title}>
+            <Text style={styles.title}>{title}</Text>
             {localName ? (
               <Text style={styles.localName} accessibilityLabel={`Local name: ${localName}`}>
                 {localName}
               </Text>
             ) : null}
+            {romanized ? (
+              <Text style={styles.nameNote} testID="name-romanized">
+                Automatically romanized
+              </Text>
+            ) : null}
           </View>
+          {placeId && trip?.status !== "past" && items.connected ? (
+            <EditDisplayName
+              placeId={placeId}
+              current={title}
+              overridden={item.names?.user_override === true}
+              onSaved={() => {
+                plan.refresh();
+                place.refresh();
+              }}
+            />
+          ) : null}
           <View
             style={styles.kindLine}
             accessible
@@ -356,6 +464,14 @@ const styles = StyleSheet.create({
   kindTextEat: { color: colors.accentText },
   title: { ...type.display, fontSize: 26, lineHeight: 32, color: colors.text },
   localName: { ...type.small, color: colors.muted, marginTop: spacing.xxs },
+  nameNote: { ...type.caption, color: colors.muted, marginTop: spacing.xxs, fontStyle: "italic" },
+  nameActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  nameEditor: { marginTop: spacing.sm },
   // A sheet whose top corners curve over the cover's lower edge, like the trip's tabs.
   body: {
     padding: spacing.lg,

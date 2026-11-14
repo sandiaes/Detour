@@ -20,6 +20,7 @@ from sqlalchemy import Connection, text
 
 from detour_api.errors import ApiError, conflict, invalid
 from detour_api.models.trips import GenerationResult, Trip
+from detour_api.names.store import PLACE_NAME_COLUMNS, apply_overrides_to_trip, resolve_place_row
 from detour_api.planner.config import PlannerConfig
 from detour_api.planner.dedupe import collapse_duplicates
 from detour_api.planner.reasons import ITEM_TEMPLATES
@@ -203,11 +204,10 @@ def _box(lat: float, lon: float, radius_m: int) -> dict[str, float]:
 
 
 _CANDIDATE_SQL = """
-    SELECT p.id,
-           -- The source's English name when it has one (never translated by us); the search
-           -- finds the place by either name.
-           COALESCE(CASE WHEN p.name_en_norm IS NOT NULL THEN p.names_i18n->>'en' END, p.name)
-               AS name,
+    SELECT p.id, p.kind, p.name, p.names_i18n,
+           -- The inputs of the name resolver (ADR 025): the English-facing name is chosen in
+           -- Python from the place's own names and any stored Wikidata names; never translated.
+           {names},
            p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
            s.osm_signals, s.sitelink_count
     FROM geo.place p LEFT JOIN geo.place_signal s ON s.place_id = p.id
@@ -219,7 +219,8 @@ _CANDIDATE_SQL = """
 # Named places to eat with the meal types the import derived from their venue type. Unnamed ones
 # are not planned: the traveller could not find them.
 _RESTAURANT_SQL = """
-    SELECT p.id, p.name, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
+    SELECT p.id, p.kind, p.category, p.name, p.names_i18n, {names},
+           ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
            rp.venue_type, rp.meal_types, rp.cuisines
     FROM geo.place p JOIN geo.restaurant_profile rp ON rp.place_id = p.id
     WHERE p.is_active AND p.kind = 'restaurant' AND p.name IS NOT NULL
@@ -227,15 +228,22 @@ _RESTAURANT_SQL = """
     ORDER BY p.id
 """
 
+# Name inputs without an installation (``:inst`` null): plans take the resolved name; a user's own
+# approved names are applied to the plan's snapshots when it is stored (names.store).
+_NAMES = PLACE_NAME_COLUMNS.replace("CAST(:inst AS uuid)", "NULL::uuid")
 _IN_BOX = "p.geom && ST_MakeEnvelope(:x1, :y1, :x2, :y2, 4326)"
 _IN_AREA = "ST_Intersects(p.geom, (SELECT a.geom FROM geo.admin_area a WHERE a.id = :area))"
+
+
+def _display(row: Any) -> str:
+    return resolve_place_row(row).display or str(row.name)
 
 
 def _candidates(rows: Any) -> list[Candidate]:
     return collapse_duplicates(
         Candidate(
             place_id=str(r.id),
-            name=r.name,
+            name=_display(r),
             category=r.category,
             lat=r.lat,
             lon=r.lon,
@@ -250,7 +258,7 @@ def _restaurants(rows: Any) -> list[Restaurant]:
     return [
         Restaurant(
             place_id=str(r.id),
-            name=r.name,
+            name=_display(r),
             venue_type=r.venue_type,
             lat=r.lat,
             lon=r.lon,
@@ -265,21 +273,23 @@ def load_restaurants(
     conn: Connection, region_id: str, lat: float, lon: float, radius_m: int
 ) -> list[Restaurant]:
     rows = conn.execute(
-        text(_RESTAURANT_SQL.format(where=_IN_BOX)), {"r": region_id, **_box(lat, lon, radius_m)}
+        text(_RESTAURANT_SQL.format(names=_NAMES, where=_IN_BOX)),
+        {"r": region_id, **_box(lat, lon, radius_m)},
     ).all()
     return _restaurants(rows)
 
 
 def load_area_candidates(conn: Connection, region_id: str, area_id: uuid.UUID) -> list[Candidate]:
     rows = conn.execute(
-        text(_CANDIDATE_SQL.format(where=_IN_AREA)), {"r": region_id, "area": area_id}
+        text(_CANDIDATE_SQL.format(names=_NAMES, where=_IN_AREA)), {"r": region_id, "area": area_id}
     ).all()
     return _candidates(rows)
 
 
 def load_area_restaurants(conn: Connection, region_id: str, area_id: uuid.UUID) -> list[Restaurant]:
     rows = conn.execute(
-        text(_RESTAURANT_SQL.format(where=_IN_AREA)), {"r": region_id, "area": area_id}
+        text(_RESTAURANT_SQL.format(names=_NAMES, where=_IN_AREA)),
+        {"r": region_id, "area": area_id},
     ).all()
     return _restaurants(rows)
 
@@ -308,7 +318,8 @@ def load_candidates(
     """Active, named attractions of the region in a box around the point (the engine applies the
     exact radius). Uses the GiST index on ``geo.place.geom``."""
     rows = conn.execute(
-        text(_CANDIDATE_SQL.format(where=_IN_BOX)), {"r": region_id, **_box(lat, lon, radius_m)}
+        text(_CANDIDATE_SQL.format(names=_NAMES, where=_IN_BOX)),
+        {"r": region_id, **_box(lat, lon, radius_m)},
     ).all()
     return _candidates(rows)
 
@@ -416,6 +427,8 @@ def save_generation(
             },
         )
         _write_days(conn, itinerary_id, plan)
+    # The user's approved display names (ADR 025) replace the resolved ones in the snapshots.
+    apply_overrides_to_trip(conn, installation_id, context.trip_id)
     return GenerationResult(
         generation_id=generation_id,
         distinct=generation.distinct,

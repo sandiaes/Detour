@@ -249,6 +249,20 @@ The backend streams stored photos to the app, so it needs the same two Storage s
    photos itself in the background after a trip is created or planned; the workflow is only an
    operator tool.
 
+## Deploying place names (ADR 025)
+
+1. **Merge to `main`.** `start.sh` runs migration `0013`, which also fills `geo.place.alias_norm` for
+   the places already imported (no network; a few seconds for Austria). The log shows
+   `migrations: ok`.
+2. **Nothing to configure.** Names come from Wikidata through the photo adapter's settings
+   (`DETOUR_WIKIMEDIA_*`); the API looks names up itself in the background after a trip is created,
+   planned or read.
+3. **Optional backfill** from a trusted machine or a one-off job, with `DETOUR_IMPORT_DATABASE_URL`
+   set to the session-mode pooler: `python -m detour_api.importer names austria --places 2000`
+   (the report lists what was found and what has no English name).
+4. **Optional re-import** ("Import region", Austria) so the newly kept tags (`official_name:*`,
+   `short_name:*`, `brand:*`, `alt_name`, `old_name`) are available to the resolver and search.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | What to do |

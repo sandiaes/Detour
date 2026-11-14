@@ -133,7 +133,12 @@ export DETOUR_STAGING_DATABASE_URL=postgresql://postgres:postgres@localhost:5432
 python -m detour_api.importer gazetteer AT
 python -m detour_api.importer region austria --pbf austria-latest.osm.pbf --out-dir out
 python -m detour_api.seed --print-token   # optional: the labelled seed trip, development only
+python -m detour_api.importer names austria --no-network   # search aliases only (ADR 025)
 ```
+
+`names` without `--no-network` also asks Wikidata for English names (what trips reference, plus
+`--places N` of the region's attractions; `--coordinate-match` for the controlled coordinate
+fallback) and prunes expired names. See [`multilingual-place-names.md`](multilingual-place-names.md).
 
 Never point `region` at the staging database as the target, and never import into the production
 database from a laptop: use the workflow ([`deployment.md`](deployment.md), "Importing a region").

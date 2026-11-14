@@ -17,6 +17,7 @@ from typing import Any
 from sqlalchemy import Connection, text
 
 from detour_api.errors import conflict, invalid, not_found
+from detour_api.models.common import PlaceName
 from detour_api.models.trips import (
     Arrival,
     Day,
@@ -30,6 +31,9 @@ from detour_api.models.trips import (
     RestaurantInfo,
     Transfer,
 )
+from detour_api.names.api import to_api
+from detour_api.names.resolver import ResolvedName
+from detour_api.names.store import resolve_places
 from detour_api.planner.durations import visit_minutes
 from detour_api.planner.reasons import ITEM_TEMPLATES, NOTE_TEMPLATES, item_text, note_text
 from detour_api.repo import geo, images, plan_state, trips, user_places
@@ -254,11 +258,14 @@ def get_itinerary(
         {"i": itinerary_id},
     ).all()
     transfers = _transfers(conn, [it.id for it in items])
-    photos = images.place_photos(conn, [it.place_id for it in items if it.place_id is not None])
+    place_ids = [it.place_id for it in items if it.place_id is not None]
+    photos = images.place_photos(conn, place_ids)
+    names = resolve_places(conn, place_ids, installation_id)
     by_day: dict[uuid.UUID, list[Item]] = {}
     for it in items:
         item = _item(it, transfers.get(it.id))
         item.image = photos.get(it.place_id) if it.place_id is not None else None
+        item.names = _names(names.get(it.place_id)) if it.place_id is not None else None
         by_day.setdefault(it.day_id, []).append(item)
     summary = _summary(row)
     out: list[Day] = []
@@ -376,7 +383,7 @@ def _resolve_place(
     if body.type == "free_time":
         return "Free time", None, None, None
     if body.place_id is not None:
-        found = geo.place_exists(conn, body.place_id)
+        found = geo.place_exists(conn, body.place_id, installation_id)
         if found is None or not found[4]:
             raise invalid("place_not_found", "place_id is not an active place")
         kind, name, lat, lon, _, default_minutes, category = found
@@ -486,7 +493,12 @@ def get_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -
     item = _item(row, _transfers(conn, [row.id]).get(row.id))
     if row.place_id is not None:
         item.image = images.place_photos(conn, [row.place_id]).get(row.place_id)
+        item.names = _names(resolve_places(conn, [row.place_id], installation_id).get(row.place_id))
     return item
+
+
+def _names(resolved: ResolvedName | None) -> PlaceName | None:
+    return to_api(resolved) if resolved is not None and resolved.display else None
 
 
 def require_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -> Item:

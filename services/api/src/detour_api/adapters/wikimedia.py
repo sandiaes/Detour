@@ -1,4 +1,4 @@
-"""Wikidata and Wikimedia Commons adapter for reference photos (ADR 022).
+"""Wikidata and Wikimedia Commons adapter for reference photos (ADR 022) and place names (ADR 025).
 
 Only the backend calls it, only from the image resolver (never during plan generation, never from
 a test: tests inject a recorded-response transport). It provides what architecture section 6
@@ -215,6 +215,149 @@ def _ranked_files(statements: Any) -> list[str]:
     return [name for _, _, name in sorted(ranked)]
 
 
+@dataclass(frozen=True)
+class EntityNames:
+    """The names of one Wikidata item (ADR 025): only these strings and the identifiers are kept,
+    never the answer itself."""
+
+    qid: str
+    labels: dict[str, str]
+    aliases: dict[str, list[str]]
+    enwiki: str | None
+
+
+def parse_entity_names(payload: Any) -> dict[str, EntityNames]:
+    """Read ``wbgetentities`` with ``props=labels|aliases|sitelinks``. A missing item is absent; a
+    redirected item is found under the identifier that was asked for and the one it points to."""
+    entities = payload.get("entities") if isinstance(payload, dict) else None
+    if not isinstance(entities, dict):
+        raise ValueError("not a wbgetentities answer")
+    found: dict[str, EntityNames] = {}
+    for key, entity in entities.items():
+        if not isinstance(entity, dict) or "missing" in entity:
+            continue
+        qid = str(entity.get("id") or key)
+        if not _QID.match(qid):
+            continue
+        labels = {
+            lang: str(v["value"])
+            for lang, v in (entity.get("labels") or {}).items()
+            if isinstance(v, dict) and isinstance(v.get("value"), str) and v["value"].strip()
+        }
+        aliases: dict[str, list[str]] = {}
+        for lang, values in (entity.get("aliases") or {}).items():
+            texts = [
+                str(v["value"])
+                for v in values if isinstance(v, dict) and isinstance(v.get("value"), str)
+            ] if isinstance(values, list) else []  # fmt: skip
+            if texts:
+                aliases[lang] = texts
+        sitelinks = entity.get("sitelinks")
+        enwiki = sitelinks.get("enwiki") if isinstance(sitelinks, dict) else None
+        title = enwiki.get("title") if isinstance(enwiki, dict) else None
+        names = EntityNames(
+            qid, labels, aliases, title if isinstance(title, str) and title else None
+        )
+        found[qid] = names
+        if _QID.match(str(key)) and key != qid:
+            found[str(key)] = names
+    return found
+
+
+def parse_sitelink_items(payload: Any) -> dict[str, str]:
+    """Read ``wbgetentities`` asked by ``sites`` and ``titles``: page title -> QID."""
+    entities = payload.get("entities") if isinstance(payload, dict) else None
+    if not isinstance(entities, dict):
+        raise ValueError("not a wbgetentities answer")
+    out: dict[str, str] = {}
+    for key, entity in entities.items():
+        if not isinstance(entity, dict) or "missing" in entity or not _QID.match(str(key)):
+            continue
+        for link in (entity.get("sitelinks") or {}).values():
+            if isinstance(link, dict) and isinstance(link.get("title"), str):
+                out[link["title"]] = str(key)
+    return out
+
+
+@dataclass(frozen=True)
+class MatchFacts:
+    """What the controlled coordinate match needs to know about a candidate item."""
+
+    qid: str
+    lat: float | None
+    lon: float | None
+    country_qid: str | None
+    instance_of: frozenset[str]
+    names: tuple[str, ...]
+
+
+def _claim_values(claims: dict[str, Any], prop: str) -> list[Any]:
+    out = []
+    for statement in claims.get(prop) or []:
+        if not isinstance(statement, dict) or statement.get("rank") == "deprecated":
+            continue
+        snak = statement.get("mainsnak")
+        value = snak.get("datavalue", {}).get("value") if isinstance(snak, dict) else None
+        if value is not None:
+            out.append(value)
+    return out
+
+
+def parse_match_facts(payload: Any) -> dict[str, MatchFacts]:
+    """Read ``wbgetentities`` (labels, aliases, claims) for the candidates of a coordinate match:
+    coordinates (P625), country (P17) and classes (P31)."""
+    entities = payload.get("entities") if isinstance(payload, dict) else None
+    if not isinstance(entities, dict):
+        raise ValueError("not a wbgetentities answer")
+    out: dict[str, MatchFacts] = {}
+    for qid, entity in entities.items():
+        if not isinstance(entity, dict) or "missing" in entity or not _QID.match(str(qid)):
+            continue
+        raw_claims = entity.get("claims")
+        claims: dict[str, Any] = raw_claims if isinstance(raw_claims, dict) else {}
+        coords = [v for v in _claim_values(claims, "P625") if isinstance(v, dict)]
+        lat = coords[0].get("latitude") if coords else None
+        lon = coords[0].get("longitude") if coords else None
+        countries = [v.get("id") for v in _claim_values(claims, "P17") if isinstance(v, dict)]
+        classes = frozenset(
+            str(v.get("id")) for v in _claim_values(claims, "P31") if isinstance(v, dict)
+        )
+        names = [
+            str(v["value"]) for v in (entity.get("labels") or {}).values()
+            if isinstance(v, dict) and isinstance(v.get("value"), str)
+        ]  # fmt: skip
+        for values in (entity.get("aliases") or {}).values():
+            names += [str(v["value"]) for v in values if isinstance(v, dict) and "value" in v]
+        out[str(qid)] = MatchFacts(
+            qid=str(qid),
+            lat=float(lat) if isinstance(lat, (int, float)) else None,
+            lon=float(lon) if isinstance(lon, (int, float)) else None,
+            country_qid=str(countries[0]) if len(set(countries)) == 1 else None,
+            instance_of=classes,
+            names=tuple(dict.fromkeys(names)),
+        )
+    return out
+
+
+def parse_search_titles(payload: Any) -> list[str]:
+    """Read ``list=search`` on Wikidata: the QIDs of the hits, in the API's order."""
+    hits = payload.get("query", {}).get("search") if isinstance(payload, dict) else None
+    if not isinstance(hits, list):
+        raise ValueError("not a search answer")
+    return [
+        str(h.get("title")) for h in hits if isinstance(h, dict) and _QID.match(str(h.get("title")))
+    ]
+
+
+def parse_iso_code(payload: Any) -> str | None:
+    """Read ``wbgetclaims`` for P297 (ISO 3166-1 alpha-2) of a country item."""
+    claims = payload.get("claims") if isinstance(payload, dict) else None
+    if not isinstance(claims, dict):
+        raise ValueError("not a wbgetclaims answer")
+    values = [v for v in _claim_values(claims, "P297") if isinstance(v, str)]
+    return values[0].upper() if len(set(values)) == 1 else None
+
+
 def parse_imageinfo(payload: Any) -> dict[str, FileInfo]:
     """Read ``query&prop=imageinfo``; the result is keyed by the file name without ``File:``."""
     query = payload.get("query") if isinstance(payload, dict) else None
@@ -403,6 +546,71 @@ class WikimediaClient:
             "format": "json",
         }
         return parse_category_files(self._api(self._settings.commons_api_url, params))
+
+    def entity_names(self, qids: list[str], languages: list[str]) -> dict[str, EntityNames]:
+        """Labels and aliases in ``languages`` and the English Wikipedia title of up to 50 items,
+        in one request (ADR 025). ``sitefilter`` keeps the answer small."""
+        if not qids:
+            return {}
+        params = {
+            "action": "wbgetentities",
+            "ids": "|".join(qids[:BATCH_SIZE]),
+            "props": "labels|aliases|sitelinks",
+            "languages": "|".join(sorted(set(languages))),
+            "sitefilter": "enwiki",
+            "format": "json",
+        }
+        return parse_entity_names(self._api(self._settings.wikidata_api_url, params))
+
+    def items_for_sitelinks(self, site: str, titles: list[str]) -> dict[str, str]:
+        """The Wikidata items of up to 50 Wikipedia pages of one wiki (``dewiki``): a page's
+        ``wikibase_item``, asked of Wikidata itself, so no other wiki is called."""
+        if not titles:
+            return {}
+        params = {
+            "action": "wbgetentities",
+            "sites": site,
+            "titles": "|".join(titles[:BATCH_SIZE]),
+            "props": "sitelinks",
+            "sitefilter": site,
+            "format": "json",
+        }
+        return parse_sitelink_items(self._api(self._settings.wikidata_api_url, params))
+
+    def items_near(
+        self, name: str, lat: float, lon: float, radius_km: float, limit: int = 5
+    ) -> list[str]:
+        """Items with coordinates near a point whose text matches a name (CirrusSearch
+        ``nearcoord``): candidates for the controlled coordinate match only."""
+        quoted = name.replace('"', " ")
+        params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": f'"{quoted}" haswbstatement:P625 nearcoord:{radius_km:g}km,{lat:.6f},{lon:.6f}',
+            "srlimit": str(limit),
+            "format": "json",
+        }
+        return parse_search_titles(self._api(self._settings.wikidata_api_url, params))
+
+    def match_facts(self, qids: list[str]) -> dict[str, MatchFacts]:
+        if not qids:
+            return {}
+        params = {
+            "action": "wbgetentities",
+            "ids": "|".join(qids[:BATCH_SIZE]),
+            "props": "labels|aliases|claims",
+            "format": "json",
+        }
+        return parse_match_facts(self._api(self._settings.wikidata_api_url, params))
+
+    def country_iso(self, country_qid: str) -> str | None:
+        params = {
+            "action": "wbgetclaims",
+            "entity": country_qid,
+            "property": "P297",
+            "format": "json",
+        }
+        return parse_iso_code(self._api(self._settings.wikidata_api_url, params))
 
     def download(self, url: str) -> bytes:
         """The image bytes, capped in size, only from a Wikimedia image host."""

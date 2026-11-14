@@ -373,10 +373,12 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                   <ResultRow
                     key={p.id}
                     icon="sight"
-                    title={p.name_en ?? p.name ?? p.category}
+                    title={p.names?.display ?? p.name_en ?? p.name ?? p.category}
                     meta={[
-                      // The English name leads; the name used locally stays visible beside it.
-                      p.name_en ? p.name : null,
+                      // The English name leads; the name used locally stays visible beside it
+                      // (ADR 025), and a name Detour romanized itself says so.
+                      p.names ? p.names.local : p.name_en ? p.name : null,
+                      p.names?.auto_generated ? "automatically romanized" : null,
                       p.category.replace(/_/g, " "),
                       p.city_name,
                       p.distance_m != null
