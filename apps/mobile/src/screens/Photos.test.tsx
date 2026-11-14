@@ -76,7 +76,7 @@ test("the cover can be changed from the trip menu", async () => {
       candidate("Stephansdom.jpg"),
       candidate("Ring tower.jpg", { width: 1200, height: 1800 }),
     ],
-    "PUT /v1/trips/{trip_id}/cover": ({ body }) => {
+    "PUT /v1/trips/{trip_id}/cover": ({ body }: { body: unknown }) => {
       chosen.push(String((body as { commons_file: string | null }).commons_file));
       return makeTrip({ selected_itinerary_id: ESSENTIALS_ID, cover_image: makePhoto() });
     },
@@ -114,7 +114,7 @@ test("a cover chosen on the new-trip screen is set right after the trip is creat
       stored.unshift(makeTrip({ selected_itinerary_id: ESSENTIALS_ID }));
       return makeTrip();
     },
-    "PUT /v1/trips/{trip_id}/cover": ({ body }) => {
+    "PUT /v1/trips/{trip_id}/cover": ({ body }: { body: unknown }) => {
       order.push(`cover ${(body as { commons_file: string }).commons_file}`);
       return makeTrip({ cover_image: makePhoto() });
     },

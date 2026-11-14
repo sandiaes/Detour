@@ -192,10 +192,13 @@ export function transportPoint(day: Day, previous: Day | undefined): TransportPo
 /** The leg of a transport point as a line, when both ends are known. */
 export function transportFeature(point: TransportPoint): TransferFeature | null {
   if (!point.fromLngLat) return null;
+  const { confidence, mode } = point.arrival;
+  // A leg with no known time (ADR 024) is a marker without a line: nothing suggests a route.
+  if (confidence === "unknown" || mode === "unknown") return null;
   return {
     type: "Feature",
     id: point.id,
-    properties: { confidence: point.arrival.confidence, mode: point.arrival.mode },
+    properties: { confidence, mode },
     geometry: { type: "LineString", coordinates: [point.fromLngLat, point.lngLat] },
   };
 }

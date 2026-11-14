@@ -232,7 +232,7 @@ def test_every_geometry_column_has_a_gist_index(db: psycopg.Connection[Any]) -> 
         "SELECT f_table_schema, f_table_name, f_geometry_column FROM geometry_columns"
         " WHERE f_table_schema IN ('geo', 'app')"
     ).fetchall()
-    assert len(columns) == 10
+    assert len(columns) == 11  # app.trip_stop.point (ADR 024)
     missing = []
     for schema, table, column in columns:
         indexed = db.execute(

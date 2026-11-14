@@ -73,6 +73,7 @@ APP_TABLES = [
     "provider_usage",
     "transfer",
     "trip",
+    "trip_stop",
     "trip_visit",
     "user_place",
 ]

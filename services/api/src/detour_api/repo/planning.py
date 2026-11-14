@@ -19,7 +19,7 @@ from typing import Any
 from sqlalchemy import Connection, text
 
 from detour_api.errors import ApiError, conflict, invalid
-from detour_api.models.trips import GenerationResult
+from detour_api.models.trips import GenerationResult, Trip
 from detour_api.planner.config import PlannerConfig
 from detour_api.planner.dedupe import collapse_duplicates
 from detour_api.planner.reasons import ITEM_TEMPLATES
@@ -30,6 +30,7 @@ from detour_api.planner.types import (
     Plan,
     PlanRequest,
     Restaurant,
+    RouteStop,
 )
 from detour_api.repo import geo, itineraries, trips
 from detour_api.repo.geo import METERS_PER_DEGREE
@@ -43,6 +44,8 @@ class PlanningContext:
     request: PlanRequest
     candidates: list[Candidate] = field(default_factory=list)
     restaurants: list[Restaurant] = field(default_factory=list)
+    # A multi-city trip's stop version, stored on its itineraries (ADR 024, decision 20).
+    stops_version: int | None = None
 
 
 # At most this many towns of an area are considered as base cities (the most populous first).
@@ -58,6 +61,8 @@ def load_context(
     trip = trips.require_trip(conn, installation_id, trip_id)
     if trip.status == "past":
         raise conflict("trip_archived", "a past trip cannot get new itineraries")
+    if trip.destination.kind == "route":
+        return _route_context(conn, trip, config)
     kind = trip.destination.kind
     dest = geo.resolve_destination(conn, kind, trip.destination.ref)
     if dest is None:
@@ -121,6 +126,73 @@ def load_context(
         request=request,
         candidates=load_area_candidates(conn, dest.region_id, area_id),
         restaurants=load_area_restaurants(conn, dest.region_id, area_id),
+    )
+
+
+def _route_context(conn: Connection, trip: Trip, config: PlannerConfig) -> PlanningContext:
+    """A multi-city trip (ADR 024): every stop must still be a city in an available region; the
+    candidates and places to eat are those around each stop (each place once)."""
+    if not trip.stops:
+        raise invalid("route_needs_two_stops", "this multi-city trip has no stops")
+    radius = max(p.radius_m for p in config.profiles)
+    candidates: dict[str, Candidate] = {}
+    restaurants: dict[str, Restaurant] = {}
+    runs: list[str] = []
+    regions: list[str] = []
+    stops: list[RouteStop] = []
+    for stop in trip.stops:
+        dest = geo.resolve_destination(conn, "city", str(stop.city_id))
+        if dest is None:
+            raise invalid(
+                "destination_not_found", f"city {stop.position} is no longer in the imported data"
+            )
+        if dest.region_id is None or dest.region_status != "available":
+            raise ApiError(
+                409,
+                "region_not_available",
+                f"city {stop.position} ({stop.name}) is outside the regions that are available "
+                "for planning",
+            )
+        if dest.region_id not in regions:
+            regions.append(dest.region_id)
+            run = conn.execute(
+                text("SELECT current_import_run_id FROM geo.region WHERE id = :r"),
+                {"r": dest.region_id},
+            ).scalar_one_or_none()
+            if run is not None:
+                runs.append(str(run))
+        for c in load_candidates(conn, dest.region_id, stop.lat, stop.lon, radius):
+            candidates.setdefault(c.place_id, c)
+        for r in load_restaurants(
+            conn, dest.region_id, stop.lat, stop.lon, radius + config.meal_search_m[-1]
+        ):
+            restaurants.setdefault(r.place_id, r)
+        stops.append(
+            RouteStop(
+                BaseCity(stop.city_id, stop.name, stop.lat, stop.lon),
+                stop.days,
+                stop.country_iso2,
+            )
+        )
+    first = trip.stops[0]
+    request = PlanRequest(
+        destination_name=trip.destination.name,
+        lat=first.lat,
+        lon=first.lon,
+        days=trip.duration_days,
+        start_date=trip.start_date,
+        # One import run per region; a route across regions records them all.
+        data_version=",".join(runs) if runs else None,
+        kind="route",
+        stops=tuple(stops),
+    )
+    return PlanningContext(
+        trip_id=trip.id,
+        region_id=regions[0],
+        request=request,
+        candidates=collapse_duplicates(candidates[k] for k in sorted(candidates)),
+        restaurants=[restaurants[k] for k in sorted(restaurants)],
+        stops_version=trip.stops_version,
     )
 
 
@@ -249,6 +321,8 @@ def _summary(plan: Plan, generation: Generation, request: PlanRequest, sequencer
     stats = plan.stats
     return json.dumps(
         {
+            # Every import run the plan read (a multi-city trip may span regions).
+            "data_version": generation.data_version,
             "stats": {
                 "visits": stats.visits,
                 "days_with_visits": stats.days_with_visits,
@@ -320,9 +394,9 @@ def save_generation(
             text(
                 """
                 INSERT INTO app.itinerary (id, trip_id, generation_id, profile, engine_version,
-                    config_version, import_run_id, seed, diversity_score, summary)
+                    config_version, import_run_id, seed, diversity_score, summary, stops_version)
                 VALUES (:id, :t, :g, :p, :ev, :cv, CAST(:run AS uuid), :seed, :div,
-                    CAST(:summary AS jsonb))
+                    CAST(:summary AS jsonb), :sv)
                 """
             ),
             {
@@ -332,7 +406,10 @@ def save_generation(
                 "p": plan.profile,
                 "ev": generation.engine_version,
                 "cv": generation.config_version,
-                "run": generation.data_version,
+                # import_run_id is one run; a route over several regions keeps the first (all of
+                # them are in the summary's data_version).
+                "run": (generation.data_version or "").split(",")[0] or None,
+                "sv": context.stops_version,
                 "seed": generation.seed,
                 "div": diversity,
                 "summary": _summary(plan, generation, context.request, sequencer),
@@ -367,10 +444,19 @@ def _write_days(conn: Connection, itinerary_id: uuid.UUID, plan: Plan) -> None:
                 "date": day.date,
                 "city": day.base_city_id,
                 "cname": day.base_city_name,
-                "am": None if arrival is None else arrival.mode,
+                # A leg whose time is not known (ADR 024) is stored as such, with no figures.
+                "am": "unknown"
+                if day.arrival_unknown
+                else None
+                if arrival is None
+                else arrival.mode,
                 "asec": None if arrival is None else arrival.seconds,
                 "amet": None if arrival is None else arrival.meters,
-                "aconf": None if arrival is None else arrival.confidence,
+                "aconf": "unknown"
+                if day.arrival_unknown
+                else None
+                if arrival is None
+                else arrival.confidence,
             },
         )
         item_ids = [uuid.uuid4() for _ in day.items]

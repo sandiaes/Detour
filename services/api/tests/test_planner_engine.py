@@ -10,6 +10,7 @@ import dataclasses
 import itertools
 import json
 import time
+from collections.abc import Sequence
 from datetime import date
 from typing import Any
 
@@ -27,7 +28,14 @@ from detour_api.settings import Settings
 from detour_api.travel.estimate import estimate
 from detour_api.travel.types import Coord, Mode, distance_m
 from tests.conftest import TEST_SECRET
-from tests.planner_helpers import GOLDEN, candidates, request, restaurants, towns
+from tests.planner_helpers import (
+    GOLDEN,
+    candidates,
+    request,
+    restaurants,
+    route_request,
+    towns,
+)
 
 GOLDEN_CASES = [
     ("city3", "city-large", 3, date(2026, 5, 4)),
@@ -39,6 +47,26 @@ GOLDEN_CASES = [
     ("area7", "area", 7, date(2026, 6, 1)),
     ("area14", "area", 14, None),
 ]
+
+
+# Multi-city trips over the synthetic area's towns (ADR 024): driven legs, and a stop in a country
+# travelled by rail (JP) whose legs have no time.
+ROUTE_CASES = [
+    ("route2", [(990001, 2, "AT"), (990002, 2, "AT")], date(2026, 5, 4)),
+    ("route3", [(990001, 2, "AT"), (990003, 1, "AT"), (990002, 3, "AT")], None),
+    ("route-rail", [(990001, 2, "AT"), (990003, 2, "JP"), (990002, 2, "AT")], None),
+]
+
+
+def run_route(
+    stops: Sequence[tuple[int, int, str | None]], start: date | None = None
+) -> Generation:
+    return engine.generate(
+        route_request(stops, start),
+        candidates("area"),
+        FixedTravelSource(),
+        restaurants=restaurants("area"),
+    )
 
 
 def run(name: str, days: int, start: date | None = None, **kw: Any) -> Generation:
@@ -81,6 +109,21 @@ def test_golden_output_is_reproduced(
     request: pytest.FixtureRequest, case: str, fixture: str, days: int, start: date | None
 ) -> None:
     text = canonical(run(fixture, days, start)) + "\n"
+    path = GOLDEN / f"{case}.json"
+    if request.config.getoption("--update-golden"):
+        path.write_text(text, encoding="utf-8")
+    assert path.exists(), f"missing golden file {path.name}: run with --update-golden"
+    assert text == path.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(("case", "stops", "start"), ROUTE_CASES)
+def test_route_golden_output_is_reproduced(
+    request: pytest.FixtureRequest,
+    case: str,
+    stops: list[tuple[int, int, str | None]],
+    start: date | None,
+) -> None:
+    text = canonical(run_route(stops, start)) + "\n"
     path = GOLDEN / f"{case}.json"
     if request.config.getoption("--update-golden"):
         path.write_text(text, encoding="utf-8")
@@ -525,3 +568,54 @@ def test_meals_are_aimed_at_lunch_13_and_dinner_20() -> None:
                     assert (
                         meal.start_minute >= DEFAULT_CONFIG.meal_window(meal.meal_type).start_minute
                     )
+
+
+# -- multi-city trips (ADR 024) -----------------------------------------------------------------
+
+
+def test_a_route_keeps_the_users_stops_order_and_days() -> None:
+    stops = [(990003, 1, "AT"), (990001, 2, "AT"), (990002, 1, "AT")]
+    generation = run_route(stops)
+    assert generation.distinct
+    for plan in generation.plans:
+        assert [d.base_city_id for d in plan.days] == [990003, 990001, 990001, 990002]
+        assert [d.arrival is not None for d in plan.days] == [False, True, False, True]
+        assert not any(d.arrival_unknown for d in plan.days)
+
+
+def test_a_city_that_comes_back_is_planned_without_repeating_a_visit() -> None:
+    generation = run_route([(990001, 1, "AT"), (990005, 1, "AT"), (990001, 1, "AT")])
+    for plan in generation.plans:
+        ids = [i.place_id for d in plan.days for i in d.items if i.kind == "visit"]
+        assert len(ids) == len(set(ids))
+        assert plan.days[2].visits, "the second stay still has sights"
+
+
+def test_a_leg_into_a_rail_country_has_no_time_and_its_day_is_planned_in_full() -> None:
+    generation = run_route([(990001, 1, "AT"), (990003, 1, "JP")])
+    for plan in generation.plans:
+        day = plan.days[1]
+        assert day.arrival is None and day.arrival_unknown
+        assert day.items[0].start_minute == DEFAULT_CONFIG.day_start_minute
+        notes = [n for n in plan.notes if n.code == "ARRIVAL_TIME_UNKNOWN"]
+        assert notes and notes[0].params["to_name"] == "Synthetic Town C"
+        assert plan.stats.intercity_legs == 0  # nothing invented, nothing counted
+
+
+def test_the_validator_refuses_a_route_out_of_order_or_with_an_invented_rail_time() -> None:
+    from dataclasses import replace
+
+    req = route_request([(990001, 1, "AT"), (990003, 1, "JP")])
+    generation = run_route([(990001, 1, "AT"), (990003, 1, "JP")])
+    plan = generation.plans[0]
+    by_id = {c.place_id: c for c in candidates("area")}
+    eat = {r.place_id: r for r in restaurants("area")}
+    swapped = replace(plan, days=(replace(plan.days[0], base_city_id=990003), *plan.days[1:]))
+    codes = {v.code for v in validate_plan(swapped, req, by_id, eat, {}, DEFAULT_CONFIG)}
+    assert "ROUTE_ORDER" in codes
+    known = replace(plan, days=(plan.days[0], replace(plan.days[1], arrival_unknown=False)))
+    codes = {v.code for v in validate_plan(known, req, by_id, eat, {}, DEFAULT_CONFIG)}
+    assert "ARRIVAL_MISMATCH" in codes
+    driven = route_request([(990001, 1, "AT"), (990003, 1, "AT")])
+    codes = {v.code for v in validate_plan(plan, driven, by_id, eat, {}, DEFAULT_CONFIG)}
+    assert "UNKNOWN_LEG_MISMATCH" in codes

@@ -636,18 +636,19 @@ export interface components {
       from_base_city_name: string | null;
       /**
        * Mode
+       * @description unknown: a leg into or out of a country travelled by rail, which Detour does not plan yet; no time or distance is given (ADR 024)
        * @enum {string}
        */
-      mode: "walk" | "drive";
+      mode: "walk" | "drive" | "unknown";
       /** Seconds */
-      seconds: number;
+      seconds: number | null;
       /** Meters */
-      meters: number;
+      meters: number | null;
       /**
        * Confidence
        * @enum {string}
        */
-      confidence: "routed" | "estimated";
+      confidence: "routed" | "estimated" | "unknown";
     };
     /** AttributionEntry */
     AttributionEntry: {
@@ -921,13 +922,16 @@ export interface components {
       /** Items */
       items: components["schemas"]["Item"][];
     };
-    /** Destination */
+    /**
+     * Destination
+     * @description For a multi-city trip (route): ``ref`` is the first stop's city and ``name`` the trip's.
+     */
     Destination: {
       /**
        * Kind
        * @enum {string}
        */
-      kind: "city" | "area";
+      kind: "city" | "area" | "route";
       /** Ref */
       ref: string;
       /** Name */
@@ -2272,6 +2276,19 @@ export interface components {
        */
       issues: components["schemas"]["SlotReason"][];
     };
+    /**
+     * StopIn
+     * @description A stop of a multi-city trip, in the user's order (ADR 024).
+     */
+    StopIn: {
+      /**
+       * City Id
+       * @description The city's GeoNames id (a destination search result)
+       */
+      city_id: number;
+      /** Days */
+      days: number;
+    };
     /** SuggestionReason */
     SuggestionReason: {
       /** Code */
@@ -2341,6 +2358,17 @@ export interface components {
       /** @description The trip's photo: the one the user chose, else the one found for the destination city; null when there is none (the app then shows its illustration) */
       cover_image?: components["schemas"]["Photo"] | null;
       /**
+       * Stops
+       * @description A multi-city trip's cities in order; empty otherwise
+       */
+      stops?: components["schemas"]["TripStop"][];
+      /**
+       * Stops Version
+       * @description Counts applied stop edits; a plan records the one it was made for
+       * @default 0
+       */
+      stops_version: number;
+      /**
        * Created At
        * Format: date-time
        */
@@ -2353,19 +2381,50 @@ export interface components {
     };
     /** TripCreate */
     TripCreate: {
-      /** Title */
+      /**
+       * Title
+       * @description Ignored for a multi-city trip, whose name follows its stops
+       */
       title: string;
       /**
        * Destination Kind
        * @enum {string}
        */
-      destination_kind: "city" | "area";
-      /** Destination Ref */
-      destination_ref: string;
+      destination_kind: "city" | "area" | "route";
+      /**
+       * Destination Ref
+       * @description The city or area; not sent for a multi-city trip (route)
+       */
+      destination_ref?: string | null;
+      /**
+       * Stops
+       * @description Only for a multi-city trip: 2 to 6 cities in order, whose days add up to duration_days
+       */
+      stops?: components["schemas"]["StopIn"][] | null;
       /** Duration Days */
       duration_days: number;
       /** Start Date */
       start_date?: string | null;
+    };
+    /** TripStop */
+    TripStop: {
+      /**
+       * Position
+       * @description 1 for the first city
+       */
+      position: number;
+      /** City Id */
+      city_id: number;
+      /** Name */
+      name: string;
+      /** Country Iso2 */
+      country_iso2: string | null;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** Days */
+      days: number;
     };
     /**
      * TripUpdate

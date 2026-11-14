@@ -16,12 +16,61 @@ ALLOWED_MEAL_TYPES = ("breakfast", "lunch", "dinner", "snack")
 # -- trips -------------------------------------------------------------------------------------
 
 
+MIN_STOPS = 2
+MAX_STOPS = 6
+
+
+class StopIn(StrictModel):
+    """A stop of a multi-city trip, in the user's order (ADR 024)."""
+
+    city_id: int = Field(ge=1, description="The city's GeoNames id (a destination search result)")
+    days: int = Field(ge=1, le=30)
+
+
 class TripCreate(StrictModel):
-    title: str = Field(min_length=1, max_length=120)
-    destination_kind: Literal["city", "area"]
-    destination_ref: str = Field(min_length=1, max_length=64)
+    title: str = Field(
+        min_length=1,
+        max_length=120,
+        description="Ignored for a multi-city trip, whose name follows its stops",
+    )
+    destination_kind: Literal["city", "area", "route"]
+    destination_ref: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=64,
+        description="The city or area; not sent for a multi-city trip (route)",
+    )
+    stops: list[StopIn] | None = Field(
+        default=None,
+        description="Only for a multi-city trip: 2 to 6 cities in order, whose days add up to "
+        "duration_days",
+    )
     duration_days: int = Field(ge=1, le=30)
     start_date: date | None = None
+
+    @model_validator(mode="after")
+    def _destination_or_stops(self) -> Self:
+        if self.destination_kind == "route":
+            if self.stops is None:
+                raise ValueError("a multi-city trip needs its stops")
+            if self.destination_ref is not None:
+                raise ValueError("a multi-city trip has stops, not destination_ref")
+        else:
+            if self.destination_ref is None:
+                raise ValueError("destination_ref is required")
+            if self.stops is not None:
+                raise ValueError("only a multi-city trip (route) has stops")
+        return self
+
+
+class TripStop(BaseModel):
+    position: int = Field(description="1 for the first city")
+    city_id: int
+    name: str
+    country_iso2: str | None
+    lat: float
+    lon: float
+    days: int
 
 
 class TripUpdate(StrictModel):
@@ -34,7 +83,9 @@ class TripUpdate(StrictModel):
 
 
 class Destination(BaseModel):
-    kind: Literal["city", "area"]
+    """For a multi-city trip (route): ``ref`` is the first stop's city and ``name`` the trip's."""
+
+    kind: Literal["city", "area", "route"]
     ref: str
     name: str
     lat: float
@@ -58,6 +109,12 @@ class Trip(BaseModel):
         default=None,
         description="The trip's photo: the one the user chose, else the one found for the "
         "destination city; null when there is none (the app then shows its illustration)",
+    )
+    stops: list[TripStop] = Field(
+        default_factory=list, description="A multi-city trip's cities in order; empty otherwise"
+    )
+    stops_version: int = Field(
+        default=0, description="Counts applied stop edits; a plan records the one it was made for"
     )
     created_at: datetime
     updated_at: datetime
@@ -237,10 +294,13 @@ class Arrival(BaseModel):
 
     from_base_city_id: int | None
     from_base_city_name: str | None
-    mode: Literal["walk", "drive"]
-    seconds: int
-    meters: int
-    confidence: Literal["routed", "estimated"]
+    mode: Literal["walk", "drive", "unknown"] = Field(
+        description="unknown: a leg into or out of a country travelled by rail, which Detour "
+        "does not plan yet; no time or distance is given (ADR 024)"
+    )
+    seconds: int | None
+    meters: int | None
+    confidence: Literal["routed", "estimated", "unknown"]
 
 
 class RestaurantInfo(BaseModel):

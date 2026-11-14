@@ -3502,23 +3502,40 @@
             "type": "string",
             "enum": [
               "walk",
-              "drive"
+              "drive",
+              "unknown"
             ],
-            "title": "Mode"
+            "title": "Mode",
+            "description": "unknown: a leg into or out of a country travelled by rail, which Detour does not plan yet; no time or distance is given (ADR 024)"
           },
           "seconds": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Seconds"
           },
           "meters": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Meters"
           },
           "confidence": {
             "type": "string",
             "enum": [
               "routed",
-              "estimated"
+              "estimated",
+              "unknown"
             ],
             "title": "Confidence"
           }
@@ -4184,7 +4201,8 @@
             "type": "string",
             "enum": [
               "city",
-              "area"
+              "area",
+              "route"
             ],
             "title": "Kind"
           },
@@ -4213,7 +4231,8 @@
           "lat",
           "lon"
         ],
-        "title": "Destination"
+        "title": "Destination",
+        "description": "For a multi-city trip (route): ``ref`` is the first stop's city and ``name`` the trip's."
       },
       "DestinationResult": {
         "properties": {
@@ -7564,6 +7583,30 @@
         ],
         "title": "SlotSuggestions"
       },
+      "StopIn": {
+        "properties": {
+          "city_id": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "City Id",
+            "description": "The city's GeoNames id (a destination search result)"
+          },
+          "days": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Days"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "city_id",
+          "days"
+        ],
+        "title": "StopIn",
+        "description": "A stop of a multi-city trip, in the user's order (ADR 024)."
+      },
       "SuggestionReason": {
         "properties": {
           "code": {
@@ -7717,6 +7760,20 @@
             ],
             "description": "The trip's photo: the one the user chose, else the one found for the destination city; null when there is none (the app then shows its illustration)"
           },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/TripStop"
+            },
+            "type": "array",
+            "title": "Stops",
+            "description": "A multi-city trip's cities in order; empty otherwise"
+          },
+          "stops_version": {
+            "type": "integer",
+            "title": "Stops Version",
+            "description": "Counts applied stop edits; a plan records the one it was made for",
+            "default": 0
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -7751,21 +7808,46 @@
             "type": "string",
             "maxLength": 120,
             "minLength": 1,
-            "title": "Title"
+            "title": "Title",
+            "description": "Ignored for a multi-city trip, whose name follows its stops"
           },
           "destination_kind": {
             "type": "string",
             "enum": [
               "city",
-              "area"
+              "area",
+              "route"
             ],
             "title": "Destination Kind"
           },
           "destination_ref": {
-            "type": "string",
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Destination Ref"
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Ref",
+            "description": "The city or area; not sent for a multi-city trip (route)"
+          },
+          "stops": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StopIn"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stops",
+            "description": "Only for a multi-city trip: 2 to 6 cities in order, whose days add up to duration_days"
           },
           "duration_days": {
             "type": "integer",
@@ -7791,10 +7873,60 @@
         "required": [
           "title",
           "destination_kind",
-          "destination_ref",
           "duration_days"
         ],
         "title": "TripCreate"
+      },
+      "TripStop": {
+        "properties": {
+          "position": {
+            "type": "integer",
+            "title": "Position",
+            "description": "1 for the first city"
+          },
+          "city_id": {
+            "type": "integer",
+            "title": "City Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "country_iso2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Iso2"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "position",
+          "city_id",
+          "name",
+          "country_iso2",
+          "lat",
+          "lon",
+          "days"
+        ],
+        "title": "TripStop"
       },
       "TripUpdate": {
         "properties": {

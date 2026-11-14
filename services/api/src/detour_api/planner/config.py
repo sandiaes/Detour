@@ -16,7 +16,7 @@ from typing import Literal
 from detour_api.planner.durations import DURATIONS_VERSION
 
 ENGINE_VERSION = "planner-2.0.0"
-CONFIG_VERSION = f"2026-11-14.1+durations-{DURATIONS_VERSION}"
+CONFIG_VERSION = f"2026-11-14.2+durations-{DURATIONS_VERSION}"
 
 ProfileName = Literal["essentials", "wider"]
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]

@@ -30,7 +30,7 @@ from detour_api.models.trips import (
     TripVisitUpdate,
 )
 from detour_api.planner.service import generate_for_trip
-from detour_api.repo import geo, itineraries, trips
+from detour_api.repo import geo, itineraries, routes, trips
 from detour_api.routers.responses import AUTH, ERRORS
 
 router = APIRouter(prefix="/v1/trips", tags=["trips"])
@@ -46,6 +46,22 @@ def create_trip(
 
 
 def _create_trip(session: SessionDep, body: TripCreate) -> Trip:
+    if body.destination_kind == "route":
+        assert body.stops is not None  # noqa: S101 - the model requires them for a route
+        with session.tx() as conn:
+            stops, name = routes.resolve_stops(conn, body.stops, body.duration_days)
+            first = stops[0]
+            return trips.create_trip(
+                conn,
+                session.installation_id,
+                body.model_copy(update={"destination_ref": str(first.city_id)}),
+                destination_name=name,
+                lat=first.lat,
+                lon=first.lon,
+                stops=stops,
+                title=name,
+            )
+    assert body.destination_ref is not None  # noqa: S101 - the model requires it
     with session.tx() as conn:
         dest = geo.resolve_destination(conn, body.destination_kind, body.destination_ref)
         if dest is None:
