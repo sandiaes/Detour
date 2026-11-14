@@ -1,4 +1,6 @@
 import type { RestaurantResult } from "@detour/shared";
+
+import type { DocLink } from "../documents/model";
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
 
@@ -34,6 +36,11 @@ export type Route =
       itemId?: string;
     }
   | { name: "placeDetail"; tripId: string; itineraryId: string; itemId: string }
+  /** A trip's documents on their own (a past trip has no overview). */
+  | { name: "tripDocuments"; tripId: string }
+  | { name: "document"; tripId: string; documentId: string }
+  /** Add a document (with an optional link already chosen), or edit one. */
+  | { name: "documentForm"; tripId: string; documentId?: string; link?: DocLink }
   | { name: "addPlace"; tripId: string; itineraryId: string }
   | {
       name: "addRestaurant";

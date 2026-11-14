@@ -60,8 +60,11 @@ time with the map and list sharing one selection and transport markers for new b
 API's `Day` gained read-only `base_city_lat`/`lon`), a place detail screen, and (step 4) adding a
 place found by search (sights, towns, places to eat), address or pin with up to three suggested days
 from the Phase 7 recalculation (`POST /v1/itineraries/{id}/place-suggestions`, `recalc.add_place`'s
-`only_day`, `day` on the add-place preview). Step 5 (photos, documents and trip summary) waits for
-the owner. **An amendment of 2026-11-14** (ADR 021, decisions 25 to 31; the design is described in
+`only_day`, `day` on the add-place preview). Of step 5, **documents are built and await
+acceptance** (ADR 023, proposed): tickets, bookings, transport and insurance as PDFs or pictures,
+linked to the trip, a day, a place or a journey, **kept on the phone only** (`expo-file-system`, a
+`trip_document` table in the app's SQLite database; nothing uploaded). Photos (the user's own),
+notes and the trip summary wait for the owner. **An amendment of 2026-11-14** (ADR 021, decisions 25 to 31; the design is described in
 `docs/design.md`) is built and awaits acceptance: a near-white, flat look with hairlines instead of
 cards, trip cards with only name, dates and length (a trip is named after its destination), an
 overview without the days figure, first days or notes, an Itinerary tab of days that open the map of

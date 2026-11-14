@@ -5,6 +5,9 @@ import { type BackendState, BackendContext } from "../api/BackendProvider";
 import type { Connection } from "../api/connect";
 import { type CacheStore, createMemoryStore } from "../cache/store";
 import { DataProvider } from "../data/DataProvider";
+import { DocumentsProvider } from "../documents/DocumentsProvider";
+import { type DocumentStore, createMemoryDocumentStore } from "../documents/store";
+import { type FakeFiles, createFakeFiles } from "./fakeFiles";
 import { type Route, NavigationProvider } from "../nav/Navigator";
 import { type FakeClient, createFakeClient } from "./fakeClient";
 
@@ -34,6 +37,9 @@ type Props = {
   cache?: CacheStore;
   initial?: Route;
   retry?: () => void;
+  /** The documents on the "device" (ADR 023). */
+  documents?: DocumentStore;
+  files?: FakeFiles;
 };
 
 /** Backend, saved-data cache and navigation around a screen, with a fake server. */
@@ -44,6 +50,8 @@ export function Harness({
   cache = createMemoryStore(),
   initial,
   retry = () => {},
+  documents = createMemoryDocumentStore(),
+  files = createFakeFiles(),
 }: Props) {
   const backend: BackendState = state ?? { phase: "ready", connection: makeConnection(client) };
   return (
@@ -55,7 +63,9 @@ export function Harness({
     >
       <BackendContext.Provider value={{ state: backend, apiUrl: "https://api.example.org", retry }}>
         <DataProvider cache={cache}>
-          <NavigationProvider initial={initial}>{children}</NavigationProvider>
+          <DocumentsProvider store={documents} files={files}>
+            <NavigationProvider initial={initial}>{children}</NavigationProvider>
+          </DocumentsProvider>
         </DataProvider>
       </BackendContext.Provider>
     </SafeAreaProvider>

@@ -113,7 +113,11 @@ not asked; it is the destination.
   tab on that day**.
 - **Map tab (screen 03):** the same compact header, a day strip, the map of the day, and the day's
   stops beneath it.
-- **Photos, Documents:** planned features.
+- **Photos:** a planned feature.
+- **Documents (screen 08, ADR 023):** the trip's documents grouped by kind (Tickets, Bookings,
+  Transport, Insurance, Other) as hairline rows: an icon for the kind, the title, and one line with
+  what it is about and the file ("Schönbrunn Palace · day 1 · PDF · 245.0 kB"). "Add a document"
+  (dark) ends the list, with the line that documents stay on this phone only.
 
 ### The day: map and stops (screens 03, 12)
 
@@ -156,6 +160,20 @@ Add is contextual. On a trip: Place and Restaurant, with up to three suggested d
 from the recalculation, each a hairline row with its reasons; the preview shows the diff before
 anything changes. Outside a trip it starts a new trip.
 
+### Documents (screen 08)
+
+- **Add a document:** "Choose a file" (the system picker; PDFs and pictures), then the file as a
+  hairline row, a Title field (filled from the file name), the Kind chips, and About: Whole trip, A
+  day (day chips), A place (the plan's stops as hairline rows) or A journey (each day that starts at
+  a new base city). "Add the document" is the dark button; it is disabled until a file, a title, a
+  kind and a complete link are chosen.
+- **A document:** its title, its kind as an icon and badge, a picture in place for images, then
+  hairline facts (About, File, Type and size, Added). Open (dark, the phone's viewer), Edit
+  (outlined), Delete (plain text, asks first).
+- **A place's details** list that place's documents under "Tickets and documents" (sights) or
+  "Bookings and documents" (places to eat), with "Attach a document".
+- **A past trip** has a Documents button that opens the same list.
+
 ### Photos, Explore, More (screens 07, 10, 11)
 
 Planned features and a menu of hairline rows. Items that are not built say "Coming later".
@@ -187,5 +205,6 @@ the screen reader announcing a screen's title on arrival.
   and a rule in the planner, with an ADR.
 - **Destination and attraction photos and "Change photo"**: ADR 022, accepted, not built. Open until
   a coverage spike is done.
-- **Documents, notes, reservations, trip summary:** ADR 021, "Not built".
+- **Notes, reservations, trip summary:** ADR 021, "Not built". Documents are built (ADR 023) and
+  are kept on the phone only; backing them up would need accounts or an export.
 - **Dark mode** is not designed.

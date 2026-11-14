@@ -123,7 +123,8 @@ test("a restaurant shows its meal, type and cuisine, and reservations as planned
   expect(screen.getByLabelText("Type: Restaurant.")).toBeOnTheScreen();
   expect(screen.getByText("Regional, coffee shop")).toBeOnTheScreen();
   expect(await screen.findByText("vegetarian")).toBeOnTheScreen();
-  expect(screen.getByText("Notes, photos, tickets and reservations")).toBeOnTheScreen();
+  expect(screen.getByText("Notes, photos and reservations")).toBeOnTheScreen();
+  expect(screen.getByText("Bookings and documents")).toBeOnTheScreen();
   // Opening hours are a sight's concern here; a meal has its planned window instead.
   expect(screen.queryByText("Not checked")).toBeNull();
   expect(screen.queryByText(/€|EUR|price|rating/i)).toBeNull();

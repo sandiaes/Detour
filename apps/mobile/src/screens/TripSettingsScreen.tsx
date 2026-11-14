@@ -7,6 +7,7 @@ import { Button } from "../components/Button";
 import { Card, EmptyState, ErrorState, LoadingState, Notice, ScreenHeader } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
+import { useDocumentActions } from "../documents/DocumentsProvider";
 import { useNavigation } from "../nav/Navigator";
 import { colors, spacing, type } from "../theme";
 import { formatTripSpan } from "../util/format";
@@ -15,6 +16,7 @@ import { formatTripSpan } from "../util/format";
 export function TripSettingsScreen({ tripId }: { tripId: string }) {
   const nav = useNavigation();
   const actions = useTripActions();
+  const documents = useDocumentActions();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
   const [busy, setBusy] = useState<"generate" | "delete" | "archive" | null>(null);
@@ -85,6 +87,8 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
     setProblem(null);
     try {
       await actions.deleteTrip(trip);
+      // The trip's documents live on this phone only (ADR 023): they go with the trip.
+      await documents.removeTrip(trip.id).catch(() => undefined);
       nav.switchRoot({ name: "trips" });
     } catch (e) {
       setProblem(describeError(e));
@@ -186,8 +190,8 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
             </Text>
             <Text style={styles.body}>
               {past
-                ? "Removes the trip and its saved places from Detour for good. This cannot be undone."
-                : "Removes the trip and all its plans from Detour for good. This cannot be undone."}
+                ? "Removes the trip, its saved places and its documents on this phone for good. This cannot be undone."
+                : "Removes the trip, all its plans and its documents on this phone for good. This cannot be undone."}
             </Text>
             {confirmDelete ? (
               <View style={styles.confirm}>

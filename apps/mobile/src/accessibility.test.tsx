@@ -3,6 +3,7 @@ import { Dimensions, StyleSheet } from "react-native";
 
 import { AppContent } from "./App";
 import { createMemoryStore } from "./cache/store";
+import { createMemoryDocumentStore } from "./documents/store";
 import { createFakeClient } from "./testing/fakeClient";
 import {
   ESSENTIALS_ID,
@@ -161,6 +162,45 @@ test("add a place: search results and the suggested days", async () => {
   await screen.findByTestId("place-suggestions");
   checkControls();
   await fireEvent.press(screen.getByRole("tab", { name: "Address" }));
+  checkControls();
+});
+
+test("documents: the list, the form with a place chosen, and a document", async () => {
+  const documents = createMemoryDocumentStore([
+    {
+      id: "doc-1",
+      tripId: TRIP_ID,
+      title: "Travel insurance",
+      category: "insurance",
+      link: { kind: "trip" },
+      fileName: "policy.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 50_000,
+      uri: "file:///policy.pdf",
+      createdAt: 1,
+    },
+  ]);
+  await render(
+    <Harness
+      client={createFakeClient({
+        "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
+        "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
+      })}
+      documents={documents}
+      initial={{ name: "tripOverview", tripId: TRIP_ID, section: "documents" }}
+    >
+      <AppContent />
+    </Harness>,
+  );
+  await screen.findByText("Insurance (1)");
+  checkControls();
+  await fireEvent.press(screen.getByTestId("add-document"));
+  await fireEvent.press(await screen.findByTestId("choose-file"));
+  await fireEvent.press(await screen.findByTestId("link-place"));
+  checkControls();
+  await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+  await fireEvent.press(await screen.findByText("Travel insurance"));
+  await screen.findByTestId("open-document");
   checkControls();
 });
 

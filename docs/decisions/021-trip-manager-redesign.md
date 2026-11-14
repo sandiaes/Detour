@@ -239,7 +239,7 @@ the app's Add menu.
 |---|---|---|
 | Destination and place photos | No approved image provider; no invented images | ADR for a provider, or user photos (step 5) |
 | Photos tab and grid, Google Photos or device photos | Step 5; an integration needs its own ADR | Step 5 |
-| Documents (tickets, bookings, insurance) linked to a place, day or leg | Step 5; needs storage and a data model | Step 5 |
+| Documents (tickets, bookings, insurance) linked to a place, day or leg | Built on 2026-11-14, kept on the device: [ADR 023](023-trip-documents-on-the-device.md) | Done (awaits acceptance) |
 | Notes and upcoming reservations on the overview | Needs a data model | Step 5 |
 | Transport, Note, Document in Add | Needs data models | Steps 3 to 5 |
 | Archived tab (removed, owner 2026-11-13), Archive trip, Export trip, Saved places, Travel preferences | Need fields, endpoints or decisions | Step 5 or later |

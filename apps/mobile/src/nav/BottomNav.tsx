@@ -147,8 +147,9 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
         <ListRow
           icon="document"
           title="Document"
-          detail="A ticket, booking or insurance"
-          disabled
+          detail="A ticket, booking or insurance, kept on this phone"
+          testID="add-sheet-document"
+          onPress={() => go({ name: "documentForm", tripId })}
         />
       </RowGroup>
     </Sheet>

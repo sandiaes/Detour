@@ -47,6 +47,7 @@ import { pluralise } from "../util/format";
 import { useBackend } from "../api/BackendProvider";
 import { PlanDayView, dayTitle } from "../components/plan/DayPlan";
 import { useItemActions } from "../data/itemActions";
+import { DocumentList } from "../components/documents/DocumentList";
 import { PastTripScreen } from "./PastTripScreen";
 
 // A trip's home (ADR 021): its cover, dates and status, then five tabs. Once a plan is chosen it is
@@ -285,14 +286,7 @@ export function TripOverviewScreen({
       />
     );
   } else if (section === "documents") {
-    content = (
-      <PlannedFeature
-        icon="document"
-        title="Documents are planned"
-        text="Tickets, bookings, transport documents and insurance, each linked to the trip or to a place, day or journey, will be kept here. Not built yet."
-        testID="trip-documents-planned"
-      />
-    );
+    content = <DocumentList trip={trip} />;
   } else if (!hasPlan) {
     content = (
       <>
