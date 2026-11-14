@@ -1,14 +1,17 @@
-import type { ReactNode } from "react";
-import { Image, StyleSheet, View, type ViewStyle } from "react-native";
+import type { Photo } from "@detour/shared";
+import { type ReactNode, useContext } from "react";
+import { Image, Linking, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 
-import { colors } from "../../theme";
+import { BackendContext } from "../../api/BackendProvider";
+import { colors, type as typeScale } from "../../theme";
 
-// A destination's cover (ADR 021). Detour has no image provider yet, so no photo is shown and none
-// is invented: the cover is a calm illustrated landscape whose colours and hills are chosen from
-// the destination identifier, so a trip always looks the same. When a photo source is approved
-// (an ADR naming the provider and its terms, or the user's own photos), pass `uri` and the photo
-// replaces the illustration with a scrim under the text.
+// A destination's or place's cover (ADR 021, ADR 022). A photo appears only when the backend sent
+// one (`photo`: Wikimedia Commons, served through the backend); otherwise nothing is invented and
+// the cover is a calm illustrated landscape whose colours and hills are chosen from the
+// destination identifier, so a trip always looks the same. A photo has a scrim under the text and
+// the photo's average colour behind it while it loads. A photo is never shown without its credit
+// somewhere on the same screen (`PhotoCredit`).
 
 /** The `mid` and `near` colours are the hills under the text: white on both is checked at 4.5:1
  * (theme.test.ts), and a dark gradient over the lower part adds a margin. */
@@ -49,9 +52,17 @@ export function coverTone(key: string) {
   return COVER_TONES[coverSeed(key) % COVER_TONES.length] as (typeof COVER_TONES)[number];
 }
 
+/** The address of a photo the backend sent: its path on this API behind the API base URL. Without a
+ * base URL (a build with none, a test) there is no address and the illustration stays. */
+export function usePhotoUri(photo: Photo | null | undefined): string | null {
+  const apiUrl = useContext(BackendContext)?.apiUrl ?? "";
+  return photo && apiUrl ? `${apiUrl.replace(/\/$/, "")}${photo.url}` : null;
+}
+
 export function Cover({
   seedKey,
-  uri,
+  photo,
+  uri: givenUri,
   height,
   rounded = 0,
   children,
@@ -60,6 +71,9 @@ export function Cover({
 }: {
   /** Usually the destination's identifier. */
   seedKey: string;
+  /** The photo the backend sent for this trip or place, if any. */
+  photo?: Photo | null;
+  /** An address to show directly (tests, local files); `photo` is what screens pass. */
   uri?: string | null;
   height: number;
   rounded?: number;
@@ -67,6 +81,8 @@ export function Cover({
   style?: ViewStyle;
   testID?: string;
 }) {
+  const photoUri = usePhotoUri(photo);
+  const uri = givenUri ?? photoUri;
   const seed = coverSeed(seedKey);
   const tone = COVER_TONES[seed % COVER_TONES.length] as (typeof COVER_TONES)[number];
   const ridge = RIDGES[(seed >>> 4) % RIDGES.length] as (typeof RIDGES)[number];
@@ -74,7 +90,12 @@ export function Cover({
   const gradientId = `sky-${seed % 997}`;
   return (
     <View
-      style={[styles.frame, { height, borderRadius: rounded }, style]}
+      style={[
+        styles.frame,
+        { height, borderRadius: rounded },
+        uri && photo && !givenUri ? { backgroundColor: photo.color } : null,
+        style,
+      ]}
       testID={testID}
       accessibilityIgnoresInvertColors
     >
@@ -131,5 +152,34 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: "55%",
     backgroundColor: colors.scrim,
+  },
+});
+
+/**
+ * The credit a photo's licence asks for: author, licence and Wikimedia Commons, opening the file's
+ * page. Shown on the screen that shows the photo (the trip overview, the place), not on a list card.
+ */
+export function PhotoCredit({ photo }: { photo: Photo | null | undefined }) {
+  const shown = usePhotoUri(photo);
+  if (!photo || !shown) return null;
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`${photo.credit.text}. Opens the photo's page on Wikimedia Commons.`}
+      onPress={() => void Linking.openURL(photo.credit.source_url)}
+      style={creditStyles.target}
+      testID="photo-credit"
+    >
+      <Text style={creditStyles.text}>{photo.credit.text}</Text>
+    </Pressable>
+  );
+}
+
+const creditStyles = StyleSheet.create({
+  target: { minHeight: 48, justifyContent: "center", alignSelf: "flex-start" },
+  text: {
+    ...typeScale.caption,
+    color: colors.muted,
+    textDecorationLine: "underline",
   },
 });

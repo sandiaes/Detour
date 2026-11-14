@@ -249,3 +249,28 @@ security, backend use only) is not a JWT and must be sent in the `apikey` header
 2026. The page does not mention Storage, so whether the new key works with
 `/storage/v1/object/...` is untested. The store now sends `apikey` always and the bearer header only
 for a legacy JWT key. The `photos` bucket was created on 2026-11-14 (public, JPEG only, 2 MB a file).
+
+**2026-11-14, step 3 built** (API fields and the three screens; awaits acceptance; tried on recorded
+responses and fixtures only, not on a device):
+
+- **API:** `Trip.cover_image` (the photo the user chose in `app.trip.cover_image_id`, else the one
+  found for the destination city, never a hidden one) and `Item.image` (the photo found for the
+  imported place) are a `Photo`: `id`, `url` (a path on this API, `/v1/images/{id}`), `color`,
+  `width`, `height` and a `credit` (author, licence, licence URL, file page URL and a credit line
+  from one fixed template). The list and detail of trips and the itinerary and item reads carry
+  them; no request is added per card.
+- **Area destinations have no automatic photo yet:** `geo.admin_area` carries no Wikidata item, so
+  a trip to "Austria" shows the illustration until the import keeps the areas' `wikidata` tag.
+- **The automatic cover reads what the resolver stored.** Resolving a destination right after a trip
+  is created (decision 14, the background resolve) is not built; the cities of an imported region
+  are resolved by the "Resolve images" workflow.
+- **App:** `Cover` takes a `photo` and shows it from the API's address over its average colour with
+  the existing scrim, and falls back to the illustration when there is no photo or no API address.
+  `PhotoCredit` (author, licence, "Wikimedia Commons (resized)", opening the file page) sits under
+  the hero of a place and at the end of a trip overview, the screens that show the photo; the trips
+  list card shows the photo without a credit (it opens to the overview, which has it).
+- **The React Native `Image` is used, not `expo-image`** (decision 5's mention): no new dependency
+  was needed to show a JPEG from an address, and the backend already sends long cache headers.
+  `expo-image` can be added later if the disk cache proves too weak.
+- **Not built:** the "Image credits" list of decision 20, day thumbnails with photos (decision 19),
+  portrait photos for attractions, and the candidate list for "Change photo" (step 4).

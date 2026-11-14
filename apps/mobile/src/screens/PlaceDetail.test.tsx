@@ -8,6 +8,7 @@ import {
   TRIP_ID,
   makeChangeSet,
   makeItinerary,
+  makePhoto,
   makeTrip,
 } from "../testing/fixtures";
 import { Harness } from "../testing/harness";
@@ -205,4 +206,22 @@ describe("helpers", () => {
     expect(found?.item.display_name).toBe("Hofburg");
     expect(findItem(makeItinerary("essentials"), "nope")).toBeNull();
   });
+});
+
+test("a place with a photo shows it and its credit; one without shows the illustration only", async () => {
+  const withPhoto = plan();
+  withPhoto.days[0]!.items[0]!.image = makePhoto();
+  await open("i1", server({ "GET /v1/itineraries/{itinerary_id}": () => withPhoto }));
+  expect(await screen.findByRole("header", { name: "Schönbrunn Palace" })).toBeOnTheScreen();
+  expect(screen.getByTestId("cover-photo").props.source.uri).toMatch(/\/v1\/images\//);
+  expect(
+    screen.getByText("Photo: Jane Doe, CC BY-SA 4.0, Wikimedia Commons (resized)"),
+  ).toBeOnTheScreen();
+});
+
+test("a place without a photo shows no photo and no credit", async () => {
+  await open("i1");
+  expect(await screen.findByRole("header", { name: "Schönbrunn Palace" })).toBeOnTheScreen();
+  expect(screen.queryByTestId("cover-photo", { includeHiddenElements: true })).toBeNull();
+  expect(screen.queryByTestId("photo-credit")).toBeNull();
 });

@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
-import { Cover } from "../components/ds/Cover";
+import { Cover, PhotoCredit } from "../components/ds/Cover";
 import { Icon, type IconName } from "../components/ds/Icon";
 import { Badge, IconButton, PlannedFeature, SectionTitle } from "../components/ds/primitives";
 import { MEAL_LABEL, dayTitle } from "../components/plan/DayPlan";
@@ -185,7 +185,11 @@ export function PlaceDetailScreen({
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Cover seedKey={item.place_id ?? item.user_place_id ?? item.id} height={200}>
+        <Cover
+          seedKey={item.place_id ?? item.user_place_id ?? item.id}
+          photo={item.image}
+          height={200}
+        >
           <View style={styles.heroTop}>
             <IconButton icon="back" label="Back" onImage onPress={nav.back} />
           </View>
@@ -205,6 +209,7 @@ export function PlaceDetailScreen({
         </Cover>
 
         <View style={styles.body}>
+          <PhotoCredit photo={item.image} />
           {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
           {tags.length > 0 ? (
             <View style={styles.tagRow}>

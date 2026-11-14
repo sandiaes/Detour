@@ -5,6 +5,7 @@ import type {
   DestinationResult,
   Itinerary,
   ItinerarySummary,
+  Photo,
   Trip,
   TripVisit,
 } from "@detour/shared";
@@ -13,6 +14,27 @@ export const TRIP_ID = "00000000-0000-4000-8000-0000000000a1";
 export const ESSENTIALS_ID = "00000000-0000-4000-8000-0000000000e1";
 export const WIDER_ID = "00000000-0000-4000-8000-0000000000e2";
 const GENERATION = "00000000-0000-4000-8000-0000000000f1";
+
+export const PHOTO_ID = "00000000-0000-4000-8000-0000000000d1";
+
+/** A photo as the backend sends it (ADR 022): a path on the API, its average colour, its credit. */
+export function makePhoto(over: Partial<Photo> = {}): Photo {
+  return {
+    id: PHOTO_ID,
+    url: `/v1/images/${PHOTO_ID}`,
+    color: "#336699",
+    width: 1080,
+    height: 702,
+    credit: {
+      author: "Jane Doe",
+      licence: "CC BY-SA 4.0",
+      licence_url: "https://creativecommons.org/licenses/by-sa/4.0",
+      source_url: "https://commons.wikimedia.org/wiki/File:Vienna.jpg",
+      text: "Photo: Jane Doe, CC BY-SA 4.0, Wikimedia Commons (resized)",
+    },
+    ...over,
+  };
+}
 
 export function makeTrip(over: Partial<Trip> = {}): Trip {
   return {

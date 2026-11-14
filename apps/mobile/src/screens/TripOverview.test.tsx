@@ -7,6 +7,7 @@ import {
   TRIP_ID,
   makeItinerary,
   makePastTrip,
+  makePhoto,
   makeArchiveInfo,
   makeArchivedVisits,
   makeSummary,
@@ -178,4 +179,22 @@ test("previewDays starts at today's day during the trip", () => {
   expect(previewDays(trip, plan, "2027-04-01").map((d) => d.day_index)).toEqual([1, 2]);
   expect(previewDays(trip, plan, "2027-05-02").map((d) => d.day_index)).toEqual([2]);
   expect(previewDays(trip, plan, "2027-05-01", 1).map((d) => d.day_index)).toEqual([1]);
+});
+
+test("the overview header shows the trip's photo with its credit; the itinerary tab has neither", async () => {
+  const client = server({
+    "GET /v1/trips": () => [
+      makeTrip({ selected_itinerary_id: ESSENTIALS_ID, cover_image: makePhoto() }),
+    ],
+  });
+  await open(client);
+  expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
+  expect(screen.getByTestId("cover-photo").props.source.uri).toMatch(
+    /^https:\/\/api\.example\.org\/v1\/images\//,
+  );
+  expect(screen.getByRole("link", { name: /Jane Doe, CC BY-SA 4.0/ })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("open-itinerary"));
+  expect(await screen.findByTestId("day-row-1")).toBeOnTheScreen();
+  expect(screen.queryByTestId("cover-photo", { includeHiddenElements: true })).toBeNull();
+  expect(screen.queryByTestId("photo-credit")).toBeNull();
 });
