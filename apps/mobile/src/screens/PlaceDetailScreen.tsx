@@ -25,7 +25,7 @@ import { placeKey } from "../documents/model";
 import { useResource } from "../data/DataProvider";
 import { STOP_KIND_LABEL, isEatKind, stopKind } from "../domain/itinerary";
 import { useNavigation } from "../nav/Navigator";
-import { colors, radius, spacing, type } from "../theme";
+import { colors, spacing, type } from "../theme";
 import { formatClock, formatCuisines, formatMinutes } from "../util/format";
 
 // One stop of a plan (ADR 021, step 3): what Detour knows about it, and nothing it does not.
@@ -55,31 +55,22 @@ export function findItem(plan: Itinerary, itemId: string): { day: Day; item: Ite
   return null;
 }
 
-function Fact({
-  icon,
-  label,
-  value,
-  note,
-}: {
-  icon: IconName;
-  label: string;
-  value: string;
-  note?: string;
-}) {
+/** A hairline row: a small label, the value beside it. */
+function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <View
-      style={styles.fact}
-      accessible
-      accessibilityLabel={`${label}: ${value}.${note ? ` ${note}` : ""}`}
-    >
-      <View style={styles.factIcon}>
-        <Icon name={icon} size={18} color={colors.primary} />
-      </View>
-      <View style={styles.factText}>
-        <Text style={styles.factLabel}>{label}</Text>
-        <Text style={styles.factValue}>{value}</Text>
-        {note ? <Text style={styles.factNote}>{note}</Text> : null}
-      </View>
+    <View style={styles.fact} accessible accessibilityLabel={`${label}: ${value}.`}>
+      <Text style={styles.factLabel}>{label}</Text>
+      <Text style={styles.factValue}>{value}</Text>
+    </View>
+  );
+}
+
+/** A quiet line with a small icon and no label: when it is, or where. */
+function MetaLine({ icon, text }: { icon: IconName; text: string }) {
+  return (
+    <View style={styles.metaLine} accessible accessibilityLabel={text}>
+      <Icon name={icon} size={16} color={colors.muted} />
+      <Text style={styles.metaText}>{text}</Text>
     </View>
   );
 }
@@ -160,19 +151,17 @@ export function PlaceDetailScreen({
   const detail = place.data;
   const start = formatClock(item.start_time);
   const end = formatClock(item.end_time);
-  const when = `${dayTitle(day)}${start ? `, ${start}${end ? ` to ${end}` : ""}` : ", time not set"}`;
-  const duration = `${formatMinutes(item.duration_minutes)} (${
-    item.duration_source === "user"
-      ? "set by you"
-      : meal
-        ? "typical meal length"
-        : "typical visit length"
-  })`;
+  // One line, no label: the day, the time and how long ("Day 3 · Wed 14 Mar · 09:00 to 11:00 · 2 h").
+  const when = [
+    dayTitle(day),
+    start ? `${start}${end ? ` to ${end}` : ""}` : "time not set",
+    formatMinutes(item.duration_minutes),
+  ].join(" · ");
   const address = formatAddress(detail?.address);
   const town = detail?.city_name ?? day.base_city_name ?? null;
   const where =
     [address, address ? null : town].filter(Boolean).join(", ") ||
-    (item.lat !== null && item.lon !== null ? formatCoordinates(item.lat, item.lon) : "Not known");
+    (item.lat !== null && item.lon !== null ? formatCoordinates(item.lat, item.lon) : null);
   const venue = item.restaurant?.venue_type ?? detail?.venue_type ?? null;
   const cuisines = item.restaurant?.cuisines ?? detail?.cuisines ?? null;
   const editable = plan.data.profile !== "manual" && trip?.status !== "past" && items.connected;
@@ -230,39 +219,18 @@ export function PlaceDetailScreen({
             </View>
           ) : null}
 
-          <FactCard>
-            <Fact icon="calendar" label="When" value={when} />
-            <Fact icon="clock" label="Duration" value={duration} />
-            <Fact
-              icon="pin"
-              label="Location"
-              value={where}
-              note={address && town ? town : undefined}
-            />
-            {!meal ? (
-              <Fact
-                icon="clock"
-                label="Opening hours"
-                value="Not checked"
-                note="Detour has no opening hours for this place. Check them before you go."
-              />
-            ) : null}
-          </FactCard>
+          <View style={styles.metaBlock}>
+            <MetaLine icon="calendar" text={when} />
+            {where ? <MetaLine icon="pin" text={where} /> : null}
+          </View>
 
           {meal ? (
             <FactCard>
-              {item.meal_type ? (
-                <Fact icon="restaurant" label="Meal" value={MEAL_LABEL[item.meal_type]} />
-              ) : null}
-              <Fact
-                icon="restaurant"
-                label="Type"
-                value={venue ? (VENUE_LABEL[venue] ?? venue) : "Not specified"}
-              />
-              <Fact icon="restaurant" label="Cuisine" value={formatCuisines(cuisines)} />
+              {item.meal_type ? <Fact label="Meal" value={MEAL_LABEL[item.meal_type]} /> : null}
+              <Fact label="Type" value={venue ? (VENUE_LABEL[venue] ?? venue) : "Not specified"} />
+              <Fact label="Cuisine" value={formatCuisines(cuisines)} />
               {detail?.diet_flags && detail.diet_flags.length > 0 ? (
                 <Fact
-                  icon="restaurant"
                   label="Diet"
                   value={detail.diet_flags.map((f: string) => f.replace(/_/g, " ")).join(", ")}
                 />
@@ -270,21 +238,12 @@ export function PlaceDetailScreen({
             </FactCard>
           ) : null}
 
-          {item.reason_texts.length > 0 ? (
-            <View style={styles.section}>
-              <SectionTitle title="Why it is in the plan" />
-              {item.reason_texts.map((r) => (
-                <Text key={r} style={styles.reason}>
-                  • {r}
-                </Text>
-              ))}
-            </View>
-          ) : null}
-
           <View style={styles.actions}>
             <Button
-              label="Show on the map"
+              label="Show on map"
               icon="map"
+              variant="secondary"
+              size="compact"
               testID="show-on-map"
               onPress={() =>
                 nav.push({
@@ -301,14 +260,18 @@ export function PlaceDetailScreen({
               <>
                 <Button
                   label={item.locked ? "Unlock" : "Lock"}
+                  icon={item.locked ? "unlock" : "lock"}
                   variant="secondary"
+                  size="compact"
                   disabled={items.actions.busyId === item.id}
                   accessibilityLabel={`${item.locked ? "Unlock" : "Lock"} ${item.display_name}`}
                   onPress={() => items.actions.onToggleLock(item)}
                 />
                 <Button
                   label="Remove"
+                  icon="trash"
                   variant="secondary"
+                  size="compact"
                   disabled={items.actions.busyId === item.id || item.locked}
                   accessibilityLabel={`Remove ${item.display_name}`}
                   hint={item.locked ? "Unlock it first." : "Shows what would change first."}
@@ -371,6 +334,9 @@ const styles = StyleSheet.create({
   localName: { ...type.small, color: colors.muted, marginTop: spacing.xxs },
   body: { padding: spacing.lg, gap: spacing.lg },
   tagRow: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
+  metaBlock: { gap: spacing.xs },
+  metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  metaText: { ...type.small, color: colors.muted, flex: 1 },
   factCard: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
@@ -378,23 +344,13 @@ const styles = StyleSheet.create({
   fact: {
     flexDirection: "row",
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  factIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  factText: { flex: 1, gap: spacing.xxs },
-  factLabel: { ...type.caption, color: colors.muted },
-  factValue: { ...type.body, color: colors.text },
-  factNote: { ...type.small, color: colors.muted },
+  factLabel: { ...type.small, color: colors.muted, width: 72 },
+  factValue: { ...type.small, color: colors.text, flex: 1 },
   section: { gap: spacing.xs },
-  reason: { ...type.body, color: colors.text },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, alignItems: "center" },
   source: { ...type.caption, color: colors.muted },
 });

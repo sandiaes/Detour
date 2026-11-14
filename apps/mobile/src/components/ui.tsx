@@ -13,6 +13,7 @@ import {
 
 import { TOUCH, colors, radius, spacing, type } from "../theme";
 import { Button } from "./Button";
+import { Icon, type IconName } from "./ds/Icon";
 import { IconButton } from "./ds/primitives";
 
 // ---- header ------------------------------------------------------------------------------------
@@ -184,12 +185,15 @@ export function Chip({
   selected,
   onPress,
   accessibilityLabel,
+  icon,
   testID,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
   accessibilityLabel?: string;
+  /** A line icon before the label; it then stands in for the check mark. */
+  icon?: IconName;
   testID?: string;
 }) {
   return (
@@ -199,10 +203,18 @@ export function Chip({
       accessibilityState={{ selected }}
       onPress={onPress}
       testID={testID}
+      hitSlop={{ top: 6, bottom: 6 }}
       style={[styles.chip, selected && styles.chipSelected]}
     >
+      {icon ? (
+        <Icon
+          name={selected ? "check" : icon}
+          size={16}
+          color={selected ? colors.primary : colors.text}
+        />
+      ) : null}
       <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-        {selected ? "✓ " : ""}
+        {!icon && selected ? "✓ " : ""}
         {label}
       </Text>
     </Pressable>
@@ -361,17 +373,21 @@ const styles = StyleSheet.create({
   stateText: { ...type.body, color: colors.muted, textAlign: "center" },
   stateMeta: { ...type.caption, color: colors.muted },
 
+  // Slim pills: 36 dp tall, with hit slop above and below for a 48 dp touch.
   chip: {
-    minHeight: TOUCH,
-    paddingHorizontal: spacing.lg,
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
+    gap: 6,
     borderRadius: radius.pill,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.outline,
     backgroundColor: colors.surface,
   },
   chipSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
-  chipText: { ...type.small, color: colors.text, fontWeight: "600" },
+  chipText: { ...type.small, fontSize: 13, lineHeight: 18, color: colors.text, fontWeight: "600" },
   chipTextSelected: { color: colors.primary },
 
   field: { gap: spacing.xs },

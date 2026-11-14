@@ -2,7 +2,6 @@ import type { ClientConfig, Day, Item } from "@detour/shared";
 import { type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import type { ItemActions } from "../../data/itemActions";
 import {
   type DayRow,
   STOP_KIND_LABEL,
@@ -24,7 +23,6 @@ import {
   formatSeconds,
   pluralise,
 } from "../../util/format";
-import { Button } from "../Button";
 import { Icon } from "../ds/Icon";
 import { KindIcon } from "../ds/KindIcon";
 import { EmptyState } from "../ui";
@@ -133,6 +131,7 @@ export function DayStrip({
             accessibilityLabel={`Day ${d.day_index}${date ? `, ${date}` : ""}`}
             accessibilityState={{ selected: active }}
             onPress={() => onChange(d.day_index)}
+            hitSlop={{ top: 2, bottom: 2 }}
             style={[styles.dayPill, active && styles.dayPillActive]}
             testID={`day-tab-${d.day_index}`}
           >
@@ -225,30 +224,21 @@ export function StopRow({
   selected,
   onSelect,
   onDetails,
-  actions,
 }: {
   item: Item;
   ordinal: number | null;
   selected: boolean;
   onSelect: () => void;
   onDetails?: () => void;
-  actions?: ItemActions;
 }) {
   const start = formatClock(item.start_time);
   const end = formatClock(item.end_time);
   const stop = stopKind(item);
   const eat = isEatKind(stop);
   const meal = item.type === "meal";
-  const source =
-    item.duration_source === "user"
-      ? "set by you"
-      : meal
-        ? "typical meal length"
-        : "typical visit length";
   const tags = [item.locked ? "Locked" : null, item.origin === "user" ? "Added by you" : null]
     .filter(Boolean)
     .join(" · ");
-  const busy = actions?.busyId === item.id;
   return (
     <View style={[styles.row, selected && styles.rowSelected]}>
       <View style={styles.timeCol}>
@@ -308,42 +298,6 @@ export function StopRow({
             </Pressable>
           ) : null}
         </View>
-        {selected ? (
-          <View style={styles.expanded} accessibilityLiveRegion="polite">
-            <Text style={styles.meta}>
-              {formatMinutes(item.duration_minutes)} · {source}
-            </Text>
-            {item.reason_texts.map((r) => (
-              <Text key={r} style={styles.reason}>
-                {r}
-              </Text>
-            ))}
-            {actions && item.type === "visit" ? (
-              <View style={styles.actions}>
-                <Button
-                  label={item.locked ? "Unlock" : "Lock"}
-                  variant="secondary"
-                  disabled={busy}
-                  accessibilityLabel={`${item.locked ? "Unlock" : "Lock"} ${item.display_name}`}
-                  hint={
-                    item.locked
-                      ? "Recalculations may move it again."
-                      : "Keeps its day and time when the plan is recalculated."
-                  }
-                  onPress={() => actions.onToggleLock(item)}
-                />
-                <Button
-                  label="Remove"
-                  variant="secondary"
-                  disabled={busy || item.locked}
-                  accessibilityLabel={`Remove ${item.display_name}`}
-                  hint={item.locked ? "Unlock it first." : "Shows what would change first."}
-                  onPress={() => actions.onRemove(item)}
-                />
-              </View>
-            ) : null}
-          </View>
-        ) : null}
       </View>
     </View>
   );
@@ -375,7 +329,6 @@ export function DayPlanList({
   selectedId,
   onSelect,
   onDetails,
-  actions,
   onRowLayout,
 }: {
   day: Day;
@@ -384,7 +337,6 @@ export function DayPlanList({
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDetails?: (item: Item) => void;
-  actions?: ItemActions;
   /** Where each row sits, so a screen can scroll to the stop chosen on the map. */
   onRowLayout?: (id: string, y: number) => void;
 }) {
@@ -413,7 +365,6 @@ export function DayPlanList({
               selected={selectedId === row.item.id}
               onSelect={() => onSelect(row.item.id)}
               onDetails={onDetails ? () => onDetails(row.item) : undefined}
-              actions={actions}
             />
           </View>
         ) : (
@@ -441,7 +392,6 @@ export function PlanDayView({
   map,
   initialSelectedId = null,
   onDetails,
-  actions,
   onShowList,
   header,
   embedded = false,
@@ -454,7 +404,6 @@ export function PlanDayView({
   map: ClientConfig["map"] | null;
   initialSelectedId?: string | null;
   onDetails?: (item: Item) => void;
-  actions?: ItemActions;
   onShowList: () => void;
   /** Shown above the list in list mode (notices, plan notes). */
   header?: ReactNode;
@@ -501,7 +450,6 @@ export function PlanDayView({
       selectedId={selectedId}
       onSelect={select}
       onDetails={onDetails}
-      actions={actions}
       onRowLayout={(id, y) => rowY.current.set(id, y)}
     />
   );
@@ -563,9 +511,11 @@ const styles = StyleSheet.create({
   embedded: { gap: spacing.sm, marginHorizontal: -spacing.lg },
   scrollContent: { paddingBottom: spacing.xxl },
   // The map is the smaller part: the stops beneath it are what is read and tapped.
-  mapArea: { flex: 0.8, minHeight: 150 },
+  // Clipped, so a marker dragged past the map's edge never draws over the tabs or the stops.
+  mapArea: { flex: 0.8, minHeight: 150, overflow: "hidden", zIndex: 0 },
   sheet: {
     flex: 1.5,
+    zIndex: 1,
     marginTop: -radius.lg,
     backgroundColor: colors.background,
     borderTopLeftRadius: radius.lg,
@@ -574,17 +524,20 @@ const styles = StyleSheet.create({
   },
   sheetContent: { paddingBottom: spacing.xl },
 
-  strip: { flexGrow: 0 },
+  // Never shrinks or clips: its height is its pills' height plus the padding.
+  strip: { flexGrow: 0, flexShrink: 0 },
   stripContent: {
     flexGrow: 1,
+    alignItems: "center",
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
   },
+  // Compact pills with the stops' own type: day in small semibold, date in caption.
   dayPill: {
     flex: 1,
-    minWidth: 96,
-    minHeight: TOUCH,
+    minWidth: 84,
+    height: 44,
     paddingHorizontal: spacing.md,
     alignItems: "center",
     justifyContent: "center",
@@ -592,8 +545,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   dayPillActive: { backgroundColor: colors.ink },
-  dayPillTitle: { ...type.small, fontWeight: "700", color: colors.text, textAlign: "center" },
-  dayPillDate: { ...type.caption, color: colors.muted, textAlign: "center" },
+  dayPillTitle: { ...type.small, fontWeight: "600", color: colors.text, textAlign: "center" },
+  dayPillDate: { ...type.caption, lineHeight: 16, color: colors.muted, textAlign: "center" },
   dayPillTextActive: { color: colors.onPrimary },
 
   list: { paddingHorizontal: spacing.lg },
@@ -642,9 +595,6 @@ const styles = StyleSheet.create({
   kindEat: { color: colors.accentText },
   meta: { ...type.caption, color: colors.muted },
   tags: { ...type.caption, fontWeight: "700", color: colors.primary },
-  expanded: { gap: spacing.xs, paddingBottom: spacing.md },
-  reason: { ...type.caption, color: colors.text },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs },
 
   transfer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 24 },
   connector: {

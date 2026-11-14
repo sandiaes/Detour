@@ -212,7 +212,6 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
         map={mapConfig}
         initialSelectedId={route.itemId ?? null}
         onDetails={openDetails}
-        actions={editable ? items.actions : undefined}
         onShowList={() => setView("days")}
         header={
           <>

@@ -52,7 +52,7 @@ test("the overview shows the cover, status, figures and the active itinerary", a
   expect(screen.getByTestId("trip-cover")).toBeOnTheScreen();
   expect(screen.getByText("1–2 May 2027 · 2 days")).toBeOnTheScreen();
   expect(screen.queryByText("Upcoming")).toBeNull();
-  expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Your itineraries" })).toBeOnTheScreen();
   // Cities, places and restaurants only: no days figure.
   expect(screen.queryByLabelText("2 days")).toBeNull();
   expect(screen.getByLabelText("2 cities")).toBeOnTheScreen();
@@ -71,9 +71,9 @@ test("the overview shows the cover, status, figures and the active itinerary", a
 
 test("the original proposals are in the trip menu, not on the overview", async () => {
   const client = await open();
-  await screen.findByRole("header", { name: "Your itinerary" });
+  await screen.findByRole("header", { name: "Your itineraries" });
   expect(screen.queryByText("How they differ")).toBeNull();
-  expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBe(0);
+  expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBeLessThanOrEqual(1);
   await fireEvent.press(screen.getByRole("button", { name: "Trip menu" }));
   await fireEvent.press(await screen.findByRole("button", { name: /^Original proposals\./ }));
   expect(await screen.findByRole("header", { name: "Original proposals" })).toBeOnTheScreen();
@@ -109,9 +109,12 @@ test("a day of the timeline opens that day on the map, with its stops beneath", 
   expect(screen.getByRole("tab", { name: "Day 2, Sun 2 May" }).props.accessibilityState).toEqual({
     selected: true,
   });
-  // A stop opens its details and can be locked or removed, as before.
+  // A stop is highlighted and the map follows; nothing opens under it. Lock and Remove are on the
+  // stop's details.
   await fireEvent.press(screen.getByTestId("stop-j1"));
-  expect(screen.getByLabelText("Lock Hofburg")).toBeOnTheScreen();
+  expect(screen.getByTestId("stop-j1").props.accessibilityState).toMatchObject({ selected: true });
+  expect(screen.queryByLabelText("Lock Hofburg")).toBeNull();
+  expect(screen.getByTestId("details-j1")).toBeOnTheScreen();
 });
 
 test("the Map tab shows the map with the day's list under it, sharing the selection", async () => {
@@ -138,6 +141,18 @@ test("Photos say plainly that they are not built yet; Documents start empty", as
   await fireEvent.press(screen.getByRole("tab", { name: "Trip documents" }));
   expect(await screen.findByText("No documents yet")).toBeOnTheScreen();
   expect(screen.getByText(/stay on this phone only/)).toBeOnTheScreen();
+});
+
+test("Back from the add-document screen returns to the Documents tab, not the overview", async () => {
+  await open();
+  await fireEvent.press(await screen.findByRole("tab", { name: "Trip documents" }));
+  await fireEvent.press(await screen.findByTestId("add-document"));
+  expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+  expect(await screen.findByText("No documents yet")).toBeOnTheScreen();
+  expect(
+    screen.getByRole("tab", { name: "Trip documents" }).props.accessibilityState,
+  ).toMatchObject({ selected: true });
 });
 
 test("a trip with no plan leads to the proposals", async () => {
@@ -194,8 +209,8 @@ test("the trip's photo hides its credit behind a small i in the corner; the Itin
     ],
   });
   await open(client);
-  expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
-  expect(screen.getByTestId("cover-photo").props.source.uri).toMatch(
+  expect(await screen.findByRole("header", { name: "Your itineraries" })).toBeOnTheScreen();
+  expect(screen.getAllByTestId("cover-photo")[0]?.props.source.uri).toMatch(
     /^https:\/\/api\.example\.org\/v1\/images\//,
   );
   // Hidden until asked for.
@@ -205,6 +220,6 @@ test("the trip's photo hides its credit behind a small i in the corner; the Itin
   await fireEvent.press(screen.getByTestId("open-itinerary"));
   expect(await screen.findByTestId("day-row-1")).toBeOnTheScreen();
   // The same photo stays, with its credit control as it was left.
-  expect(screen.getByTestId("cover-photo")).toBeOnTheScreen();
+  expect(screen.getAllByTestId("cover-photo")[0]).toBeOnTheScreen();
   expect(screen.getByRole("button", { name: "Hide the photo credit" })).toBeOnTheScreen();
 });

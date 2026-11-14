@@ -16,6 +16,7 @@ export function IconButton({
   label,
   onPress,
   onImage = false,
+  compact = false,
   hint,
   testID,
 }: {
@@ -25,6 +26,8 @@ export function IconButton({
   onPress: () => void;
   /** On a cover picture: a dark translucent disc and a white icon. */
   onImage?: boolean;
+  /** A shorter button (40 x 36) for tight headers; its hit slop keeps the touch at 48 dp. */
+  compact?: boolean;
   hint?: string;
   testID?: string;
 }) {
@@ -35,8 +38,10 @@ export function IconButton({
       accessibilityHint={hint}
       onPress={onPress}
       testID={testID}
+      hitSlop={compact ? { top: 6, bottom: 6, left: 4, right: 4 } : undefined}
       style={({ pressed }) => [
         styles.iconButton,
+        compact && styles.iconButtonCompact,
         onImage && styles.iconButtonOnImage,
         pressed && styles.pressed,
       ]}
@@ -90,6 +95,7 @@ export function Tabs<K extends string>({
   value,
   onChange,
   scrollable = false,
+  compact = false,
   testID,
 }: {
   items: TabItem<K>[];
@@ -97,6 +103,8 @@ export function Tabs<K extends string>({
   onChange: (key: K) => void;
   /** For more tabs than fit a phone's width (the trip's five tabs). */
   scrollable?: boolean;
+  /** Shorter tabs (40 dp, plus hit slop) for the map's tight header. */
+  compact?: boolean;
   testID?: string;
 }) {
   const tabs = items.map((item) => {
@@ -110,7 +118,8 @@ export function Tabs<K extends string>({
         accessibilityState={{ selected: active }}
         onPress={() => onChange(item.key)}
         testID={testID ? `${testID}-${item.key}` : undefined}
-        style={[styles.tab, !scrollable && styles.tabFill]}
+        hitSlop={compact ? { top: 4, bottom: 4 } : undefined}
+        style={[styles.tab, compact && styles.tabCompact, !scrollable && styles.tabFill]}
       >
         <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={1}>
           {text}
@@ -314,6 +323,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  iconButtonCompact: { width: 40, height: 36, minHeight: 36, borderRadius: 18 },
   iconButtonOnImage: { backgroundColor: colors.imageButton },
 
   badge: {
@@ -330,6 +340,7 @@ const styles = StyleSheet.create({
   tabRow: { flexDirection: "row" },
   tab: { minHeight: TOUCH, justifyContent: "flex-end", alignItems: "center" },
   tabFill: { flex: 1 },
+  tabCompact: { minHeight: 40 },
   tabText: {
     ...type.small,
     color: colors.muted,

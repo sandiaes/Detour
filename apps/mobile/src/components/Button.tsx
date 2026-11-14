@@ -16,6 +16,8 @@ type Props = {
   /** Overrides the spoken label when the visible one is not enough ("Select" -> "Select Wider"). */
   accessibilityLabel?: string;
   fill?: boolean;
+  /** "compact": a slimmer pill with smaller text (36 dp, plus hit slop for a 48 dp touch). */
+  size?: "regular" | "compact";
   testID?: string;
 };
 
@@ -28,12 +30,14 @@ export function Button({
   hint,
   accessibilityLabel,
   fill = false,
+  size = "regular",
   testID,
   icon,
 }: Props) {
+  const compact = size === "compact";
   const inactive = disabled || loading;
   const filled = variant === "primary" || variant === "accent" || variant === "ink";
-  const labelColor = filled ? colors.onPrimary : colors.primary;
+  const labelColor = filled ? colors.onPrimary : compact ? colors.text : colors.primary;
   return (
     <Pressable
       accessibilityRole="button"
@@ -43,8 +47,11 @@ export function Button({
       disabled={inactive}
       onPress={onPress}
       testID={testID}
+      hitSlop={compact ? { top: 6, bottom: 6 } : undefined}
       style={({ pressed }) => [
         styles.base,
+        compact && styles.compact,
+        compact && variant === "secondary" && styles.compactSecondary,
         variant === "primary" && styles.primary,
         variant === "secondary" && styles.secondary,
         variant === "quiet" && styles.quiet,
@@ -56,11 +63,12 @@ export function Button({
       ]}
     >
       {loading ? <ActivityIndicator color={labelColor} /> : null}
-      {icon && !loading ? <Icon name={icon} size={20} color={labelColor} /> : null}
+      {icon && !loading ? <Icon name={icon} size={compact ? 16 : 20} color={labelColor} /> : null}
       <Text
         style={[
           styles.label,
-          filled ? styles.labelOnPrimary : styles.labelOnLight,
+          filled ? styles.labelOnPrimary : compact ? styles.labelCompactLight : styles.labelOnLight,
+          compact && styles.labelCompact,
           // Disabled is shown by a lighter fill AND by the state read aloud, never colour alone:
           // the label stays at full contrast.
         ]}
@@ -84,6 +92,10 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   fill: { alignSelf: "stretch" },
+  compact: { minHeight: 36, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, gap: 6 },
+  compactSecondary: { borderWidth: 1, borderColor: colors.outline },
+  labelCompact: { ...type.small, fontSize: 13, lineHeight: 18 },
+  labelCompactLight: { color: colors.text },
   primary: { backgroundColor: colors.primary },
   accent: { backgroundColor: colors.accent },
   ink: { backgroundColor: colors.ink },

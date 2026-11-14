@@ -67,6 +67,8 @@ export function Cover({
   height,
   rounded = 0,
   children,
+  scrim = false,
+  creditInset = 0,
   style,
   testID,
 }: {
@@ -79,6 +81,11 @@ export function Cover({
   height: number;
   rounded?: number;
   children?: ReactNode;
+  /** A soft fade at the top and bottom, only for a cover that carries text or buttons (the trip's
+   * header). It is a gradient, not a band: the middle of the photo stays clear. */
+  scrim?: boolean;
+  /** Lifts the photo credit's "i" clear of a sheet that curves over the cover's lower edge. */
+  creditInset?: number;
   style?: ViewStyle;
   testID?: string;
 }) {
@@ -133,9 +140,34 @@ export function Cover({
           <Path d="M0 170 Q100 158 200 166 T400 162 L400 240 L0 240Z" fill={tone.near} />
         </Svg>
       )}
+      {scrim ? <Scrim /> : null}
       {children}
-      {uri && photo && !givenUri ? <PhotoCredit photo={photo} /> : null}
+      {uri && photo && !givenUri ? <PhotoCredit photo={photo} inset={creditInset} /> : null}
     </View>
+  );
+}
+
+function Scrim() {
+  return (
+    <Svg
+      width="100%"
+      height="100%"
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+    >
+      <Defs>
+        <LinearGradient id="cover-scrim" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor="#0d1828" stopOpacity={0.5} />
+          <Stop offset="0.28" stopColor="#0d1828" stopOpacity={0} />
+          <Stop offset="0.5" stopColor="#0d1828" stopOpacity={0} />
+          <Stop offset="1" stopColor="#0d1828" stopOpacity={0.62} />
+        </LinearGradient>
+      </Defs>
+      <Rect x="0" y="0" width="100%" height="100%" fill="url(#cover-scrim)" />
+    </Svg>
   );
 }
 
@@ -148,12 +180,18 @@ const styles = StyleSheet.create({
  * a small "i" in the photo's bottom right corner. Pressing it shows the credit beside it, and the
  * credit opens the file's page. Every photo carries it; `Cover` draws it, so no screen can forget.
  */
-export function PhotoCredit({ photo }: { photo: Photo | null | undefined }) {
+export function PhotoCredit({
+  photo,
+  inset = 0,
+}: {
+  photo: Photo | null | undefined;
+  inset?: number;
+}) {
   const shown = usePhotoUri(photo);
   const [open, setOpen] = useState(false);
   if (!photo || !shown) return null;
   return (
-    <View style={creditStyles.corner} pointerEvents="box-none">
+    <View style={[creditStyles.corner, { bottom: spacing.sm + inset }]} pointerEvents="box-none">
       {open ? (
         <Pressable
           accessibilityRole="link"

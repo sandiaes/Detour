@@ -118,6 +118,9 @@ const SHAPES = {
     circles: [[8, 6, 2]],
     d: ["M8 9v5l-2.5 6", "M8 14l3 6", "M5 11l3-1 3 1", "M14 21V9l4-3 3 3v12", "M14 21h7"],
   },
+  lock: { rects: [[5, 11, 14, 10, 2]], d: ["M8 11V8a4 4 0 0 1 8 0v3"] },
+  unlock: { rects: [[5, 11, 14, 10, 2]], d: ["M8 11V8a4 4 0 0 1 7.5-2"] },
+  refresh: { d: ["M20 12a8 8 0 1 1-2.5-5.8", "M20 4v5h-5"] },
   trash: { d: ["M4 7h16", "M10 11v6", "M14 11v6", "M6 7l1 13h10l1-13", "M9 7V4h6v3"] },
 } satisfies Record<string, Shape>;
 

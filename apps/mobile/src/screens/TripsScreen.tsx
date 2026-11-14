@@ -1,13 +1,19 @@
 import type { Trip } from "@detour/shared";
 import { useState } from "react";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError, isOfflineError } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { Cover } from "../components/ds/Cover";
 import { Badge, type BadgeTone, Tabs } from "../components/ds/primitives";
 import { ResourceNotices } from "../components/ResourceNotices";
-import { EmptyState, ErrorState, LoadingState, ScreenHeader, WakingServer } from "../components/ui";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  WakingServer,
+  useAnnounceOnMount,
+} from "../components/ui";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import {
@@ -91,8 +97,14 @@ const EMPTY_TEXT: Record<TripTab, { title: string; text: string }> = {
   },
 };
 
+// The logo's own wordmark (docs/brand/detour-logo.png): the mark, "Detour" and the orange dot.
+const LOGO = require("../../assets/detour-logo.png") as number;
+const LOGO_HEIGHT = 40;
+const LOGO_WIDTH = Math.round((LOGO_HEIGHT * 1288) / 462);
+
 export function TripsScreen() {
   const nav = useNavigation();
+  const titleRef = useAnnounceOnMount();
   const trips = useResource<Trip[]>(keys.trips, (client) => call(client.GET("/v1/trips")));
   const [tab, setTab] = useState<TripTab>("upcoming");
   const create = () => nav.push({ name: "createTrip" });
@@ -173,7 +185,21 @@ export function TripsScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScreenHeader title="Detour" />
+      <View
+        ref={titleRef}
+        style={styles.brand}
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel="Detour"
+      >
+        <Image
+          source={LOGO}
+          style={{ width: LOGO_WIDTH, height: LOGO_HEIGHT }}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+          testID="detour-logo"
+        />
+      </View>
       {body}
     </View>
   );
@@ -181,6 +207,7 @@ export function TripsScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  brand: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs },
   list: { padding: spacing.lg, gap: spacing.lg },
   card: { minHeight: 48, gap: spacing.sm },
   pressed: { opacity: 0.88 },

@@ -106,10 +106,10 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
     : { center: [0, 20] as [number, number], zoom: 1 };
 
   return (
-    <View style={styles.fill}>
+    <View style={[styles.fill, styles.clip]}>
       <Map
         key={attempt}
-        style={styles.fill}
+        style={[styles.fill, styles.clip]}
         mapStyle={map.style_url}
         logo={false}
         attribution={false}
@@ -250,7 +250,12 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
         {keyOpen ? <Legend /> : null}
       </View>
 
-      <AttributionBar lines={map.attribution} userInteractionCount={interactions} />
+      {/* The sheet of stops curves over the map's lower edge: lift the credit above the curve. */}
+      <AttributionBar
+        lines={map.attribution}
+        userInteractionCount={interactions}
+        bottomOffset={radius.lg + spacing.xs}
+      />
     </View>
   );
 }
@@ -287,6 +292,7 @@ export function Legend() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  clip: { overflow: "hidden" },
   hit: { width: MARKER_SIZE, height: MARKER_SIZE, alignItems: "center", justifyContent: "center" },
   // Small flat discs with a thin white edge: sights round and teal, places to eat square-ish and
   // orange, travel navy. The selected stop is larger and navy. No heavy rings.

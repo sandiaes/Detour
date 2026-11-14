@@ -143,9 +143,10 @@ export function DocumentList({
 
   const addButton = (
     <Button
-      label={filter ? "Attach a document" : "Add a document"}
+      label={filter ? "Add a document" : "Add a document"}
       icon="add"
       variant={filter ? "secondary" : "ink"}
+      size={filter ? "compact" : "regular"}
       fill={!filter}
       testID="add-document"
       onPress={() => add()}

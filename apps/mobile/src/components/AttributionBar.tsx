@@ -15,9 +15,11 @@ type Props = {
   lines: AttributionLine[];
   /** Increase this number each time the user moves the map. */
   userInteractionCount?: number;
+  /** Extra distance from the bottom edge, for a map whose lower edge is covered by a sheet. */
+  bottomOffset?: number;
 };
 
-export function AttributionBar({ lines, userInteractionCount = 0 }: Props) {
+export function AttributionBar({ lines, userInteractionCount = 0, bottomOffset = 0 }: Props) {
   const [expanded, setExpanded] = useState(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCount = useRef(userInteractionCount);
@@ -45,7 +47,7 @@ export function AttributionBar({ lines, userInteractionCount = 0 }: Props) {
   if (!expanded) {
     return (
       <Pressable
-        style={styles.infoButton}
+        style={[styles.infoButton, { bottom: 8 + bottomOffset }]}
         accessibilityRole="button"
         accessibilityLabel="Show map attribution"
         hitSlop={12}
@@ -60,7 +62,7 @@ export function AttributionBar({ lines, userInteractionCount = 0 }: Props) {
   }
 
   return (
-    <View style={styles.bar} accessibilityLabel="Map attribution">
+    <View style={[styles.bar, { bottom: 8 + bottomOffset }]} accessibilityLabel="Map attribution">
       {lines.map((line) => (
         <Pressable
           key={line.url}

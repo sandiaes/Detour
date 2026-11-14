@@ -1,3 +1,5 @@
+import { StyleSheet } from "react-native";
+
 // Design tokens (ADR 021, docs/design.md). Modern, clean and calm: a near-white page, deep navy text, a muted
 // teal as the primary accent and a restrained orange for map markers of places to eat and for the
 // few actions that matter most. Flat surfaces separated by hairlines; cards only where a thing is
@@ -92,3 +94,13 @@ export const icon = { size: 22, small: 18, large: 28, stroke: 1.8 };
 
 /** Android's minimum touch target is 48 x 48 dp. */
 export const TOUCH = 48;
+
+/** The card (docs/design.md): a white rounded box with a hairline and a soft shadow, for a thing that
+ * is picked up and opened (a trip's cover, a proposal, a way to add a document). */
+export const card = {
+  backgroundColor: colors.surface,
+  borderRadius: radius.lg,
+  borderWidth: StyleSheet.hairlineWidth,
+  borderColor: colors.border,
+  ...shadow.card,
+};

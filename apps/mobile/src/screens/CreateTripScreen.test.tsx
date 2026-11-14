@@ -197,8 +197,8 @@ test("an empty trip is created without proposals and opens on its own plan", asy
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
   await fireEvent.press(screen.getByRole("button", { name: "Start with an empty trip" }));
 
-  expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
-  expect(screen.getByText("Manual plan")).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Your itineraries" })).toBeOnTheScreen();
+  expect(screen.getByText("Your own plan")).toBeOnTheScreen();
   // No proposals were asked for, and the trip is named after its destination alone.
   expect(client.count("POST /v1/trips/{trip_id}/itineraries/generate")).toBe(0);
   expect(client.count("POST /v1/trips/{trip_id}/itineraries")).toBe(1);

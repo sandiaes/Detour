@@ -291,6 +291,27 @@ Mobile app, plus one importer and search change (migration `0010`) and one plann
     `planner/dedupe.py` collapses candidates with the same normalised name within 300 m before
     planning, keeping the best-documented copy.
 
+## Amendment of 2026-11-14 (third): owner's review of the second amendment
+
+Owner request after trying the build, with the overall reference image. Decisions 42 to 54. Mobile
+app only; no backend change.
+
+| # | Decision |
+|---|---|
+| 42 | **Trips header:** the logo's own wordmark (`assets/detour-logo.png`, from `docs/brand/`) replaces the plain word "Detour". |
+| 43 | **Trip header on the photo (reverses the "no text over photos" part of decision 32 for this one place):** the cover reaches the top of the screen under the status bar; Back and the menu sit on it; the trip's **name, dates and length** sit on it bottom left, in white. There is no header row above the photo. A soft gradient (top and bottom, clear in the middle) keeps white text and the status bar readable; it is a gradient, not a band. The photo credit's "i" is lifted above the sheet's curve. |
+| 44 | **Map tab:** a tighter header (compact Back and menu buttons and tabs, 36 to 40 dp with hit slop for a 48 dp touch); the "i" of the map attribution is lifted above the sheet that curves over the map; the map is clipped to its own area and the header is drawn above it, so markers dragged past the edge never show over the tabs. |
+| 45 | **A stop in the list only selects it** and moves the map to it; nothing opens under it. Lock and Remove are on the place's details only. |
+| 46 | **Day pills:** 44 dp tall, the stops' own type (day in 14 semibold, date in 13), and never clipped. |
+| 47 | **Back from Add document returns to the Documents tab:** the trip's tab is kept in the route, so any screen opened from a tab returns to that tab. |
+| 48 | **Add document:** a compact top bar, cards for the ways to add (Upload from device; Take a photo, "Coming later"), the link and "Create a document" options removed. The file is a card (picture or kind tile, name, size, a "Replace file" pill with an icon); document types and "Related to" are slim chips with icons; Title, Date and Notes are boxed one-line fields as in screen 16. |
+| 49 | **Pills are slim:** chips and secondary buttons are 36 dp tall with 13 dp text and an optional icon; hit slop keeps the touch at 48 dp. The proposals' "View details" and "Choose this itinerary" use the same compact size. |
+| 50 | **Overview, "Your itineraries":** the active plan and, when there is one, the other proposal are cards (small cover, name, what it is, places, restaurants, travel time, a badge "Active" or "Proposal"). The active card opens the Itinerary tab, the proposal opens its map where it can be chosen. The overview reads the trip's proposals once for this. |
+| 51 | **Place details:** the labels When, Duration and Location are gone: one quiet line gives the day, time and length, one the address. Opening hours and "Why it is in the plan" are removed. Show on map, Lock, Remove and Add a document are slim icon pills. |
+| 52 | **Proposals** are cards (white, hairline, soft shadow) with the cover inside. |
+| 53 | Cards are therefore also used for a proposal, a plan on the overview and a way to add a document (decision 33 kept them for trip covers only). |
+| 54 | **Not verified on a device:** the full-bleed cover, the clipping of map markers and the status bar colour depend on the phone's rendering; tests cover the structure, labels and touch sizes only. |
+
 ## Not built (kept as references for later steps)
 
 | Item from the request or screens | Why not now | Where it goes |

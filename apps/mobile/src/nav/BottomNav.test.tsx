@@ -32,7 +32,7 @@ test("outside a trip, Add starts a new trip", async () => {
 
 test("inside a trip, Add offers a place or restaurant through the adjustment flow", async () => {
   await show({ name: "tripOverview", tripId: TRIP_ID });
-  await screen.findByRole("header", { name: "Your itinerary" });
+  await screen.findByRole("header", { name: "Your itineraries" });
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   expect(await screen.findByRole("header", { name: "Add to this trip" })).toBeOnTheScreen();
   // Not built yet: transport, notes and documents say so and cannot be pressed.
@@ -47,7 +47,7 @@ test("inside a trip, Add offers a place or restaurant through the adjustment flo
 
 test("Add on a trip opens the restaurant flow for the active itinerary", async () => {
   await show({ name: "tripOverview", tripId: TRIP_ID });
-  await screen.findByRole("header", { name: "Your itinerary" });
+  await screen.findByRole("header", { name: "Your itineraries" });
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   await fireEvent.press(await screen.findByRole("button", { name: /^Restaurant\./ }));
   expect(await screen.findByRole("header", { name: "Add a restaurant" })).toBeOnTheScreen();
