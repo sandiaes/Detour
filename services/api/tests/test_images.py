@@ -378,3 +378,28 @@ def test_the_supabase_store_uses_head_to_check_and_reports_refusals() -> None:
     with pytest.raises(StoreError):
         store.exists("denied.jpg")
     assert seen[0] == ("HEAD", "/storage/v1/object/public/photos/there.jpg")
+
+
+@pytest.mark.parametrize(
+    ("key", "bearer"), [("sb_secret_abc123", False), ("eyJhbGciOiJIUzI1NiJ9.e30.sig", True)]
+)
+def test_the_storage_key_goes_only_where_its_kind_allows(key: str, bearer: bool) -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"Key": "photos/a.jpg"})
+
+    settings = Settings(
+        environment="test",
+        token_secret=TEST_SECRET,
+        supabase_url="https://example.supabase.co",
+        supabase_service_key=key,
+    )
+    SupabaseImageStore(settings, httpx.MockTransport(handler)).put("a.jpg", b"x")
+    request = seen[0]
+    assert request.method == "POST"
+    assert request.url.path == "/storage/v1/object/photos/a.jpg"
+    assert request.headers["apikey"] == key
+    assert ("authorization" in request.headers) is bearer
+    assert request.headers["x-upsert"] == "true"

@@ -53,10 +53,18 @@ class SupabaseImageStore:
     def _client(self) -> httpx.Client:
         return httpx.Client(timeout=20.0, transport=self._transport)
 
+    def _auth_headers(self) -> dict[str, str]:
+        """A new-style secret key (``sb_secret_...``) is not a JWT and goes only in ``apikey``;
+        Supabase says to send it nowhere else. A legacy ``service_role`` key is a JWT (``eyJ...``)
+        and is also sent as the bearer token."""
+        headers = {"apikey": self._key}
+        if self._key.startswith("eyJ"):
+            headers["Authorization"] = f"Bearer {self._key}"
+        return headers
+
     def put(self, key: str, data: bytes, content_type: str = "image/jpeg") -> None:
         headers = {
-            "Authorization": f"Bearer {self._key}",
-            "apikey": self._key,
+            **self._auth_headers(),
             "Content-Type": content_type,
             "x-upsert": "true",
             "Cache-Control": "max-age=31536000",

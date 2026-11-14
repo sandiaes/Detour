@@ -241,3 +241,11 @@ most populous cities and the 100 best-scored attractions; the downloads worked, 
   checks every image row against storage with a HEAD request and fetches missing files again
   (`repair_missing`, reported under `repair`). The 83 rows already in the database are repaired by
   the first real run.
+
+**2026-11-14, the storage key.** Supabase's API-keys page (read 2026-11-14) says the new secret key
+(`sb_secret_...`, the replacement of the legacy `service_role` key, elevated, bypasses row level
+security, backend use only) is not a JWT and must be sent in the `apikey` header, not as
+`Authorization: Bearer`; legacy keys are JWTs (`eyJ...`) and are being deprecated by the end of
+2026. The page does not mention Storage, so whether the new key works with
+`/storage/v1/object/...` is untested. The store now sends `apikey` always and the bearer header only
+for a legacy JWT key. The `photos` bucket was created on 2026-11-14 (public, JPEG only, 2 MB a file).
