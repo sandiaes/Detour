@@ -39,8 +39,11 @@ log = structlog.get_logger("detour.wikimedia")
 
 PROVIDER = "wikimedia"
 BATCH_SIZE = 50
-MAXLAG_SECONDS = 5
 MAX_ATTEMPTS = 4
+# A lagged server (maxlag) is waited for longer than a rate limit: Wikidata's lag can last minutes.
+MAXLAG_ATTEMPTS = 10
+MAXLAG_MIN_PAUSE_SECONDS = 5.0
+MAXLAG_MAX_PAUSE_SECONDS = 60.0
 DEFAULT_RETRY_SECONDS = 5.0
 MAX_RETRY_SECONDS = 120.0
 # The hosts an image may be downloaded from. The URL comes from the Commons API's own answer;
@@ -305,8 +308,10 @@ class WikimediaClient:
     # -- HTTP ---------------------------------------------------------------------------------
 
     def _api(self, url: str, params: dict[str, str]) -> Any:
-        full = {**params, "maxlag": str(MAXLAG_SECONDS)}
-        for attempt in range(MAX_ATTEMPTS):
+        maxlag = self._settings.wikimedia_maxlag_seconds
+        full = {**params, "maxlag": str(maxlag)}
+        last_lag: object = None
+        for attempt in range(MAXLAG_ATTEMPTS):
             response = self._request("GET", url, params=full)
             try:
                 payload = response.json()
@@ -314,12 +319,20 @@ class WikimediaClient:
                 raise WikimediaError("answer is not JSON") from exc
             error = payload.get("error") if isinstance(payload, dict) else None
             if isinstance(error, dict) and error.get("code") == "maxlag":
-                self._pause(response, attempt)
+                last_lag = error.get("lag")
+                self._pause(
+                    response,
+                    attempt,
+                    minimum=MAXLAG_MIN_PAUSE_SECONDS,
+                    maximum=MAXLAG_MAX_PAUSE_SECONDS,
+                )
                 continue
             if isinstance(error, dict):
                 raise WikimediaError(f"api error {error.get('code')}")
             return payload
-        raise WikimediaError("servers are lagged; try later")
+        raise WikimediaError(
+            f"servers are lagged (last reported lag {last_lag} s, limit {maxlag} s); try later"
+        )
 
     def _request(
         self, method: str, url: str, *, params: dict[str, str] | None, max_bytes: int | None = None
@@ -360,13 +373,20 @@ class WikimediaClient:
             self._sleep(gap)
         self._last_request = self._clock()
 
-    def _pause(self, response: httpx.Response, attempt: int) -> None:
-        """Wait as the server asked; with no ``Retry-After``, at least five seconds, doubling."""
+    def _pause(
+        self,
+        response: httpx.Response,
+        attempt: int,
+        *,
+        minimum: float = 0.0,
+        maximum: float = MAX_RETRY_SECONDS,
+    ) -> None:
+        """Wait as the server asked; with no ``Retry-After``, five seconds, doubling."""
         header = response.headers.get("Retry-After", "")
         try:
             seconds = float(header)
         except ValueError:
             seconds = DEFAULT_RETRY_SECONDS * (2**attempt)
-        seconds = max(0.0, min(seconds, MAX_RETRY_SECONDS))
+        seconds = max(minimum, min(seconds, maximum))
         log.warning("wikimedia_backoff", status=response.status_code, seconds=seconds)
         self._sleep(seconds)

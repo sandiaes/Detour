@@ -327,12 +327,26 @@ def test_it_gives_up_after_repeated_429s(no_budget_counter: list[int]) -> None:
 
 
 def test_a_lagged_server_is_waited_for(no_budget_counter: list[int]) -> None:
-    lagged = httpx.Response(200, json={"error": {"code": "maxlag"}}, headers={"Retry-After": "3"})
+    lagged = httpx.Response(200, json={"error": {"code": "maxlag"}}, headers={"Retry-After": "30"})
     answers = [lagged, httpx.Response(200, json=ENTITIES)]
     clock = _Clock()
     client = _client(lambda r: answers.pop(0), clock)
     client.entities(["Q1"])
-    assert 3.0 in clock.sleeps
+    assert 30.0 in clock.sleeps  # the server's own figure is obeyed
+
+
+def test_a_server_lagged_for_long_is_waited_for_then_reported_with_its_lag(
+    no_budget_counter: list[int],
+) -> None:
+    lagged = {"error": {"code": "maxlag", "lag": 23.5, "host": "db1"}}
+    clock = _Clock()
+    client = _client(lambda r: httpx.Response(200, json=lagged), clock)
+    with pytest.raises(WikimediaError, match=r"lagged \(last reported lag 23.5 s, limit 5 s\)"):
+        client.entities(["Q1"])
+    assert client.requests_made == wikimedia.MAXLAG_ATTEMPTS
+    waits = [w for w in clock.sleeps if w >= 5.0]
+    assert waits[:5] == [5.0, 10.0, 20.0, 40.0, 60.0]  # doubling, capped at a minute
+    assert max(waits) == 60.0
 
 
 def test_other_errors_and_bad_answers_raise(no_budget_counter: list[int]) -> None:
