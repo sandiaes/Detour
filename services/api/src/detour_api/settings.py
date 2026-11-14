@@ -102,6 +102,8 @@ class Settings(BaseSettings):
     wikimedia_user_agent: str = "Detour-bot/0.1 (+https://github.com/sandiaes/Detour)"
     wikidata_api_url: str = "https://www.wikidata.org/w/api.php"
     commons_api_url: str = "https://commons.wikimedia.org/w/api.php"
+    # English Wikipedia's lead images: the third step of the fallback chain (ADR 022 amendment).
+    enwiki_api_url: str = "https://en.wikipedia.org/w/api.php"
     wikimedia_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
     wikimedia_min_interval_seconds: float = Field(default=1.0, ge=0.5, le=60)
     wikimedia_daily_budget: int = Field(default=3000, ge=0)
@@ -159,7 +161,7 @@ class Settings(BaseSettings):
             raise ValueError("routing base url must use https")
         return value.rstrip("/")
 
-    @field_validator("wikidata_api_url", "commons_api_url")
+    @field_validator("wikidata_api_url", "commons_api_url", "enwiki_api_url")
     @classmethod
     def _wikimedia_is_https(cls, value: str) -> str:
         if not value.startswith("https://"):

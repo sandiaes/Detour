@@ -15,12 +15,17 @@ requires of every provider:
 * a fallback: a failure raises :class:`WikimediaError`; the resolver records nothing for the item
   and the app keeps its illustration.
 
+Three API hosts are asked (Wikidata, Commons and, for the fallback chain of the ADR 022 amendment,
+English Wikipedia's lead images); they share one queue, so there is never more than one request in
+flight from this process and they are at least the minimum interval apart.
+
 Everything that reads Wikimedia's answers is a pure function so it is tested against recorded
 responses (``tests/fixtures/wikidata-wbgetentities-3.json``, ``commons-imageinfo-3.json``).
 """
 
 import html
 import re
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -66,13 +71,21 @@ REASON_CITY_NO_MATCH = "no_item_for_geonames_id"
 REASON_CITY_AMBIGUOUS = "several_items_for_geonames_id"
 REASON_NOT_PHOTO = "not_a_jpeg_or_png"
 REASON_TOO_SMALL = "too_small"
-REASON_NOT_LANDSCAPE = "not_landscape"
+REASON_NOT_ON_COMMONS = "not_on_commons"
 REASON_LICENCE = "licence_not_allowed"
 REASON_NO_AUTHOR = "no_author"
 REASON_NO_FILE_INFO = "no_file_info"
 REASON_UNDECODABLE = "could_not_decode"
 
-MIN_ORIGINAL_WIDTH = 1200
+# The size gate (ADR 022 amendment, decision e): portrait photos are accepted and cropped to fit
+# on screen, so the rule is on the longer and the shorter side, not on the width.
+MIN_LONGER_SIDE = 1200
+MIN_SHORTER_SIDE = 800
+
+# One queue for every client in this process: the background resolver and a cover-candidates
+# request may run at the same time, and Wikimedia counts them as one client.
+_QUEUE = threading.Lock()
+_LAST_REQUEST = [-1e9]
 
 
 class WikimediaError(Exception):
@@ -88,6 +101,8 @@ class EntityImage:
     qid: str
     files: tuple[str, ...]  # image candidates, best first, without "File:" (P18, then P948)
     sitelinks: int
+    enwiki: str | None = None  # the English Wikipedia article's title, if the item has one
+    commons_category: str | None = None  # P373, without "Category:"
 
     @property
     def file(self) -> str | None:
@@ -134,12 +149,55 @@ def parse_entities(payload: Any) -> dict[str, EntityImage]:
             dict.fromkeys(_ranked_files(claims.get("P18")) + _ranked_files(claims.get("P948")))
         )
         sitelinks = entity.get("sitelinks")
+        sitelinks = sitelinks if isinstance(sitelinks, dict) else {}
+        enwiki = sitelinks.get("enwiki")
+        enwiki_title = enwiki.get("title") if isinstance(enwiki, dict) else None
+        categories = _ranked_files(claims.get("P373"))
         found[qid] = EntityImage(
             qid=qid,
             files=tuple(files),
-            sitelinks=len(sitelinks) if isinstance(sitelinks, dict) else 0,
+            sitelinks=len(sitelinks),
+            enwiki=enwiki_title if isinstance(enwiki_title, str) and enwiki_title else None,
+            commons_category=categories[0] if categories else None,
         )
     return found
+
+
+def parse_pageimages(payload: Any) -> dict[str, str]:
+    """Read ``query&prop=pageimages`` from Wikipedia: the lead image's file name for each requested
+    title (redirects and normalisations followed back to the title that was asked for)."""
+    query = payload.get("query") if isinstance(payload, dict) else None
+    if not isinstance(query, dict):
+        raise ValueError("not a pageimages answer")
+    pages = query.get("pages")
+    by_title: dict[str, str] = {}
+    for page in pages.values() if isinstance(pages, dict) else []:
+        if not isinstance(page, dict) or "missing" in page:
+            continue
+        name = page.get("pageimage")
+        title = page.get("title")
+        if isinstance(name, str) and name and isinstance(title, str):
+            by_title[title] = name.replace("_", " ")
+    for key in ("redirects", "normalized"):
+        steps = query.get(key)
+        for step in reversed(steps if isinstance(steps, list) else []):
+            if isinstance(step, dict) and step.get("to") in by_title and "from" in step:
+                by_title.setdefault(str(step["from"]), by_title[str(step["to"])])
+    return by_title
+
+
+def parse_category_files(payload: Any) -> list[str]:
+    """Read ``list=categorymembers``: the files of a Commons category, in the API's order."""
+    query = payload.get("query") if isinstance(payload, dict) else None
+    members = query.get("categorymembers") if isinstance(query, dict) else None
+    if not isinstance(members, list):
+        raise ValueError("not a categorymembers answer")
+    out: list[str] = []
+    for m in members:
+        title = m.get("title") if isinstance(m, dict) else None
+        if isinstance(title, str) and title.startswith("File:"):
+            out.append(title[len("File:") :])
+    return out
 
 
 def _ranked_files(statements: Any) -> list[str]:
@@ -216,10 +274,10 @@ def rejection_reason(info: FileInfo) -> str | None:
     """The ADR 022 quality gate and licence allow-list. ``None`` means the photo may be used."""
     if info.mime not in ("image/jpeg", "image/png"):
         return REASON_NOT_PHOTO
-    if info.width < MIN_ORIGINAL_WIDTH:
+    if max(info.width, info.height) < MIN_LONGER_SIDE or min(info.width, info.height) < (
+        MIN_SHORTER_SIDE
+    ):
         return REASON_TOO_SMALL
-    if info.width <= info.height:
-        return REASON_NOT_LANDSCAPE
     if not licence_allowed(info.licence):
         return REASON_LICENCE
     if not info.author:
@@ -262,7 +320,7 @@ class WikimediaClient:
     def user_agent(self) -> str:
         return f"{self._settings.wikimedia_user_agent} httpx/{httpx.__version__}"
 
-    # -- the three questions the resolver asks -------------------------------------------------
+    # -- the questions the resolver asks ---------------------------------------------------------
 
     def entities(self, qids: list[str]) -> dict[str, EntityImage]:
         """Image property and sitelink count for up to 50 Wikidata items, in one request."""
@@ -314,6 +372,37 @@ class WikimediaClient:
             return titles[0], None
         return None, REASON_CITY_NO_MATCH if not titles else REASON_CITY_AMBIGUOUS
 
+    def page_images(self, titles: list[str]) -> dict[str, str]:
+        """The free lead image of up to 50 English Wikipedia articles (``pilicense=free``, the
+        API's default, stated anyway). The file may be a local upload: the caller checks it on
+        Commons before using it."""
+        if not titles:
+            return {}
+        params = {
+            "action": "query",
+            "prop": "pageimages",
+            "piprop": "name",
+            "pilicense": "free",
+            "pilimit": str(BATCH_SIZE),
+            "redirects": "1",
+            "titles": "|".join(titles[:BATCH_SIZE]),
+            "format": "json",
+        }
+        return parse_pageimages(self._api(self._settings.enwiki_api_url, params))
+
+    def category_files(self, category: str, limit: int = BATCH_SIZE) -> list[str]:
+        """The first files of a Commons category, in the API's order."""
+        params = {
+            "action": "query",
+            "list": "categorymembers",
+            "cmtitle": f"Category:{category}",
+            "cmtype": "file",
+            "cmnamespace": "6",
+            "cmlimit": str(min(limit, BATCH_SIZE)),
+            "format": "json",
+        }
+        return parse_category_files(self._api(self._settings.commons_api_url, params))
+
     def download(self, url: str) -> bytes:
         """The image bytes, capped in size, only from a Wikimedia image host."""
         check_image_url(url)
@@ -357,23 +446,8 @@ class WikimediaClient:
         if not self.enabled or self._engine is None:
             raise WikimediaError("the Wikimedia adapter is disabled")
         for attempt in range(MAX_ATTEMPTS):
-            self._wait_turn()
-            try:
-                if not reserve_call(self._engine, PROVIDER, self._settings.wikimedia_daily_budget):
-                    raise WikimediaBudgetExhausted("daily budget used up")
-            except SQLAlchemyError as exc:
-                raise WikimediaError("budget counter unavailable") from exc
-            self.requests_made += 1
-            try:
-                with httpx.Client(
-                    headers={"User-Agent": self.user_agent},
-                    timeout=self._settings.wikimedia_timeout_seconds,
-                    transport=self._transport,
-                    follow_redirects=False,
-                ) as client:
-                    response = client.request(method, url, params=params)
-            except httpx.HTTPError as exc:
-                raise WikimediaError(f"network error {type(exc).__name__}") from exc
+            with _QUEUE:
+                response = self._attempt(method, url, params)
             if response.status_code in (429, 503):
                 self._pause(response, attempt)
                 continue
@@ -384,11 +458,39 @@ class WikimediaClient:
             return response
         raise WikimediaError("rate limited; try later")
 
+    def _attempt(self, method: str, url: str, params: dict[str, str] | None) -> httpx.Response:
+        """One request, in this process's queue."""
+        if self._engine is None:
+            raise WikimediaError("the Wikimedia adapter is disabled")
+        self._wait_turn()
+        try:
+            if not reserve_call(self._engine, PROVIDER, self._settings.wikimedia_daily_budget):
+                raise WikimediaBudgetExhausted("daily budget used up")
+        except SQLAlchemyError as exc:
+            raise WikimediaError("budget counter unavailable") from exc
+        self.requests_made += 1
+        try:
+            with httpx.Client(
+                headers={"User-Agent": self.user_agent},
+                timeout=self._settings.wikimedia_timeout_seconds,
+                transport=self._transport,
+                follow_redirects=False,
+            ) as client:
+                return client.request(method, url, params=params)
+        except httpx.HTTPError as exc:
+            raise WikimediaError(f"network error {type(exc).__name__}") from exc
+
     def _wait_turn(self) -> None:
-        gap = self._settings.wikimedia_min_interval_seconds - (self._clock() - self._last_request)
+        """Called inside the queue. With the real clock the spacing is kept across every client
+        of the process; a test's clock keeps its own."""
+        shared = self._clock is time.monotonic
+        last = max(self._last_request, _LAST_REQUEST[0]) if shared else self._last_request
+        gap = self._settings.wikimedia_min_interval_seconds - (self._clock() - last)
         if gap > 0:
             self._sleep(gap)
         self._last_request = self._clock()
+        if shared:
+            _LAST_REQUEST[0] = self._last_request
 
     def _pause(
         self,

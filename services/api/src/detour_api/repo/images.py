@@ -43,8 +43,9 @@ def photo(row: Any, prefix: str = "") -> Photo:
 
 def trip_covers(conn: Connection, trip_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, Photo]:
     """The cover of each trip: the photo the user chose (``app.trip.cover_image_id``), else the
-    photo found for its destination city. A hidden photo is never used; a trip with neither has no
-    entry. Area destinations have no automatic photo yet (the areas carry no Wikidata item)."""
+    photo found for its destination (a city, an area or, for a multi-city trip, its first stop, whose
+    city id is the trip's ``destination_ref``). A hidden photo is never used; a trip with neither
+    has no entry."""
     ids = list(trip_ids)
     if not ids:
         return {}
@@ -53,8 +54,8 @@ def trip_covers(conn: Connection, trip_ids: Iterable[uuid.UUID]) -> dict[uuid.UU
             f"SELECT t.id AS trip_id, {_select('ce', 'c_')}, {_select('ca', 'a_')}"
             " FROM app.trip t"
             " LEFT JOIN geo.image ce ON ce.id = t.cover_image_id AND NOT ce.hidden"
-            " LEFT JOIN geo.image_lookup l ON l.kind = 'city' AND t.destination_kind = 'city'"
-            "   AND l.ref_id = t.destination_ref AND l.status = 'found'"
+            " LEFT JOIN geo.image_lookup l ON l.status = 'found' AND l.ref_id = t.destination_ref"
+            "   AND l.kind = (CASE t.destination_kind WHEN 'area' THEN 'area' ELSE 'city' END)"
             " LEFT JOIN geo.image ca ON ca.id = l.image_id AND NOT ca.hidden"
             " WHERE t.id = ANY(:ids)"
         ),

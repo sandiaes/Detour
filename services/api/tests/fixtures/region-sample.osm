@@ -63,7 +63,7 @@
   <way id="111" version="1" timestamp="2026-01-01T00:00:00Z"><nd ref="1013"/><nd ref="1014"/><nd ref="1015"/><nd ref="1016"/><nd ref="1013"/></way>
   <way id="112" version="1" timestamp="2026-01-01T00:00:00Z"><nd ref="1017"/><nd ref="1018"/><nd ref="1019"/><nd ref="1020"/><nd ref="1017"/></way>
   <relation id="200" version="1" timestamp="2026-01-01T00:00:00Z"><member type="way" ref="101" role="outer"/><tag k="type" v="multipolygon"/><tag k="tourism" v="zoo"/><tag k="name" v="Testburg Zoo"/></relation>
-  <relation id="210" version="1" timestamp="2026-01-01T00:00:00Z"><member type="way" ref="110" role="outer"/><tag k="type" v="boundary"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="4"/><tag k="name" v="Testland"/><tag k="ISO3166-2" v="AT-9"/></relation>
-  <relation id="211" version="1" timestamp="2026-01-01T00:00:00Z"><member type="way" ref="111" role="outer"/><tag k="type" v="boundary"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="6"/><tag k="name" v="Bezirk Testburg"/></relation>
+  <relation id="210" version="1" timestamp="2026-01-01T00:00:00Z"><member type="way" ref="110" role="outer"/><tag k="type" v="boundary"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="4"/><tag k="name" v="Testland"/><tag k="ISO3166-2" v="AT-9"/><tag k="wikidata" v="Q4061"/></relation>
+  <relation id="211" version="1" timestamp="2026-01-01T00:00:00Z"><member type="way" ref="111" role="outer"/><tag k="type" v="boundary"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="6"/><tag k="name" v="Bezirk Testburg"/><tag k="wikidata" v="not-an-item"/></relation>
   <relation id="212" version="1" timestamp="2026-01-01T00:00:00Z"><member type="way" ref="112" role="outer"/><tag k="type" v="boundary"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="8"/><tag k="name" v="Hamlet ignored"/></relation>
 </osm>
