@@ -3,7 +3,7 @@
 How the mobile app looks and behaves. It is the working reference for screens: build to it, and
 change it in the same change as the screens (CLAUDE.md, "Update the affected documents").
 
-- **Sources:** the reference screens in [`screenshots/`](screenshots/) (01 to 13), the app as built
+- **Sources:** the reference screens in [`screenshots/`](screenshots/) (01 to 16), the app as built
   (ADR 015, 020, 021) and the owner's feedback of 2026-11-14. Where the reference screens show
   something Detour does not do (prices, ratings, photos, reviews), the screens win only on layout:
   the content rules of CLAUDE.md still apply (never invent data, no budgets, no LLM text).
@@ -25,10 +25,11 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
 4. **Photos where the source has one, illustrations everywhere else, nothing invented.** A trip's
    cover on the Trips card and the trip header, and the photo of a place on its detail screen, are
    Wikimedia Commons photos the backend sends (ADR 022, step 3); a trip or place with none keeps the
-   generated illustration. A photo has the scrim under the text and its average colour behind it
-   while it loads, is never shown without its author and licence (a quiet "Photo: author, licence,
-   Wikimedia Commons (resized)" link under the hero of a place and at the end of the trip overview),
-   and is never a map marker. The "Change photo" control of screen 13 is not built yet (ADR 022,
+   generated illustration. A photo has no dark band or scrim and **no text over it**: names and dates sit
+   beside it. Its average colour shows while it loads. It is never shown without its author and
+   licence, kept behind a small "i" in its bottom right corner (pressed, it shows "Photo: author,
+   licence, Wikimedia Commons (resized)" and opens the file's page; `Cover` draws it, so no screen can
+   forget it). A photo is never a map marker. The "Change photo" control of screen 13 is not built yet (ADR 022,
    decision 15).
 5. **Honest about what is not built.** A control that does nothing yet says so in words
    ("Not built yet", "saved for later"). Nothing is faked.
@@ -82,9 +83,9 @@ Contrast of every text and background pair is asserted in `theme.test.ts`.
 ### Trips (screen 01)
 
 Title "Trips", tabs Upcoming and Past. Each trip is **one cover card** and nothing else: the
-cover illustration, the status badge at the top right, the trip's **name**, its **dates and length**
-("12–19 Mar 2026 · 8 days") over the lower edge. No footer, no counts, no destination line, no
-extra request per card. A button "New trip" ends the Upcoming list.
+cover, the status badge on its own pill at the top right of the photo, and under the photo the
+trip's **name** and its **dates and length** ("12–19 Mar 2026 · 8 days"). Nothing is drawn over
+the photo but the badge. No footer, no counts, no destination line, no extra request per card. A button "New trip" ends the Upcoming list.
 
 **A trip is named after its destination** (the country, region or city chosen), never with its
 length: "Austria", not "Austria, 8 days".
@@ -96,7 +97,9 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
 1. **Destination:** a pin icon, the search field (a city or area in an imported region), results as
    hairline rows with the reason when one cannot be chosen. Once chosen, the name with its kind and
    country, an X to clear it, and the destination's cover illustration beneath.
-2. **Start date** (optional) and **Duration** (days, with minus and plus) side by side.
+2. **Start date** (optional) and **Duration** (days, with minus and plus) side by side. The start
+   date opens a **month calendar** in a sheet (Monday first, today ringed, "Clear the date"); a date
+   is chosen, never typed.
 3. **Travel style:** Relaxed, Balanced, Active (chips).
 4. **Public transport:** a switch.
 5. A line: travel style and public transport are saved for later; the plans do not use them yet.
@@ -111,38 +114,47 @@ not asked; it is the destination.
 
 ### Trip overview (screens 02, 12)
 
-- **Cover** (illustration) with Back and the trip menu, the status, the name, the dates and the
-  destination.
+- **Header, then cover.** Above the photo: Back, the trip's **name and its dates and length**
+  centred, and the trip menu. Nothing else (no status, no destination line). The cover follows,
+  with nothing over it.
 - **A white sheet curves over the cover's lower edge** and holds the tabs: Overview, Itinerary,
-  Map, Photos, Documents. The tabs stay at the top when the page scrolls.
+  Map, Photos, Documents. The tabs stay at the top when the page scrolls. Overview and Itinerary
+  share this layout; only Map gives up the cover.
 - **Overview tab:** three flat figures, **cities, places, restaurants** (no number of days: the
   header says it); then "Your itinerary" with its kind, a sentence, the headline facts and two
   buttons, Itinerary and Map. Nothing else: no first days, no notes and reservations block.
-- **Itinerary tab (screen 12):** no cover. A compact header (Back, the trip's name, the menu), the
-  tabs, then the trip's days as a **timeline**: a dot on a thin rail, a small illustrated
+- **Itinerary tab (screen 12):** the same header, cover and tabs as Overview, then the trip's days
+  as a **timeline**: a dot on a thin rail, a small illustrated
   thumbnail, "Day 3 · Wed 14 Mar", the town, "4 activities · 2 restaurants". A day opens the **Map
   tab on that day**.
-- **Map tab (screen 03):** the same compact header, a day strip, the map of the day, and the day's
-  stops beneath it.
+- **Map tab (screens 03, 14):** a compact header (Back, the name, the menu) and the tabs, then the
+  map of the day, then **the day pills**, then the day's stops. It uses the whole screen.
 - **Photos:** a planned feature.
-- **Documents (screen 08, ADR 023):** the trip's documents grouped by kind (Tickets, Bookings,
-  Transport, Insurance, Other) as hairline rows: an icon for the kind, the title, and one line with
-  what it is about and the file ("Schönbrunn Palace · day 1 · PDF · 245.0 kB"). "Add a document"
-  (dark) ends the list, with the line that documents stay on this phone only.
+- **Documents (screens 15, 16, ADR 023):** see "Documents" below.
 
 ### The day: map and stops (screens 03, 12)
 
 - **The stops get most of the height.** The map is the smaller part (about a third of the space
   between the tabs and the bottom bar), the stops the larger. The map's camera fits the day's stops.
-- **No day title above the stops.** The strip above says which day it is ("Day 3" over "14 Mar");
-  there is no "Day 3, Wed 14 Mar, 8 visits, 2 meals, 4 h at the sights, 1 h travelling" block. A trip
+- **Day pills sit under the map, above the stops** (screen 14): rounded pills that share the width
+  (and scroll sideways when there are many days), the chosen one dark with white text. "Day 1" over
+  "Thu, 12 Mar", or just "Day 1" when the trip has no dates; the text is **centred** in every pill.
+- **No day title above the stops.** The pills say which day it is; there is no "Day 3, Wed 14 Mar,
+  8 visits, 2 meals, 4 h at the sights, 1 h travelling" block. A trip
   that moves between base cities shows the day's base city as one quiet line.
 - **A stop is a hairline row:** the time (start over end), a numbered disc that matches the map
-  marker, the name in small bold, the kind and length in caption ("Attraction · 2 h", "Lunch ·
-  Restaurant · 1 h"), a chevron to the place's details. Selecting a stop tints its row, highlights
+  marker, the name in small bold, the **kind icon** and the kind and length in caption ("Attraction ·
+  2 h", "Lunch · Restaurant · 1 h"), a chevron to the place's details. The names are English where
+  the source has an English name; the local name is on the place's details. Selecting a stop tints its row, highlights
   its marker, and expands the reasons it is in the plan with Lock and Remove.
 - **Travel between stops** is one muted caption line with its Routed or Estimated tag.
 - **Type sizes here are small** (name 14, details 13) so more stops show at once.
+
+### Kind icons
+
+One small icon says what a place is, wherever places are listed (day list, place detail, search
+results, figures): a **fork and knife** for a restaurant, a **coffee cup** for a café, a **visitor at
+a landmark** for an attraction (`KindIcon`). A word always sits beside it.
 
 ### Map markers
 
@@ -160,10 +172,25 @@ Each marker keeps a 48 dp touch area around the drawn shape. The map key and att
 
 ### Place detail (screen 04)
 
-Cover, kind and name; when, how long, where; opening hours "Not checked" for sights (ADR 003); for
+Cover (only the Back button over it); under it the kind icon and word, the name and, when the plan
+shows an English name, the local name; when, how long, where; opening hours "Not checked" for sights (ADR 003); for
 places to eat the meal, venue and cuisine from the data; the reasons it is in the plan; the data
 source. **Facts are separated by hairlines, not placed in cards.** No rating, price or description:
 the data has none (CLAUDE.md rule 5).
+
+### Proposals (screen 14)
+
+"Choose your itinerary", a sentence ("We've created two options for your 2-day trip to Salzburg…"),
+the dates and length, then **the two plans as cards**: the cover, a badge ("Best-known sights",
+"More variety"), the name ("Classic Salzburg", "Salzburg & beyond", from fixed templates),
+"The essentials" / "A wider experience", the profile's sentence, then places, restaurants and
+travel time from the plan's own numbers, and two buttons: **View details** (outlined) and **Choose
+this itinerary** (dark). A **Compare itineraries** row opens the comparison table; "You can always
+adjust your itinerary later" ends the page. After new proposals were asked for, the plan chosen
+earlier is kept apart with a note. **View details** opens that plan's map with the day pills under
+it and the stops below, and "Choose this itinerary" under them. Not built from the mock: a
+"Recommended" badge (nothing says one plan is better), city count and "Mostly walking" (a summary
+has neither), "Add to Day 1" (a proposal is not edited).
 
 ### Add (screens 05, 06)
 
@@ -171,16 +198,28 @@ Add is contextual. On a trip: Place and Restaurant, with up to three suggested d
 from the recalculation, each a hairline row with its reasons; the preview shows the diff before
 anything changes. Outside a trip it starts a new trip.
 
-### Documents (screen 08)
+### Documents (screens 15, 16)
 
-- **Add a document:** "Choose a file" (the system picker; PDFs and pictures), then the file as a
-  hairline row, a Title field (filled from the file name), the Kind chips, and About: Whole trip, A
-  day (day chips), A place (the plan's stops as hairline rows) or A journey (each day that starts at
-  a new base city). "Add the document" is the dark button; it is disabled until a file, a title, a
-  kind and a complete link are chosen.
-- **A document:** its title, its kind as an icon and badge, a picture in place for images, then
-  hairline facts (About, File, Type and size, Added). Open (dark, the phone's viewer), Edit
-  (outlined), Delete (plain text, asks first).
+- **The tab, empty:** an illustration, "No documents yet", a sentence, **one tile per kind**
+  (Tickets, Bookings, Transport, Insurance, Other documents, each with what belongs there) that
+  starts adding that kind, "Add a document" (dark) and the line that documents stay on this phone.
+- **The tab, with documents:** filter chips (All and the five kinds), "All documents" with **Sort**
+  (newest, oldest, title), then rows: a tinted tile for the kind (`docTones`), the title, "Ticket ·
+  PDF · 245.0 kB", the document's date (or what it is about), a thumbnail for a picture, and a "…"
+  menu (Open, Edit).
+- **Add document, step one:** "Upload from device" (the system file picker: PDFs and pictures, and
+  Google Drive through Android's picker), "Take a photo", "Add a link", "or create manually",
+  "Create a document", and a "Your documents stay private" note. Only the first works; the others
+  are disabled and say "Coming later".
+- **Add document, step two:** the file with its picture or tile and "Replace file"; **Document
+  type** chips; **Title** (filled from the file name); **Related to**: Whole trip, A day (day chips),
+  A place (the plan's stops) or A journey (each day that starts at a new base city); **Date**
+  (optional, the calendar); **Notes** (optional, 500 characters, with a counter). "Save document" is
+  disabled until a file, a title, a type and a complete link are chosen. No "Make available offline"
+  switch: every document is already on the phone.
+- **A document:** its title, its kind as a tile and badge, a picture in place for images, then
+  hairline facts (About, File, Type and size, Date and Notes when set, Added). Open (dark, the
+  phone's viewer), Edit (outlined), Delete (plain text, asks first).
 - **A place's details** list that place's documents under "Tickets and documents" (sights) or
   "Bookings and documents" (places to eat), with "Attach a document".
 - **A past trip** has a Documents button that opens the same list.
@@ -214,8 +253,9 @@ the screen reader announcing a screen's title on arrival.
   owner's approval and an amendment to ADR 021 before it is built.
 - **Travel style and public transport** are stored nowhere. Using them needs a field on the trip
   and a rule in the planner, with an ADR.
-- **Destination and attraction photos and "Change photo"**: ADR 022, accepted, not built. Open until
-  a coverage spike is done.
+- **"Change photo"** (ADR 022, step 4) is not built.
+- **English names** exist only where OpenStreetMap has `name:en`; the rest keep their local name.
+  Wikidata labels would fill more gaps but need an ADR for the provider.
 - **Notes, reservations, trip summary:** ADR 021, "Not built". Documents are built (ADR 023) and
   are kept on the phone only; backing them up would need accounts or an export.
 - **Dark mode** is not designed.

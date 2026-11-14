@@ -12,7 +12,9 @@ import { Notice, useAnnounceOnMount } from "../components/ui";
 import { useTripActions } from "../data/actions";
 import { useNavigation } from "../nav/Navigator";
 import { TOUCH, colors, radius, spacing, type } from "../theme";
-import { isValidIsoDate, pluralise } from "../util/format";
+import { formatDate, isValidIsoDate, pluralise } from "../util/format";
+import { CalendarSheet } from "../components/ds/Calendar";
+import { localToday } from "../domain/trips";
 
 export const SEARCH_DEBOUNCE_MS = 350;
 export const MIN_QUERY_LENGTH = 2;
@@ -65,10 +67,10 @@ export function CreateTripScreen() {
   const [chosen, setChosen] = useState<DestinationResult | null>(null);
   const [days, setDays] = useState(3);
   const [startDate, setStartDate] = useState("");
+  const [calendar, setCalendar] = useState(false);
   // Saved for later (docs/design.md): chosen here, not sent, and the plans do not use them yet.
   const [style, setStyle] = useState<TravelStyle>("balanced");
   const [publicTransport, setPublicTransport] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [working, setWorking] = useState<"creating" | "planning" | "starting" | null>(null);
   const [mode, setMode] = useState<"generate" | "empty">("generate");
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
@@ -142,7 +144,6 @@ export function CreateTripScreen() {
   };
 
   const submit = async (how: "generate" | "empty") => {
-    setSubmitted(true);
     setProblem(null);
     setMode(how);
     if (!chosen || hasErrors) return;
@@ -253,18 +254,21 @@ export function CreateTripScreen() {
             <Icon name="calendar" size={22} color={colors.text} />
             <View style={styles.rowBody}>
               <Text style={styles.rowLabel}>Start date (optional)</Text>
-              <TextInput
-                accessibilityLabel="Start date (optional)"
-                accessibilityHint="Day dates follow it. Format YYYY-MM-DD."
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.muted}
-                value={startDate}
-                onChangeText={setStartDate}
-                keyboardType="numbers-and-punctuation"
-                autoCorrect={false}
-                maxLength={10}
-                style={styles.input}
-              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  startDate ? `Start date, ${formatDate(startDate)}` : "Start date, not set"
+                }
+                accessibilityHint="Opens a calendar to choose the first day"
+                onPress={() => setCalendar(true)}
+                style={styles.dateButton}
+                hitSlop={{ top: 8, bottom: 8 }}
+                testID="start-date"
+              >
+                <Text style={[styles.input, !startDate && styles.placeholder]}>
+                  {startDate ? formatDate(startDate).slice(4) : "Choose a date"}
+                </Text>
+              </Pressable>
             </View>
           </View>
           <View style={[styles.row, styles.half, styles.halfRule]}>
@@ -274,13 +278,20 @@ export function CreateTripScreen() {
             </View>
           </View>
         </View>
-        {submitted || startDate.length === 10 ? (
-          errors.date ? (
-            <Text style={styles.error} accessibilityLiveRegion="polite">
-              Problem: {errors.date}
-            </Text>
-          ) : null
-        ) : null}
+        <CalendarSheet
+          visible={calendar}
+          value={startDate}
+          today={localToday()}
+          onPick={(iso) => {
+            setStartDate(iso);
+            setCalendar(false);
+          }}
+          onClear={() => {
+            setStartDate("");
+            setCalendar(false);
+          }}
+          onClose={() => setCalendar(false)}
+        />
 
         <View style={styles.section}>
           <Text accessibilityRole="header" style={styles.sectionTitle}>
@@ -534,6 +545,8 @@ const styles = StyleSheet.create({
   rowLabel: { ...type.caption, color: colors.muted },
   rowTitle: { ...type.body, color: colors.text },
   input: { ...type.body, color: colors.text, minHeight: 32, paddingVertical: 0 },
+  dateButton: { minHeight: 32, justifyContent: "center" },
+  placeholder: { color: colors.muted },
   chosenName: { ...type.heading, color: colors.text },
   cover: { marginTop: spacing.xs },
   pair: {

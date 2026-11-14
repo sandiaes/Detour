@@ -286,13 +286,22 @@ def build_place_search(
     if query:
         norm = normalize_text(query)
         params["q"] = norm
-        where.append("(p.name_norm LIKE '%' || :q || '%' OR p.name_norm % :q)")
-        tier = (
-            "CASE WHEN p.name_norm = :q THEN 0 WHEN p.name_norm LIKE :q || '%' THEN 1"
-            " WHEN p.name_norm LIKE '% ' || :q || '%' THEN 2"
-            " WHEN p.name_norm LIKE '%' || :q || '%' THEN 3 ELSE 4 END"
+        # The local name or the English one: either may be typed.
+        where.append(
+            "(p.name_norm LIKE '%' || :q || '%' OR p.name_norm % :q"
+            " OR p.name_en_norm LIKE '%' || :q || '%' OR p.name_en_norm % :q)"
         )
-        sim = "similarity(p.name_norm, :q)"
+
+        def tier_of(col: str) -> str:
+            return (
+                f"CASE WHEN {col} = :q THEN 0 WHEN {col} LIKE :q || '%' THEN 1"
+                f" WHEN {col} LIKE '% ' || :q || '%' THEN 2"
+                f" WHEN {col} LIKE '%' || :q || '%' THEN 3 ELSE 4 END"
+            )
+
+        # LEAST ignores a NULL (no English name), so the better of the two matches counts.
+        tier = f"LEAST({tier_of('p.name_norm')}, {tier_of('p.name_en_norm')})"
+        sim = "GREATEST(similarity(p.name_norm, :q), COALESCE(similarity(p.name_en_norm, :q), 0))"
         order += ["tier", "sim DESC"]
     dist = "NULL::double precision"
     if lat is not None and lon is not None:
@@ -332,6 +341,7 @@ def build_place_search(
     sql = f"""
         SELECT p.id, p.name, p.kind, p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
                p.region_id, p.city_id, c.name AS city_name, rp.cuisines, rp.venue_type,
+               p.names_i18n->>'en' AS en_name, p.name_en_norm,
                {tier} AS tier, {sim} AS sim, {dist} AS dist
         FROM geo.place p
         LEFT JOIN geo.city c ON c.id = p.city_id
@@ -350,6 +360,7 @@ def search_places(conn: Connection, **kwargs: Any) -> list[PlaceSummary]:
         PlaceSummary(
             id=r.id,
             name=r.name,
+            name_en=r.en_name if r.name_en_norm else None,
             kind=r.kind,
             category=r.category,
             lat=r.lat,
@@ -373,7 +384,8 @@ def place_exists(
     geo.place."""
     row = conn.execute(
         text(
-            "SELECT kind, COALESCE(name, category) AS name, ST_Y(geom) lat, ST_X(geom) lon,"
+            "SELECT kind, COALESCE(CASE WHEN name_en_norm IS NOT NULL THEN names_i18n->>'en' END,"
+            " name, category) AS name, ST_Y(geom) lat, ST_X(geom) lon,"
             " is_active, default_visit_minutes, category FROM geo.place WHERE id = :i"
         ),
         {"i": place_id},
@@ -399,7 +411,8 @@ def get_place(conn: Connection, place_id: uuid.UUID) -> PlaceDetail | None:
             """
             SELECT p.id, p.name, p.kind, p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
                    p.region_id, p.city_id, c.name AS city_name, rp.cuisines, rp.venue_type,
-                   rp.meal_types, rp.diet_flags, p.names_i18n, p.address, p.default_visit_minutes,
+                   rp.meal_types, rp.diet_flags, p.names_i18n, p.names_i18n->>'en' AS en_name,
+                   p.name_en_norm, p.address, p.default_visit_minutes,
                    p.is_active, s.wikidata_id
             FROM geo.place p
             LEFT JOIN geo.city c ON c.id = p.city_id
@@ -423,6 +436,7 @@ def get_place(conn: Connection, place_id: uuid.UUID) -> PlaceDetail | None:
     return PlaceDetail(
         id=row.id,
         name=row.name,
+        name_en=row.en_name if row.name_en_norm else None,
         kind=row.kind,
         category=row.category,
         lat=row.lat,

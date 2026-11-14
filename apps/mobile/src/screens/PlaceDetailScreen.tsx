@@ -4,7 +4,8 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
-import { Cover, PhotoCredit } from "../components/ds/Cover";
+import { Cover } from "../components/ds/Cover";
+import { KindIcon } from "../components/ds/KindIcon";
 import { Icon, type IconName } from "../components/ds/Icon";
 import { Badge, IconButton, PlannedFeature, SectionTitle } from "../components/ds/primitives";
 import { MEAL_LABEL, dayTitle } from "../components/plan/DayPlan";
@@ -180,6 +181,9 @@ export function PlaceDetailScreen({
     item.origin === "user" ? "Added by you" : null,
   ].filter((t): t is string => t !== null);
   const source = detail?.sources?.[0];
+  // The plan shows the English name when the source has one; the name used locally stays visible.
+  const localName =
+    detail?.name && detail.name.trim() !== item.display_name.trim() ? detail.name : null;
   const loadingSource =
     (placeId && place.data === undefined && place.status !== "error") ||
     (userPlaceId && userPlace.data === undefined && userPlace.status !== "error");
@@ -195,23 +199,28 @@ export function PlaceDetailScreen({
           <View style={styles.heroTop}>
             <IconButton icon="back" label="Back" onImage onPress={nav.back} />
           </View>
-          <View style={styles.heroText}>
-            <Badge label={STOP_KIND_LABEL[kind]} tone={eat ? "accent" : "primary"} />
-            <View
-              ref={titleRef}
-              accessible
-              accessibilityRole="header"
-              accessibilityLabel={item.display_name}
-            >
-              <Text style={styles.heroTitle} numberOfLines={2}>
-                {item.display_name}
-              </Text>
-            </View>
-          </View>
         </Cover>
 
         <View style={styles.body}>
-          <PhotoCredit photo={item.image} />
+          <View style={styles.kindLine}>
+            <KindIcon kind={kind} size={16} />
+            <Text style={[styles.kindText, eat && styles.kindTextEat]}>
+              {STOP_KIND_LABEL[kind]}
+            </Text>
+          </View>
+          <View
+            ref={titleRef}
+            accessible
+            accessibilityRole="header"
+            accessibilityLabel={item.display_name}
+          >
+            <Text style={styles.title}>{item.display_name}</Text>
+            {localName ? (
+              <Text style={styles.localName} accessibilityLabel={`Local name: ${localName}`}>
+                {localName}
+              </Text>
+            ) : null}
+          </View>
           {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
           {tags.length > 0 ? (
             <View style={styles.tagRow}>
@@ -355,14 +364,11 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
   heroTop: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
-  heroText: {
-    position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
-    bottom: spacing.lg,
-    gap: spacing.xs,
-  },
-  heroTitle: { ...type.display, fontSize: 26, lineHeight: 32, color: colors.onImage },
+  kindLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  kindText: { ...type.small, fontWeight: "600", color: colors.primary },
+  kindTextEat: { color: colors.accentText },
+  title: { ...type.display, fontSize: 26, lineHeight: 32, color: colors.text },
+  localName: { ...type.small, color: colors.muted, marginTop: spacing.xxs },
   body: { padding: spacing.lg, gap: spacing.lg },
   tagRow: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   factCard: {

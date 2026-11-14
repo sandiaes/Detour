@@ -1,20 +1,21 @@
 import type { Photo } from "@detour/shared";
-import { type ReactNode, useContext } from "react";
+import { type ReactNode, useContext, useState } from "react";
 import { Image, Linking, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 
 import { BackendContext } from "../../api/BackendProvider";
-import { colors, type as typeScale } from "../../theme";
+import { colors, radius, spacing, type as typeScale } from "../../theme";
+import { Icon } from "./Icon";
 
 // A destination's or place's cover (ADR 021, ADR 022). A photo appears only when the backend sent
 // one (`photo`: Wikimedia Commons, served through the backend); otherwise nothing is invented and
 // the cover is a calm illustrated landscape whose colours and hills are chosen from the
-// destination identifier, so a trip always looks the same. A photo has a scrim under the text and
-// the photo's average colour behind it while it loads. A photo is never shown without its credit
-// somewhere on the same screen (`PhotoCredit`).
+// destination identifier, so a trip always looks the same. A cover has no dark band or scrim: text
+// goes beside it, not over it. A photo has its average colour behind it while it loads, and its
+// credit sits behind a small "i" in its bottom right corner (`PhotoCredit`, drawn by `Cover`).
 
-/** The `mid` and `near` colours are the hills under the text: white on both is checked at 4.5:1
- * (theme.test.ts), and a dark gradient over the lower part adds a margin. */
+/** The `mid` and `near` colours are the hills; white on both is checked at 4.5:1 (theme.test.ts)
+ * for the controls drawn on a cover. */
 export const COVER_TONES = [
   { sky: "#cfe3df", haze: "#eef4f1", far: "#8fb4ad", mid: "#3f6f68", near: "#264e49" },
   { sky: "#f1d8c3", haze: "#faeee3", far: "#d0a68c", mid: "#7a5040", near: "#4f3326" },
@@ -107,7 +108,6 @@ export function Cover({
             resizeMode="cover"
             testID="cover-photo"
           />
-          <View style={styles.scrim} />
         </>
       ) : (
         <Svg
@@ -125,61 +125,88 @@ export function Cover({
               <Stop offset="0" stopColor={tone.sky} />
               <Stop offset="1" stopColor={tone.haze} />
             </LinearGradient>
-            <LinearGradient id={`${gradientId}-scrim`} x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0.35" stopColor="#0e1824" stopOpacity={0} />
-              <Stop offset="1" stopColor="#0e1824" stopOpacity={0.55} />
-            </LinearGradient>
           </Defs>
           <Rect x="0" y="0" width="400" height="240" fill={`url(#${gradientId})`} />
           <Circle cx={sunX} cy="52" r="18" fill={tone.haze} opacity={0.9} />
           <Path d={ridge.far} fill={tone.far} />
           <Path d={ridge.mid} fill={tone.mid} />
           <Path d="M0 170 Q100 158 200 166 T400 162 L400 240 L0 240Z" fill={tone.near} />
-          <Rect x="0" y="0" width="400" height="240" fill={`url(#${gradientId}-scrim)`} />
         </Svg>
       )}
       {children}
+      {uri && photo && !givenUri ? <PhotoCredit photo={photo} /> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   frame: { overflow: "hidden", backgroundColor: colors.surfaceMuted },
-  scrim: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "55%",
-    backgroundColor: colors.scrim,
-  },
 });
 
 /**
- * The credit a photo's licence asks for: author, licence and Wikimedia Commons, opening the file's
- * page. Shown on the screen that shows the photo (the trip overview, the place), not on a list card.
+ * The credit a photo's licence asks for (author, licence, Wikimedia Commons), kept out of the way:
+ * a small "i" in the photo's bottom right corner. Pressing it shows the credit beside it, and the
+ * credit opens the file's page. Every photo carries it; `Cover` draws it, so no screen can forget.
  */
 export function PhotoCredit({ photo }: { photo: Photo | null | undefined }) {
   const shown = usePhotoUri(photo);
+  const [open, setOpen] = useState(false);
   if (!photo || !shown) return null;
   return (
-    <Pressable
-      accessibilityRole="link"
-      accessibilityLabel={`${photo.credit.text}. Opens the photo's page on Wikimedia Commons.`}
-      onPress={() => void Linking.openURL(photo.credit.source_url)}
-      style={creditStyles.target}
-      testID="photo-credit"
-    >
-      <Text style={creditStyles.text}>{photo.credit.text}</Text>
-    </Pressable>
+    <View style={creditStyles.corner} pointerEvents="box-none">
+      {open ? (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`${photo.credit.text}. Opens the photo's page on Wikimedia Commons.`}
+          onPress={() => void Linking.openURL(photo.credit.source_url)}
+          style={creditStyles.bubble}
+          testID="photo-credit"
+        >
+          <Text style={creditStyles.text} numberOfLines={3}>
+            {photo.credit.text}
+          </Text>
+        </Pressable>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={open ? "Hide the photo credit" : "Show the photo credit"}
+        accessibilityState={{ expanded: open }}
+        hitSlop={12}
+        onPress={() => setOpen((v) => !v)}
+        style={creditStyles.button}
+        testID="photo-credit-toggle"
+      >
+        <Icon name="info" size={14} color={colors.onImage} />
+      </Pressable>
+    </View>
   );
 }
 
 const creditStyles = StyleSheet.create({
-  target: { minHeight: 48, justifyContent: "center", alignSelf: "flex-start" },
-  text: {
-    ...typeScale.caption,
-    color: colors.muted,
-    textDecorationLine: "underline",
+  corner: {
+    position: "absolute",
+    right: spacing.sm,
+    bottom: spacing.sm,
+    left: spacing.sm,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "flex-end",
+    gap: spacing.xs,
   },
+  button: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(20, 36, 58, 0.72)",
+  },
+  bubble: {
+    flexShrink: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    backgroundColor: "rgba(20, 36, 58, 0.86)",
+  },
+  text: { ...typeScale.caption, color: colors.onImage, textDecorationLine: "underline" },
 });

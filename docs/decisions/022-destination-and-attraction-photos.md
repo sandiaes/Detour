@@ -121,11 +121,13 @@ mechanically and a wrong licence is handled by `geo.image.hidden` (decision 21).
 
 ### Screens
 
-17. **Trips list card and trip header:** the cover photo, with a dark gradient under the name and the
-    dates for legibility. No cover image: the illustration, as today.
+17. **Trips list card and trip header:** the cover photo. *Amended 2026-11-14 (ADR 021, decision 32):
+    no dark gradient; the name and dates sit beside the photo, not over it.* No cover image: the
+    illustration, as today.
 18. **Place detail:** a photo above the name when the place has one, with the credit line ("Photo:
-    author, licence, Wikimedia Commons") that opens the file page. No photo: today's cover, no empty
-    frame.
+    author, licence, Wikimedia Commons") that opens the file page. *Amended 2026-11-14 (ADR 021,
+    decision 33): the credit is behind a small "i" in the photo's bottom right corner, on every
+    photo.* No photo: today's cover, no empty frame.
 19. **Itinerary day thumbnails** may use the photo of the day's first sight (today they are
     illustrations). **Map markers stay as designed** (ADR 021, "quiet markers"): no photos on the map.
     A selected stop's expanded area may show a small thumbnail.

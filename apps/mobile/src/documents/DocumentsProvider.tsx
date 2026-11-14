@@ -86,7 +86,13 @@ export function useDocument(id: string | undefined): TripDocument | null | undef
   return doc?.key === key ? doc.doc : doc ? doc.doc : undefined;
 }
 
-export type DocumentFields = { title: string; category: DocCategory; link: DocLink };
+export type DocumentFields = {
+  title: string;
+  category: DocCategory;
+  link: DocLink;
+  date?: string | null;
+  notes?: string | null;
+};
 
 export function useDocumentActions() {
   const { store, files, changed } = useDocumentsContext();
@@ -100,6 +106,8 @@ export function useDocumentActions() {
         tripId,
         ...fields,
         title: fields.title.trim(),
+        notes: fields.notes?.trim() || null,
+        date: fields.date || null,
         fileName: picked.name,
         mimeType: picked.mimeType,
         sizeBytes: picked.size,
@@ -120,7 +128,13 @@ export function useDocumentActions() {
 
   const update = useCallback(
     async (doc: TripDocument, fields: DocumentFields) => {
-      await store.put({ ...doc, ...fields, title: fields.title.trim() });
+      await store.put({
+        ...doc,
+        ...fields,
+        title: fields.title.trim(),
+        notes: fields.notes?.trim() || null,
+        date: fields.date || null,
+      });
       changed();
     },
     [store, changed],

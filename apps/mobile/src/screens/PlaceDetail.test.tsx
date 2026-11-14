@@ -215,6 +215,7 @@ test("a place with a photo shows it and its credit; one without shows the illust
   await open("i1", server({ "GET /v1/itineraries/{itinerary_id}": () => withPhoto }));
   expect(await screen.findByRole("header", { name: "Schönbrunn Palace" })).toBeOnTheScreen();
   expect(screen.getByTestId("cover-photo").props.source.uri).toMatch(/\/v1\/images\//);
+  await fireEvent.press(screen.getByRole("button", { name: "Show the photo credit" }));
   expect(
     screen.getByText("Photo: Jane Doe, CC BY-SA 4.0, Wikimedia Commons (resized)"),
   ).toBeOnTheScreen();

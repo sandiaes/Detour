@@ -222,7 +222,7 @@ test("a trip with a chosen plan opens on its overview, built around the active i
     </Harness>,
   );
   await fireEvent.press(await screen.findByRole("button", { name: /Upcoming/ }));
-  expect(await screen.findByRole("header", { name: "Vienna" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: /^Vienna\./ })).toBeOnTheScreen();
   expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
   expect(screen.getByText("Essentials plan")).toBeOnTheScreen();
   // The overview no longer previews the first days: the Itinerary tab has them.

@@ -52,6 +52,10 @@ the plan.
    key (`place:<imported id>`, `user:<your place id>`, or `name:<name>` as a last resort) **with its
    name and day as they were when linked**, so the link still reads correctly after the plan
    changes, after new proposals, and on a past trip. A day or journey is kept by its day number.
+5a. **Amended 2026-11-14 (ADR 021, decision 39):** a document may also have a **date** (ISO) and a
+   **note** (at most 500 characters), both optional and stored in the same on-device record; the
+   list shows the date when there is one. The tab filters by kind and sorts; "Add document" is two
+   steps (how to add, then the form). Nothing else changes: still on the phone, nothing uploaded.
 6. **Where documents appear:**
    - the trip's **Documents** tab (ADR 021): grouped by kind, each row with its title, what it is
      about and the file ("Schönbrunn Palace · day 1 · PDF · 245.0 kB"), and "Add a document";

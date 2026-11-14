@@ -44,10 +44,14 @@ async function open(
 
 test("the overview shows the cover, status, figures and the active itinerary", async () => {
   await open();
-  expect(await screen.findByRole("header", { name: "Vienna" })).toBeOnTheScreen();
+  // The header holds the name and the dates above the photo, and nothing else: no status, no
+  // destination line, nothing drawn over the picture.
+  expect(
+    await screen.findByRole("header", { name: "Vienna. 1–2 May 2027 · 2 days." }),
+  ).toBeOnTheScreen();
   expect(screen.getByTestId("trip-cover")).toBeOnTheScreen();
-  expect(screen.getByText("Upcoming")).toBeOnTheScreen();
   expect(screen.getByText("1–2 May 2027 · 2 days")).toBeOnTheScreen();
+  expect(screen.queryByText("Upcoming")).toBeNull();
   expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
   // Cities, places and restaurants only: no days figure.
   expect(screen.queryByLabelText("2 days")).toBeNull();
@@ -73,7 +77,7 @@ test("the original proposals are in the trip menu, not on the overview", async (
   await fireEvent.press(screen.getByRole("button", { name: "Trip menu" }));
   await fireEvent.press(await screen.findByRole("button", { name: /^Original proposals\./ }));
   expect(await screen.findByRole("header", { name: "Original proposals" })).toBeOnTheScreen();
-  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+  expect(await screen.findByTestId("plan-wider")).toBeOnTheScreen();
 });
 
 test("the trip menu opens the trip settings", async () => {
@@ -83,10 +87,10 @@ test("the trip menu opens the trip settings", async () => {
   expect(await screen.findByRole("header", { name: "Trip settings" })).toBeOnTheScreen();
 });
 
-test("the Itinerary tab lists the days as a timeline without the trip header", async () => {
+test("the Itinerary tab keeps the trip header and photo and lists the days as a timeline", async () => {
   await open();
   await fireEvent.press(await screen.findByRole("tab", { name: "Itinerary" }));
-  expect(screen.queryByTestId("trip-cover")).toBeNull();
+  expect(screen.getByTestId("trip-cover")).toBeOnTheScreen();
   expect(
     await screen.findByRole("button", { name: /^Day 1 · Sat 1 May\. Vienna\. / }),
   ).toBeOnTheScreen();
@@ -117,6 +121,8 @@ test("the Map tab shows the map with the day's list under it, sharing the select
   // A compact header keeps the trip's name, menu and tabs above the map.
   expect(screen.getByRole("header", { name: "Vienna" })).toBeOnTheScreen();
   expect(screen.getByRole("button", { name: "Trip menu" })).toBeOnTheScreen();
+  // The day pills sit between the map and the stops, and are centred in each pill.
+  expect(screen.getByTestId("day-tab-1")).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("marker-m1"));
   expect(screen.getByTestId("stop-m1").props.accessibilityState).toMatchObject({ selected: true });
   await fireEvent.press(screen.getByRole("tab", { name: "Day 2, Sun 2 May" }));
@@ -144,11 +150,10 @@ test("a trip with no plan leads to the proposals", async () => {
       ],
     }),
   );
-  expect(await screen.findByText("Planning")).toBeOnTheScreen();
-  expect(screen.getByRole("header", { name: "Choose a plan" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Choose a plan" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "See the proposals" }));
-  expect(await screen.findByRole("header", { name: "Proposals" })).toBeOnTheScreen();
-  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
+  expect(await screen.findByTestId("plan-wider")).toBeOnTheScreen();
 });
 
 test("an itinerary that cannot be loaded offline says so and offers another try", async () => {
@@ -182,7 +187,7 @@ test("previewDays starts at today's day during the trip", () => {
   expect(previewDays(trip, plan, "2027-05-01", 1).map((d) => d.day_index)).toEqual([1]);
 });
 
-test("the overview header shows the trip's photo with its credit; the itinerary tab has neither", async () => {
+test("the trip's photo hides its credit behind a small i in the corner; the Itinerary tab shows it too", async () => {
   const client = server({
     "GET /v1/trips": () => [
       makeTrip({ selected_itinerary_id: ESSENTIALS_ID, cover_image: makePhoto() }),
@@ -193,9 +198,13 @@ test("the overview header shows the trip's photo with its credit; the itinerary 
   expect(screen.getByTestId("cover-photo").props.source.uri).toMatch(
     /^https:\/\/api\.example\.org\/v1\/images\//,
   );
+  // Hidden until asked for.
+  expect(screen.queryByTestId("photo-credit")).toBeNull();
+  await fireEvent.press(screen.getByRole("button", { name: "Show the photo credit" }));
   expect(screen.getByRole("link", { name: /Jane Doe, CC BY-SA 4.0/ })).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("open-itinerary"));
   expect(await screen.findByTestId("day-row-1")).toBeOnTheScreen();
-  expect(screen.queryByTestId("cover-photo", { includeHiddenElements: true })).toBeNull();
-  expect(screen.queryByTestId("photo-credit")).toBeNull();
+  // The same photo stays, with its credit control as it was left.
+  expect(screen.getByTestId("cover-photo")).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: "Hide the photo credit" })).toBeOnTheScreen();
 });

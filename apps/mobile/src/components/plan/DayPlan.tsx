@@ -26,6 +26,7 @@ import {
 } from "../../util/format";
 import { Button } from "../Button";
 import { Icon } from "../ds/Icon";
+import { KindIcon } from "../ds/KindIcon";
 import { EmptyState } from "../ui";
 import { ItineraryMap } from "../ItineraryMap";
 
@@ -112,6 +113,8 @@ export function DayStrip({
   value: number;
   onChange: (dayIndex: number) => void;
 }) {
+  // Pills share the width when there are few days and scroll sideways when there are many. The
+  // text is centred in each pill, with or without a date.
   return (
     <ScrollView
       horizontal
@@ -130,16 +133,15 @@ export function DayStrip({
             accessibilityLabel={`Day ${d.day_index}${date ? `, ${date}` : ""}`}
             accessibilityState={{ selected: active }}
             onPress={() => onChange(d.day_index)}
-            style={styles.dayPill}
+            style={[styles.dayPill, active && styles.dayPillActive]}
             testID={`day-tab-${d.day_index}`}
           >
             <Text style={[styles.dayPillTitle, active && styles.dayPillTextActive]}>
               Day {d.day_index}
             </Text>
             {date ? (
-              <Text style={[styles.dayPillDate, active && styles.dayPillDateActive]}>{date}</Text>
+              <Text style={[styles.dayPillDate, active && styles.dayPillTextActive]}>{date}</Text>
             ) : null}
-            <View style={[styles.dayPillLine, active && styles.dayPillLineActive]} />
           </Pressable>
         );
       })}
@@ -279,12 +281,15 @@ export function StopRow({
             )}
             <View style={styles.cardText}>
               <Text style={styles.title}>{item.display_name}</Text>
-              <Text
-                testID={`kind-${stop}`}
-                style={[styles.kind, eat ? styles.kindEat : styles.kindSight]}
-              >
-                {stopSummary(item)}
-              </Text>
+              <View style={styles.kindLine}>
+                <KindIcon kind={stop} size={13} />
+                <Text
+                  testID={`kind-${stop}`}
+                  style={[styles.kind, eat ? styles.kindEat : styles.kindSight]}
+                >
+                  {stopSummary(item)}
+                </Text>
+              </View>
               {meal ? (
                 <Text style={styles.meta}>{formatCuisines(item.restaurant?.cuisines)}</Text>
               ) : null}
@@ -522,7 +527,6 @@ export function PlanDayView({
 
   return (
     <View style={styles.fill}>
-      {strip}
       <View style={styles.mapArea}>
         {map ? (
           <ItineraryMap
@@ -545,7 +549,7 @@ export function PlanDayView({
         )}
       </View>
       <View style={styles.sheet}>
-        <View style={styles.grabber} />
+        {strip}
         <ScrollView ref={scroller} contentContainerStyle={styles.sheetContent}>
           {list}
         </ScrollView>
@@ -569,33 +573,28 @@ const styles = StyleSheet.create({
     ...shadow.raised,
   },
   sheetContent: { paddingBottom: spacing.xl },
-  grabber: {
-    alignSelf: "center",
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-    backgroundColor: colors.border,
-  },
 
-  strip: {
-    flexGrow: 0,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+  strip: { flexGrow: 0 },
+  stripContent: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
   },
-  stripContent: { paddingHorizontal: spacing.lg, gap: spacing.lg },
   dayPill: {
+    flex: 1,
+    minWidth: 96,
     minHeight: TOUCH,
-    justifyContent: "flex-end",
+    paddingHorizontal: spacing.md,
     alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
   },
-  dayPillTitle: { ...type.small, fontWeight: "600", color: colors.muted },
-  dayPillDate: { ...type.caption, color: colors.muted, paddingBottom: spacing.xs },
-  dayPillTextActive: { color: colors.text, fontWeight: "700" },
-  dayPillDateActive: { color: colors.text },
-  dayPillLine: { height: 2, alignSelf: "stretch", backgroundColor: "transparent" },
-  dayPillLineActive: { backgroundColor: colors.text },
+  dayPillActive: { backgroundColor: colors.ink },
+  dayPillTitle: { ...type.small, fontWeight: "700", color: colors.text, textAlign: "center" },
+  dayPillDate: { ...type.caption, color: colors.muted, textAlign: "center" },
+  dayPillTextActive: { color: colors.onPrimary },
 
   list: { paddingHorizontal: spacing.lg },
   dayBaseLine: { ...type.caption, color: colors.muted, paddingTop: spacing.sm },
@@ -637,6 +636,7 @@ const styles = StyleSheet.create({
   discText: { color: colors.onPrimary, fontWeight: "600", fontSize: 12 },
   cardText: { flex: 1, gap: 1 },
   title: { ...type.small, fontWeight: "600", color: colors.text },
+  kindLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   kind: { ...type.caption, fontWeight: "500" },
   kindSight: { color: colors.primary },
   kindEat: { color: colors.accentText },

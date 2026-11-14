@@ -46,11 +46,11 @@ test("asking for new proposals plans again and shows them, keeping the chosen pl
     "POST /v1/trips/{trip_id}/itineraries/generate": generated,
   });
   await fireEvent.press(await screen.findByRole("button", { name: "Get new proposals" }));
-  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Original proposals" })).toBeOnTheScreen();
   expect(client.count("POST /v1/trips/{trip_id}/itineraries/generate")).toBe(1);
   // Back from the proposals goes to the trip, not to the settings, and then to the trips.
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-  expect(await screen.findByRole("header", { name: "Vienna" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: /^Vienna\./ })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
   expect(await screen.findByRole("header", { name: "Detour" })).toBeOnTheScreen();
 });

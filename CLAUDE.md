@@ -70,7 +70,13 @@ cards, trip cards with only name, dates and length (a trip is named after its de
 overview without the days figure, first days or notes, an Itinerary tab of days that open the map of
 that day, quieter map markers, a new-trip screen with travel style, public transport and "Start with
 an empty trip", and meals aimed at lunch 13:00 and dinner 20:00 (day window to 22:00). Adding places
-to an empty trip is not built yet (it needs the owner's approval). Covers are illustrations,
+to an empty trip is not built yet (it needs the owner's approval). **A second amendment of 2026-11-14**
+(ADR 021, decisions 32 to 41; reference screens 14 to 16) is built and awaits acceptance: no dark band
+or text over photos, credits behind a small "i" on every photo, the proposals as two cards with View
+details opening the plan's map, day pills under the map, the Itinerary tab with the Overview layout,
+kind icons (fork and knife, coffee cup, landmark), a calendar for the start date, a new Documents tab
+and Add document flow (with a date and notes), English place names where OpenStreetMap has them and
+search by either name (migration `0010` fills places already imported; later imports keep it current), and a planner fix so one sight mapped twice is one stop. Covers are illustrations,
 not photos, until ADR 022 (accepted 2026-11-14: Wikimedia Commons photos through Wikidata, stored in
 Supabase Storage, a "Change photo" choice on the new-trip screen and an automatic photo otherwise)
 has its steps 2 and 3 built and awaiting acceptance (migration `0009`, `adapters/wikimedia.py`, the image

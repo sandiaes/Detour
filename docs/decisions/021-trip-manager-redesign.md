@@ -6,7 +6,8 @@
   read-only field pair to the API; step 4 adds an optional `day` to the add-place preview, a
   suggestions endpoint and a day restriction in the recalculation (default behaviour unchanged).
   There is no database change. Step 5 waits for the owner. The amendment of 2026-11-14 (flat design,
-  new-trip screen, meal times) is below.
+  new-trip screen, meal times) is below, and a second one of the same day (proposals, documents,
+  calendar, English names, duplicate sights).
 - **Date:** 2026-11-13
 - **Related:** [`020-trip-centred-app.md`](020-trip-centred-app.md) (extended),
   [`015-phase-5-mobile-shell.md`](015-phase-5-mobile-shell.md) (decision 9, design, superseded),
@@ -207,8 +208,8 @@ planner configuration change). The full description of the screens is in
     not "Austria, 8 days".
 27. **Overview.** The figures are cities, places and restaurants (no days). The first days and the
     notes placeholder are removed. The tabs sit on a sheet whose top corners curve over the cover.
-28. **Itinerary and Map.** The Itinerary tab has no cover: a compact header, then the days as a
-    timeline with thumbnails (screen 12). A day opens the Map tab on that day. In the day's view
+28. **Itinerary and Map.** The Itinerary tab lists the days as a timeline with thumbnails (screen 12;
+    it keeps the cover since decision 36). A day opens the Map tab on that day. In the day's view
     the "Day 1, date, visits, meals…" title is removed, stops are hairline rows with smaller type,
     the map takes about a third of the height and the stops the rest.
 29. **Map markers** are small flat discs (26 dp, 34 dp when selected) with a 48 dp touch area, and
@@ -232,6 +233,63 @@ planner configuration change). The full description of the screens is in
 planned itineraries and refuse a manual one; a manual add (choose a day, say how long, place by
 hand) is a new flow. Until then an empty trip is created and shown but cannot yet be filled from
 the app's Add menu.
+
+## Amendment of 2026-11-14 (second): proposals, documents, calendar, English names
+
+Owner feedback of the same day, with three new reference screens: 14 (the two proposals and a day's
+map), 15 (the Documents tab) and 16 (Add document), all in [`../screenshots/`](../screenshots/).
+Mobile app, plus one importer and search change (migration `0010`) and one planner fix.
+
+32. **No dark band over a photo.** Trip cards and the trip header lose the gradient; text is never
+    drawn over a cover. The card shows the cover, then the name, dates and length under it (the
+    status badge stays on the photo, on its own pill). The trip header is **the name and the
+    dates/days, centred above the photo**; the status and the destination line are removed. The
+    place detail's name and kind sit under its photo.
+33. **Photo credits behind a small "i"** in the bottom right corner of every photo (`Cover` draws it,
+    so no screen can forget it). Pressing it shows "Photo: author, licence, Wikimedia Commons
+    (resized)" beside it, and the credit opens the file page. This replaces the credit line under
+    the place hero and at the end of the overview (ADR 022, decisions 17 and 18).
+34. **Proposals screen (screen 14, left).** "Choose your itinerary": a sentence, the dates and
+    length, and the two plans as cards: the cover, a name from fixed templates ("Classic Vienna",
+    "Vienna & beyond"; never generated text), "The essentials" / "A wider experience", the profile's
+    sentence, places, restaurants and travel time from the plan's own numbers, **View details** and
+    **Choose this itinerary**. A "Compare itineraries" row opens the comparison table. The swipe
+    list, the side-by-side layout and the "Recommended" badge of the mock are not built: nothing in
+    the data says one plan is better, so the badges read "Best-known sights" and "More variety". The
+    mock's "1 city" and "Mostly walking" are not shown: a plan summary has no city count or mode.
+35. **View details** opens the plan on its **map with the day pills below the map and above the
+    stops** (screen 14, right), with "Choose this itinerary" under it. The same pills sit under the
+    map of a trip's Map tab. The pills share the width, the chosen one is dark, and the text is
+    centred in each, with or without dates. "Add to Day 1" of the mock is not built there (a proposal
+    is not edited; Add works on the chosen itinerary).
+36. **Itinerary tab = Overview layout.** It keeps the header and the cover photo and lists the days
+    below; **only the Map tab** gives its space to the map (decision 28 is amended).
+37. **Icons for kinds:** a fork and knife for restaurants, a coffee cup for cafés and a visitor at a
+    landmark for attractions (`KindIcon`), beside the kind's word in the day list, the place detail
+    and the search results.
+38. **Start date on a calendar.** The new-trip screen's start date opens a month calendar (Monday
+    first, drawn in JavaScript: the system date picker is a native module that needs an ADR), with
+    "Clear the date". Typing a date is gone.
+39. **Documents (screens 15 and 16).** The tab shows, when empty, a short explanation and one tile per
+    kind that starts adding that kind; otherwise filter chips (All and the five kinds), a sort
+    (newest, oldest, title) and rows with a tinted kind tile, title, "Ticket · PDF · 245 kB", the
+    document's date (or what it is about), a thumbnail for pictures and a menu (Open, Edit). **Add
+    document** is two steps: how to add, then the form (file, type, title, related to, date, notes).
+    Documents gain two optional fields, a **date** and **notes** (500 characters), kept in the same
+    on-device record (ADR 023); older documents have neither. Not built, and shown as "Coming
+    later": take a photo (camera = native module), add a link, create a document without a file.
+    **Google Drive** is reached through the phone's file picker, which lists it; the app makes no
+    call to Google. "Make available offline" is not shown: every document is already on the phone.
+40. **English names.** OpenStreetMap's `name:en` is already imported (`names_i18n`). The plan now
+    shows it as the place's name when the source has one, the place detail keeps the local name under
+    it, and **search matches the local and the English name** (`geo.place.name_en_norm`, migration
+    `0010`, filled by the importer and, for places already imported, by the migration). Where the
+    source has no English name the local name stays: nothing is machine-translated (no generative AI,
+    CLAUDE.md rule 1) and no new provider is called (Wikidata labels would need an ADR).
+41. **One sight, one stop.** OpenStreetMap often maps one attraction twice (a node and an outline)
+    under one name, and a plan could visit it twice in a row ("Beyond Recall" in Salzburg).
+    `planner/dedupe.py` collapses candidates with the same normalised name within 300 m before
+    planning, keeping the best-documented copy.
 
 ## Not built (kept as references for later steps)
 

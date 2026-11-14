@@ -418,3 +418,19 @@ def test_alternate_names_are_distinct_short_first_and_capped() -> None:
     picked = gazetteer.pick_alt_names("Testburg", alts)
     assert picked is not None and len(picked) == gazetteer.ALT_NAMES_CAP
     assert picked[0] == "Éx" and "Testburg" not in picked  # the name itself is not an alternate
+
+
+def test_english_name_is_searchable_only_when_it_differs() -> None:
+    tags = {
+        "tourism": "museum",
+        "name": "Festung Hohensalzburg",
+        "name:en": "Hohensalzburg Fortress",
+    }
+    decision = decide(tags)
+    assert isinstance(decision, Decision)
+    place = build_place("r", "N", 1, decision, tags, 13.0, 47.8)
+    assert place.name_en_norm == "hohensalzburg fortress"
+    same = {"tourism": "museum", "name": "Café Test", "name:en": "Cafe  test"}
+    decision = decide(same)
+    assert isinstance(decision, Decision)
+    assert build_place("r", "N", 2, decision, same, 13.0, 47.8).name_en_norm is None

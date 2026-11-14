@@ -12,6 +12,8 @@ import {
   makeTrip,
 } from "../testing/fixtures";
 import { Harness } from "../testing/harness";
+import { monthGrid } from "../components/ds/Calendar";
+import { localToday } from "../domain/trips";
 import { SEARCH_DEBOUNCE_MS, unavailableReason, validateForm } from "./CreateTripScreen";
 
 beforeEach(() => jest.useFakeTimers());
@@ -137,6 +139,12 @@ test("searching offline says it needs a connection", async () => {
   expect(await screen.findByText(/Searching needs a connection/)).toBeOnTheScreen();
 });
 
+/** "YYYY-MM" of the month after today's, as the calendar shows after one press of Next. */
+function nextMonth(): string {
+  const [y, m] = localToday().split("-").map(Number) as [number, number];
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
 test("Generate itineraries stays unavailable until a destination is chosen", async () => {
   await openForm();
   const button = screen.getByRole("button", { name: "Generate itineraries" });
@@ -150,20 +158,25 @@ test("the whole flow: search, choose, set details, plan, land on the two proposa
   expect(screen.getByLabelText("Clear destination")).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByLabelText("More days"));
-  await fireEvent.changeText(screen.getByLabelText("Start date (optional)"), "2027-05-01");
+  // The start date is chosen on a calendar, never typed.
+  await fireEvent.press(screen.getByRole("button", { name: "Start date, not set" }));
+  expect(screen.getByTestId("cal-month")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByLabelText("Next month"));
+  await fireEvent.press(screen.getByTestId(`cal-${nextMonth()}-15`));
+  expect(screen.getByRole("button", { name: /^Start date, .* 15 / })).toBeOnTheScreen();
   // No currency and no meal budget: budgets are not part of the app (ADR 017).
   expect(screen.queryByLabelText("Currency (optional)")).toBeNull();
   expect(screen.queryByLabelText("Meal budget per person (optional)")).toBeNull();
   await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
 
-  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
   const create = client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips");
   expect(create?.body).toEqual({
     title: "Vienna",
     destination_kind: "city",
     destination_ref: "900101",
     duration_days: 4,
-    start_date: "2027-05-01",
+    start_date: `${nextMonth()}-15`,
   });
   expect(client.count("POST /v1/trips/{trip_id}/itineraries/generate")).toBe(1);
   // The generated plans were stored, so opening the proposals made no extra plan requests.
@@ -209,14 +222,30 @@ test("travel style and public transport are chosen but marked as not used yet", 
   expect(client.count("POST /v1/trips")).toBe(0);
 });
 
-test("an invalid start date blocks submission and says what is wrong", async () => {
+test("the start date can be cleared again from the calendar", async () => {
   const client = await openForm();
   await typeDestination("Vie");
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
-  await fireEvent.changeText(screen.getByLabelText("Start date (optional)"), "2027-02-31");
+  await fireEvent.press(screen.getByRole("button", { name: "Start date, not set" }));
+  expect(screen.queryByTestId("cal-clear")).toBeNull();
+  await fireEvent.press(screen.getByTestId(`cal-${localToday().slice(0, 8)}15`));
+  await fireEvent.press(screen.getByRole("button", { name: /^Start date, / }));
+  await fireEvent.press(screen.getByTestId("cal-clear"));
+  expect(screen.getByRole("button", { name: "Start date, not set" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
-  expect(await screen.findByText(/Use the form YYYY-MM-DD/)).toBeOnTheScreen();
-  expect(client.count("POST /v1/trips")).toBe(0);
+  await screen.findByRole("header", { name: "Choose your itinerary" });
+  const create = client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips");
+  expect(create?.body).toMatchObject({ start_date: null });
+});
+
+test("the calendar's month grid starts on Monday and has every day once", () => {
+  const weeks = monthGrid(2027, 1); // February 2027 starts on a Monday
+  expect(weeks[0]?.[0]).toBe("2027-02-01");
+  expect(weeks.every((w) => w.length === 7)).toBe(true);
+  expect(weeks.flat().filter(Boolean)).toHaveLength(28);
+  const may = monthGrid(2027, 4); // May 2027 starts on a Saturday
+  expect(may[0]?.slice(0, 5)).toEqual([null, null, null, null, null]);
+  expect(may[0]?.[5]).toBe("2027-05-01");
 });
 
 test("an area is planned like a city, with its own explanation", async () => {
@@ -225,7 +254,7 @@ test("an area is planned like a city, with its own explanation", async () => {
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna Woods/ }));
   expect(screen.getByText(/choose base cities in the area/)).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
-  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
   const create = client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips");
   expect(create?.body).toMatchObject({ destination_kind: "area", destination_ref: "a1" });
 });
@@ -255,7 +284,7 @@ test("when planning fails the trip is kept, the reason is shown, and Try again p
   expect(screen.getByText(/The trip was saved/)).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByRole("button", { name: "Try planning again" }));
-  expect(await screen.findByText("How they differ")).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
   expect(client.count("POST /v1/trips")).toBe(1);
   expect(client.count("POST /v1/trips/{trip_id}/itineraries/generate")).toBe(2);
 });

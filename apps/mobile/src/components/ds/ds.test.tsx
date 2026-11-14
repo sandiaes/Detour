@@ -101,16 +101,30 @@ test("without an API address or a photo the illustration stays: nothing is inven
   expect(screen.queryByTestId("cover-photo", { includeHiddenElements: true })).toBeNull();
 });
 
-test("the credit names the author and licence and opens the photo's page", async () => {
+test("the credit sits behind a small i; pressed, it names the author and licence and opens the photo's page", async () => {
   const open = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
   await render(withApi("https://api.example.org", <PhotoCredit photo={makePhoto()} />));
+  expect(screen.queryByTestId("photo-credit")).toBeNull();
+  const toggle = screen.getByRole("button", { name: "Show the photo credit" });
+  await fireEvent.press(toggle);
   const link = screen.getByRole("link", { name: /Jane Doe, CC BY-SA 4.0/ });
   expect(
     screen.getByText("Photo: Jane Doe, CC BY-SA 4.0, Wikimedia Commons (resized)"),
   ).toBeOnTheScreen();
   await fireEvent.press(link);
   expect(open).toHaveBeenCalledWith("https://commons.wikimedia.org/wiki/File:Vienna.jpg");
+  await fireEvent.press(screen.getByRole("button", { name: "Hide the photo credit" }));
+  expect(screen.queryByTestId("photo-credit")).toBeNull();
   open.mockRestore();
+});
+
+test("a cover with a photo draws its credit control itself, and a cover without one draws none", async () => {
+  await render(
+    withApi("https://api.example.org", <Cover seedKey="x" height={100} photo={makePhoto()} />),
+  );
+  expect(screen.getByTestId("photo-credit-toggle")).toBeOnTheScreen();
+  await render(withApi("https://api.example.org", <Cover seedKey="x" height={100} photo={null} />));
+  expect(screen.queryByTestId("photo-credit-toggle")).toBeNull();
 });
 
 test("no credit is drawn without a photo, or where the photo itself is not shown", async () => {

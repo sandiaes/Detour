@@ -245,3 +245,35 @@ def test_regions_and_attributions(api_env: ApiEnv) -> None:
     assert by_name["OpenStreetMap"]["licence"] == "ODbL-1.0"
     assert by_name["GeoNames"]["licence"] == "CC-BY-4.0"
     assert any(c["applies_to"] == "The map" for c in credits)
+
+
+def test_place_search_matches_the_english_name_and_the_original(api_env: ApiEnv) -> None:
+    import json
+    import uuid
+
+    import psycopg
+
+    pid = uuid.uuid4()
+    with psycopg.connect(api_env.database_url, autocommit=True) as conn:
+        [(run,)] = conn.execute(
+            "SELECT current_import_run_id FROM geo.region WHERE id = 'test-region'"
+        ).fetchall()
+        conn.execute(
+            "INSERT INTO geo.place (id, region_id, kind, category, name, name_norm, names_i18n,"
+            " name_en_norm, geom, first_import_run_id, last_changed_import_run_id)"
+            " VALUES (%s, 'test-region', 'attraction', 'castle', 'Festung Zwergenberg',"
+            " 'festung zwergenberg', %s, 'dwarfberg fortress',"
+            " ST_SetSRID(ST_MakePoint(16.37, 48.21), 4326), %s, %s)",
+            (pid, json.dumps({"en": "Dwarfberg Fortress"}), run, run),
+        )
+    try:
+        for q in ("zwergenberg", "dwarfberg fortress", "Dwarfberg"):
+            hits = search(api_env, "/v1/places/search", q=q, region="test-region")["results"]
+            hit = next(h for h in hits if h["id"] == str(pid))
+            assert hit["name"] == "Festung Zwergenberg"
+            assert hit["name_en"] == "Dwarfberg Fortress"
+        detail = api_env.client.get(f"/v1/places/{pid}", headers=api_env.headers).json()
+        assert detail["name_en"] == "Dwarfberg Fortress"
+    finally:
+        with psycopg.connect(api_env.database_url, autocommit=True) as conn:
+            conn.execute("DELETE FROM geo.place WHERE id = %s", (pid,))

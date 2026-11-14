@@ -166,7 +166,7 @@ test("search a sight, preview the change, accept it, and see the new plan", asyn
   await fireEvent.press(screen.getByTestId("accept-change"));
   expect(client.count("POST /v1/change-sets/{change_set_id}/apply")).toBe(1);
   // Back on the plan, which shows the new version without another request.
-  expect(await screen.findByText("Essentials plan")).toBeOnTheScreen();
+  expect(await screen.findByText(/^Essentials plan/)).toBeOnTheScreen();
   expect(await screen.findByText("Added by you")).toBeOnTheScreen();
   expect(client.count("GET /v1/itineraries/{itinerary_id}")).toBe(1);
 });
@@ -179,7 +179,7 @@ test("discarding returns to the plan unchanged", async () => {
   await fireEvent.press(await screen.findByTestId("discard-change"));
   expect(client.count("POST /v1/change-sets/{change_set_id}/discard")).toBe(1);
   expect(client.count("POST /v1/change-sets/{change_set_id}/apply")).toBe(0);
-  expect(await screen.findByText("Essentials plan")).toBeOnTheScreen();
+  expect(await screen.findByText(/^Essentials plan/)).toBeOnTheScreen();
   expect(screen.queryByText("Added by you")).toBeNull();
 });
 

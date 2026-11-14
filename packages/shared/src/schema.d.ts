@@ -1624,6 +1624,11 @@ export interface components {
        */
       name: string | null;
       /**
+       * Name En
+       * @description The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated.
+       */
+      name_en?: string | null;
+      /**
        * Kind
        * @enum {string}
        */
@@ -1808,6 +1813,11 @@ export interface components {
        */
       name: string | null;
       /**
+       * Name En
+       * @description The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated.
+       */
+      name_en?: string | null;
+      /**
        * Kind
        * @enum {string}
        */
@@ -1975,6 +1985,11 @@ export interface components {
        * @description Null when the source has no name
        */
       name: string | null;
+      /**
+       * Name En
+       * @description The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated.
+       */
+      name_en?: string | null;
       /**
        * Kind
        * @enum {string}

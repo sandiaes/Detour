@@ -1,5 +1,5 @@
 import { COVER_TONES } from "./components/ds/Cover";
-import { TOUCH, colors } from "./theme";
+import { TOUCH, colors, docTones } from "./theme";
 
 // WCAG 2.x contrast ratio.
 function luminance(hex: string): number {
@@ -41,6 +41,11 @@ describe("text contrast is at least 4.5:1 (WCAG AA)", () => {
     ["on ink", colors.onInk, colors.ink],
     ["primary on muted surface", colors.primary, colors.surfaceMuted],
     ["restaurant marker number", colors.onPrimary, colors.eat],
+    ...Object.entries(docTones).map(([k, t]): [string, string, string] => [
+      `document tile ${k}`,
+      t.fg,
+      t.bg,
+    ]),
     ...COVER_TONES.flatMap((t, i): [string, string, string][] => [
       [`cover ${i}: text on the near hills`, colors.onImage, t.near],
       [`cover ${i}: text on the middle hills`, colors.onImage, t.mid],

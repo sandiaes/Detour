@@ -19,7 +19,7 @@ import {
 import { keys, useTripActions } from "../data/actions";
 import { useItemActions } from "../data/itemActions";
 import { useResource } from "../data/DataProvider";
-import { PROFILE_LABEL } from "../domain/compare";
+import { PROFILE_LABEL, planNames } from "../domain/compare";
 import { type Route, useNavigation } from "../nav/Navigator";
 import { colors, radius, spacing, type } from "../theme";
 import { pluralise } from "../util/format";
@@ -127,8 +127,8 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
   const top = (
     <View>
       <ScreenHeader
-        title={`${label} plan`}
-        subtitle={trip ? `${trip.title} · ${trip.destination.name}` : undefined}
+        title={trip ? planNames(data, trip.destination.name).title : `${label} plan`}
+        subtitle={trip ? `${label} plan · ${trip.title}` : undefined}
         onBack={nav.back}
         right={
           <Button
@@ -156,23 +156,12 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
           onPress={() => setView("map")}
           accessibilityLabel="Show the map"
         />
-        <View style={styles.spacer} />
-        {selected ? (
-          <Text style={styles.selectedBadge}>✓ Selected</Text>
-        ) : (
-          <Button
-            label="Select"
-            accessibilityLabel={`Select the ${label} plan`}
-            loading={selecting}
-            onPress={() => void select()}
-          />
-        )}
       </View>
       {editable ? (
         <View style={styles.toolbar}>
           <Button
             label="Add a place"
-            icon="attraction"
+            icon="sight"
             variant="secondary"
             testID="add-place"
             hint="Search or drop a pin; you see what would change first"
@@ -232,6 +221,22 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
           </>
         }
       />
+      {/* The choice is always at hand, under the map and the stops (reference screen 14). */}
+      <View style={styles.choose}>
+        {selected ? (
+          <Text style={styles.selectedBadge}>✓ Selected</Text>
+        ) : (
+          <Button
+            label="Choose this itinerary"
+            variant="ink"
+            fill
+            testID="choose-itinerary"
+            accessibilityLabel={`Select the ${label} plan`}
+            loading={selecting}
+            onPress={() => void select()}
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -246,8 +251,15 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     flexWrap: "wrap",
   },
-  spacer: { flex: 1 },
+  choose: {
+    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
   selectedBadge: {
+    textAlign: "center",
     ...type.small,
     fontWeight: "700",
     color: colors.primary,

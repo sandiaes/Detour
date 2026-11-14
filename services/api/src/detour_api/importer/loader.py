@@ -140,7 +140,7 @@ def fail_run(conn: psycopg.Connection[Any], run_id: uuid.UUID, region_id: str, e
 _STAGE_PLACE = """
 CREATE TEMP TABLE stage_place (
     id uuid, kind text, category text, name text, name_norm text, names_i18n jsonb,
-    lon float8, lat float8, address jsonb, source_ref text, tags jsonb,
+    name_en_norm text, lon float8, lat float8, address jsonb, source_ref text, tags jsonb,
     cuisines text[], venue_type text, meal_types text[], diet_flags text[],
     wikidata_id text, osm_signals jsonb, score numeric
 ) ON COMMIT DROP
@@ -162,6 +162,7 @@ def _place_values(place: PlaceRow) -> tuple[object, ...]:
         place.name,
         place.name_norm,
         Jsonb(place.names_i18n) if place.names_i18n else None,
+        place.name_en_norm,
         place.lon,
         place.lat,
         Jsonb(place.address) if place.address else None,
@@ -261,7 +262,8 @@ def _copy_places(conn: psycopg.Connection[Any], places: Iterable[PlaceRow]) -> i
     with (
         conn.cursor() as cur,
         cur.copy(
-            "COPY stage_place (id, kind, category, name, name_norm, names_i18n, lon, lat, address,"
+            "COPY stage_place (id, kind, category, name, name_norm, names_i18n, name_en_norm, lon, lat,"
+            " address,"
             " source_ref, tags, cuisines, venue_type, meal_types, diet_flags, wikidata_id,"
             " osm_signals, score) FROM STDIN"
         ) as copy,
@@ -358,21 +360,22 @@ def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) 
     conn.execute(
         """
         INSERT INTO geo.place
-            (id, region_id, kind, category, name, name_norm, names_i18n, geom, address,
-             is_active, first_import_run_id, last_changed_import_run_id)
-        SELECT id, %(region)s, kind, category, name, name_norm, names_i18n,
+            (id, region_id, kind, category, name, name_norm, names_i18n, name_en_norm, geom,
+             address, is_active, first_import_run_id, last_changed_import_run_id)
+        SELECT id, %(region)s, kind, category, name, name_norm, names_i18n, name_en_norm,
                ST_SetSRID(ST_MakePoint(lon, lat), 4326), address, true, %(run)s, %(run)s
         FROM stage_place
         ON CONFLICT (id) DO UPDATE SET
             kind = EXCLUDED.kind, category = EXCLUDED.category, name = EXCLUDED.name,
             name_norm = EXCLUDED.name_norm, names_i18n = EXCLUDED.names_i18n,
-            geom = EXCLUDED.geom, address = EXCLUDED.address, is_active = true,
+            name_en_norm = EXCLUDED.name_en_norm, geom = EXCLUDED.geom, address = EXCLUDED.address, is_active = true,
             last_changed_import_run_id = EXCLUDED.last_changed_import_run_id
         WHERE (geo.place.kind, geo.place.category, geo.place.name, geo.place.name_norm,
-               geo.place.names_i18n, geo.place.geom, geo.place.address, geo.place.is_active)
+               geo.place.names_i18n, geo.place.name_en_norm, geo.place.geom, geo.place.address,
+               geo.place.is_active)
               IS DISTINCT FROM
               (EXCLUDED.kind, EXCLUDED.category, EXCLUDED.name, EXCLUDED.name_norm,
-               EXCLUDED.names_i18n, EXCLUDED.geom, EXCLUDED.address, true)
+               EXCLUDED.names_i18n, EXCLUDED.name_en_norm, EXCLUDED.geom, EXCLUDED.address, true)
         """,
         params,
     )

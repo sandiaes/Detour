@@ -72,6 +72,9 @@ class PlaceRow:
     profile: RestaurantProfileRow | None
     signal: SignalRow
     review_tags: dict[str, str] = field(default_factory=dict)
+    # The normalised English name (``name:en``), only when it differs from ``name_norm``: search
+    # matches it as well, so a traveller can type either name.
+    name_en_norm: str | None = None
 
 
 def source_ref(osm_type: str, osm_id: int) -> str:
@@ -177,6 +180,11 @@ def build_place(
             meal_types=MEAL_TYPES_BY_VENUE.get(venue),
             diet_flags=parse_diet_flags(tags),
         )
+    names = parse_names_i18n(tags)
+    name_en = clean(names.get("en")) if names else None
+    en_norm = normalize_text(name_en) if name_en else None
+    if en_norm and en_norm == (normalize_text(name) if name else None):
+        en_norm = None
     source_tags = {k: v for k, v in sorted(tags.items()) if not k.startswith(_OWN_COLUMN_PREFIXES)}
     return PlaceRow(
         id=str(stable_uuid("place", f"{region_id}/osm/{ref}")),
@@ -185,7 +193,7 @@ def build_place(
         category=category,
         name=name,
         name_norm=normalize_text(name) if name else None,
-        names_i18n=parse_names_i18n(tags),
+        names_i18n=names,
         lon=lon,
         lat=lat,
         address=parse_address(tags),
@@ -194,4 +202,5 @@ def build_place(
         source_tags=source_tags,
         profile=profile,
         signal=build_signal(tags, name),
+        name_en_norm=en_norm or None,
     )

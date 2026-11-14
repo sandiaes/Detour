@@ -126,3 +126,23 @@ export function planFacts(plan: ItinerarySummary): string[] {
     `${formatMinutes(s.visit_minutes)} at the sights`,
   ];
 }
+
+/** A plan's name and one-line character, from fixed templates (never generated text). */
+export function planNames(plan: Pick<ItinerarySummary, "profile">, destination: string) {
+  switch (plan.profile) {
+    case "essentials":
+      return {
+        title: `Classic ${destination}`,
+        tagline: "The essentials",
+        badge: "Best-known sights",
+      };
+    case "wider":
+      return {
+        title: `${destination} & beyond`,
+        tagline: "A wider experience",
+        badge: "More variety",
+      };
+    default:
+      return { title: `${destination}, by hand`, tagline: "Your own plan", badge: null };
+  }
+}

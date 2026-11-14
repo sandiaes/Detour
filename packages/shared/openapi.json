@@ -5871,6 +5871,18 @@
             "title": "Name",
             "description": "Null when the source has no name"
           },
+          "name_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name En",
+            "description": "The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated."
+          },
           "kind": {
             "type": "string",
             "enum": [
@@ -6361,6 +6373,18 @@
             "title": "Name",
             "description": "Null when the source has no name"
           },
+          "name_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name En",
+            "description": "The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated."
+          },
           "kind": {
             "type": "string",
             "enum": [
@@ -6738,6 +6762,18 @@
             ],
             "title": "Name",
             "description": "Null when the source has no name"
+          },
+          "name_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name En",
+            "description": "The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated."
           },
           "kind": {
             "type": "string",
