@@ -377,7 +377,7 @@ the six gates of [ADR 009](decisions/009-region-readiness-thresholds.md) with th
 Reserved so later work needs no restructuring. Not built.
 
 **Reference photos (destinations and attractions)** are a separate thing from the user's photos
-below. Proposed in [ADR 022](decisions/022-destination-and-attraction-photos.md), not built:
+below. Accepted in [ADR 022](decisions/022-destination-and-attraction-photos.md), not built:
 `geo.image` (a Commons file with author, licence, size, blurhash and the Supabase Storage key),
 `geo.image_lookup` (what was found or not found for a place or city, and when) and a nullable
 `app.trip.cover_image_id` with no foreign key (migration `0009`). They carry their own licence and

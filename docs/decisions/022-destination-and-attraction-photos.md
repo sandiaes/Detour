@@ -1,9 +1,10 @@
 # ADR 022 — Destination and attraction photos (Wikimedia Commons, Supabase Storage)
 
-- **Status:** **Proposed**, 2026-11-14. Owner direction of 2026-11-14: photos for attractions and for
-  cities and destinations; Supabase Storage for the files; the user can choose the trip's photo when
-  creating a trip (screen 13, "Change photo"); if none is chosen, one is fetched automatically.
-  **Not accepted until the Wikimedia terms below have been read and recorded** (CLAUDE.md, rule 4).
+- **Status:** **Accepted** on 2026-11-14 (owner: "Approved, lets do this", after the terms below were
+  recorded). Owner direction of 2026-11-14: photos for attractions and for cities and destinations;
+  Supabase Storage for the files; the user can choose the trip's photo when creating a trip (screen 13,
+  "Change photo"); if none is chosen, one is fetched automatically. The user's own photos stay for
+  the later Photos step. The build awaits acceptance step by step (see Consequences).
 - **Date:** 2026-11-14
 - **Related:** [`021-trip-manager-redesign.md`](021-trip-manager-redesign.md) (decision 13: covers
   are illustrations until an image source has an ADR; this ADR is that ADR),
@@ -29,15 +30,17 @@ foreign key crosses them; Supabase Free is the host (ADR 005).
 |---|---|---|---|
 | Wikidata licensing, <https://www.wikidata.org/wiki/Wikidata:Licensing> | "All structured data ... is released into the public domain under Creative Commons Zero." Page last edited 2026-09-24 | 2026-11-14 | **Read** |
 | Supabase pricing and Storage pricing, <https://supabase.com/pricing>, <https://supabase.com/docs/guides/storage/management/pricing> | Free plan: 1 GB file storage, 50 MB maximum upload, 5 GB cached egress, 5 GB egress; image transformations not included on Free; free projects pause after a week of inactivity. No date shown on the pages | 2026-11-14 | **Read** |
-| Wikimedia Foundation User-Agent policy, <https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy> | What a compliant User-Agent must contain | | **Not read**: the host was outside this cloud session's network allowlist |
-| Wikimedia API rate limits, <https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits> | Limits for identified clients and for `upload.wikimedia.org`. A web search snippet says they are new in 2026 and subject to change | | **Not read**, same reason |
-| Commons "Reusing content outside Wikimedia", <https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia> | Attribution each licence requires | | **Not read**, same reason |
-| MediaWiki API etiquette, <https://www.mediawiki.org/wiki/API:Etiquette> | Concurrency guidance | | **Not read**, same reason |
+| Wikimedia Foundation User-Agent policy, <https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy> | Scripts "should use an informative User-Agent string with contact information, or they may be blocked without notice". Format `<client name>/<version> (<contact information>) <library>/<version>`; contact is an email, a website or a wiki user. Including "bot" in the string is recommended. Do not copy a browser's string; do not use generic agents such as "curl" or "Python-urllib"; defaults like `python-requests/x` may be blocked | 2026-11-14 | **Read** (text pasted by the owner; the host was outside this session's network allowlist) |
+| Wikimedia API rate limits, <https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits> | Limits are being deployed in 2026. A client with a compliant User-Agent and no login: 200 requests per minute; unidentified: 10 per minute. Clients should limit concurrent requests to 3 or fewer and respect `Retry-After` on HTTP 429; with no header, wait at least five seconds or back off exponentially. 429 and 503 may carry it. **The page says nothing about `upload.wikimedia.org` image downloads** | 2026-11-14 | **Read** (pasted by the owner) |
+| Commons "Reusing content outside Wikimedia", <https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia> | Most Commons content may be reused without asking the licensor, subject to its licence: some licences require attributing the creator, identifying the licence (sometimes linking its terms) and sharing modifications alike. Public domain needs no strict attribution but it is recommended. Wikimedia gives no warranty of the licence data; other rights (trademark, personality, privacy) may apply independently. **The pasted text does not list per-licence attribution wording** | 2026-11-14 | **Read** (pasted by the owner) |
+| MediaWiki API etiquette, <https://www.mediawiki.org/wiki/API:Etiquette> | No hard speed limit on reads, but requests in series rather than in parallel are safe; batch many titles in one request with `\|`; use gzip; use `maxlag` for non-interactive tasks; cache what can be cached; use GET; exponential backoff on `ratelimited` | 2026-11-14 | **Read** (pasted by the owner) |
 
-The four unread pages must be read, and this table completed, before the status becomes Accepted
-and before any code calls Wikimedia. Until then everything below that depends on them (the
-concurrency limit, the exact attribution text, the User-Agent form) is a design intention, not a
-verified rule.
+What the pages do not settle, and how this ADR handles it: image-file download limits are not
+stated, so the adapter downloads one image at a time with a pause and backs off on 429 or 503; the
+exact attribution wording per licence is not given, so each stored image shows author, licence name
+with its link, the file page link and, because the stored file is resized, the words "resized"; the
+licence data is Wikimedia's own and unwarranted, so the licence allow-list in decision 2 is applied
+mechanically and a wrong licence is handled by `geo.image.hidden` (decision 21).
 
 ## Decision
 
@@ -91,9 +94,14 @@ verified rule.
 
 13. **Never during plan generation and never from the app.** Images are resolved by:
     - **an import step** (`python -m detour_api.importer images <region>` and the "Import region"
-      workflow): cities of the region, then places in score order up to the cap, reading Wikidata in
-      batches with one identifying User-Agent, low concurrency, a timeout, backoff on 429, and a
-      daily call counter, like every other adapter (`adapters/wikimedia.py`);
+      workflow): cities of the region, then places in score order up to the cap
+      (`adapters/wikimedia.py`), under the rules the terms above set: a User-Agent of the form
+      `Detour-bot/<version> (+https://github.com/sandiaes/Detour) httpx/<version>` (configuration, the
+      repository URL as contact, no personal email); requests in series, never more than 3 at once
+      (the adapter uses 1); up to 50 titles or items per request with `|`; gzip; `maxlag` on
+      non-interactive runs; `Retry-After` obeyed on 429 and 503, otherwise at least five seconds then
+      exponential backoff; a timeout; a cache; and a daily call counter, like every other adapter. The
+      configured rate stays far below 200 requests a minute;
     - **a background resolve after a trip is created or itineraries are generated**, for the
       destination and for the planned places that have none yet and are not marked `none`. It runs
       after the response is returned.
