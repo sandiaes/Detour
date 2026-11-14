@@ -150,6 +150,12 @@ def _head(
         raise conflict(
             "not_recalculable", "only planned itineraries are recalculated; edit this one by hand"
         )
+    if row.destination_kind == "place":
+        raise ApiError(
+            409,
+            "destination_not_plannable",
+            "a trip to a place outside the imported regions is edited by hand",
+        )
     # A multi-city trip's destination_ref is its first stop's city (ADR 024).
     kind = "city" if row.destination_kind == "route" else row.destination_kind
     dest = geo.resolve_destination(conn, kind, row.destination_ref)

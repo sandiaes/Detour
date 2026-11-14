@@ -60,6 +60,12 @@ def load_context(
     trip = trips.require_trip(conn, installation_id, trip_id)
     if trip.status == "past":
         raise conflict("trip_archived", "a past trip cannot get new itineraries")
+    if trip.destination.kind == "place":
+        raise ApiError(
+            409,
+            "destination_not_plannable",
+            "a trip to a place outside the imported regions has no suggestions; add places by hand",
+        )
     if trip.destination.kind == "route":
         return _route_context(conn, trip, config)
     kind = trip.destination.kind

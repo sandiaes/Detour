@@ -27,7 +27,7 @@ _TRIP_COLUMNS = """
     t.id, t.title, t.destination_kind, t.destination_ref, t.destination_name,
     ST_Y(t.destination_point) AS dlat, ST_X(t.destination_point) AS dlon, t.duration_days,
     t.start_date, t.selected_itinerary_id, t.status, t.archived_at, t.is_seed, t.created_at, t.updated_at,
-    t.stops_version
+    t.stops_version, t.destination_country
 """
 
 
@@ -81,6 +81,7 @@ def _trip(row: Any, cover: Photo | None = None, stops: list[TripStop] | None = N
             name=row.destination_name,
             lat=row.dlat,
             lon=row.dlon,
+            country_iso2=row.destination_country,
         ),
         duration_days=row.duration_days,
         start_date=row.start_date,
@@ -155,9 +156,10 @@ def create_trip(
         text(
             """
             INSERT INTO app.trip (id, installation_id, title, destination_kind, destination_ref,
-                destination_name, destination_point, duration_days, start_date, is_seed)
+                destination_name, destination_point, duration_days, start_date, is_seed,
+                destination_country)
             VALUES (:id, :inst, :title, :kind, :ref, :dname,
-                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :days, :start, :seed)
+                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :days, :start, :seed, :country)
             """
         ),
         {
@@ -172,6 +174,7 @@ def create_trip(
             "days": body.duration_days,
             "start": body.start_date,
             "seed": is_seed,
+            "country": (body.destination_country or "").upper() or None,
         },
     )
     if stops:
@@ -405,7 +408,7 @@ def _collect_visits(conn: Connection, trip: Trip) -> list[dict[str, Any]]:
                     "minutes": it.duration_minutes,
                 }
             )
-    if not any(v["kind"] == "city" for v in visits) and trip.destination.kind == "city":
+    if not any(v["kind"] == "city" for v in visits) and trip.destination.kind in ("city", "place"):
         visits.insert(
             0,
             {
@@ -413,7 +416,10 @@ def _collect_visits(conn: Connection, trip: Trip) -> list[dict[str, Any]]:
                 "name": trip.destination.name,
                 "lat": trip.destination.lat,
                 "lon": trip.destination.lon,
-                "ref": f"city:{trip.destination.ref}",
+                # A place trip's destination has no geo row (ADR 027).
+                "ref": (
+                    None if trip.destination.kind == "place" else f"city:{trip.destination.ref}"
+                ),
                 "day": 1,
                 "position": None,
                 "start": None,
@@ -609,6 +615,14 @@ def cover_destinations(conn: Connection, trip_id: uuid.UUID) -> list[tuple[str, 
     ).one()
     if row[0] in ("city", "area"):
         return [(row[0], row[1])]
+    if row[0] == "place":
+        # Only a gazetteer place has photo candidates; Photon and manual ones have none (ADR 027).
+        ref = str(row[1])
+        if ref.startswith("geonames:"):
+            return [("city", ref.removeprefix("geonames:"))]
+        if ref.startswith("area:"):
+            return [("area", ref.removeprefix("area:"))]
+        return []
     stops = conn.execute(
         text("SELECT city_id::text FROM app.trip_stop WHERE trip_id = :id ORDER BY position"),
         {"id": trip_id},

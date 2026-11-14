@@ -966,7 +966,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "city" | "area" | "route";
+      kind: "city" | "area" | "route" | "place";
       /** Ref */
       ref: string;
       /** Name */
@@ -975,6 +975,11 @@ export interface components {
       lat: number;
       /** Lon */
       lon: number;
+      /**
+       * Country Iso2
+       * @description Known for a place trip (ADR 027)
+       */
+      country_iso2?: string | null;
     };
     /** DestinationResult */
     DestinationResult: {
@@ -2233,12 +2238,32 @@ export interface components {
        * Destination Kind
        * @enum {string}
        */
-      destination_kind: "city" | "area" | "route";
+      destination_kind: "city" | "area" | "route" | "place";
       /**
        * Destination Ref
-       * @description The city or area; not sent for a multi-city trip (route)
+       * @description The city or area; not sent for a multi-city trip (route). For a place (ADR 027): photon:N123, geonames:2761369, area:<uuid> or manual
        */
       destination_ref?: string | null;
+      /**
+       * Destination Name
+       * @description Only for a place: the name the user chose, stored as a snapshot
+       */
+      destination_name?: string | null;
+      /**
+       * Destination Lat
+       * @description Only for a place
+       */
+      destination_lat?: number | null;
+      /**
+       * Destination Lon
+       * @description Only for a place
+       */
+      destination_lon?: number | null;
+      /**
+       * Destination Country
+       * @description Only for a place: the ISO 3166-1 alpha-2 country code, if known
+       */
+      destination_country?: string | null;
       /**
        * Stops
        * @description Only for a multi-city trip: 2 to 6 cities in order, whose days add up to duration_days
@@ -2718,6 +2743,8 @@ export interface operations {
         limit?: number;
         /** @description If nothing is found locally, ask Photon (through the backend, cached) */
         include_external?: boolean;
+        /** @description With include_external: ask Photon even when the imported data has answers (ADR 027: a place outside it, or one with the same name) */
+        also_if_found?: boolean;
         /** @description Result language for external search */
         lang?: string | null;
       };

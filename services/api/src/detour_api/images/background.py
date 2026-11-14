@@ -60,7 +60,10 @@ def trip_candidates(conn: Connection, trip_ids: Iterable[uuid.UUID]) -> list[res
         text(
             "SELECT DISTINCT c.ref FROM ("
             "  SELECT t.destination_ref AS ref FROM app.trip t"
-            "  WHERE t.id = ANY(CAST(:ids AS uuid[])) AND t.destination_kind <> 'area'"
+            "  WHERE t.id = ANY(CAST(:ids AS uuid[])) AND t.destination_kind IN ('city', 'route')"
+            "  UNION SELECT substr(t.destination_ref, 10) FROM app.trip t"
+            "  WHERE t.id = ANY(CAST(:ids AS uuid[])) AND t.destination_kind = 'place'"
+            "  AND t.destination_ref LIKE 'geonames:%'"
             "  UNION SELECT s.city_id::text FROM app.trip_stop s"
             "  WHERE s.trip_id = ANY(CAST(:ids AS uuid[]))"
             ") c LEFT JOIN geo.image_lookup l ON l.kind = 'city' AND l.ref_id = c.ref"
@@ -79,9 +82,10 @@ def trip_candidates(conn: Connection, trip_ids: Iterable[uuid.UUID]) -> list[res
     areas = conn.execute(
         text(
             "SELECT DISTINCT a.id::text, a.wikidata_id FROM app.trip t"
-            " JOIN geo.admin_area a ON a.id::text = t.destination_ref"
+            " JOIN geo.admin_area a ON a.id::text = regexp_replace(t.destination_ref, '^area:', '')"
             " LEFT JOIN geo.image_lookup l ON l.kind = 'area' AND l.ref_id = a.id::text"
-            " WHERE t.id = ANY(CAST(:ids AS uuid[])) AND t.destination_kind = 'area'"
+            " WHERE t.id = ANY(CAST(:ids AS uuid[]))"
+            " AND (t.destination_kind = 'area' OR t.destination_ref LIKE 'area:%')"
             f" AND a.wikidata_id IS NOT NULL AND {_DUE} ORDER BY 1"
         ),
         {"ids": ids, **_DUE_PARAMS},

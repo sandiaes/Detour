@@ -1,8 +1,9 @@
 # ADR 027 — Destinations outside the imported regions
 
-- **Status:** **Proposed** on 2026-11-14, at the owner's request. Documentation only: nothing is
-  built. It is the **first** manager feature of ADR 026, section 6 (item 24), before trip export
-  (ADR 028) and Optimize (ADR 029). The owner confirms or changes the points in "Owner decisions".
+- **Status:** **Accepted** on 2026-11-14: the owner confirmed all five points of "Owner decisions"
+  as recommended. **Built** the same day (see "As built"), awaiting acceptance. It is the **first**
+  manager feature of ADR 026, section 6 (item 24), before trip export (ADR 028) and Optimize
+  (ADR 029).
 - **Date:** 2026-11-14
 - **Related:** [`026-trip-manager-first.md`](026-trip-manager-first.md),
   [`002-api-strategy.md`](002-api-strategy.md) and
@@ -125,7 +126,7 @@ This is a new feature (CLAUDE.md rule 3).
 4. **Docs in the same change:** data model, architecture (destination and place search),
    design, brief, KPIs if affected, CLAUDE.md.
 
-## Owner decisions (to confirm)
+## Owner decisions (confirmed 2026-11-14: 1 yes, 2 no, 3 yes, 4 yes, 5 yes)
 
 | # | Question | Recommendation |
 |---|---|---|
@@ -134,6 +135,37 @@ This is a new feature (CLAUDE.md rule 3).
 | 3 | Multi-city trips outside the data? | Not now (decision 6). |
 | 4 | Accept the illustration (and "Change photo") when no Wikidata item is known, rather than guessing a photo from the name? | Yes (decision 10). |
 | 5 | Manual destination (name and pin) when Photon is unavailable? | Yes (decision 15). |
+
+## As built (2026-11-14, awaiting acceptance)
+
+Migration `0016_place_destinations`. Backend and app tested on synthetic fixtures; **not run against
+the production database** and not tried on a device.
+
+- **API.** `POST /v1/trips` takes `destination_kind: "place"` with `destination_ref` (`photon:N123`,
+  `geonames:123`, `area:<uuid>` or `manual`, checked by pattern), `destination_name`,
+  `destination_lat`, `destination_lon` and an optional `destination_country`; those fields are
+  refused for any other kind. `Trip.destination` gains `country_iso2`. Generating, place
+  suggestions and recalculation of such a trip answer `409 destination_not_plannable`. The archive
+  writes the destination's city row from the snapshot (`geo_place_ref` null).
+  `GET /v1/destinations/search` gains `also_if_found` (with `include_external`: ask Photon even
+  when the imported data answers).
+- **App.** The new-trip search shows every result; one with no sight data (region not available,
+  Japanese areas, Photon, manual) says so and offers only the empty trip. An unplannable gazetteer
+  place becomes a place trip with `geonames:` or `area:` as reference; a plannable one stays a city
+  or area trip. "Search more widely" asks Photon; "Enter it by hand" takes a name and typed
+  coordinates. A place trip has no "Add another city", and its trip menu and settings offer no
+  proposals.
+- **Deviations from the draft.** (a) **Change photo** is offered only for a place from the
+  gazetteer (its city or area photo candidates and automatic photo); a Photon or manual place keeps
+  the illustration, with no name search, because a free-text photo search can show another place
+  (decision 10 and the alternatives table already ruled that out). Whether a Photon result carries
+  a Wikidata tag is **not yet checked**: the adapter does not request the extra tags, so no Photon
+  place gets a photo. (b) **Manual destination** takes typed coordinates; there is no map pin yet.
+  (c) **Add a place** uses the existing flow, which already searches around the trip's point and
+  offers "Search more widely" through Photon; the sight-only layer and tag restriction of decision
+  7 is not built, and a result becomes a user place as before.
+- **Not built.** Optimize's own-city rule and the export's snapshot fields (ADRs 029 and 028) are
+  those ADRs' work.
 
 ## Alternatives
 

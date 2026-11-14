@@ -133,7 +133,7 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
           </View>
         ) : null}
 
-        {!past ? (
+        {!past && trip.destination.kind !== "place" ? (
           <View style={styles.pad}>
             <Card>
               <Text accessibilityRole="header" style={styles.heading}>

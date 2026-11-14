@@ -173,7 +173,7 @@ rows needs the installation token. Errors are `{"detail", "code"}` with a stable
 |---|---|
 | `GET /v1/regions` | Import regions, status (`available` only if every ADR 009 gate passed), data version |
 | `GET /v1/attributions` | Credits to show: OpenStreetMap, GeoNames, map tiles |
-| `GET /v1/destinations/search` | Cities (GeoNames) and areas (OSM boundaries) by name; accents, case and alternate names ignored; each result says whether its region can be planned. `include_external=true` asks Photon only if nothing matches locally |
+| `GET /v1/destinations/search` | Cities (GeoNames) and areas (OSM boundaries) by name; accents, case and alternate names ignored; each result says whether its region can be planned. `include_external=true` asks Photon only if nothing matches locally, or always with `also_if_found=true` (ADR 027: the app's "Search more widely"); a Photon result becomes a `place` trip destination (snapshot, no `geo` row; suggestions are refused with `destination_not_plannable`) |
 | `GET /v1/places/search`, `GET /v1/places/{id}` | Imported places by name and/or around a point; a place with its provenance and licence |
 | `POST/GET/PATCH/DELETE /v1/trips`, `POST/GET /v1/trips/{id}/archive`, `GET/PATCH …/visits` | Trips (city or area destination, days, optional start date; no currency, budget or price bands since ADR 017) and the past-trip archive (ADR 006): marked by the user or made when reading the trips two days after the last day; `GET …/archive` reports its size |
 | `POST/GET /v1/trips/{id}/itineraries`, `GET/DELETE /v1/itineraries/{id}` | Manual (empty) itineraries and their days; engine itineraries arrive in Phase 4 |

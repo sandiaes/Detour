@@ -52,3 +52,30 @@ def test_old_archive_rows_survive_and_the_new_columns_work(
     command.downgrade(cfg, "0014")
     with psycopg.connect(scratch_database_url, autocommit=True) as conn:
         assert conn.execute("SELECT name FROM app.trip_visit").fetchall() == [("Old",)]
+
+
+def test_0016_allows_place_destinations_and_downgrade_removes_them(
+    scratch_database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DETOUR_DATABASE_URL", scratch_database_url)
+    cfg = alembic_config()
+    command.upgrade(cfg, "0015")
+    inst = uuid.uuid4()
+    insert = (
+        "INSERT INTO app.trip (id, installation_id, title, destination_kind, destination_ref,"
+        " destination_name, destination_point, duration_days) VALUES (%s, %s, 't', 'place',"
+        " 'photon:N1', 'X', ST_MakePoint(1, 2), 1)"
+    )
+    with psycopg.connect(scratch_database_url, autocommit=True) as conn:
+        conn.execute("INSERT INTO app.installation (id) VALUES (%s)", (inst,))
+        with pytest.raises(psycopg.Error):  # not yet allowed
+            conn.execute(insert, (uuid.uuid4(), inst))
+    command.upgrade(cfg, "0016")
+    with psycopg.connect(scratch_database_url, autocommit=True) as conn:
+        conn.execute(insert, (uuid.uuid4(), inst))
+        conn.execute(
+            "UPDATE app.trip SET destination_country = 'AT' WHERE destination_kind = 'place'"
+        )
+    command.downgrade(cfg, "0015")
+    with psycopg.connect(scratch_database_url, autocommit=True) as conn:
+        assert conn.execute("SELECT count(*) FROM app.trip").fetchone() == (0,)

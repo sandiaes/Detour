@@ -69,6 +69,7 @@ def test_create_trip_computes_the_end_date_and_has_no_money_fields(api_env: ApiE
         "name": "Testburg",
         "lat": pytest.approx(48.2082),
         "lon": pytest.approx(16.3738),
+        "country_iso2": None,  # only a place trip knows its country (ADR 027)
     }
     assert trip["is_seed"] is False
     assert sql(api_env, "SELECT count(*) FROM app.installation") == [(1,)]  # created on first use

@@ -1,5 +1,6 @@
 """Models for trips, user places, itineraries, days and items."""
 
+import re
 import uuid
 from datetime import date, datetime, time, timedelta
 from typing import Literal, Self
@@ -19,6 +20,10 @@ MIN_STOPS = 2
 MAX_STOPS = 6
 
 
+# A place destination's reference names its provider (ADR 027).
+PLACE_REF = re.compile(r"photon:[NWR][0-9]{1,20}|geonames:[0-9]{1,12}|area:[0-9a-fA-F-]{36}|manual")
+
+
 class StopIn(StrictModel):
     """A stop of a multi-city trip, in the user's order (ADR 024)."""
 
@@ -32,12 +37,26 @@ class TripCreate(StrictModel):
         max_length=120,
         description="Ignored for a multi-city trip, whose name follows its stops",
     )
-    destination_kind: Literal["city", "area", "route"]
+    destination_kind: Literal["city", "area", "route", "place"]
     destination_ref: str | None = Field(
         default=None,
         min_length=1,
         max_length=64,
-        description="The city or area; not sent for a multi-city trip (route)",
+        description="The city or area; not sent for a multi-city trip (route). For a place "
+        "(ADR 027): photon:N123, geonames:2761369, area:<uuid> or manual",
+    )
+    destination_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+        description="Only for a place: the name the user chose, stored as a snapshot",
+    )
+    destination_lat: Latitude | None = Field(default=None, description="Only for a place")
+    destination_lon: Longitude | None = Field(default=None, description="Only for a place")
+    destination_country: str | None = Field(
+        default=None,
+        pattern="^[A-Za-z]{2}$",
+        description="Only for a place: the ISO 3166-1 alpha-2 country code, if known",
     )
     stops: list[StopIn] | None = Field(
         default=None,
@@ -49,6 +68,24 @@ class TripCreate(StrictModel):
 
     @model_validator(mode="after")
     def _destination_or_stops(self) -> Self:
+        place_fields = (
+            self.destination_name,
+            self.destination_lat,
+            self.destination_lon,
+            self.destination_country,
+        )
+        if self.destination_kind == "place":
+            if self.stops is not None:
+                raise ValueError("only a multi-city trip (route) has stops")
+            if self.destination_ref is None or not PLACE_REF.fullmatch(self.destination_ref):
+                raise ValueError(
+                    "a place needs destination_ref photon:N123, geonames:123, area:<uuid> or manual"
+                )
+            if None in (self.destination_name, self.destination_lat, self.destination_lon):
+                raise ValueError("a place needs destination_name, destination_lat, destination_lon")
+            return self
+        if any(f is not None for f in place_fields):
+            raise ValueError("only a place has a destination name, point or country")
         if self.destination_kind == "route":
             if self.stops is None:
                 raise ValueError("a multi-city trip needs its stops")
@@ -84,11 +121,12 @@ class TripUpdate(StrictModel):
 class Destination(BaseModel):
     """For a multi-city trip (route): ``ref`` is the first stop's city and ``name`` the trip's."""
 
-    kind: Literal["city", "area", "route"]
+    kind: Literal["city", "area", "route", "place"]
     ref: str
     name: str
     lat: float
     lon: float
+    country_iso2: str | None = Field(default=None, description="Known for a place trip (ADR 027)")
 
 
 class Trip(BaseModel):

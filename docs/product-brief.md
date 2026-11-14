@@ -26,7 +26,7 @@ sightseeing plans are an occasional help, not the main way in.
 | # | Goal | Approach | Release |
 |---|---|---|---|
 | 0 | **A trip manager and history** (ADR 026): empty trips filled by hand, documents, past trips kept with their days | Empty trip as the main way in; past trips keep a day-by-day record (ADR 006 amendment) | Core; history built in steps |
-| 1 | Destination or area plus duration as input | Search over an imported gazetteer of cities and areas; duration in days. Destinations outside the imported regions come next (ADR 026, item 24) | MVP; outside regions planned |
+| 1 | Destination or area plus duration as input | Search over an imported gazetteer of cities and areas; duration in days. Any place can be a destination as an empty trip (ADR 027) | MVP; outside regions built |
 | 2 | *Optional:* at least two meaningfully different suggested itineraries | Two strategy profiles of one engine plus a diversity check; frozen, maintained | MVP |
 | 3 | Suggested itineraries include cities or areas, attractions, travel times, visit durations. **No restaurants or cafés (ADR 026)** | Imported open data; routed walking and driving times; category-based visit durations; one unplanned midday gap a day | MVP, except public transport |
 | 3 | Public transport when relevant | Schedule-based transit legs | After MVP (Phase 10) |
@@ -133,7 +133,7 @@ Not in the MVP (see `docs/app-plan.md` for the phase each belongs to):
 - iOS build
 - photos (the user's own photos are planned, owner's order, ADR 026 item 26)
 - weather
-- destinations outside the imported pilot regions (**next**, ADR 026 item 24)
+- suggestions for destinations outside the imported pilot regions (trips there are empty, ADR 027)
 - user accounts, sharing and multi-device sync (a trip export file comes second, ADR 026 item 25)
 - offline map downloads
 - public-holiday opening rules

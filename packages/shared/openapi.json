@@ -407,6 +407,18 @@
             "description": "If nothing is found locally, ask Photon (through the backend, cached)"
           },
           {
+            "name": "also_if_found",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "With include_external: ask Photon even when the imported data has answers (ADR 027: a place outside it, or one with the same name)",
+              "default": false,
+              "title": "Also If Found"
+            },
+            "description": "With include_external: ask Photon even when the imported data has answers (ADR 027: a place outside it, or one with the same name)"
+          },
+          {
             "name": "lang",
             "in": "query",
             "required": false,
@@ -4413,7 +4425,8 @@
             "enum": [
               "city",
               "area",
-              "route"
+              "route",
+              "place"
             ],
             "title": "Kind"
           },
@@ -4432,6 +4445,18 @@
           "lon": {
             "type": "number",
             "title": "Lon"
+          },
+          "country_iso2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Iso2",
+            "description": "Known for a place trip (ADR 027)"
           }
         },
         "type": "object",
@@ -7444,7 +7469,8 @@
             "enum": [
               "city",
               "area",
-              "route"
+              "route",
+              "place"
             ],
             "title": "Destination Kind"
           },
@@ -7460,7 +7486,64 @@
               }
             ],
             "title": "Destination Ref",
-            "description": "The city or area; not sent for a multi-city trip (route)"
+            "description": "The city or area; not sent for a multi-city trip (route). For a place (ADR 027): photon:N123, geonames:2761369, area:<uuid> or manual"
+          },
+          "destination_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Name",
+            "description": "Only for a place: the name the user chose, stored as a snapshot"
+          },
+          "destination_lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "description": "WGS 84 latitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Lat",
+            "description": "Only for a place"
+          },
+          "destination_lon": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "description": "WGS 84 longitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Lon",
+            "description": "Only for a place"
+          },
+          "destination_country": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Country",
+            "description": "Only for a place: the ISO 3166-1 alpha-2 country code, if known"
           },
           "stops": {
             "anyOf": [

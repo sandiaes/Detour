@@ -109,8 +109,13 @@ country, else "Multi-city Central Europe" (a fixed table of regions), "Multi-cit
 
 Back, then the title "Create new trip" and one line of subtitle. Then, as hairline fields:
 
-1. **Destination:** a pin icon, the search field (a city or area in an imported region), results as
-   hairline rows with the reason when one cannot be chosen. Once chosen, the name with its kind and
+1. **Destination:** a pin icon, the search field (any place), results as
+   hairline rows. Every result can be chosen (ADR 027); one with no sight data (outside the
+   available regions, from Photon, or typed by hand) says so and offers only **Start with an empty
+   trip**, "Suggest itineraries" being disabled with the reason. **Search more widely** asks Photon
+   for any place; **Enter it by hand** takes a name and typed coordinates (a decimal comma is
+   accepted). A place trip has no "Add another city", no proposals in its menu or settings, and
+   "Change photo" only when the place is in the gazetteer (otherwise the illustration stays). Once chosen, the name with its kind and
    country, an X to clear it, and the destination's cover illustration beneath.
    **Add another city** (a quiet text button under a chosen city) makes it a **multi-city trip**
    (ADR 024): a sheet searches cities only, and the cities become hairline rows (a navy number

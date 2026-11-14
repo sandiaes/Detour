@@ -32,6 +32,7 @@ import {
 } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
 import { CoverPicker, type CoverSource } from "../components/ds/CoverPicker";
+import { isPlaceTrip, placeCoverSource } from "../domain/destinations";
 import { useResource } from "../data/DataProvider";
 import { useTripCounts } from "../data/tripCounts";
 import { PlanSummaryCard } from "../components/plan/PlanSummaryCard";
@@ -166,6 +167,11 @@ export function coverSources(trip: Trip): CoverSource[] {
   const stops = trip.stops ?? [];
   if (stops.length > 0) {
     return stops.map((s) => ({ kind: "city" as const, ref: String(s.city_id), name: s.name }));
+  }
+  if (trip.destination.kind === "place") {
+    // A place has photo candidates only when it came from the gazetteer (ADR 027).
+    const source = placeCoverSource(trip);
+    return source ? [source] : [];
   }
   const kind = trip.destination.kind === "area" ? "area" : "city";
   return [{ kind, ref: trip.destination.ref, name: trip.destination.name }];
@@ -396,34 +402,40 @@ export function TripOverviewScreen({
   const menuSheet = menu ? (
     <Sheet visible title="Trip menu" onClose={() => setMenu(false)}>
       <RowGroup>
-        <ListRow
-          icon="history"
-          title={hasPlan ? "Original proposals" : "Proposals"}
-          detail={
-            hasPlan
-              ? "The plans Detour proposed for this trip"
-              : "Compare the two plans and choose one"
-          }
-          testID="menu-proposals"
-          onPress={() => {
-            setMenu(false);
-            nav.push({ name: "trip", tripId });
-          }}
-        />
-        <ListRow
-          icon="photos"
-          title="Change photo"
-          detail="Choose the trip's cover from photos of the destination"
-          testID="menu-change-photo"
-          onPress={() => {
-            setMenu(false);
-            setPicker(true);
-          }}
-        />
+        {isPlaceTrip(trip) ? null : (
+          <ListRow
+            icon="history"
+            title={hasPlan ? "Original proposals" : "Proposals"}
+            detail={
+              hasPlan
+                ? "The plans Detour proposed for this trip"
+                : "Compare the two plans and choose one"
+            }
+            testID="menu-proposals"
+            onPress={() => {
+              setMenu(false);
+              nav.push({ name: "trip", tripId });
+            }}
+          />
+        )}
+        {coverSources(trip).length === 0 ? null : (
+          <ListRow
+            icon="photos"
+            title="Change photo"
+            detail="Choose the trip's cover from photos of the destination"
+            testID="menu-change-photo"
+            onPress={() => {
+              setMenu(false);
+              setPicker(true);
+            }}
+          />
+        )}
         <ListRow
           icon="settings"
           title="Trip settings"
-          detail="New proposals, mark as past, delete"
+          detail={
+            isPlaceTrip(trip) ? "Mark as past, delete" : "New proposals, mark as past, delete"
+          }
           testID="menu-settings"
           onPress={() => {
             setMenu(false);

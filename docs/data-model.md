@@ -247,7 +247,8 @@ and `last_seen_at` is refreshed at most hourly. No token or hash is stored.
 |---|---|
 | `id`, `installation_id` | fk, `ON DELETE CASCADE` |
 | `title` | 1 to 120 characters |
-| `destination_kind`, `destination_ref` | `city` (a `geo.city.id`), `area` (a `geo.admin_area.id`) or `route` (a multi-city trip, ADR 024: the first stop's city id); existence and region availability are checked by the API |
+| `destination_kind`, `destination_ref` | `city` (a `geo.city.id`), `area` (a `geo.admin_area.id`) `route` (a multi-city trip, ADR 024: the first stop's city id) or `place` (ADR 027, migration `0016`: a place outside the imported regions, `destination_ref` is `photon:N123`, `geonames:123`, `area:<uuid>` or `manual` and nothing is checked against `geo`); existence and region availability of the other kinds are checked by the API |
+| `destination_country` | ISO 3166-1 alpha-2, known for a place trip when the source gave it (migration `0016`); null otherwise |
 | `stops_version` | Counts applied stop edits of a multi-city trip (migration `0012`); 0 otherwise |
 | `destination_name`, `destination_point` | Snapshot taken at creation |
 | `duration_days` | 1 to 30; cannot change once the trip has itineraries |
