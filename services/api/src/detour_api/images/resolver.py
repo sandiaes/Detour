@@ -19,6 +19,8 @@ from sqlalchemy import Connection, Engine, text
 
 from detour_api.adapters.wikimedia import (
     BATCH_SIZE,
+    REASON_CITY_AMBIGUOUS,
+    REASON_CITY_NO_MATCH,
     REASON_NO_FILE_INFO,
     REASON_NO_IMAGE,
     REASON_NO_ITEM,
@@ -36,6 +38,10 @@ from detour_api.settings import Settings
 log = structlog.get_logger("detour.images")
 
 RETRY_AFTER_DAYS = 90
+# An answer that may have been a hiccup is asked again sooner: a city whose item was not found by
+# its GeoNames id (the search can miss), a file the API gave no information about.
+SHORT_RETRY_DAYS = 7
+SHORT_RETRY_REASONS = (REASON_CITY_NO_MATCH, REASON_CITY_AMBIGUOUS, REASON_NO_FILE_INFO)
 IMAGE_NAMESPACE = uuid.UUID("5d3c7a52-8f7e-4c3e-9a71-0d0e7c0a1d22")
 
 
@@ -96,10 +102,17 @@ def place_candidates(engine: Engine, region_id: str, limit: int) -> list[Candida
                 " WHERE p.region_id = :region AND p.kind = 'attraction' AND p.is_active"
                 "   AND s.wikidata_id IS NOT NULL"
                 "   AND (l.ref_id IS NULL OR (l.status <> 'found'"
-                "        AND l.checked_date < current_date - :days))"
+                "        AND l.checked_date < current_date -"
+                "        CASE WHEN l.reason = ANY(:short) THEN :short_days ELSE :days END))"
                 " ORDER BY s.score DESC NULLS LAST, p.id LIMIT :n"
             ),
-            {"region": region_id, "days": RETRY_AFTER_DAYS, "n": limit},
+            {
+                "region": region_id,
+                "days": RETRY_AFTER_DAYS,
+                "short": list(SHORT_RETRY_REASONS),
+                "short_days": SHORT_RETRY_DAYS,
+                "n": limit,
+            },
         ).all()
     return [Candidate("place", r[0], r[1]) for r in rows]
 
@@ -114,10 +127,17 @@ def city_candidates(engine: Engine, countries: Sequence[str], limit: int) -> lis
                 " LEFT JOIN geo.image_lookup l ON l.kind = 'city' AND l.ref_id = c.id::text"
                 " WHERE c.country_iso2 = ANY(:countries)"
                 "   AND (l.ref_id IS NULL OR (l.status <> 'found'"
-                "        AND l.checked_date < current_date - :days))"
+                "        AND l.checked_date < current_date -"
+                "        CASE WHEN l.reason = ANY(:short) THEN :short_days ELSE :days END))"
                 " ORDER BY c.population DESC NULLS LAST, c.id LIMIT :n"
             ),
-            {"countries": list(countries), "days": RETRY_AFTER_DAYS, "n": limit},
+            {
+                "countries": list(countries),
+                "days": RETRY_AFTER_DAYS,
+                "short": list(SHORT_RETRY_REASONS),
+                "short_days": SHORT_RETRY_DAYS,
+                "n": limit,
+            },
         ).all()
     return [Candidate("city", r[0], None) for r in rows]
 
@@ -151,6 +171,9 @@ def resolve(
     return report
 
 
+MAX_FILES_TRIED = 3
+
+
 def _resolve_batch(
     engine: Engine,
     client: WikimediaClient,
@@ -159,38 +182,58 @@ def _resolve_batch(
     batch: Sequence[Candidate],
     report: Report,
 ) -> None:
-    resolved = [
-        Candidate(c.kind, c.ref_id, c.qid or _city_item(client, c)) if c.kind == "city" else c
-        for c in batch
-    ]
+    why: dict[str, str] = {}  # why a city has no Wikidata item
+    resolved: list[Candidate] = []
+    for cand in batch:
+        if cand.kind == "city" and cand.qid is None:
+            qid, reason = client.city_item(int(cand.ref_id))
+            if reason:
+                why[cand.ref_id] = reason
+            cand = Candidate(cand.kind, cand.ref_id, qid)
+        resolved.append(cand)
     qids = sorted({c.qid for c in resolved if c.qid})
     entities: dict[str, EntityImage] = client.entities(qids) if qids else {}
-    files = sorted({e.file for e in entities.values() if e.file})
-    infos: dict[str, FileInfo] = client.file_infos(files) if files else {}
+    files = sorted({f for e in entities.values() for f in e.files[:MAX_FILES_TRIED]})
+    infos: dict[str, FileInfo] = {}
+    for start in range(0, len(files), BATCH_SIZE):
+        infos.update(client.file_infos(files[start : start + BATCH_SIZE]))
 
     outcomes: list[tuple[Candidate, str, str | None, uuid.UUID | None]] = []
     for cand in resolved:
         entity = entities.get(cand.qid) if cand.qid else None
         if cand.qid is None or entity is None:
-            outcomes.append((cand, "none", REASON_NO_ITEM, None))
-        elif entity.file is None:
+            outcomes.append((cand, "none", why.get(cand.ref_id, REASON_NO_ITEM), None))
+            continue
+        if not entity.files:
             outcomes.append((cand, "none", REASON_NO_IMAGE, None))
-        elif entity.file not in infos:
+            continue
+        known = [infos[f] for f in entity.files[:MAX_FILES_TRIED] if f in infos]
+        if not known:
             outcomes.append((cand, "none", REASON_NO_FILE_INFO, None))
-        else:
-            info = infos[entity.file]
+            continue
+        # The first candidate that passes the gate wins; if none does, the first one's reason stays.
+        first_reason: str | None = None
+        chosen: uuid.UUID | None = None
+        cap = False
+        for info in known:
             reason = rejection_reason(info)
-            if reason is not None:
-                outcomes.append((cand, "rejected", reason, None))
-            else:
+            if reason is None:
                 result = _ensure_image(engine, client, store, settings, info, cand.qid, report)
                 if result == "cap":
-                    report.stopped = "image cap reached"
-                    continue  # nothing recorded: asked again after the cap is raised
-                if isinstance(result, str):
-                    outcomes.append((cand, "rejected", result, None))
-                else:
-                    outcomes.append((cand, "found", None, result))
+                    cap = True
+                    break
+                if isinstance(result, uuid.UUID):
+                    chosen = result
+                    break
+                reason = result
+            first_reason = first_reason or reason
+        if cap:
+            report.stopped = "image cap reached"
+            continue  # nothing recorded: asked again after the cap is raised
+        if chosen is not None:
+            outcomes.append((cand, "found", None, chosen))
+        else:
+            outcomes.append((cand, "rejected", first_reason, None))
 
     with engine.begin() as conn:
         for cand, status, reason, image_id in outcomes:
@@ -204,10 +247,6 @@ def _resolve_batch(
                 report.rejected += 1
             if reason:
                 report.reasons[reason] += 1
-
-
-def _city_item(client: WikimediaClient, cand: Candidate) -> str | None:
-    return client.city_item(int(cand.ref_id))
 
 
 def _ensure_image(

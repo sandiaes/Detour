@@ -7,6 +7,8 @@ the app never talks to Supabase. The request shapes follow Supabase's Storage AP
 first run of the resolver, not before.
 """
 
+import time
+from collections.abc import Callable
 from typing import Protocol
 
 import httpx
@@ -16,6 +18,30 @@ from detour_api.settings import Settings
 
 class StoreError(Exception):
     pass
+
+
+# Storage sits behind a CDN that answers 5xx now and then (a first real run met one HTTP 520 and
+# stopped). A transient failure is tried again a few times; a refusal (4xx) is not.
+ATTEMPTS = 4
+BACKOFF_SECONDS = (1.0, 3.0, 8.0)
+
+
+def with_retries(
+    call: Callable[[], httpx.Response], sleep: Callable[[float], None] = time.sleep
+) -> httpx.Response:
+    """Run an HTTP call, repeating it after a network error or a 5xx answer."""
+    for attempt in range(ATTEMPTS):
+        last = attempt == ATTEMPTS - 1
+        try:
+            response = call()
+        except httpx.HTTPError as exc:
+            if last:
+                raise StoreError(type(exc).__name__) from exc
+        else:
+            if response.status_code < 500 or last:
+                return response
+        sleep(BACKOFF_SECONDS[attempt])
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 class ImageStore(Protocol):
@@ -43,7 +69,13 @@ class MemoryImageStore:
 
 
 class SupabaseImageStore:
-    def __init__(self, settings: Settings, transport: httpx.BaseTransport | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        transport: httpx.BaseTransport | None = None,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        self._sleep = sleep
         assert settings.supabase_url and settings.supabase_service_key  # noqa: S101
         self._base = f"{settings.supabase_url}/storage/v1/object"
         self._bucket = settings.photos_bucket
@@ -62,6 +94,13 @@ class SupabaseImageStore:
             headers["Authorization"] = f"Bearer {self._key}"
         return headers
 
+    def _send(self, method: str, url: str, **kwargs: object) -> httpx.Response:
+        def call() -> httpx.Response:
+            with self._client() as client:
+                return client.request(method, url, **kwargs)  # type: ignore[arg-type]
+
+        return with_retries(call, self._sleep)
+
     def put(self, key: str, data: bytes, content_type: str = "image/jpeg") -> None:
         headers = {
             **self._auth_headers(),
@@ -69,23 +108,15 @@ class SupabaseImageStore:
             "x-upsert": "true",
             "Cache-Control": "max-age=31536000",
         }
-        try:
-            with self._client() as client:
-                response = client.post(
-                    f"{self._base}/{self._bucket}/{key}", content=data, headers=headers
-                )
-        except httpx.HTTPError as exc:
-            raise StoreError(type(exc).__name__) from exc
+        response = self._send(
+            "POST", f"{self._base}/{self._bucket}/{key}", content=data, headers=headers
+        )
         if response.status_code >= 400:
             raise StoreError(f"upload refused: HTTP {response.status_code}")
 
     def get(self, key: str) -> bytes | None:
-        try:
-            with self._client() as client:
-                response = client.get(f"{self._base}/public/{self._bucket}/{key}")
-        except httpx.HTTPError as exc:
-            raise StoreError(type(exc).__name__) from exc
-        if response.status_code == 404 or response.status_code == 400:
+        response = self._send("GET", f"{self._base}/public/{self._bucket}/{key}")
+        if response.status_code in (400, 404):
             return None
         if response.status_code >= 400:
             raise StoreError(f"read refused: HTTP {response.status_code}")
@@ -93,11 +124,7 @@ class SupabaseImageStore:
 
     def exists(self, key: str) -> bool:
         """Whether the object is there, without downloading it (a HEAD request)."""
-        try:
-            with self._client() as client:
-                response = client.head(f"{self._base}/public/{self._bucket}/{key}")
-        except httpx.HTTPError as exc:
-            raise StoreError(type(exc).__name__) from exc
+        response = self._send("HEAD", f"{self._base}/public/{self._bucket}/{key}")
         if response.status_code in (400, 404):
             return False
         if response.status_code >= 400:

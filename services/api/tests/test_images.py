@@ -251,7 +251,11 @@ def test_cities_are_matched_through_their_geonames_id(fx: _Fixture) -> None:
 def test_a_city_with_two_matching_items_is_not_guessed(fx: _Fixture) -> None:
     fx.wiki.search_hits = ["Q1", "Q2"]
     report = fx.resolve(resolver.city_candidates(fx.engine, ["AT"], 1))
-    assert (report.found, report.none, report.reasons) == (0, 1, {"no_wikidata_item": 1})
+    assert (report.found, report.none, report.reasons) == (
+        0,
+        1,
+        {"several_items_for_geonames_id": 1},
+    )
 
 
 @pytest.mark.db
@@ -403,3 +407,81 @@ def test_the_storage_key_goes_only_where_its_kind_allows(key: str, bearer: bool)
     assert request.headers["apikey"] == key
     assert ("authorization" in request.headers) is bearer
     assert request.headers["x-upsert"] == "true"
+
+
+def test_storage_calls_are_repeated_after_a_5xx_but_not_after_a_refusal() -> None:
+    answers = [httpx.Response(520), httpx.Response(502), httpx.Response(200, json={})]
+    sleeps: list[float] = []
+    settings = Settings(
+        environment="test",
+        token_secret=TEST_SECRET,
+        supabase_url="https://example.supabase.co",
+        supabase_service_key="sb_secret_x",
+    )
+    store = SupabaseImageStore(
+        settings, httpx.MockTransport(lambda r: answers.pop(0)), sleep=sleeps.append
+    )
+    store.put("a.jpg", b"x")  # two transient failures, then success
+    assert sleeps == [1.0, 3.0] and answers == []
+
+    refused = [httpx.Response(403)]
+    store = SupabaseImageStore(
+        settings, httpx.MockTransport(lambda r: refused.pop(0)), sleep=sleeps.append
+    )
+    with pytest.raises(StoreError, match="HTTP 403"):
+        store.put("a.jpg", b"x")  # a refusal is final: no second try
+    assert refused == []
+
+    always = SupabaseImageStore(
+        settings, httpx.MockTransport(lambda r: httpx.Response(520)), sleep=lambda s: None
+    )
+    with pytest.raises(StoreError, match="HTTP 520"):
+        always.put("a.jpg", b"x")
+
+    def down(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectTimeout("down", request=request)
+
+    with pytest.raises(StoreError, match="ConnectTimeout"):
+        SupabaseImageStore(settings, httpx.MockTransport(down), sleep=lambda s: None).get("a.jpg")
+
+
+@pytest.mark.db
+def test_the_next_candidate_is_tried_when_the_first_is_refused(fx: _Fixture) -> None:
+    # Q101514119 gets its banner as a second candidate; its first image is refused for its licence
+    entity = fx.wiki.entities["entities"]["Q101514119"]
+    entity["claims"]["P948"] = [
+        {
+            "rank": "normal",
+            "mainsnak": {"datavalue": {"value": "Stadtmauer bei der Uferpromenade in Zwettl.jpg"}},
+        }
+    ]
+    pages = fx.wiki.imageinfo["query"]["pages"].values()
+    retz = next(p for p in pages if "Retz" in p["title"])
+    retz["imageinfo"][0]["extmetadata"]["LicenseShortName"]["value"] = "CC BY-NC 4.0"
+    only = [
+        c for c in resolver.place_candidates(fx.engine, TEST_REGION.id, 10) if c.qid == "Q101514119"
+    ]
+    report = fx.resolve(only)
+    assert (report.found, report.rejected) == (1, 0)
+    row = fx.query(
+        "SELECT i.commons_file FROM geo.image_lookup l JOIN geo.image i ON i.id = l.image_id"
+    )
+    assert row == [("Stadtmauer bei der Uferpromenade in Zwettl.jpg",)]
+
+
+@pytest.mark.db
+def test_a_city_the_search_missed_is_asked_again_after_a_week_not_ninety_days(fx: _Fixture) -> None:
+    fx.wiki.search_hits = []
+    fx.resolve(resolver.city_candidates(fx.engine, ["AT"], 1))
+    assert fx.query("SELECT reason FROM geo.image_lookup") == [("no_item_for_geonames_id",)]
+    due_now = {c.ref_id for c in resolver.city_candidates(fx.engine, ["AT"], 20)}
+    assert fx.query("SELECT ref_id FROM geo.image_lookup")[0][0] not in due_now  # not due yet
+    with fx.engine.begin() as conn:
+        conn.execute(text("UPDATE geo.image_lookup SET checked_date = current_date - 8"))
+    assert len(resolver.city_candidates(fx.engine, ["AT"], 20)) >= 1
+    # a stable answer keeps the long wait: the same age, a different reason
+    with fx.engine.begin() as conn:
+        conn.execute(text("UPDATE geo.image_lookup SET reason = 'no_image_property'"))
+    assert fx.query("SELECT ref_id FROM geo.image_lookup")[0][0] not in {
+        c.ref_id for c in resolver.city_candidates(fx.engine, ["AT"], 20)
+    }
