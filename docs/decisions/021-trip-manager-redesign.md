@@ -386,3 +386,13 @@ ones, and several specific changes. Decisions 55 to 70. Mobile app only; no back
   reader; the Metro bundle builds, and the tests check labels, roles, states and touch sizes.
   The Maestro end-to-end flow (`apps/mobile/e2e/trip-flow.yaml`) is updated to the new path
   (select, overview, Itinerary tab, Map tab and its key, back to the list) but has not been run.
+
+## Amendment of 2026-11-14 (fifth, ADR 026): the manager first (proposed, not built)
+
+[ADR 026](026-trip-manager-first.md) records the owner's decision that the app is a trip manager
+and history first. Changes to this ADR: on the new-trip screen "Start with an empty trip" becomes
+the dark main button and "Generate itineraries" the outlined "Suggest itineraries"; the meal times
+of the first amendment (lunch 13:00, dinner 20:00, the day to 22:00) are superseded, because
+generated plans have no meals and the day returns to sightseeing hours; the cuisine and meal lines
+of the place detail and the add-restaurant screen go; past trips show their days. Decisions on
+photos, documents, multi-city trips and names are unchanged.

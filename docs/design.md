@@ -126,9 +126,13 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
 4. **Public transport:** a switch.
 5. A line: travel style and public transport are saved for later; the plans do not use them yet.
 6. Two buttons:
-   - **Generate itineraries** (dark): creates the trip and the two proposals to compare.
-   - **Start with an empty trip** (outlined): creates the trip and an empty plan, one empty day
+   - **Start with an empty trip** (dark): creates the trip and an empty plan, one empty day
      per trip day, chosen as its itinerary at once. No proposals. The trip opens on its overview.
+   - **Suggest itineraries** (outlined): creates the trip and the two proposals to compare. Sights
+     only, with a midday gap, no restaurants.
+
+   *(ADR 026, proposed, step 6: the app still has "Generate itineraries" dark and "Start with an
+   empty trip" outlined until then.)*
 
 Removed from the screen of the reference image: interests, budget and "Include popular
 highlights" and the personalised-itineraries note. "Change photo" is a slim outlined pill under
@@ -210,7 +214,7 @@ then "Edit display name" (a compact outlined button opening a one-line field wit
 edited name offers "Use the usual name"); one line with the kind icon,
 the kind and the town ("Attraction · Vienna"); two flat figures (as on the overview) for the day
 ("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit"); one quiet line with the
-address (no label); for places to eat the meal, venue and cuisine from the data; slim icon pills Show
+address (no label); for places to eat the kind and, when Photon gave one, the address (*ADR 026: the meal, venue and cuisine lines go*); slim icon pills Show
 on map, Lock, Remove and Add a document; the place's documents; the data source. No opening hours, no
 "why it is in the plan", no rating, price or description (CLAUDE.md rule 5).
 
@@ -262,6 +266,8 @@ anything changes. Outside a trip it starts a new trip.
   "Bookings and documents" (places to eat), with "Attach a document".
 - **A past trip** is a flat page: a compact header with the settings icon, a summary, a Documents
   row, underlined Map and List tabs, and hairline rows by city with plain Skip and Restore actions.
+  *(ADR 026 step 5, proposed: it gains a Days tab, the same day list as the itinerary tab without
+  routes or travel times, with a visited mark on every stop, and keeps its documents.)*
 
 ### Edit cities (multi-city trips, ADR 024)
 
@@ -277,7 +283,13 @@ Planned features and a menu of hairline rows. Items that are not built say "Comi
 
 ## 5. Plans and times
 
-- **Meals are aimed at lunch 13:00 and dinner 20:00** (owner, 2026-11-14). Windows: lunch 13:00 to
+- **Suggested plans have no meals (ADR 026, proposed; built in step 2).** Each day has one unplanned
+  "Free time" gap at midday (*proposed:* 90 minutes between 12:30 and 14:00), shown as a hairline
+  row with no kind icon and no place, and the day runs 09:00 to 20:00 (*proposed*). A restaurant or
+  café is a stop the user adds; it reads "Restaurant · 1 h 15 min" or "Café · 45 min", with no
+  Lunch or Dinner label, no cuisine and no meal type. Everything below about meal times describes
+  the app until step 2 is built.
+- **Meals are aimed at lunch 13:00 and dinner 20:00** (owner, 2026-11-14; *to change, ADR 026*). Windows: lunch 13:00 to
   15:00, afternoon snack 15:00 to 17:30 (Wider only), dinner 20:00 to 22:00. A meal starts at its
   window's start at the earliest. The day runs 09:00 to 22:00 so a 90-minute dinner at 20:00 ends
   inside it. The sightseeing allowance is unchanged: the evening that the longer day added is
@@ -293,6 +305,9 @@ the screen reader announcing a screen's title on arrival.
 
 ## 7. Open points
 
+- **ADR 026 (proposed):** the midday gap numbers, the day window, the default lengths of a
+  restaurant (75 min) and café (45 min), and how a "Free time" row looks are proposals for the
+  owner to confirm on a device.
 - **Adding places to an empty trip.** An empty trip is a manual plan. The Add-place and Add-a-
   restaurant flows (ADR 018, 019) recalculate planned itineraries and refuse a manual one
   ("not recalculable"). Adding a place to an empty day by hand needs its own flow: choose the day,

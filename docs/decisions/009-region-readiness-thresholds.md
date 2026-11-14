@@ -46,3 +46,11 @@ after gate 5 is met by a display rule and the rail question (D4) is settled.
   value never passes. Gate 5 uses the Latin-letter share because no display rule is implemented.
   Gate 4 and the other figures in the table above come from spike S2 and were measured before the
   ADR 011 rule: the first real import reports the new values.
+
+## Amendment of 2026-11-14 (ADR 026): gates 1 to 3 removed (proposed, not built)
+
+[ADR 026](026-trip-manager-first.md) removes restaurants and cafés from the imported data. Gates 1
+(restaurants with a name), 2 (restaurants with a cuisine) and 3 (at least 5,000 restaurants) have
+nothing to measure and are **removed**; gates 4, 5 and 6 stay and are renumbered 1, 2 and 3 when the
+importer change is built. Gate 6 (size) now measures a much smaller database. Until then the
+import report still applies all six gates.

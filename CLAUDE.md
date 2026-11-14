@@ -10,6 +10,17 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
+**Direction change of 2026-11-14 (ADR 026, proposed; documents written, code not yet built):** Detour
+is a **trip manager and travel history first**. Trips usually start empty; generating itineraries is
+an optional helper that now produces **sights only** (no restaurants or cafés, one unplanned midday
+gap per day). Restaurants and cafés leave the imported data (`geo.restaurant_profile` is dropped, no
+cuisine or meal types anywhere) and are added only through Photon or by hand, with the user choosing
+the day and time. The Phase 8 slot engine (`planner/restaurant_slots.py`, `restaurant-suggestions`,
+`add_restaurant`) is **to be removed**. Past trips will keep their days, not only a map. Next after
+that, in the owner's order: destinations outside the imported regions (ADR 027), then trip export
+(ADR 028). The build order is in ADR 026; until each step is built, the paragraphs below (written
+before this decision) describe the code as it is, including meals and the restaurant import.
+
 **Phases 1 to 8 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
 service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment
 configuration (ADR 010). Phase 2 (ADR 011, ADR 012; `docs/data-model.md`): the `geo` and `app`
@@ -118,6 +129,7 @@ not start the next phase until the owner asks for it.
 | Need | Document |
 |---|---|
 | What the product does and does not do | `docs/product-brief.md` |
+| The current direction (manager and history first) | `docs/decisions/026-trip-manager-first.md` |
 | System design and planning engine | `docs/architecture.md` |
 | Which providers may be used, and on what terms | `docs/api-evaluation.md` |
 | Tables, the licence boundary, lifecycle | `docs/data-model.md` |

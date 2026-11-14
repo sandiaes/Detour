@@ -303,7 +303,11 @@ Any failure (adapter off, provider down, budget used, rate limit, time limit, un
 gives the labelled estimate, so planning stays available. Details and unverified assumptions:
 ADR 013.
 
-#### 4.2.6 Phase 8 API (ADR 019)
+#### 4.2.6 Phase 8 API (ADR 019; **to be removed or reduced by ADR 026**)
+
+`GET /v1/restaurants/search` keeps only Photon and the user's saved restaurants (no imported
+places, no cuisine or meal types); `POST /v1/itineraries/{id}/restaurant-suggestions` and the
+change-set action `add_restaurant` are removed. The table below is the API as built.
 
 | Endpoint | Purpose |
 |---|---|
@@ -382,6 +386,13 @@ Destination (a city or an area), trip length in days, optional start date, and i
 has added or locked. Defaults that the user does not see as features: day window (for example
 09:00–22:00), meal windows, and walking threshold. These live in a versioned configuration file.
 
+> **ADR 026 (proposed, 2026-11-14):** the engine will produce **sights only**: no meals, no
+> restaurant lookup, one unplanned midday `free_time` gap per day, a 09:00–20:00 window (proposed),
+> and recalculation that re-lays that gap instead of meals. The Phase 8 slot engine (section 4.2.6,
+> section 5.4 "Add a restaurant") is retired: a restaurant is a stop the user adds with a chosen day
+> and time. Restaurants, cafés and cuisines leave `geo`. Sections below describe the engine as
+> built until the build steps of ADR 026 are done.
+
 ### 5.2 Pipeline
 
 1. **Scope.** Resolve the destination to a geometry. For an area, select candidate base cities
@@ -448,7 +459,8 @@ makes them distinct even when their visits overlap more than 60 %.
   out again in their windows at imported places to eat. Unchanged days are copied exactly. An
   independent validator checks every proposal. Removing the place the latest accepted change added
   restores the stored previous version exactly (undo through versioning).
-- **Add a restaurant.** For each day and each meal slot, the engine computes: the extra travel
+- **Add a restaurant.** *(Retired by ADR 026: the user chooses the day and time; the text below
+  describes the removed slot engine.)* For each day and each meal slot, the engine computes: the extra travel
   caused by inserting it between the
   neighbouring items; the shift imposed on later items; whether the slot already has a meal; and
   how well the venue type suits the meal (opening hours are out of scope, ADR 003). The lowest-cost slot wins,

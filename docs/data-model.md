@@ -157,6 +157,11 @@ One row per source record that contributed to a place; the primary key is
 
 ### 2.8 `geo.restaurant_profile` and `geo.place_signal`
 
+> **ADR 026 (proposed, 2026-11-14): `geo.restaurant_profile` will be dropped** and restaurants and
+> cafés will no longer be imported; a migration deletes the rows already loaded and what hangs on
+> them (images, aliases, cached names). `geo.place.kind` keeps only `attraction`. The table below
+> describes the schema as built until then.
+
 | `restaurant_profile` | Notes |
 |---|---|
 | `place_id` | pk, fk |
@@ -307,6 +312,11 @@ A hand edit deletes the transfers that no longer join an item to the next one; t
 recomputed. A recalculation (ADR 018) writes the transfers of the days it changes.
 
 ### 3.4 `app.user_place`
+
+> **ADR 026 (proposed):** `cuisines` and `meal_types` will be dropped, and `app.itinerary_item.meal_type`
+> with them; a restaurant or café is a name, a point and a kind (`restaurant` or `cafe`, from
+> Photon's `amenity` value or the user's choice), with its address when Photon gave one. Old items
+> keep their times and read as restaurant or café stops. `kind = location` stays for other places.
 A place the user added that is not in `geo.place`: `kind` (`city`, `location`, `restaurant`),
 `name`, `geom`, `cuisines` and `meal_types` (restaurants only; meal types may include `snack`;
 **null means unknown** and is shown as "Cuisine not specified" and "Meals not specified": a
@@ -318,6 +328,12 @@ town from destination search saved to add it to a plan, ADR 018) with `search_re
 installation.
 
 ### 3.5 `app.trip_visit`: the past-trip archive (ADR 006)
+
+> **ADR 026 (proposed): the archive will also keep a day-by-day record** of a past trip: every item
+> of the selected itinerary as snapshots (day, order, start, length, kind, name, point, `geo`
+> identifier, visited flag, note), restaurants and cafés the user added included, in a new table
+> added when step 5 is built. "Restaurants and meals are not archived" below then no longer holds.
+> `trip_visit` stays as the source of the map of visited places.
 One row per city or attraction of the selected itinerary of a past trip: `kind`, `name` and
 `point` (snapshots), `geo_place_ref` (a `geo.place` id for imported places, null for user places
 and cities; may no longer exist), `day_number`, `confirmed` (default true; the user can clear it).

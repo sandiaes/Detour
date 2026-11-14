@@ -208,3 +208,10 @@ days (it runs out of sights), and travel share is under 25 % (Essentials) everyw
    150 km cost one route request each.
 5. Meals are not recalculated after hand edits (Phase 7), and a restaurant cannot yet be added by
    hand (Phase 8).
+
+## Amendment of 2026-11-14 (ADR 026): meals superseded (proposed, not built)
+
+[ADR 026](026-trip-manager-first.md) supersedes the **meal** part of this ADR: a generated plan has
+no meals, no meal windows, no meal lengths and no places to eat, and each day gets one unplanned
+midday gap instead. **Area destinations, base cities, inter-city legs and the Japan single-city
+rule are unchanged.** Until ADR 026 step 2 is built, the meals described here are still generated.

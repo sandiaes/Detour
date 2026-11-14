@@ -180,3 +180,11 @@ Consequences:
 - The excluded-per-class counts in the report are the evidence the owner needs to accept or
   change the rule.
 - Places excluded here cannot be found by search; a user can still add them as user places.
+
+## Amendment of 2026-11-14 (ADR 026): restaurants and cafés are no longer imported (proposed, not built)
+
+[ADR 026](026-trip-manager-first.md) removes `amenity=restaurant` and `amenity=cafe` from the
+selection: the importer stops keeping them (the 500 m and town rules above no longer apply), the
+rules version is bumped, a migration deletes the rows already loaded, and `geo.restaurant_profile`
+is dropped. The attraction rules of this ADR are unchanged. A restaurant is added by the user
+through Photon or by hand. Until the importer change is built, the rules above still apply.

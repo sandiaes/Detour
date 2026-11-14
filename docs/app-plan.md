@@ -1,5 +1,12 @@
 # App plan
 
+> **Direction change, 2026-11-14 ([ADR 026](decisions/026-trip-manager-first.md), proposed):** the
+> app is a trip manager and history first; generated plans are sights only with a midday gap;
+> restaurants and cafés leave the imported data and are added through Photon or by hand; the Phase 8
+> slot engine is retired; past trips keep their days. Destinations outside the imported regions
+> are the first manager feature, trip export the second. This section and the phases below
+> describe what was built; ADR 026's "Build order" is the work from here.
+
 Status: **Phase 0, 1 and 2 are done; Phases 3, 4, 5, 6, 7 and 8 are built and await the owner's acceptance** (the owner reported on 2026-11-13 that the app works on the phone); Phase 8 onward is proposed. Budgets, currencies and prices are removed for now (ADR 017). Each phase is small enough to review on its own
 and ends with tests that prove it. A phase starts only when its dependencies are complete.
 
@@ -253,7 +260,7 @@ to another day; 12 to 690 ms in the engine.
 - **Risks:** recalculation reshuffles too much; mitigation is tuning the stability cost with
   fixtures.
 
-### Phase 8 — Add a restaurant
+### Phase 8 — Add a restaurant *(slot engine to be retired, ADR 026)*
 
 **Goal:** a manually added restaurant lands in the best slot. (Prices, budgets, price bands and
 currency conversion were removed by ADR 017 on 2026-11-13.)
@@ -323,6 +330,14 @@ to reconsider later. Ideas discussed, none decided or built:
   them. Missing: a "remove region" operation (delete a region's places and areas, mark it
   `disabled`), for example as a small workflow.
 
+### Manager and history (ADR 026, proposed)
+
+Not a numbered phase. In the owner's order: (1) sights-only plans with a midday gap; (2) restaurants
+and cafés removed from the data, cuisine and meal types removed, slot engine retired, Add a
+restaurant through Photon and by hand; (3) past trips keep their days; (4) **destinations outside
+the imported regions** (ADR 027, to be written); (5) **export and import of a trip as a file**
+(ADR 028, to be written); then saved ideas, reordering, notes, trip summary and photos.
+
 ## 5. MVP exclusions
 
 - Public transport and real-time transit data
@@ -333,6 +348,7 @@ to reconsider later. Ideas discussed, none decided or built:
 - Accounts, sign-in, sharing, multi-device sync
 - Offline map downloads and offline planning
 - Restaurant ratings, reviews, prices and price levels; budgets and currencies (ADR 017)
+- Imported restaurant, café and cuisine data (ADR 026)
 - Public-holiday opening rules
 - Accommodation as day start and end point
 - Booking, payments, hotel availability, flight prices (never in scope)
@@ -351,6 +367,12 @@ to reconsider later. Ideas discussed, none decided or built:
 | Licence obligations misread | Low | High | Schema separation; legal review before commercial release |
 
 ## 7. Recommended next task
+
+**ADR 026 (2026-11-14, proposed):** documents are written; next is its build order, step 2 (the
+planner: sights only, the midday gap, day window, recalculation, validators, golden files), then the
+data change, the retirement of the slot engine, the history record, the app, then destinations
+(ADR 027) and export (ADR 028). The text below is older and still stands for the phases it names,
+except where ADR 026 retires them (Phase 8's slot costs, the imported restaurants).
 
 **Accept Phases 3 to 8, then Phase 9 (MVP hardening), when the owner asks for it
 (CLAUDE.md).** For Phase 8: confirm or change the slot costs of ADR 019 on a real imported city,
