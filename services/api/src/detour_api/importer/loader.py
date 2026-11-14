@@ -16,6 +16,7 @@ The target connection must be a session-mode connection (Supabase session pooler
 temporary tables and the advisory lock need a session.
 """
 
+import re
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -48,6 +49,9 @@ from detour_api.importer.selection import (
     decide,
 )
 from detour_api.textnorm import normalize_text, stable_uuid
+
+# An area's Wikidata item (its photo, ADR 022 amendment); a malformed tag is dropped, not kept.
+WIKIDATA_ID = re.compile(r"^Q[0-9]+$")
 
 log = structlog.get_logger("detour.import")
 
@@ -148,7 +152,7 @@ CREATE TEMP TABLE stage_place (
 _STAGE_AREA = """
 CREATE TEMP TABLE stage_area (
     id uuid, name text, name_norm text, level smallint, country_iso2 text,
-    geom geometry, source_ref text
+    geom geometry, source_ref text, wikidata_id text
 ) ON COMMIT DROP
 """
 
@@ -281,7 +285,8 @@ def _copy_areas(
     with (
         conn.cursor() as cur,
         cur.copy(
-            "COPY stage_area (id, name, name_norm, level, country_iso2, geom, source_ref) FROM STDIN"
+            "COPY stage_area (id, name, name_norm, level, country_iso2, geom, source_ref, wikidata_id)"
+            " FROM STDIN"
         ) as copy,
     ):
         for b in iter_boundaries(staging):
@@ -293,6 +298,7 @@ def _copy_areas(
             if len(iso) != 2 or iso not in region.countries:
                 iso = region.countries[0] if len(region.countries) == 1 else ""
             ref = f"relation/{b.osm_id}"
+            qid = (b.tags.get("wikidata") or "").strip()
             copy.write_row(
                 (
                     str(stable_uuid("admin_area", f"{region.id}/osm/{ref}")),
@@ -302,6 +308,7 @@ def _copy_areas(
                     iso or None,
                     b.ewkb_hex,
                     ref,
+                    qid if WIKIDATA_ID.match(qid) else None,
                 )
             )
             n += 1
@@ -443,19 +450,22 @@ def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) 
         """
         INSERT INTO geo.admin_area
             (id, region_id, name, name_norm, level, country_iso2, geom, source, source_ref,
-             licence_code, is_active, last_changed_import_run_id)
+             licence_code, is_active, last_changed_import_run_id, wikidata_id)
         SELECT s.id, %(region)s, s.name, s.name_norm, s.level, c.iso2,
-               ST_SetSRID(s.geom, 4326), 'osm', s.source_ref, %(lic)s, true, %(run)s
+               ST_SetSRID(s.geom, 4326), 'osm', s.source_ref, %(lic)s, true, %(run)s,
+               s.wikidata_id
         FROM stage_area s LEFT JOIN geo.country c ON c.iso2 = s.country_iso2
         ON CONFLICT (source, source_ref) DO UPDATE SET
             name = EXCLUDED.name, name_norm = EXCLUDED.name_norm, level = EXCLUDED.level,
             country_iso2 = EXCLUDED.country_iso2, geom = EXCLUDED.geom, is_active = true,
-            last_changed_import_run_id = EXCLUDED.last_changed_import_run_id
+            last_changed_import_run_id = EXCLUDED.last_changed_import_run_id,
+            wikidata_id = EXCLUDED.wikidata_id
         WHERE (geo.admin_area.name, geo.admin_area.name_norm, geo.admin_area.level,
-               geo.admin_area.country_iso2, geo.admin_area.geom, geo.admin_area.is_active)
+               geo.admin_area.country_iso2, geo.admin_area.geom, geo.admin_area.is_active,
+               geo.admin_area.wikidata_id)
               IS DISTINCT FROM
               (EXCLUDED.name, EXCLUDED.name_norm, EXCLUDED.level, EXCLUDED.country_iso2,
-               EXCLUDED.geom, true)
+               EXCLUDED.geom, true, EXCLUDED.wikidata_id)
         """,
         params,
     )

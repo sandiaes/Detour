@@ -19,6 +19,8 @@ const SHAPES = {
   more: { d: ["M4 7h16", "M4 12h16", "M4 17h16"] },
   back: { d: ["M15 5l-7 7 7 7"] },
   chevronRight: { d: ["M9 5l7 7-7 7"] },
+  up: { d: ["M6 15l6-6 6 6"] },
+  down: { d: ["M6 9l6 6 6-6"] },
   dots: {
     circles: [
       [6, 12, 1.2],

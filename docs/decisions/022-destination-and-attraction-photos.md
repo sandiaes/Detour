@@ -276,3 +276,132 @@ responses and fixtures only, not on a device):
   `expo-image` can be added later if the disk cache proves too weak.
 - **Not built:** the "Image credits" list of decision 20, day thumbnails with photos (decision 19),
   portrait photos for attractions, and the candidate list for "Change photo" (step 4).
+
+**2026-11-14, proposed amendment: coverage, "Change photo" and loading without a workflow**
+(brief `docs/briefs/multi-city-trips-and-photos.md`, Part 2; **approved by the owner on 2026-11-14**
+("Approved, go ahead with your defaults"), **built and awaiting acceptance**, see "Built" below; the
+owner answered "photos fit their container" and "photos load without a GitHub workflow: yes", and
+kept the 1,080 px longest side for portraits).
+
+*Part 0 first* (`docs/spikes/apk-photos-diagnosis.md`): the serving path works on the real
+deployment (the owner sees the Vienna and Salzburg covers in the APK). What the owner misses has two
+causes: the resolver has looked up only a sample (in the owner's Vienna plan 10 of 42 visits were
+looked up, 4 have a photo; in Salzburg none of 16), and "Change photo" is not built.
+
+Terms read for this amendment:
+
+| Source | Finding | Read on | Status |
+|---|---|---|---|
+| Extension:PageImages, <https://www.mediawiki.org/wiki/Extension:PageImages> (last edited 2026-11-03) | `prop=pageimages` returns the page's lead image as `pageimage` (file name), `original` and `thumbnail`. A page keeps two properties, `page_image` and `page_image_free`; the parameter `pilicense` chooses `free` ("Only free images", **the default**) or `any`. On Wikipedia only lead-section images count. Whether a returned file can be a local (non-Commons) upload is not stated, so this ADR checks it (decision c). The extension "is under code stewardship review and not actively maintained" | 2026-11-14 | **Read** |
+| API:Categorymembers, <https://www.mediawiki.org/wiki/API:Categorymembers> (last edited 2026-02-23) | `cmtitle` with the `Category:` prefix; `cmtype=file`; `cmlimit` 1 to 500 (default 10); continuation by `cmcontinue`; may return fewer than the limit | 2026-11-14 | **Read** |
+| API:Etiquette, <https://www.mediawiki.org/wiki/API:Etiquette> (last edited 2026-05-13) and Wikimedia APIs rate limits, <https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits> (last edited 2026-11-08) | Unchanged from the table above: requests in series, `maxlag` for non-interactive work, a User-Agent with contact; 200 requests a minute for a compliant User-Agent without login, across all Wikimedia sites (so `en.wikipedia.org` and `commons.wikimedia.org` share it); 3 concurrent at most; `Retry-After` on 429, else at least 5 s or exponential backoff. The limits are "new in 2026 and subject to experimentation and change" | 2026-11-14 | **Read** |
+| Wikimedia Terms of Use, <https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use> (last edited 2026-10-25) | Forbids "placing an undue burden on an API" and automated uses that are "abusive or disruptive"; API use must follow the API policies (User-Agent, robots, etiquette); reuse must follow the content's licence | 2026-11-14 | **Read** (section 4 verbatim; sections 7 and 12 from a summary of the page) |
+| The `prop=pageimages` API help on `en.wikipedia.org` | Not reachable from this session (DNS refused by its network policy); the parameters above come from the extension's page | 2026-11-14 | **Not read** |
+
+Proposed decisions (letters, so they do not clash with 1 to 21):
+
+- **a. Fallback chain for cities, regions and countries:** the item's image (P18), then its page
+  banner (P948, as today), then the **lead image of the item's English Wikipedia article** (through
+  the item's `enwiki` sitelink, `prop=pageimages` with `pilicense=free`), then **files of the item's
+  Commons category** (P373, `list=categorymembers&cmtype=file`, the first 50, in the API's order).
+  The steps stop at the first file that passes decisions 2 and 3; a rejected file moves on to the
+  next. Attractions keep P18 then P948 (the chain could be extended to them later).
+- **b. Same adapter, same rules.** `adapters/wikimedia.py` gains `en.wikipedia.org` as an API host:
+  the same User-Agent, one request at a time across all three hosts (one serial queue), at most one
+  a second, `maxlag`, `Retry-After`, the same daily budget counter and the 4,000-image cap.
+- **c. Only Commons files.** Every candidate is looked up on Commons (`prop=imageinfo` with
+  `extmetadata`); a file that Commons does not hold (a local Wikipedia upload, often fair use) is
+  rejected (`not_on_commons`). Licence and author come from Commons only.
+- **d. Areas keep their Wikidata item.** Migration `0011` adds `geo.admin_area.wikidata_id`; the
+  import (`osm.lua`, loader) keeps the boundary's `wikidata` tag. Existing areas (Austria) are filled
+  by **re-running "Import region" for Austria** (an import is idempotent; no other source may be
+  asked for OSM tags, since Overpass is forbidden). An area or country then resolves like a city
+  (`geo.image_lookup.kind` gains `area`), and `trip_covers` uses it.
+- **e. Photos fit their container (owner).** Decision 3's landscape rule is dropped: portrait files
+  are accepted. Size minimum on the original: **longer side at least 1,200 px and shorter side at
+  least 800 px** (the old landscape minimum, 1,200 wide, keeps passing). JPEG or PNG only, as
+  before. The stored rendition stays one JPEG, longest side 1,080 px, never cropped in storage.
+  Every frame (trip card, trip header, place detail, candidates sheet, day thumbnail) **fills its
+  frame and crops the overflow**: a landscape photo is centred; a portrait photo is anchored toward
+  its upper part (the frame shows the band about a third from the top, where towers and façades
+  usually sit). The app computes the position from the photo's `width` and `height`, which the API
+  already sends; no crop data is stored. *Trade-off:* a portrait rendition is 720 px wide at most,
+  slightly soft on a full-width phone cover; storing portraits at 1,080 px wide instead would cost
+  about half again in bytes. Proposed: keep 1,080 longest side, as the brief says.
+- **f. Measure** on Austria after building: hits per step of the chain, licence mix, share passing
+  the gate, for cities, areas and attractions; written into this ADR. The attraction figure should
+  rise above 76 % with portraits accepted. If countries and regions stay poor, a small hand-picked
+  set of Commons files is proposed as a follow-up, not built.
+
+**"Change photo" (step 4):**
+
+- **g. `GET /v1/destinations/{kind}/{ref}/cover-candidates`**: up to 12 candidates passing the gate,
+  in the chain's order (the destination's own image first), each with author, licence, file page,
+  size and a **preview** served by the backend (`/v1/cover-previews/{id}`, a 500 px JPEG fetched and
+  resized by the backend and kept in the `photos` bucket under `previews/` for a week, then deleted
+  by the resolver). The candidate list is cached for a week in `app.provider_cache` and every
+  Wikimedia request counts against the daily budget. The app still talks only to the backend.
+- **h. Choosing** (`cover_candidate` on `POST /v1/trips`, or `PUT /v1/trips/{id}/cover`): the backend
+  downloads the file, resizes it (Pillow, as today), uploads it, writes `geo.image` and sets
+  `app.trip.cover_image_id`. On the new-trip screen ("Change photo" under the destination) and in the
+  trip menu. For a multi-city trip (ADR 024) the sheet offers the candidates of each stop's city.
+- **i. "Image credits"** under More: every photo the app has shown, with author, licence and link,
+  built on the phone from the `Photo` objects in its read cache (no new endpoint).
+- **j. Day thumbnails** (decision 19): the photo of the day's first visit, which the itinerary read
+  already carries. Cheap, so included.
+
+**Loading without a workflow:**
+
+- **k. A background resolve on the API.** When a destination or stop is chosen (the candidates
+  request), when a trip is created and after itineraries are generated, the API queues a resolve
+  for the trip's cities and areas and its planned visits that have a Wikidata item, no photo and no
+  `none` result younger than 90 days. The response does not wait. The app shows the illustration
+  until the photo exists and refreshes on focus and pull-to-refresh.
+- **l. It survives Render Free** (512 MB, sleeps after idle, restarts at any time): it runs in a
+  thread of the API process; **single-flight** through a Postgres advisory lock
+  (`pg_try_advisory_lock`), so a second request never starts a second resolver; **idempotent and
+  resumable** because every outcome is written to `geo.image_lookup` as it happens and a restart
+  simply starts again from what is missing; **self-healing**: reading the trips list queues a
+  resolve when a trip of the installation has unresolved places; one image in memory at a time; the
+  download size capped as today; at most 100 lookups a run; the serial queue, `maxlag`,
+  `Retry-After`, daily budget and 4,000-image cap as in decision b.
+- **m. Not changed:** the "Resolve images" workflow stays as an operator tool. **Loading a region's
+  places still cannot run on Render Free** (`osm2pgsql`, downloads of up to 2 GB), so a new country
+  still needs the "Import region" workflow; the app cannot load new countries.
+- **n. Settings:** the Render service needs `DETOUR_SUPABASE_URL` and
+  `DETOUR_SUPABASE_SERVICE_KEY` (present: the photos load) and the `photos` bucket (public, JPEG, 2
+  MB: present). Previews in decision g are JPEG, so the bucket's type rule holds.
+
+Migration `0011` (`geo.admin_area.wikidata_id`, `image_lookup.kind` value `area`, reason values)
+comes before ADR 024's `0012`.
+
+**2026-11-14, the amendment built** (awaits acceptance; tried on recorded responses and fixtures only,
+not on a device and not against Wikimedia from this session, whose network does not reach it):
+
+- **Adapter and resolver:** `page_images` and `category_files` in `adapters/wikimedia.py` with the
+  pure parsers `parse_pageimages` and `parse_category_files`; `EntityImage` keeps the `enwiki` title
+  and the P373 category; one request queue for the whole process (a lock and a shared clock); the
+  size gate is longer side 1,200 and shorter side 800 (`not_landscape` is gone); a file Commons
+  does not hold is `not_on_commons`. The resolver runs the chain for `city` and `area` only and
+  reports which step found each photo (`steps`: `city:image`, `city:wikipedia`, `city:category`,
+  `area:…`, `place:image`). The `images` command gained `--areas` (default 50).
+- **Migration `0011`:** `geo.admin_area.wikidata_id`, the lookup kind `area`, `geo.cover_preview`.
+  The Austrian areas get their item when "Import region" runs again for Austria.
+- **Background resolve** (`images/background.py`, `images/queue.py`): queued after `POST
+  /v1/trips`, after generation, after a cover-candidates request, and on every `GET /v1/trips` (the
+  self-healing read); advisory lock `22022022`; at most 100 lookups a run. FastAPI runs it after the
+  response in a worker thread.
+- **"Change photo":** the path is `/v1/destinations/{kind}/{ref}/cover-candidates` (two segments,
+  not `{kind}:{ref}`). `POST /v1/trips` does not take a cover: the app creates the trip, then calls
+  `PUT /v1/trips/{id}/cover` with the file chosen on the form (a failure leaves the automatic photo).
+  Only a file offered for the trip's destinations can be chosen (`cover_not_usable` otherwise).
+  The first request for a destination makes about 20 Wikimedia requests at one a second (the item,
+  the lead image, the category, file information, twelve preview downloads), so the sheet says it
+  can take half a minute; later requests in the week come from the cache.
+- **App:** `photoPlacement` and `FittedPhoto` in `Cover.tsx` (every cover, the day thumbnails and
+  the candidates use them); `CoverPicker`; "Change photo" on the new-trip screen and in the trip
+  menu; More, "Image credits" (the photos the app holds in memory in this session); day thumbnails
+  from the first visit with a photo.
+- **Not done here:** the coverage measurement of decision f needs a real run against Wikimedia
+  (the "Resolve images" workflow with `--areas`, after Austria is imported again), and the visual
+  check on a small phone and a tablet needs a device. Both are owed before acceptance.

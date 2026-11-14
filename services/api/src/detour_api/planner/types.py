@@ -68,6 +68,15 @@ class BaseCity:
 
 
 @dataclass(frozen=True)
+class RouteStop:
+    """A stop of a multi-city trip (ADR 024): a city the user chose, with its days."""
+
+    city: BaseCity
+    days: int
+    country_iso2: str | None
+
+
+@dataclass(frozen=True)
 class PlanRequest:
     destination_name: str
     lat: float
@@ -77,9 +86,11 @@ class PlanRequest:
     # The geo.import_run the candidates came from: the data version stored on the itinerary.
     data_version: str | None
     # "city": ``base_cities`` holds the destination city alone. "area": the towns of the area
-    # that may become bases (the engine chooses among them).
-    kind: Literal["city", "area"] = "city"
+    # that may become bases (the engine chooses among them). "route": ``stops`` are the user's
+    # cities in order with their days (ADR 024); the engine neither chooses nor reorders them.
+    kind: Literal["city", "area", "route"] = "city"
     base_cities: tuple[BaseCity, ...] = ()
+    stops: tuple[RouteStop, ...] = ()
 
     @property
     def centre(self) -> Coord:
@@ -137,6 +148,9 @@ class DayPlan:
     # Travel from the previous day's base city, at the start of the day; None when the base
     # does not change.
     arrival: Leg | None = None
+    # The base changed but the journey's time is not known (a leg into or out of a country
+    # travelled by rail, ADR 024): no time is invented and the day is planned in full.
+    arrival_unknown: bool = False
 
     @property
     def visits(self) -> tuple[PlannedItem, ...]:

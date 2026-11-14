@@ -104,6 +104,16 @@ NOTE_TEMPLATES: dict[str, str] = {
         "Day {day}: {minutes} min by car from {from_name} to {to_name} ({label})."
     ),
     "DISTINCT_ALLOCATION": "The two plans divide the days between different base cities.",
+    # Multi-city trips (ADR 024).
+    "STOPS_CHANGED": "Your cities change; the trip becomes {name}.",
+    "STOP_REMOVED_ITEMS": "These leave the plan with their days: {items}.",
+    "ARRIVAL_TIME_UNKNOWN": (
+        "Day {day} starts in {to_name}; the journey from {from_name} is not included in the "
+        "day's times (public transport is not planned yet)."
+    ),
+    "STOP_TOO_SMALL_TO_VARY": (
+        "{name} has few sights to choose from, so the two plans share most of them there."
+    ),
     # Recalculation (Phase 7, ADR 018). Replaced by the next recalculation's notes.
     "PLACE_ADDED": "You added {name} on day {day}; the plan was recalculated around it.",
     "PLACE_REMOVED": "You removed {name}; day {day} was recalculated without it.",
@@ -171,6 +181,12 @@ ISSUE_TEMPLATES: dict[str, str] = {
     "SINGLE_CITY_ONLY": (
         "{name} is {km} km from the plan's city; trips here are planned in one city for now "
         "(travel between cities is mostly by rail, which the planner does not model)."
+    ),
+    "LOCKED_ON_DROPPED_DAY": (
+        "Day {day} would be dropped but has locked items ({items}); unlock them or keep the day."
+    ),
+    "OUTSIDE_STOPS": (
+        "{name} is {km} km from your stops; add its town as a stop first, then add {name}."
     ),
     "DAY_HAS_FIXED_ITEMS": (
         "Day {day} cannot be based elsewhere: it has locked items or items you added ({items})."

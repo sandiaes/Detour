@@ -225,6 +225,139 @@
         }
       }
     },
+    "/v1/cover-previews/{preview_id}": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "A small preview of a cover candidate, streamed by the backend.",
+        "operationId": "get_cover_preview",
+        "parameters": [
+          {
+            "name": "preview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Preview Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/destinations/{kind}/{ref}/cover-candidates": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Up to 12 freely licensed photos of a destination to choose a cover from (Wikimedia Commons, through the backend). Also starts looking up its automatic photo.",
+        "operationId": "list_cover_candidates",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "city",
+                "area"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CoverCandidate"
+                  },
+                  "title": "Response List Cover Candidates"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/destinations/search": {
       "get": {
         "tags": [
@@ -1586,6 +1719,182 @@
         }
       }
     },
+    "/v1/trips/{trip_id}/cover": {
+      "put": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Choose the trip's cover from the destination's candidates (GET /v1/destinations/{kind}/{ref}/cover-candidates), or null for the automatic photo.",
+        "operationId": "set_trip_cover",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoverChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trip"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/trips/{trip_id}/stops": {
+      "put": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Replace a multi-city trip's stops while it has no chosen plan (ADR 024). With a chosen plan, preview the change instead (POST /v1/trips/{id}/stops/preview).",
+        "operationId": "replace_stops",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopsEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trip"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/itineraries/{itinerary_id}": {
       "get": {
         "tags": [
@@ -2555,6 +2864,94 @@
         }
       }
     },
+    "/v1/trips/{trip_id}/stops/preview": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Preview new stops for a multi-city trip (ADR 024): the active plan repaired, with what each stop keeps, what is filled in and what leaves with a removed day. Apply or discard it like any change set.",
+        "operationId": "preview_stops",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopsEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSet"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/restaurants/search": {
       "get": {
         "tags": [
@@ -3281,23 +3678,40 @@
             "type": "string",
             "enum": [
               "walk",
-              "drive"
+              "drive",
+              "unknown"
             ],
-            "title": "Mode"
+            "title": "Mode",
+            "description": "unknown: a leg into or out of a country travelled by rail, which Detour does not plan yet; no time or distance is given (ADR 024)"
           },
           "seconds": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Seconds"
           },
           "meters": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Meters"
           },
           "confidence": {
             "type": "string",
             "enum": [
               "routed",
-              "estimated"
+              "estimated",
+              "unknown"
             ],
             "title": "Confidence"
           }
@@ -3475,7 +3889,8 @@
             "enum": [
               "add_place",
               "remove_place",
-              "add_restaurant"
+              "add_restaurant",
+              "edit_stops"
             ],
             "title": "Action"
           },
@@ -3719,6 +4134,66 @@
         ],
         "title": "ClientConfig"
       },
+      "CoverCandidate": {
+        "properties": {
+          "commons_file": {
+            "type": "string",
+            "title": "Commons File",
+            "description": "The file's name on Wikimedia Commons, without File:"
+          },
+          "preview_url": {
+            "type": "string",
+            "title": "Preview Url",
+            "description": "Path on this API (GET /v1/cover-previews/{id}): a JPEG at most 500 px wide"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "description": "Of the original file"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "credit": {
+            "$ref": "#/components/schemas/PhotoCredit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "commons_file",
+          "preview_url",
+          "width",
+          "height",
+          "credit"
+        ],
+        "title": "CoverCandidate",
+        "description": "A photo the user may choose as a trip's cover (\"Change photo\", ADR 022 amendment)."
+      },
+      "CoverChoice": {
+        "properties": {
+          "commons_file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commons File"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "commons_file"
+        ],
+        "title": "CoverChoice",
+        "description": "The cover chosen for a trip; null goes back to the automatic photo."
+      },
       "DataVersion": {
         "properties": {
           "import_run_id": {
@@ -3903,7 +4378,8 @@
             "type": "string",
             "enum": [
               "city",
-              "area"
+              "area",
+              "route"
             ],
             "title": "Kind"
           },
@@ -3932,7 +4408,8 @@
           "lat",
           "lon"
         ],
-        "title": "Destination"
+        "title": "Destination",
+        "description": "For a multi-city trip (route): ``ref`` is the first stop's city and ``name`` the trip's."
       },
       "DestinationResult": {
         "properties": {
@@ -5495,6 +5972,18 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "stops_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stops Version",
+            "description": "A multi-city trip's stop version this plan was made for; a plan whose version is not the trip's was made for earlier cities and cannot be chosen"
+          },
           "days": {
             "items": {
               "$ref": "#/components/schemas/Day"
@@ -5630,6 +6119,18 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "stops_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stops Version",
+            "description": "A multi-city trip's stop version this plan was made for; a plan whose version is not the trip's was made for earlier cities and cannot be chosen"
           }
         },
         "type": "object",
@@ -5682,7 +6183,8 @@
                 "enum": [
                   "add_place",
                   "remove_place",
-                  "add_restaurant"
+                  "add_restaurant",
+                  "edit_stops"
                 ]
               },
               {
@@ -7283,6 +7785,49 @@
         ],
         "title": "SlotSuggestions"
       },
+      "StopIn": {
+        "properties": {
+          "city_id": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "City Id",
+            "description": "The city's GeoNames id (a destination search result)"
+          },
+          "days": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Days"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "city_id",
+          "days"
+        ],
+        "title": "StopIn",
+        "description": "A stop of a multi-city trip, in the user's order (ADR 024)."
+      },
+      "StopsEdit": {
+        "properties": {
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/StopIn"
+            },
+            "type": "array",
+            "title": "Stops",
+            "description": "2 to 6 cities; their days become the trip's length"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stops"
+        ],
+        "title": "StopsEdit",
+        "description": "A multi-city trip's new stops, in order (ADR 024): add, remove, reorder or change days."
+      },
       "SuggestionReason": {
         "properties": {
           "code": {
@@ -7436,6 +7981,20 @@
             ],
             "description": "The trip's photo: the one the user chose, else the one found for the destination city; null when there is none (the app then shows its illustration)"
           },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/TripStop"
+            },
+            "type": "array",
+            "title": "Stops",
+            "description": "A multi-city trip's cities in order; empty otherwise"
+          },
+          "stops_version": {
+            "type": "integer",
+            "title": "Stops Version",
+            "description": "Counts applied stop edits; a plan records the one it was made for",
+            "default": 0
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -7470,21 +8029,46 @@
             "type": "string",
             "maxLength": 120,
             "minLength": 1,
-            "title": "Title"
+            "title": "Title",
+            "description": "Ignored for a multi-city trip, whose name follows its stops"
           },
           "destination_kind": {
             "type": "string",
             "enum": [
               "city",
-              "area"
+              "area",
+              "route"
             ],
             "title": "Destination Kind"
           },
           "destination_ref": {
-            "type": "string",
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Destination Ref"
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Ref",
+            "description": "The city or area; not sent for a multi-city trip (route)"
+          },
+          "stops": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StopIn"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stops",
+            "description": "Only for a multi-city trip: 2 to 6 cities in order, whose days add up to duration_days"
           },
           "duration_days": {
             "type": "integer",
@@ -7510,10 +8094,60 @@
         "required": [
           "title",
           "destination_kind",
-          "destination_ref",
           "duration_days"
         ],
         "title": "TripCreate"
+      },
+      "TripStop": {
+        "properties": {
+          "position": {
+            "type": "integer",
+            "title": "Position",
+            "description": "1 for the first city"
+          },
+          "city_id": {
+            "type": "integer",
+            "title": "City Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "country_iso2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Iso2"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "position",
+          "city_id",
+          "name",
+          "country_iso2",
+          "lat",
+          "lon",
+          "days"
+        ],
+        "title": "TripStop"
       },
       "TripUpdate": {
         "properties": {

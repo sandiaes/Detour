@@ -1,5 +1,5 @@
 {
- "config_version": "2026-11-14.1+durations-2026-11-12.1",
+ "config_version": "2026-11-14.2+durations-2026-11-12.1",
  "data_version": "run-fixture",
  "distinct": true,
  "engine_version": "planner-2.0.0",
@@ -34,6 +34,7 @@
    "days": [
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-01",
@@ -337,6 +338,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-02",
@@ -662,6 +664,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-03",
@@ -985,6 +988,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-04",
@@ -1280,6 +1284,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-05",
@@ -1648,6 +1653,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-06",
@@ -1942,6 +1948,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-07",
@@ -2235,6 +2242,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-08",
@@ -2525,6 +2533,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-09",
@@ -2790,6 +2799,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-10",
@@ -3148,6 +3158,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-11",
@@ -3459,6 +3470,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-12",
@@ -3745,6 +3757,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-13",
@@ -4050,6 +4063,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-14",
@@ -4342,6 +4356,7 @@
    "days": [
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-01",
@@ -4699,6 +4714,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-02",
@@ -5005,6 +5021,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-03",
@@ -5337,6 +5354,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-04",
@@ -5580,6 +5598,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-05",
@@ -5873,6 +5892,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-06",
@@ -6173,6 +6193,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-07",
@@ -6474,6 +6495,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-08",
@@ -6768,6 +6790,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-09",
@@ -7084,6 +7107,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-10",
@@ -7350,6 +7374,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-11",
@@ -7641,6 +7666,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-12",
@@ -7950,6 +7976,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-13",
@@ -8209,6 +8236,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 900101,
      "base_city_name": "Synthetic City",
      "date": "2026-07-14",

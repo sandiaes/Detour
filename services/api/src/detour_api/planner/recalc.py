@@ -206,6 +206,8 @@ class RDay:
     base_city_name: str | None
     items: tuple[Entry, ...]
     arrival: Leg | None = None
+    # The base changed but the journey's time is not known (ADR 024): no figures, a full day.
+    arrival_unknown: bool = False
 
     @property
     def visits(self) -> tuple[Entry, ...]:
@@ -273,6 +275,11 @@ class RecalcInput:
     towns: Sequence[BaseCity] = ()  # possible new bases near the addition
     # A country planned as single-city trips (Japan, app plan D4): no new base cities.
     single_city: bool = False
+    # A multi-city trip (ADR 024): the bases are the user's stops, so an addition never opens a
+    # new one; a place far from every stop is refused (OUTSIDE_STOPS).
+    route: bool = False
+    # Bases in a country travelled by rail: a leg into or out of one has no time (ADR 024).
+    rail_bases: frozenset[int] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -369,7 +376,16 @@ class _Work:
     def arrival_cell(self, prev_base: int | None, base: int | None) -> Cell | None:
         if prev_base is None or base is None or prev_base == base:
             return None
+        if self.unknown_leg(prev_base, base):
+            return None
         return (self.bases[prev_base].coord, self.bases[base].coord)
+
+    def unknown_leg(self, prev_base: int | None, base: int | None) -> bool:
+        """A change of base into or out of a country travelled by rail: no time (ADR 024)."""
+        if prev_base is None or base is None or prev_base == base:
+            return False
+        rail = self.inp.rail_bases
+        return prev_base in rail or base in rail
 
     # -- values ----------------------------------------------------------------------------
 
@@ -615,6 +631,7 @@ class _Work:
                     reasons.append("NAMED_SIGHT")
             out.append(replace(slot, transfer=leg, reasons=_ordered(reasons)))
         old = self.old.get(spec.index)
+        day_before = self.days.get(spec.index - 1)
         return RDay(
             day_index=spec.index,
             date=None if old is None else old.date,
@@ -622,6 +639,9 @@ class _Work:
             base_city_name=spec.base_name,
             items=tuple(out),
             arrival=arrival,
+            arrival_unknown=self.unknown_leg(
+                None if day_before is None else day_before.base_city_id, spec.base_id
+            ),
         )
 
     def fit(
@@ -825,6 +845,8 @@ def add_place(
             raise PlanningImpossible(
                 [Issue("SINGLE_CITY_ONLY", {"name": x.name, "km": _km(nearest)})]
             )
+        if inp.route:
+            raise PlanningImpossible([Issue("OUTSIDE_STOPS", {"name": x.name, "km": _km(nearest)})])
         town = _nearest_town(addition, inp.towns, rconfig)
         if town is None:
             raise PlanningImpossible(

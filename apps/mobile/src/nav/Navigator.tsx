@@ -20,10 +20,13 @@ export type Route =
   | { name: "photos" }
   | { name: "more" }
   | { name: "settings" }
+  | { name: "imageCredits" }
   | { name: "tripOverview"; tripId: string; section?: TripSection }
   | { name: "createTrip" }
   | { name: "trip"; tripId: string }
   | { name: "tripSettings"; tripId: string }
+  /** A multi-city trip's cities (ADR 024). */
+  | { name: "editStops"; tripId: string }
   | { name: "pastTrip"; tripId: string }
   | {
       name: "itinerary";

@@ -69,6 +69,8 @@ CHANGE_NOTES = frozenset(
         "VISITS_DROPPED",
         "RESTAURANT_ADDED",
         "MEAL_REPLACED",
+        "STOP_REMOVED_ITEMS",
+        "STOPS_CHANGED",
     }
 )
 
@@ -180,7 +182,9 @@ def _head(
         raise conflict(
             "not_recalculable", "only planned itineraries are recalculated; edit this one by hand"
         )
-    dest = geo.resolve_destination(conn, row.destination_kind, row.destination_ref)
+    # A multi-city trip's destination_ref is its first stop's city (ADR 024).
+    kind = "city" if row.destination_kind == "route" else row.destination_kind
+    dest = geo.resolve_destination(conn, kind, row.destination_ref)
     if dest is None:
         raise invalid("destination_not_found", "the trip's destination is no longer in the data")
     if dest.region_id is None or dest.region_status != "available":
@@ -320,15 +324,25 @@ def _plan_input(
     points = [(b.lat, b.lon) for b in bases.values()]
     if point is not None:
         points.append(point)
+    route = row.destination_kind == "route"
+    countries = _countries(conn, base_ids)
+    # A multi-city trip may span regions: each base's own region is read too (ADR 024).
+    regions = [dest.region_id]
+    if route:
+        for code in sorted({c for c in countries.values() if c}):
+            covering = geo.region_for_country(conn, code)
+            if covering and covering[1] == "available" and covering[0] not in regions:
+                regions.append(covering[0])
     cands: dict[str, Candidate] = {}
     rests: dict[str, Restaurant] = {}
-    for lat, lon in points:
-        for c in planning.load_candidates(conn, dest.region_id, lat, lon, radius):
-            cands.setdefault(c.place_id, c)
-        for r in planning.load_restaurants(
-            conn, dest.region_id, lat, lon, radius + config.meal_search_m[-1]
-        ):
-            rests.setdefault(r.place_id, r)
+    for region in regions:
+        for lat, lon in points:
+            for c in planning.load_candidates(conn, region, lat, lon, radius):
+                cands.setdefault(c.place_id, c)
+            for r in planning.load_restaurants(
+                conn, region, lat, lon, radius + config.meal_search_m[-1]
+            ):
+                rests.setdefault(r.place_id, r)
     towns: list[BaseCity] = []
     if addition is not None:
         towns = _towns_near(conn, addition.lat, addition.lon, rconfig.new_base_town_m)
@@ -341,8 +355,36 @@ def _plan_input(
         candidates=tuple(cands[k] for k in sorted(cands)),
         restaurants=tuple(rests[k] for k in sorted(rests)),
         towns=tuple(towns),
-        single_city=not geo.area_planning_allowed(dest),
+        single_city=not route and not geo.area_planning_allowed(dest),
+        route=route,
+        rail_bases=frozenset(b for b, c in countries.items() if c in config.single_city_countries),
     )
+
+
+def cities(conn: Connection, ids: list[int]) -> dict[int, BaseCity]:
+    return _cities(conn, ids)
+
+
+def countries(conn: Connection, ids: list[int]) -> dict[int, str | None]:
+    return _countries(conn, ids)
+
+
+def region_of(conn: Connection, country_iso2: str | None) -> str | None:
+    """The available region that covers a country, if any."""
+    if country_iso2 is None:
+        return None
+    covering = geo.region_for_country(conn, country_iso2)
+    return covering[0] if covering and covering[1] == "available" else None
+
+
+def _countries(conn: Connection, ids: list[int]) -> dict[int, str | None]:
+    """The country of each base city: whether a leg into or out of it has a time (ADR 024)."""
+    if not ids:
+        return {}
+    rows = conn.execute(
+        text("SELECT id, country_iso2 FROM geo.city WHERE id = ANY(:ids)"), {"ids": ids}
+    ).all()
+    return {int(r.id): r.country_iso2 for r in rows}
 
 
 def _user_cuisines(conn: Connection, ids: list[str]) -> dict[str, tuple[str, ...] | None]:
@@ -725,6 +767,8 @@ def apply(
     proposal: State = row.proposal
     snapshot(conn, row.itinerary_id, change_id)
     write_state(conn, row.itinerary_id, proposal)
+    if row.action == "edit_stops":
+        _apply_stop_edit(conn, row.itinerary_id, proposal["trip_edit"])
     new_version = version + 1
     conn.execute(
         text(
@@ -751,6 +795,42 @@ def apply(
     return ChangeSetApplied(
         change_set=require(conn, installation_id, change_id),
         itinerary=itineraries.require_itinerary(conn, installation_id, row.itinerary_id),
+    )
+
+
+def _apply_stop_edit(conn: Connection, itinerary_id: uuid.UUID, edit: dict[str, Any]) -> None:
+    """The trip's side of an applied stop edit (ADR 024): its stops, name and length, and the
+    stop version, which this plan now carries and the other plans no longer match."""
+    from detour_api.repo.trips import ResolvedStop, write_stops
+
+    trip_id = conn.execute(
+        text("SELECT trip_id FROM app.itinerary WHERE id = :i"), {"i": itinerary_id}
+    ).scalar_one()
+    stops = [
+        ResolvedStop(s["city_id"], s["name"], s["country_iso2"], s["lat"], s["lon"], s["days"])
+        for s in edit["stops"]
+    ]
+    write_stops(conn, trip_id, stops)
+    first = stops[0]
+    version = conn.execute(
+        text(
+            "UPDATE app.trip SET title = :name, destination_name = :name, destination_ref = :ref,"
+            " destination_point = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326),"
+            " duration_days = :days, stops_version = stops_version + 1, updated_at = now()"
+            " WHERE id = :t RETURNING stops_version"
+        ),
+        {
+            "name": edit["name"],
+            "ref": str(first.city_id),
+            "lat": first.lat,
+            "lon": first.lon,
+            "days": edit["duration_days"],
+            "t": trip_id,
+        },
+    ).scalar_one()
+    conn.execute(
+        text("UPDATE app.itinerary SET stops_version = :v WHERE id = :i"),
+        {"v": version, "i": itinerary_id},
     )
 
 

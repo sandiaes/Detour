@@ -350,6 +350,14 @@ cover image downloads. Sources: <https://foundation.wikimedia.org/wiki/Policy:Wi
 <https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia>,
 <https://www.mediawiki.org/wiki/API:Etiquette>. Fallback: no photo (the illustration stays).
 
+**English Wikipedia lead images and Commons categories (ADR 022 amendment, read 2026-11-14).** For
+cities and areas the chain also asks `en.wikipedia.org` (`prop=pageimages`, `pilicense=free`, the
+default) and Commons (`list=categorymembers`, `cmtype=file`), through the same adapter, queue,
+User-Agent, budget and backoff. The Wikimedia rate limits apply across all Wikimedia sites. Only files
+held on Commons are used. Sources: <https://www.mediawiki.org/wiki/Extension:PageImages>,
+<https://www.mediawiki.org/wiki/API:Categorymembers>,
+<https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use>.
+
 ### 4.4 Overture Maps — places theme — ✅ Verified
 
 - **Use:** supplementary POI and business coverage (names, categories, addresses, websites, phones, existence confidence).

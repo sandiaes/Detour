@@ -1,5 +1,5 @@
 {
- "config_version": "2026-11-14.1+durations-2026-11-12.1",
+ "config_version": "2026-11-14.2+durations-2026-11-12.1",
  "data_version": "run-fixture",
  "distinct": true,
  "engine_version": "planner-2.0.0",
@@ -34,6 +34,7 @@
    "days": [
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 990001,
      "base_city_name": "Synthetic Town A",
      "date": null,
@@ -311,6 +312,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 990001,
      "base_city_name": "Synthetic Town A",
      "date": null,
@@ -606,6 +608,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 990001,
      "base_city_name": "Synthetic Town A",
      "date": null,
@@ -970,6 +973,7 @@
    "days": [
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 990001,
      "base_city_name": "Synthetic Town A",
      "date": null,
@@ -1281,6 +1285,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 990001,
      "base_city_name": "Synthetic Town A",
      "date": null,
@@ -1585,6 +1590,7 @@
     },
     {
      "arrival": null,
+     "arrival_unknown": false,
      "base_city_id": 990001,
      "base_city_name": "Synthetic Town A",
      "date": null,

@@ -230,6 +230,25 @@ data it writes can be rebuilt by running it again; it never touches the `app` sc
 
 ---
 
+## Deploying photos (ADR 022)
+
+The backend streams stored photos to the app, so it needs the same two Storage settings as the
+"Resolve images" workflow. Render redeploys by itself when `main` changes.
+
+1. **Merge to `main`.** Render builds (`pip install .` now installs Pillow), `start.sh` runs
+   migration `0009`, and the log shows `migrations: ok`.
+2. **Set two variables on the service.** Render dashboard, the `detour-api` service, **Environment**,
+   **Add Environment Variable**: `DETOUR_SUPABASE_URL` (the project URL, `https://<project>.supabase.co`)
+   and `DETOUR_SUPABASE_SERVICE_KEY` (the Supabase **secret** key, from Project Settings, API Keys).
+   Saving restarts the service.
+3. **Check.** `https://<your-service>.onrender.com/v1/images/<an id from geo.image>` answers with a
+   JPEG (200); 503 means the two variables are missing or wrong, 404 an unknown or hidden image.
+4. **Photos for regions and countries** (ADR 022 amendment): after migration `0011` is deployed, run
+   "Import region" once more for each imported region (Austria) so its areas keep their Wikidata
+   item, then "Resolve images" (it now also resolves areas). From then on the API looks up missing
+   photos itself in the background after a trip is created or planned; the workflow is only an
+   operator tool.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | What to do |

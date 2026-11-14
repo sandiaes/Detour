@@ -51,6 +51,8 @@ class ImageStore(Protocol):
 
     def exists(self, key: str) -> bool: ...
 
+    def delete(self, key: str) -> None: ...
+
 
 class MemoryImageStore:
     """For tests and local runs without Supabase."""
@@ -66,6 +68,9 @@ class MemoryImageStore:
 
     def exists(self, key: str) -> bool:
         return key in self.objects
+
+    def delete(self, key: str) -> None:
+        self.objects.pop(key, None)
 
 
 class SupabaseImageStore:
@@ -130,6 +135,14 @@ class SupabaseImageStore:
         if response.status_code >= 400:
             raise StoreError(f"read refused: HTTP {response.status_code}")
         return True
+
+    def delete(self, key: str) -> None:
+        """Remove one object (a cover preview after a week); a missing one is not an error."""
+        response = self._send(
+            "DELETE", f"{self._base}/{self._bucket}/{key}", headers=self._auth_headers()
+        )
+        if response.status_code >= 400 and response.status_code not in (400, 404):
+            raise StoreError(f"delete refused: HTTP {response.status_code}")
 
 
 def make_store(

@@ -136,8 +136,37 @@ def read_state(conn: Connection, itinerary_id: uuid.UUID) -> State:
 
 
 def write_state(conn: Connection, itinerary_id: uuid.UUID, state: State) -> None:
-    """Make the itinerary's days, items and transfers exactly the state's (the day rows are kept
-    and updated: the number of days never changes). The caller sets version and summary."""
+    """Make the itinerary's days, items and transfers exactly the state's. Day rows are kept and
+    updated; a stop edit (ADR 024) adds or removes days, so rows the state does not have are
+    deleted (with their items) and new ones inserted. The caller sets version and summary."""
+    keep = [d["id"] for d in state["days"]]
+    conn.execute(
+        text(
+            "DELETE FROM app.itinerary_day WHERE itinerary_id = :i"
+            " AND NOT (id = ANY(CAST(:keep AS uuid[])))"
+        ),
+        {"i": itinerary_id, "keep": keep},
+    )
+    # Day numbers are unique per plan: move the kept rows out of the way before renumbering.
+    conn.execute(
+        text("UPDATE app.itinerary_day SET day_index = day_index + 1000 WHERE itinerary_id = :i"),
+        {"i": itinerary_id},
+    )
+    for d in state["days"]:
+        conn.execute(
+            text(
+                "INSERT INTO app.itinerary_day (id, itinerary_id, day_index, date)"
+                " VALUES (:d, :i, :n, :date)"
+                " ON CONFLICT (id) DO UPDATE SET day_index = EXCLUDED.day_index,"
+                " date = EXCLUDED.date"
+            ),
+            {
+                "d": uuid.UUID(d["id"]),
+                "i": itinerary_id,
+                "n": d["day_index"],
+                "date": d["date"],
+            },
+        )
     for d in state["days"]:
         arrival = d["arrival"]
         conn.execute(
@@ -329,6 +358,8 @@ def to_rplan(
                 )
             )
         arrival = d["arrival"]
+        # A leg with no known time (ADR 024) has no figures: it is a flag, not a Leg.
+        unknown = arrival is not None and arrival["mode"] == "unknown"
         days.append(
             RDay(
                 day_index=d["day_index"],
@@ -336,7 +367,8 @@ def to_rplan(
                 base_city_id=d["base_city_id"],
                 base_city_name=d["base_city_name"],
                 items=tuple(entries),
-                arrival=None if arrival is None else _leg(arrival),
+                arrival=None if arrival is None or unknown else _leg(arrival),
+                arrival_unknown=unknown,
             )
         )
     return RPlan(profile, tuple(days))
@@ -346,12 +378,14 @@ def from_rplan(
     plan: RPlan, current: State, summary: dict[str, Any], versions: dict[str, Any]
 ) -> State:
     """A state for the recalculated plan: the current day rows, an id for every new item."""
+    # A stop edit (ADR 024) may add days: they get new ids; days beyond the plan are dropped by
+    # write_state.
     day_ids = {d["day_index"]: d["id"] for d in current["days"]}
     days: list[dict[str, Any]] = []
     items: list[dict[str, Any]] = []
     transfers: list[dict[str, Any]] = []
     for d in plan.days:
-        day_id = day_ids[d.day_index]
+        day_id = day_ids.get(d.day_index) or str(uuid.uuid4())
         a = d.arrival
         days.append(
             {
@@ -360,7 +394,14 @@ def from_rplan(
                 "date": None if d.date is None else d.date.isoformat(),
                 "base_city_id": d.base_city_id,
                 "base_city_name": d.base_city_name,
-                "arrival": None
+                "arrival": {
+                    "mode": "unknown",
+                    "seconds": None,
+                    "meters": None,
+                    "confidence": "unknown",
+                }
+                if d.arrival_unknown
+                else None
                 if a is None
                 else {
                     "mode": a.mode,

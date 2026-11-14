@@ -54,7 +54,8 @@ _ITEM_JOINS = """
 
 _ITINERARY_COLUMNS = """
     it.id, it.trip_id, it.generation_id, it.profile, it.status, it.version, it.engine_version,
-    it.config_version, it.import_run_id, it.seed, it.diversity_score, it.summary, it.created_at
+    it.config_version, it.import_run_id, it.seed, it.diversity_score, it.summary, it.created_at,
+    it.stops_version
 """
 
 
@@ -86,6 +87,7 @@ def _summary(row: Any) -> ItinerarySummary:
         notes=[render_note(n["code"], n.get("params", {})) for n in summary.get("notes", [])],
         stats=None if stats is None else PlanStats(**stats),
         created_at=row.created_at,
+        stops_version=row.stops_version,
     )
 
 
@@ -174,18 +176,34 @@ def create_manual(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UU
     conn.execute(
         text(
             "INSERT INTO app.itinerary (id, trip_id, generation_id, profile, engine_version,"
-            " config_version) VALUES (:i, :t, :g, 'manual', :v, :v)"
+            " config_version, stops_version) VALUES (:i, :t, :g, 'manual', :v, :v, :sv)"
         ),
-        {"i": itinerary_id, "t": trip_id, "g": uuid.uuid4(), "v": MANUAL_VERSION},
+        {
+            "i": itinerary_id,
+            "t": trip_id,
+            "g": uuid.uuid4(),
+            "v": MANUAL_VERSION,
+            "sv": trip.stops_version if trip.destination.kind == "route" else None,
+        },
     )
+    # A multi-city trip's empty days carry their stop's city (ADR 024); there is no travel time.
+    bases = [(s.city_id, s.name) for s in trip.stops for _ in range(s.days)]
     for index in range(1, trip.duration_days + 1):
         day_date = None if trip.start_date is None else trip.start_date + timedelta(days=index - 1)
+        base = bases[index - 1] if index <= len(bases) else (None, None)
         conn.execute(
             text(
-                "INSERT INTO app.itinerary_day (id, itinerary_id, day_index, date)"
-                " VALUES (:d, :i, :n, :date)"
+                "INSERT INTO app.itinerary_day (id, itinerary_id, day_index, date, base_city_id,"
+                " base_city_name) VALUES (:d, :i, :n, :date, :city, :cname)"
             ),
-            {"d": uuid.uuid4(), "i": itinerary_id, "n": index, "date": day_date},
+            {
+                "d": uuid.uuid4(),
+                "i": itinerary_id,
+                "n": index,
+                "date": day_date,
+                "city": base[0],
+                "cname": base[1],
+            },
         )
     return require_itinerary(conn, installation_id, itinerary_id)
 

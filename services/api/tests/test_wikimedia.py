@@ -25,8 +25,10 @@ from detour_api.adapters.wikimedia import (
     WikimediaError,
     check_image_url,
     licence_allowed,
+    parse_category_files,
     parse_entities,
     parse_imageinfo,
+    parse_pageimages,
     rejection_reason,
     strip_html,
 )
@@ -196,8 +198,13 @@ def test_the_quality_gate_names_the_first_reason() -> None:
     assert rejection_reason(_info(mime="image/svg+xml")) == wikimedia.REASON_NOT_PHOTO
     assert rejection_reason(_info(mime="image/png")) is None
     assert rejection_reason(_info(width=1199, height=800)) == wikimedia.REASON_TOO_SMALL
-    assert rejection_reason(_info(width=1500, height=1500)) == wikimedia.REASON_NOT_LANDSCAPE
-    assert rejection_reason(_info(width=1500, height=2000)) == wikimedia.REASON_NOT_LANDSCAPE
+    # Portrait and square photos are accepted (ADR 022 amendment, decision e): the size rule is on
+    # the longer side (1,200) and the shorter side (800).
+    assert rejection_reason(_info(width=1500, height=1500)) is None
+    assert rejection_reason(_info(width=1500, height=2000)) is None
+    assert rejection_reason(_info(width=800, height=1200)) is None
+    assert rejection_reason(_info(width=799, height=1600)) == wikimedia.REASON_TOO_SMALL
+    assert rejection_reason(_info(width=1100, height=1150)) == wikimedia.REASON_TOO_SMALL
     assert rejection_reason(_info(licence="CC BY-NC 4.0")) == wikimedia.REASON_LICENCE
     assert rejection_reason(_info(author=None)) == wikimedia.REASON_NO_AUTHOR
 
@@ -438,3 +445,65 @@ def test_downloads_are_limited_in_host_and_size(no_budget_counter: list[int]) ->
     )
     with pytest.raises(WikimediaError, match="HTTP 302"):
         redirect.download("https://upload.wikimedia.org/a.jpg")
+
+
+# -- the fallback chain's answers (ADR 022 amendment) -----------------------------------------
+# Shapes as documented on Extension:PageImages and API:Categorymembers (read 2026-11-14).
+
+
+def test_entities_give_the_english_article_and_the_commons_category() -> None:
+    payload = {
+        "entities": {
+            "Q1741": {
+                "claims": {
+                    "P373": [{"rank": "normal", "mainsnak": {"datavalue": {"value": "Vienna"}}}]
+                },
+                "sitelinks": {
+                    "enwiki": {"site": "enwiki", "title": "Vienna"},
+                    "dewiki": {"site": "dewiki", "title": "Wien"},
+                },
+            },
+            "Q2": {"claims": {}, "sitelinks": {}},
+        }
+    }
+    found = parse_entities(payload)
+    assert found["Q1741"].enwiki == "Vienna"
+    assert found["Q1741"].commons_category == "Vienna"
+    assert found["Q1741"].sitelinks == 2
+    assert found["Q2"].enwiki is None and found["Q2"].commons_category is None
+
+
+def test_lead_images_are_keyed_by_the_title_that_was_asked() -> None:
+    payload = {
+        "query": {
+            "normalized": [{"from": "vienna", "to": "Vienna"}],
+            "redirects": [{"from": "Wien", "to": "Vienna"}],
+            "pages": {
+                "1": {"pageid": 1, "title": "Vienna", "pageimage": "Wien_-_Stephansdom.jpg"},
+                "2": {"pageid": 2, "title": "Graz"},
+                "-1": {"title": "Nowhere", "missing": ""},
+            },
+        }
+    }
+    assert parse_pageimages(payload) == {
+        "Vienna": "Wien - Stephansdom.jpg",
+        "Wien": "Wien - Stephansdom.jpg",
+        "vienna": "Wien - Stephansdom.jpg",
+    }
+    with pytest.raises(ValueError):
+        parse_pageimages({"error": {}})
+
+
+def test_category_files_keep_the_api_order_and_only_files() -> None:
+    payload = {
+        "query": {
+            "categorymembers": [
+                {"ns": 6, "title": "File:B.jpg"},
+                {"ns": 14, "title": "Category:Sub"},
+                {"ns": 6, "title": "File:A.jpg"},
+            ]
+        }
+    }
+    assert parse_category_files(payload) == ["B.jpg", "A.jpg"]
+    with pytest.raises(ValueError):
+        parse_category_files({"query": {}})

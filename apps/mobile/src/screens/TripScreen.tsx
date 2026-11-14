@@ -32,6 +32,13 @@ export function isGeneralNote(n: { code: string }): boolean {
   return !n.code.startsWith("PROFILE_") && n.code !== "DISTINCT_PLANS" && n.code !== "SINGLE_PLAN";
 }
 
+/** A multi-city trip's plan made before its cities changed cannot be chosen (ADR 024). */
+export function madeForEarlierStops(plan: ItinerarySummary, trip: Trip): boolean {
+  return (
+    trip.destination.kind === "route" && (plan.stops_version ?? 0) !== (trip.stops_version ?? 0)
+  );
+}
+
 /** The proposals of the latest generation, plus the selected plan if it is older. */
 export function visiblePlans(all: ItinerarySummary[]): ItinerarySummary[] {
   const live = all.filter((p) => p.status !== "superseded");
@@ -110,6 +117,7 @@ function PlanCard({
 }) {
   const label = PROFILE_LABEL[plan.profile];
   const selected = plan.status === "selected";
+  const stale = madeForEarlierStops(plan, trip);
   const names = planNames(plan, trip.destination.name);
   const s = plan.stats;
   return (
@@ -152,6 +160,11 @@ function PlanCard({
               {n.text}
             </Text>
           ))}
+        {stale ? (
+          <Text style={styles.note} testID={`stale-${plan.profile}`}>
+            Made for the trip&apos;s earlier cities. Get new proposals in the trip settings.
+          </Text>
+        ) : null}
         <View style={styles.actions}>
           <View style={styles.flex}>
             <Button
@@ -174,7 +187,7 @@ function PlanCard({
               accessibilityLabel={
                 selected ? `The ${label} plan is selected` : `Select the ${label} plan`
               }
-              disabled={selected}
+              disabled={selected || stale}
               loading={busy}
               onPress={onSelect}
             />

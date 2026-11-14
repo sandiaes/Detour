@@ -98,6 +98,18 @@ def _distinct(
     )
 
 
+def _alike_stops(first: "_ProfilePlan", second: "_ProfilePlan", config: PlannerConfig) -> list[str]:
+    """Stops of a multi-city trip where both plans have at least three visits and still overlap
+    more than the gate allows, in stop order (ADR 024, decision 14)."""
+    out: list[str] = []
+    for a, b in zip(first.segments, second.segments, strict=True):
+        va = frozenset(p for r in a.routes for p in r)
+        vb = frozenset(p for r in b.routes for p in r)
+        if len(va) >= 3 and len(vb) >= 3 and not _jaccard_ok(va, vb, config):
+            out.append(a.base_name)
+    return out
+
+
 def _jaccard_permille(a: frozenset[str], b: frozenset[str]) -> int:
     union = len(a | b)
     return 0 if union == 0 else len(a & b) * 1000 // union
@@ -125,6 +137,9 @@ class _Segment:
     previous: "_Segment | None"
     pool: _Pool
     routes: list[list[str]] = field(default_factory=list)
+    # A multi-city leg into or out of a country travelled by rail (ADR 024): the base changes but
+    # no travel time is known, so none is used and the first day is planned in full.
+    unknown_arrival: bool = False
 
 
 @dataclass
@@ -150,6 +165,7 @@ class _LaidOutDay:
     route: list[str]
     layout: DayLayout
     removed: int
+    arrival_unknown: bool = False
 
 
 def generate(
@@ -213,16 +229,17 @@ def generate(
     _solve(second, lookup, sequencer, config, {})
     initial_jaccard = _jaccard_permille(set_first, second.ids())
     adjusted: int | None = None
-    if (
-        set_first
-        and second.ids()
-        and first.allocation() == second.allocation()
-        and not _jaccard_ok(set_first, second.ids(), config)
-    ):
+    route = request.kind == "route"
+
+    def alike() -> bool:
+        whole = not _jaccard_ok(set_first, second.ids(), config)
+        return whole or (route and bool(_alike_stops(first, second, config)))
+
+    if set_first and second.ids() and first.allocation() == second.allocation() and alike():
         for pct in config.diversity_rounds_pct:
             adjusted = pct
             _solve(second, lookup, sequencer, config, dict.fromkeys(set_first, pct))
-            if _jaccard_ok(set_first, second.ids(), config):
+            if not alike():
                 break
 
     distinct = _distinct(set_first, second.ids(), first.allocation(), second.allocation(), config)
@@ -252,6 +269,11 @@ def generate(
                 break
             lookup.fetch(missing, use_provider=True)
 
+    small_stops: list[str] = []
+    if route and len(chosen) == 2:
+        # The bases are fixed, so the plans differ by their visits: the whole plan passes the
+        # overlap gate, and a stop where they still share too much is named (ADR 024, decision 14).
+        small_stops = _alike_stops(first, second, config)
     plans: list[Plan] = []
     for state in chosen:
         notes: list[Note] = []
@@ -282,6 +304,8 @@ def generate(
             )
         else:
             general.append(Note("DISTINCT_ALLOCATION"))
+    if len(plans) == 2:
+        general.extend(Note("STOP_TOO_SMALL_TO_VARY", {"name": name}) for name in small_stops)
     if len(plans) == 1 and not general:
         general.append(
             Note(
@@ -347,6 +371,9 @@ def _scope(
         )
         return _ProfilePlan(profile, [segment])
 
+    if request.kind == "route":
+        return _route_scope(request, profile, by_id, config)
+
     chosen = areas.choose_bases(eligible, request.days, profile, config)
     lookup.fetch(
         ((a.city.coord, b.city.coord) for a in chosen for b in chosen if a is not b),
@@ -378,6 +405,51 @@ def _scope(
                 sights=b.sights,
                 previous=segments[-1] if segments else None,
                 pool=_Pool(profile, scored),
+            )
+        )
+    return _ProfilePlan(profile, segments)
+
+
+def _route_scope(
+    request: PlanRequest,
+    profile: Profile,
+    by_id: dict[str, Candidate],
+    config: PlannerConfig,
+) -> _ProfilePlan:
+    """The user's stops, in their order, with their days (ADR 024): nothing is chosen or reordered.
+    Each candidate belongs to its nearest stop within the profile radius; a city that comes back
+    later (Tokyo, Kyoto, Tokyo) shares its candidates between its stops, and a place planned at
+    one of them is not planned again (``_solve``)."""
+    rail = set(config.single_city_countries)
+    stops = request.stops
+    assigned: list[list[Candidate]] = [[] for _ in stops]
+    for c in sorted(by_id.values(), key=lambda c: c.place_id):
+        dists = [scoring.centre_distance(c, st.city.coord) for st in stops]
+        best = min(dists)
+        if best > profile.radius_m:
+            continue
+        for i, d in enumerate(dists):
+            if d == best:
+                assigned[i].append(c)
+    segments: list[_Segment] = []
+    for i, st in enumerate(stops):
+        scored = scoring.score(
+            assigned[i], st.city.coord, profile, config, config.max_candidates(st.days)
+        )
+        previous = segments[-1] if segments else None
+        unknown = previous is not None and (
+            st.country_iso2 in rail or stops[i - 1].country_iso2 in rail
+        )
+        segments.append(
+            _Segment(
+                base_id=st.city.city_id,
+                base_name=st.city.name,
+                base=st.city.coord,
+                days=st.days,
+                sights=len(scored),
+                previous=previous,
+                pool=_Pool(profile, scored),
+                unknown_arrival=unknown,
             )
         )
     return _ProfilePlan(profile, segments)
@@ -423,7 +495,7 @@ def _check_possible(
 
 
 def _arrival(segment: _Segment, lookup: TravelLookup) -> tuple[TravelTime, Cell] | None:
-    if segment.previous is None:
+    if segment.previous is None or segment.unknown_arrival:
         return None
     cell = (segment.previous.base, segment.base)
     return lookup.get(*cell), cell
@@ -439,8 +511,9 @@ def _solve(
     """Routes of place ids for each segment, one per day: the first day at a new base first (it
     is shorter by the drive), the others fullest first."""
     budget = config.visit_budget(state.profile)
+    taken: set[str] = set()  # planned at an earlier stop of the same city (multi-city trips)
     for seg in state.segments:
-        items = seg.pool.items
+        items = [s for s in seg.pool.items if s.candidate.place_id not in taken]
         ids = tuple(s.candidate.place_id for s in items)
         coords = [s.candidate.coord for s in items]
         values = tuple(s.value * kept_pct.get(s.candidate.place_id, 100) // 100 for s in items)
@@ -466,6 +539,7 @@ def _solve(
         head = routes[:1] if arrival is not None else []
         rest = routes[1:] if arrival is not None else routes
         seg.routes = head + _canonical_days(rest, seg.pool.value)
+        taken.update(p for r in seg.routes for p in r)
 
 
 def _canonical_days(routes: list[list[str]], value: dict[str, int]) -> list[list[str]]:
@@ -534,6 +608,7 @@ def _lay_out(
                     route=fitted,
                     layout=layout,
                     removed=removed,
+                    arrival_unknown=seg.unknown_arrival and n == 0,
                 )
             )
     return out
@@ -689,6 +764,19 @@ def _build_plan(
                     },
                 )
             )
+        if day.arrival_unknown:
+            previous = day.segment.previous
+            assert previous is not None  # noqa: S101 - an arrival has a previous base
+            travel_notes.append(
+                Note(
+                    "ARRIVAL_TIME_UNKNOWN",
+                    {
+                        "day": number,
+                        "from_name": previous.base_name,
+                        "to_name": day.segment.base_name,
+                    },
+                )
+            )
         day_date = (
             None if request.start_date is None else request.start_date + timedelta(number - 1)
         )
@@ -700,6 +788,7 @@ def _build_plan(
                 base_city_id=day.segment.base_id,
                 base_city_name=day.segment.base_name,
                 arrival=arrival,
+                arrival_unknown=day.arrival_unknown,
             )
         )
 
@@ -724,6 +813,7 @@ def _build_plan(
             )
             for seg in state.segments
         )
+    if request.kind in ("area", "route"):
         out.extend(travel_notes)
     empty = sum(1 for d in days if not d.visits)
     if empty:

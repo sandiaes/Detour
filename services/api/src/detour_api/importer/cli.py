@@ -156,7 +156,7 @@ def _cmd_gazetteer(args: argparse.Namespace) -> int:
 
 
 def _cmd_images(args: argparse.Namespace) -> int:
-    """Resolve photos for a region's attractions and its countries' cities (ADR 022)."""
+    """Resolve photos for a region's attractions, areas and its countries' cities (ADR 022)."""
     from detour_api.adapters.wikimedia import WikimediaClient
     from detour_api.db import make_engine
     from detour_api.images import resolver
@@ -197,6 +197,16 @@ def _cmd_images(args: argparse.Namespace) -> int:
             )
             runs.append(cities)
             reports["cities"] = cities.as_dict()
+        if args.areas:
+            areas = resolver.resolve(
+                engine,
+                client,
+                store,
+                settings,
+                resolver.area_candidates(engine, region.id, args.areas),
+            )
+            runs.append(areas)
+            reports["areas"] = areas.as_dict()
         if args.places:
             places = resolver.resolve(
                 engine,
@@ -269,6 +279,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     images.add_argument("region", help=f"one of: {', '.join(sorted(REGIONS))}")
     images.add_argument("--places", type=int, default=500, help="attractions to look up (0: none)")
     images.add_argument("--cities", type=int, default=100, help="cities to look up (0: none)")
+    images.add_argument(
+        "--areas", type=int, default=50, help="countries and regions to look up (0: none)"
+    )
     images.add_argument("--target-url")
     images.add_argument("--out", help="write the report as JSON to this file")
     images.add_argument(

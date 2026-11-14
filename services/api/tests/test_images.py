@@ -47,6 +47,9 @@ class _Wikimedia:
         self.entities = copy.deepcopy(ENTITIES)
         self.search_hits: list[str] = ["Q101514119"]
         self.requests: list[httpx.Request] = []
+        # The fallback chain: English Wikipedia's lead images and Commons categories.
+        self.lead_images: dict[str, str] = {}
+        self.categories: dict[str, list[str]] = {}
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -57,6 +60,18 @@ class _Wikimedia:
             wanted = request.url.params["ids"].split("|")
             entities = {q: e for q, e in self.entities["entities"].items() if q in wanted}
             return httpx.Response(200, json={"entities": entities})
+        if host == "en.wikipedia.org":
+            titles = request.url.params["titles"].split("|")
+            pages = {
+                str(i): {"pageid": i, "title": t, **({"pageimage": self.lead_images[t]})}
+                for i, t in enumerate(titles, start=1)
+                if t in self.lead_images
+            }
+            return httpx.Response(200, json={"query": {"pages": pages}})
+        if request.url.params.get("list") == "categorymembers":
+            name = request.url.params["cmtitle"].removeprefix("Category:")
+            members = [{"ns": 6, "title": f"File:{f}"} for f in self.categories.get(name, [])]
+            return httpx.Response(200, json={"query": {"categorymembers": members}})
         if request.url.params.get("list") == "search":
             return httpx.Response(
                 200, json={"query": {"search": [{"title": t} for t in self.search_hits]}}
@@ -485,3 +500,108 @@ def test_a_city_the_search_missed_is_asked_again_after_a_week_not_ninety_days(fx
     assert fx.query("SELECT ref_id FROM geo.image_lookup")[0][0] not in {
         c.ref_id for c in resolver.city_candidates(fx.engine, ["AT"], 20)
     }
+
+
+# -- the fallback chain for cities and areas (ADR 022 amendment, decision a) -------------------
+
+
+def _commons_page(name: str, *, width: int = 3000, height: int = 2000) -> dict[str, Any]:
+    return {
+        "title": f"File:{name}",
+        "imagerepository": "local",
+        "imageinfo": [
+            {
+                "width": width,
+                "height": height,
+                "mime": "image/jpeg",
+                "thumburl": f"https://thumb.wikimedia.org/x/1280px-{name}",
+                "url": f"https://upload.wikimedia.org/x/{name}",
+                "descriptionurl": f"https://commons.wikimedia.org/wiki/File:{name}",
+                "extmetadata": {
+                    "LicenseShortName": {"value": "CC BY-SA 4.0"},
+                    "LicenseUrl": {"value": "https://creativecommons.org/licenses/by-sa/4.0"},
+                    "Artist": {"value": "A. Photographer"},
+                },
+            }
+        ],
+    }
+
+
+def _city_item_without_image(fx: _Fixture, qid: str) -> None:
+    fx.wiki.search_hits = [qid]
+    fx.wiki.entities["entities"][qid] = {
+        "claims": {"P373": [{"rank": "normal", "mainsnak": {"datavalue": {"value": "Town"}}}]},
+        "sitelinks": {"enwiki": {"site": "enwiki", "title": "Town"}},
+    }
+
+
+@pytest.mark.db
+def test_a_city_without_an_image_uses_the_wikipedia_lead_image(fx: _Fixture) -> None:
+    _city_item_without_image(fx, "Q900")
+    fx.wiki.lead_images = {"Town": "Town square.jpg"}
+    fx.wiki.imageinfo["query"]["pages"]["900"] = _commons_page("Town square.jpg")
+    report = fx.resolve(resolver.city_candidates(fx.engine, ["AT"], 1))
+    assert (report.found, dict(report.steps)) == (1, {"city:wikipedia": 1})
+    assert fx.query("SELECT commons_file FROM geo.image") == [("Town square.jpg",)]
+    lead = [r for r in fx.wiki.requests if r.url.host == "en.wikipedia.org"]
+    assert lead[0].url.params["pilicense"] == "free"
+
+
+@pytest.mark.db
+def test_a_local_wikipedia_file_is_rejected_and_the_category_is_tried(fx: _Fixture) -> None:
+    _city_item_without_image(fx, "Q901")
+    # the lead image is a local upload: Commons has no page for it
+    fx.wiki.lead_images = {"Town": "Local fair use.jpg"}
+    fx.wiki.categories = {"Town": ["Too small.jpg", "Portrait.jpg"]}
+    pages = fx.wiki.imageinfo["query"]["pages"]
+    pages["901"] = _commons_page("Too small.jpg", width=640, height=480)
+    pages["902"] = _commons_page("Portrait.jpg", width=1600, height=2400)
+    report = fx.resolve(resolver.city_candidates(fx.engine, ["AT"], 1))
+    assert (report.found, dict(report.steps)) == (1, {"city:category": 1})
+    assert fx.query("SELECT commons_file FROM geo.image") == [("Portrait.jpg",)]
+    assert fx.store.objects, "the portrait photo was stored"
+
+
+@pytest.mark.db
+def test_a_city_whose_chain_finds_nothing_keeps_the_first_reason(fx: _Fixture) -> None:
+    _city_item_without_image(fx, "Q902")
+    fx.wiki.lead_images = {"Town": "Local fair use.jpg"}
+    report = fx.resolve(resolver.city_candidates(fx.engine, ["AT"], 1))
+    assert (report.found, report.rejected, dict(report.reasons)) == (
+        0,
+        1,
+        {"not_on_commons": 1},
+    )
+
+
+@pytest.mark.db
+def test_attractions_do_not_use_the_chain(fx: _Fixture) -> None:
+    qid = QIDS[0]
+    fx.wiki.entities["entities"][qid] = {
+        "claims": {},
+        "sitelinks": {"enwiki": {"site": "enwiki", "title": "Town"}},
+    }
+    fx.wiki.lead_images = {"Town": "Town square.jpg"}
+    fx.resolve(resolver.place_candidates(fx.engine, TEST_REGION.id, 10))
+    assert not [r for r in fx.wiki.requests if r.url.host == "en.wikipedia.org"]
+
+
+@pytest.mark.db
+def test_areas_with_a_wikidata_item_get_a_photo_and_a_trip_cover(fx: _Fixture) -> None:
+    rows = fx.query(
+        "SELECT id::text FROM geo.admin_area WHERE region_id = :r ORDER BY id LIMIT 1",
+        r=TEST_REGION.id,
+    )
+    assert rows, "the fixture region needs an area"
+    area_id = rows[0][0]
+    with fx.engine.begin() as conn:
+        conn.execute(text("UPDATE geo.admin_area SET wikidata_id = NULL"))
+        conn.execute(
+            text("UPDATE geo.admin_area SET wikidata_id = :q WHERE id = :id"),
+            {"q": QIDS[0], "id": area_id},
+        )
+    candidates = resolver.area_candidates(fx.engine, TEST_REGION.id, 10)
+    assert [(c.kind, c.ref_id, c.qid) for c in candidates] == [("area", area_id, QIDS[0])]
+    report = fx.resolve(candidates)
+    assert report.found == 1
+    assert fx.query("SELECT kind, status FROM geo.image_lookup") == [("area", "found")]

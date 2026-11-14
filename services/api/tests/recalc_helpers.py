@@ -34,7 +34,17 @@ def as_rplan(plan: Plan) -> RPlan:
             )
             for n, i in enumerate(d.items)
         )
-        days.append(RDay(d.day_index, d.date, d.base_city_id, d.base_city_name, items, d.arrival))
+        days.append(
+            RDay(
+                d.day_index,
+                d.date,
+                d.base_city_id,
+                d.base_city_name,
+                items,
+                d.arrival,
+                d.arrival_unknown,
+            )
+        )
     return RPlan(plan.profile, tuple(days))
 
 
@@ -58,6 +68,7 @@ def recalc_input(
     towns: Sequence[BaseCity] = (),
 ) -> RecalcInput:
     bases = {b.city_id: b for b in request.base_cities}
+    bases.update({s.city.city_id: s.city for s in request.stops})
     return RecalcInput(
         plan=rplan,
         notes=plan.notes,
@@ -65,6 +76,7 @@ def recalc_input(
         candidates=tuple(candidates),
         restaurants=tuple(restaurants),
         towns=tuple(towns),
+        route=request.kind == "route",
     )
 
 

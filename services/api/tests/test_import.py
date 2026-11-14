@@ -55,6 +55,10 @@ def test_report_counts_match_the_database(pipeline_dbs: tuple[str, str], tmp_pat
             (TEST_REGION.id,),
         ).fetchall()
         areas = conn.execute("SELECT count(*) FROM geo.admin_area").fetchone()
+        # An area keeps its Wikidata item for its photo; a malformed tag is dropped.
+        area_items = conn.execute(
+            "SELECT name, wikidata_id FROM geo.admin_area ORDER BY name"
+        ).fetchall()
         run = conn.execute(
             "SELECT status, counts, report FROM geo.import_run WHERE region_id = %s",
             (TEST_REGION.id,),
@@ -67,6 +71,7 @@ def test_report_counts_match_the_database(pipeline_dbs: tuple[str, str], tmp_pat
     assert {k: v["total"] for k, v in report["kinds"].items()} == rows
     assert {k: v["named"] for k, v in report["kinds"].items()} == dict(named)
     assert areas is not None and areas[0] == report["admin_areas"] == 2
+    assert area_items == [("Bezirk Testburg", None), ("Testland", "Q4061")]
     assert sources is not None and sources[0] == sum(rows.values())
     assert signals is not None and signals[0] == sum(rows.values())
     assert profiles is not None and profiles[0] == rows["restaurant"]

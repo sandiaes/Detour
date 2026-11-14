@@ -49,6 +49,7 @@ GEO_TABLES = [
     "admin_code",
     "city",
     "country",
+    "cover_preview",
     "currency",
     "image",
     "image_lookup",
@@ -72,6 +73,7 @@ APP_TABLES = [
     "provider_usage",
     "transfer",
     "trip",
+    "trip_stop",
     "trip_visit",
     "user_place",
 ]

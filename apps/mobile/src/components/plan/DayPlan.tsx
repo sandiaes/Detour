@@ -51,11 +51,17 @@ export function dayTotalsText(day: Day): string {
   return `${pluralise(t.visits, "visit")}${meals} · ${formatMinutes(t.visitMinutes)} at the sights · ${formatSeconds(t.travelSeconds)} travelling`;
 }
 
+export const UNKNOWN_LEG_TEXT = "time not calculated: public transport is not built yet";
+
 /** The drive from the previous base city that starts the day, as one line. */
 export function arrivalText(day: Day): string | null {
   const a = day.arrival;
   if (!a) return null;
   const from = a.from_base_city_name ? ` from ${a.from_base_city_name}` : "";
+  // A leg into or out of a country travelled by rail has no time (ADR 024): never a made-up one.
+  if (a.mode === "unknown" || a.seconds === null || a.meters === null) {
+    return `Travel${from} · ${UNKNOWN_LEG_TEXT}`;
+  }
   return `${a.mode === "walk" ? "Walk" : "Drive"}${from} · ${formatSeconds(a.seconds)} · ${formatMeters(a.meters)}`;
 }
 

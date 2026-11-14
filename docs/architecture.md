@@ -185,9 +185,11 @@ transaction before the response is sent.
 
 | Endpoint | Purpose |
 |---|---|
+| `POST /v1/trips` with `destination_kind: route`, `PUT /v1/trips/{id}/stops`, `POST /v1/trips/{id}/stops/preview` | Multi-city trips (ADR 024): 2 to 6 stops whose days add up to the trip; `Trip.stops`, `stops_version`; the name follows the stops (fixed table, `naming.py`). With a chosen plan, a stop edit is a change set (`edit_stops`) repaired from the current plan (`planner/stop_edits.py`, `planner/stop_service.py`) and applied like any other; without one the stops are replaced. Refusals: `route_needs_two_stops`, `too_many_stops`, `stop_days_mismatch`, `stop_repeated`, `destination_not_found`, `409 region_not_available`, `LOCKED_ON_DROPPED_DAY`, `stops_changed` (choosing a plan made for earlier stops) |
 | `POST /v1/trips/{id}/itineraries/generate` | Plan a city or area trip: one generation of two itineraries (Essentials, Wider), or one with the reason; replaces earlier unselected proposals. `422 area_single_city_only` (an area in Japan, D4), `422 planning_impossible` (with `issues`), `409` for a past trip, an unavailable region or the limit of 5 |
 | `GET /v1/itineraries/{id}`, `GET /v1/trips/{id}/itineraries` | Now also the generation id, seed, diversity score, plan notes and statistics; per item the rendered reasons and the transfer to the next item (mode, seconds, metres, `routed` or `estimated`) |
-| `GET /v1/images/{id}`, `Trip.cover_image`, `Item.image` | Photos (ADR 022): the backend streams the stored JPEG from Supabase Storage (public, immutable cache headers, no token) so the app never calls the storage host; trips and items carry a `Photo` (path, average colour, size, credit line) found in `geo.image_lookup`, never a hidden one. The resolver (`python -m detour_api.importer images`, the "Resolve images" workflow) is the only caller of Wikidata and Commons |
+| `GET /v1/images/{id}`, `Trip.cover_image`, `Item.image` | Photos (ADR 022): the backend streams the stored JPEG from Supabase Storage (public, immutable cache headers, no token) so the app never calls the storage host; trips and items carry a `Photo` (path, average colour, size, credit line) found in `geo.image_lookup`, never a hidden one. Cities and areas use a fallback chain (the item's image, its English Wikipedia lead image, its Commons category; ADR 022 amendment). The API resolves photos itself in the background after a trip is created, generated or the trips are read (`images/background.py`: one run at a time under a Postgres advisory lock, resumable, at most 100 lookups); the "Resolve images" workflow stays as an operator tool |
+| `GET /v1/destinations/{kind}/{ref}/cover-candidates`, `GET /v1/cover-previews/{id}`, `PUT /v1/trips/{id}/cover` | "Change photo": up to 12 photos that pass the gate, with 500 px previews made and served by the backend, cached a week; choosing one stores it like an automatic photo and sets the trip's cover (null: the automatic photo again) |
 
 The engine is `detour_api/planner/` (section 5); its reads and writes are `repo/planning.py`. Hand
 edits of items delete transfers that no longer join neighbours (they are not recomputed; adding or
@@ -199,7 +201,9 @@ removing a place through a change set, section 4.2.5, recalculates the days it c
   dinner) at imported places to eat; each meal item carries `restaurant: {venue_type, cuisines}`,
   read from `geo` by identifier (cuisines null when the data states none).
 - Days carry `base_city_name` and, on the first day at a new base city of an area, `arrival`: the
-  drive from the previous base (mode, seconds, metres, `routed` or `estimated`).
+  drive from the previous base (mode, seconds, metres, `routed` or `estimated`). For a multi-city
+  trip (ADR 024) a leg into or out of a country travelled by rail is `mode` and `confidence`
+  `unknown` with no seconds or metres: no time is invented, and the day is planned in full.
 - Statistics add `meals`, `meal_minutes` and `intercity_legs`.
 - Destination search adds `unavailable_reason` (`region_not_available`, `area_single_city_only`).
 
@@ -350,7 +354,10 @@ has added or locked. Defaults that the user does not see as features: day window
 ### 5.2 Pipeline
 
 1. **Scope.** Resolve the destination to a geometry. For an area, select candidate base cities
-   by population and attraction density, and allocate days to them.
+   by population and attraction density, and allocate days to them. For a multi-city trip
+   (ADR 024) the bases are the user's stops, in the user's order, with the user's days: nothing is
+   chosen or reordered; each candidate belongs to its nearest stop, and a city that comes back later
+   shares its candidates without repeating a visit. The diversity gate also looks at each stop.
 2. **Candidates.** Select attractions inside the scope; score them deterministically from OSM
    category, heritage and tourism tags, and Wikidata notability. Remove duplicates.
 3. **Durations.** Assign an estimated visit duration from a category rule table (for example

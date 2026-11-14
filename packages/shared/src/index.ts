@@ -20,6 +20,7 @@ export type ItinerarySummary = components["schemas"]["ItinerarySummary"];
 export type Day = components["schemas"]["Day"];
 export type Item = components["schemas"]["Item"];
 export type Photo = components["schemas"]["Photo"];
+export type CoverCandidate = components["schemas"]["CoverCandidate"];
 export type Transfer = components["schemas"]["Transfer"];
 export type PlanNote = components["schemas"]["PlanNote"];
 export type PlanStats = components["schemas"]["PlanStats"];

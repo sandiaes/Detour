@@ -145,8 +145,10 @@ def validate_revision(
         if day.base_city_id is None or day.base_city_id not in bases:
             out.append(Violation("UNKNOWN_BASE", k, detail=str(day.base_city_id)))
         moved_base = expected > 1 and day.base_city_id != previous_base
-        if moved_base != (day.arrival is not None):
+        if moved_base != (day.arrival is not None or day.arrival_unknown):
             out.append(Violation("ARRIVAL_MISMATCH", k))
+        if day.arrival_unknown and day.arrival is not None:
+            out.append(Violation("ARRIVAL_BOTH_KNOWN_AND_UNKNOWN", k))
         if k not in revision.changed_days:
             if day != before:
                 out.append(Violation("UNCHANGED_DAY_DIFFERS", k))

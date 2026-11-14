@@ -104,6 +104,11 @@ export function useChangeActions() {
       data.update<ItinerarySummary[]>(keys.itineraries(tripId), (list) =>
         list.map((s) => (s.id === summary.id ? summary : s)),
       );
+      if (result.change_set.action === "edit_stops") {
+        // The trip itself changed (its cities, name and length; ADR 024): read it again.
+        data.invalidate(keys.trips);
+        data.invalidate(keys.itineraries(tripId));
+      }
       return result;
     },
     [need, data],

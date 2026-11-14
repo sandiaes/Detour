@@ -1,0 +1,3387 @@
+{
+ "config_version": "2026-11-14.2+durations-2026-11-12.1",
+ "data_version": "run-fixture",
+ "distinct": true,
+ "engine_version": "planner-2.0.0",
+ "jaccard_permille": 353,
+ "notes": [
+  {
+   "code": "DISTINCT_PLANS",
+   "params": {
+    "jaccard_percent": 35,
+    "max_percent": 60
+   }
+  },
+  {
+   "code": "NOTABILITY_FROM_TAGS",
+   "params": {}
+  },
+  {
+   "code": "DURATIONS_ARE_DEFAULTS",
+   "params": {}
+  },
+  {
+   "code": "NO_OPENING_HOURS",
+   "params": {}
+  },
+  {
+   "code": "MEALS_FROM_MAP_DATA",
+   "params": {}
+  }
+ ],
+ "plans": [
+  {
+   "days": [
+    {
+     "arrival": null,
+     "arrival_unknown": false,
+     "base_city_id": 990001,
+     "base_city_name": "Synthetic Town A",
+     "date": null,
+     "day_index": 1,
+     "items": [
+      {
+       "category": "city_gate",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 555,
+       "kind": "visit",
+       "lat": 47.795898,
+       "lon": 13.037641,
+       "meal_type": null,
+       "name": "Area synthetic sight 056",
+       "place_id": "00000000-0000-4000-a000-000000000056",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 534,
+        "minutes": 8,
+        "mode": "walk",
+        "seconds": 427
+       }
+      },
+      {
+       "category": "chapel",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 578,
+       "kind": "visit",
+       "lat": 47.79838,
+       "lon": 13.039109,
+       "meal_type": null,
+       "name": "Area synthetic sight 013",
+       "place_id": "00000000-0000-4000-a000-000000000013",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 563,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 267,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 213
+       }
+      },
+      {
+       "category": "museum",
+       "cuisines": null,
+       "duration_minutes": 90,
+       "end_minute": 672,
+       "kind": "visit",
+       "lat": 47.799106,
+       "lon": 13.040773,
+       "meal_type": null,
+       "name": "Area synthetic sight 010",
+       "place_id": "00000000-0000-4000-a000-000000000010",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 582,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 181,
+        "minutes": 3,
+        "mode": "walk",
+        "seconds": 145
+       }
+      },
+      {
+       "category": "viewpoint",
+       "cuisines": null,
+       "duration_minutes": 20,
+       "end_minute": 695,
+       "kind": "visit",
+       "lat": 47.799849,
+       "lon": 13.040005,
+       "meal_type": null,
+       "name": "Area synthetic sight 050",
+       "place_id": "00000000-0000-4000-a000-000000000050",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 675,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 141,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 113
+       }
+      },
+      {
+       "category": "statue",
+       "cuisines": null,
+       "duration_minutes": 10,
+       "end_minute": 707,
+       "kind": "visit",
+       "lat": 47.799886,
+       "lon": 13.041048,
+       "meal_type": null,
+       "name": "Area synthetic sight 007",
+       "place_id": "00000000-0000-4000-a000-000000000007",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 697,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3387,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 406
+       }
+      },
+      {
+       "category": "statue",
+       "cuisines": null,
+       "duration_minutes": 10,
+       "end_minute": 724,
+       "kind": "visit",
+       "lat": 47.81375,
+       "lon": 13.069178,
+       "meal_type": null,
+       "name": "Area synthetic sight 057",
+       "place_id": "00000000-0000-4000-a000-000000000057",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 714,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3247,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 390
+       }
+      },
+      {
+       "category": "gallery",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 791,
+       "kind": "visit",
+       "lat": 47.798725,
+       "lon": 13.044322,
+       "meal_type": null,
+       "name": "Area synthetic sight 034",
+       "place_id": "00000000-0000-4000-a000-000000000034",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 731,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 403,
+        "minutes": 6,
+        "mode": "walk",
+        "seconds": 322
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "coffee_shop"
+       ],
+       "duration_minutes": 60,
+       "end_minute": 857,
+       "kind": "meal",
+       "lat": 47.800655,
+       "lon": 13.045121,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 031",
+       "place_id": "00000000-0000-4000-b001-000000000031",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 797,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 28,
+        "minutes": 1,
+        "mode": "walk",
+        "seconds": 23
+       }
+      },
+      {
+       "category": "zoo",
+       "cuisines": null,
+       "duration_minutes": 150,
+       "end_minute": 1008,
+       "kind": "visit",
+       "lat": 47.800718,
+       "lon": 13.044932,
+       "meal_type": null,
+       "name": "Area synthetic sight 004",
+       "place_id": "00000000-0000-4000-a000-000000000004",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 858,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3142,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 377
+       }
+      },
+      {
+       "category": "church",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 1045,
+       "kind": "visit",
+       "lat": 47.821338,
+       "lon": 13.055157,
+       "meal_type": null,
+       "name": "Area synthetic sight 047",
+       "place_id": "00000000-0000-4000-a000-000000000047",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1015,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 777,
+        "minutes": 11,
+        "mode": "walk",
+        "seconds": 622
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "regional"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 47.817458,
+       "lon": 13.054973,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 110",
+       "place_id": "00000000-0000-4000-b001-000000000110",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": null,
+     "arrival_unknown": false,
+     "base_city_id": 990001,
+     "base_city_name": "Synthetic Town A",
+     "date": null,
+     "day_index": 2,
+     "items": [
+      {
+       "category": "tower",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 570,
+       "kind": "visit",
+       "lat": 47.790206,
+       "lon": 13.03884,
+       "meal_type": null,
+       "name": "Area synthetic sight 003",
+       "place_id": "00000000-0000-4000-a000-000000000003",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 409,
+        "minutes": 6,
+        "mode": "walk",
+        "seconds": 327
+       }
+      },
+      {
+       "category": "city_gate",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 591,
+       "kind": "visit",
+       "lat": 47.790042,
+       "lon": 13.041871,
+       "meal_type": null,
+       "name": "Area synthetic sight 059",
+       "place_id": "00000000-0000-4000-a000-000000000059",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 576,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3229,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 388
+       }
+      },
+      {
+       "category": "attraction",
+       "cuisines": null,
+       "duration_minutes": 45,
+       "end_minute": 643,
+       "kind": "visit",
+       "lat": 47.807523,
+       "lon": 13.021158,
+       "meal_type": null,
+       "name": "Area synthetic sight 017",
+       "place_id": "00000000-0000-4000-a000-000000000017",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 598,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4004,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 480
+       }
+      },
+      {
+       "category": "museum",
+       "cuisines": null,
+       "duration_minutes": 90,
+       "end_minute": 741,
+       "kind": "visit",
+       "lat": 47.798678,
+       "lon": 13.060238,
+       "meal_type": null,
+       "name": "Area synthetic sight 021",
+       "place_id": "00000000-0000-4000-a000-000000000021",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 651,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 857,
+        "minutes": 12,
+        "mode": "walk",
+        "seconds": 686
+       }
+      },
+      {
+       "category": "monument",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 768,
+       "kind": "visit",
+       "lat": 47.800246,
+       "lon": 13.054306,
+       "meal_type": null,
+       "name": "Area synthetic sight 035",
+       "place_id": "00000000-0000-4000-a000-000000000035",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 753,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 1063,
+        "minutes": 15,
+        "mode": "walk",
+        "seconds": 851
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 843,
+       "kind": "meal",
+       "lat": 47.794959,
+       "lon": 13.05505,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 084",
+       "place_id": "00000000-0000-4000-b001-000000000084",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "CUISINE_NOT_SPECIFIED"
+       ],
+       "start_minute": 783,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 277,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 222
+       }
+      },
+      {
+       "category": "fountain",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 862,
+       "kind": "visit",
+       "lat": 47.795931,
+       "lon": 13.053585,
+       "meal_type": null,
+       "name": "Area synthetic sight 031",
+       "place_id": "00000000-0000-4000-a000-000000000031",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 847,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3181,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 382
+       }
+      },
+      {
+       "category": "viewpoint",
+       "cuisines": null,
+       "duration_minutes": 20,
+       "end_minute": 889,
+       "kind": "visit",
+       "lat": 47.811532,
+       "lon": 13.076689,
+       "meal_type": null,
+       "name": "Area synthetic sight 027",
+       "place_id": "00000000-0000-4000-a000-000000000027",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 869,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3168,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 380
+       }
+      },
+      {
+       "category": "viewpoint",
+       "cuisines": null,
+       "duration_minutes": 20,
+       "end_minute": 916,
+       "kind": "visit",
+       "lat": 47.805821,
+       "lon": 13.045179,
+       "meal_type": null,
+       "name": "Area synthetic sight 005",
+       "place_id": "00000000-0000-4000-a000-000000000005",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 896,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4578,
+        "minutes": 10,
+        "mode": "drive",
+        "seconds": 549
+       }
+      },
+      {
+       "category": "church",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 956,
+       "kind": "visit",
+       "lat": 47.808283,
+       "lon": 12.998166,
+       "meal_type": null,
+       "name": "Area synthetic sight 051",
+       "place_id": "00000000-0000-4000-a000-000000000051",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 926,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4122,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 495
+       }
+      },
+      {
+       "category": "museum",
+       "cuisines": null,
+       "duration_minutes": 90,
+       "end_minute": 1055,
+       "kind": "visit",
+       "lat": 47.800049,
+       "lon": 13.038825,
+       "meal_type": null,
+       "name": "Area synthetic sight 030",
+       "place_id": "00000000-0000-4000-a000-000000000030",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 965,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 127,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 102
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "indian"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 47.799457,
+       "lon": 13.038466,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 068",
+       "place_id": "00000000-0000-4000-b001-000000000068",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": {
+      "confidence": "estimated",
+      "estimate_reason": "provider_not_asked",
+      "meters": 257290,
+      "minutes": 225,
+      "mode": "drive",
+      "seconds": 13453
+     },
+     "arrival_unknown": false,
+     "base_city_id": 990003,
+     "base_city_name": "Synthetic Town C",
+     "date": null,
+     "day_index": 3,
+     "items": [
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "burger",
+        "pizza"
+       ],
+       "duration_minutes": 60,
+       "end_minute": 840,
+       "kind": "meal",
+       "lat": 47.054593,
+       "lon": 15.43193,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 018",
+       "place_id": "00000000-0000-4000-b003-000000000018",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 780,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 653,
+        "minutes": 9,
+        "mode": "walk",
+        "seconds": 522
+       }
+      },
+      {
+       "category": "church",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 879,
+       "kind": "visit",
+       "lat": 47.051542,
+       "lon": 15.433626,
+       "meal_type": null,
+       "name": "Area synthetic sight 118",
+       "place_id": "00000000-0000-4000-a000-000000000118",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION"
+       ],
+       "start_minute": 849,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2748,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 330
+       }
+      },
+      {
+       "category": "viewpoint",
+       "cuisines": null,
+       "duration_minutes": 20,
+       "end_minute": 905,
+       "kind": "visit",
+       "lat": 47.070026,
+       "lon": 15.440096,
+       "meal_type": null,
+       "name": "Area synthetic sight 111",
+       "place_id": "00000000-0000-4000-a000-000000000111",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 885,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2643,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 317
+       }
+      },
+      {
+       "category": "attraction",
+       "cuisines": null,
+       "duration_minutes": 45,
+       "end_minute": 956,
+       "kind": "visit",
+       "lat": 47.088172,
+       "lon": 15.44346,
+       "meal_type": null,
+       "name": "Area synthetic sight 146",
+       "place_id": "00000000-0000-4000-a000-000000000146",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 911,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2754,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 331
+       }
+      },
+      {
+       "category": "museum",
+       "cuisines": null,
+       "duration_minutes": 90,
+       "end_minute": 1052,
+       "kind": "visit",
+       "lat": 47.06912,
+       "lon": 15.443965,
+       "meal_type": null,
+       "name": "Area synthetic sight 123",
+       "place_id": "00000000-0000-4000-a000-000000000123",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 962,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3418,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 410
+       }
+      },
+      {
+       "category": "monument",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 1074,
+       "kind": "visit",
+       "lat": 47.057059,
+       "lon": 15.473815,
+       "meal_type": null,
+       "name": "Area synthetic sight 127",
+       "place_id": "00000000-0000-4000-a000-000000000127",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1059,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 1812,
+        "minutes": 25,
+        "mode": "walk",
+        "seconds": 1449
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "regional"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 47.064562,
+       "lon": 15.46638,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 014",
+       "place_id": "00000000-0000-4000-b003-000000000014",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "NEAREST_SUITABLE"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": {
+      "confidence": "estimated",
+      "estimate_reason": "provider_not_asked",
+      "meters": 210083,
+      "minutes": 189,
+      "mode": "drive",
+      "seconds": 11329
+     },
+     "arrival_unknown": false,
+     "base_city_id": 990002,
+     "base_city_name": "Synthetic Town B",
+     "date": null,
+     "day_index": 4,
+     "items": [
+      {
+       "category": "archaeological_site",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 789,
+       "kind": "visit",
+       "lat": 48.299672,
+       "lon": 14.275007,
+       "meal_type": null,
+       "name": "Area synthetic sight 069",
+       "place_id": "00000000-0000-4000-a000-000000000069",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 729,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3166,
+        "minutes": 43,
+        "mode": "walk",
+        "seconds": 2533
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "italian"
+       ],
+       "duration_minutes": 60,
+       "end_minute": 892,
+       "kind": "meal",
+       "lat": 48.301386,
+       "lon": 14.298652,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 001",
+       "place_id": "00000000-0000-4000-b002-000000000001",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 832,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 506,
+        "minutes": 7,
+        "mode": "walk",
+        "seconds": 405
+       }
+      },
+      {
+       "category": "statue",
+       "cuisines": null,
+       "duration_minutes": 10,
+       "end_minute": 909,
+       "kind": "visit",
+       "lat": 48.301383,
+       "lon": 14.302451,
+       "meal_type": null,
+       "name": "Area synthetic sight 099",
+       "place_id": "00000000-0000-4000-a000-000000000099",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 899,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 727,
+        "minutes": 10,
+        "mode": "walk",
+        "seconds": 582
+       }
+      },
+      {
+       "category": "castle",
+       "cuisines": null,
+       "duration_minutes": 75,
+       "end_minute": 994,
+       "kind": "visit",
+       "lat": 48.300945,
+       "lon": 14.29703,
+       "meal_type": null,
+       "name": "Area synthetic sight 094",
+       "place_id": "00000000-0000-4000-a000-000000000094",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 919,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 657,
+        "minutes": 9,
+        "mode": "walk",
+        "seconds": 525
+       }
+      },
+      {
+       "category": "gallery",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 1063,
+       "kind": "visit",
+       "lat": 48.301643,
+       "lon": 14.292207,
+       "meal_type": null,
+       "name": "Area synthetic sight 070",
+       "place_id": "00000000-0000-4000-a000-000000000070",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1003,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 580,
+        "minutes": 8,
+        "mode": "walk",
+        "seconds": 464
+       }
+      },
+      {
+       "category": "viewpoint",
+       "cuisines": null,
+       "duration_minutes": 20,
+       "end_minute": 1091,
+       "kind": "visit",
+       "lat": 48.299363,
+       "lon": 14.289521,
+       "meal_type": null,
+       "name": "Area synthetic sight 080",
+       "place_id": "00000000-0000-4000-a000-000000000080",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1071,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 103,
+        "minutes": 2,
+        "mode": "walk",
+        "seconds": 83
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "vegetarian"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 48.298947,
+       "lon": 14.289986,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 060",
+       "place_id": "00000000-0000-4000-b002-000000000060",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": null,
+     "arrival_unknown": false,
+     "base_city_id": 990002,
+     "base_city_name": "Synthetic Town B",
+     "date": null,
+     "day_index": 5,
+     "items": [
+      {
+       "category": "historic_building",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 570,
+       "kind": "visit",
+       "lat": 48.297359,
+       "lon": 14.27764,
+       "meal_type": null,
+       "name": "Area synthetic sight 106",
+       "place_id": "00000000-0000-4000-a000-000000000106",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3309,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 397
+       }
+      },
+      {
+       "category": "museum",
+       "cuisines": null,
+       "duration_minutes": 90,
+       "end_minute": 667,
+       "kind": "visit",
+       "lat": 48.276191,
+       "lon": 14.26456,
+       "meal_type": null,
+       "name": "Area synthetic sight 104",
+       "place_id": "00000000-0000-4000-a000-000000000104",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 577,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2910,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 349
+       }
+      },
+      {
+       "category": "fountain",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 688,
+       "kind": "visit",
+       "lat": 48.292612,
+       "lon": 14.282064,
+       "meal_type": null,
+       "name": "Area synthetic sight 072",
+       "place_id": "00000000-0000-4000-a000-000000000072",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 673,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3482,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 418
+       }
+      },
+      {
+       "category": "castle",
+       "cuisines": null,
+       "duration_minutes": 75,
+       "end_minute": 770,
+       "kind": "visit",
+       "lat": 48.302384,
+       "lon": 14.315155,
+       "meal_type": null,
+       "name": "Area synthetic sight 066",
+       "place_id": "00000000-0000-4000-a000-000000000066",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 695,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 804,
+        "minutes": 11,
+        "mode": "walk",
+        "seconds": 643
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "cake",
+        "greek"
+       ],
+       "duration_minutes": 60,
+       "end_minute": 841,
+       "kind": "meal",
+       "lat": 48.303487,
+       "lon": 14.309359,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 096",
+       "place_id": "00000000-0000-4000-b002-000000000096",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 781,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3181,
+        "minutes": 43,
+        "mode": "walk",
+        "seconds": 2545
+       }
+      },
+      {
+       "category": "gallery",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 944,
+       "kind": "visit",
+       "lat": 48.299284,
+       "lon": 14.28632,
+       "meal_type": null,
+       "name": "Area synthetic sight 107",
+       "place_id": "00000000-0000-4000-a000-000000000107",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 884,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 5063,
+        "minutes": 11,
+        "mode": "drive",
+        "seconds": 608
+       }
+      },
+      {
+       "category": "memorial",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 970,
+       "kind": "visit",
+       "lat": 48.333801,
+       "lon": 14.277398,
+       "meal_type": null,
+       "name": "Area synthetic sight 097",
+       "place_id": "00000000-0000-4000-a000-000000000097",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED"
+       ],
+       "start_minute": 955,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4307,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 517
+       }
+      },
+      {
+       "category": "attraction",
+       "cuisines": null,
+       "duration_minutes": 45,
+       "end_minute": 1024,
+       "kind": "visit",
+       "lat": 48.304265,
+       "lon": 14.283235,
+       "meal_type": null,
+       "name": "Area synthetic sight 098",
+       "place_id": "00000000-0000-4000-a000-000000000098",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 979,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3959,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 475
+       }
+      },
+      {
+       "category": "ruins",
+       "cuisines": null,
+       "duration_minutes": 40,
+       "end_minute": 1072,
+       "kind": "visit",
+       "lat": 48.315024,
+       "lon": 14.245371,
+       "meal_type": null,
+       "name": "Area synthetic sight 073",
+       "place_id": "00000000-0000-4000-a000-000000000073",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1032,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3134,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 376
+       }
+      },
+      {
+       "category": "statue",
+       "cuisines": null,
+       "duration_minutes": 10,
+       "end_minute": 1089,
+       "kind": "visit",
+       "lat": 48.305024,
+       "lon": 14.274293,
+       "meal_type": null,
+       "name": "Area synthetic sight 084",
+       "place_id": "00000000-0000-4000-a000-000000000084",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1079,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 277,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 221
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "regional"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 48.306316,
+       "lon": 14.274997,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 092",
+       "place_id": "00000000-0000-4000-b002-000000000092",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": null,
+     "arrival_unknown": false,
+     "base_city_id": 990002,
+     "base_city_name": "Synthetic Town B",
+     "date": null,
+     "day_index": 6,
+     "items": [
+      {
+       "category": "church",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 570,
+       "kind": "visit",
+       "lat": 48.266503,
+       "lon": 14.263657,
+       "meal_type": null,
+       "name": "Area synthetic sight 075",
+       "place_id": "00000000-0000-4000-a000-000000000075",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3121,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 374
+       }
+      },
+      {
+       "category": "viewpoint",
+       "cuisines": null,
+       "duration_minutes": 20,
+       "end_minute": 597,
+       "kind": "visit",
+       "lat": 48.287378,
+       "lon": 14.271896,
+       "meal_type": null,
+       "name": "Area synthetic sight 063",
+       "place_id": "00000000-0000-4000-a000-000000000063",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 577,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2628,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 315
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 663,
+       "kind": "visit",
+       "lat": 48.30139,
+       "lon": 14.289323,
+       "meal_type": null,
+       "name": "Area synthetic sight 108",
+       "place_id": "00000000-0000-4000-a000-000000000108",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 603,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 632,
+        "minutes": 9,
+        "mode": "walk",
+        "seconds": 505
+       }
+      },
+      {
+       "category": "attraction",
+       "cuisines": null,
+       "duration_minutes": 45,
+       "end_minute": 717,
+       "kind": "visit",
+       "lat": 48.298253,
+       "lon": 14.289799,
+       "meal_type": null,
+       "name": "Area synthetic sight 089",
+       "place_id": "00000000-0000-4000-a000-000000000089",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 672,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3785,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 454
+       }
+      },
+      {
+       "category": "historic_building",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 755,
+       "kind": "visit",
+       "lat": 48.282599,
+       "lon": 14.258246,
+       "meal_type": null,
+       "name": "Area synthetic sight 074",
+       "place_id": "00000000-0000-4000-a000-000000000074",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 725,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4409,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 529
+       }
+      },
+      {
+       "category": "memorial",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 779,
+       "kind": "visit",
+       "lat": 48.304407,
+       "lon": 14.290297,
+       "meal_type": null,
+       "name": "Area synthetic sight 078",
+       "place_id": "00000000-0000-4000-a000-000000000078",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 764,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 360,
+        "minutes": 5,
+        "mode": "walk",
+        "seconds": 288
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 844,
+       "kind": "meal",
+       "lat": 48.305384,
+       "lon": 14.288016,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 059",
+       "place_id": "00000000-0000-4000-b002-000000000059",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "CUISINE_NOT_SPECIFIED"
+       ],
+       "start_minute": 784,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3651,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 438
+       }
+      },
+      {
+       "category": "museum",
+       "cuisines": null,
+       "duration_minutes": 90,
+       "end_minute": 942,
+       "kind": "visit",
+       "lat": 48.328652,
+       "lon": 14.30278,
+       "meal_type": null,
+       "name": "Area synthetic sight 083",
+       "place_id": "00000000-0000-4000-a000-000000000083",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY"
+       ],
+       "start_minute": 852,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2670,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 320
+       }
+      },
+      {
+       "category": "museum",
+       "cuisines": null,
+       "duration_minutes": 90,
+       "end_minute": 1038,
+       "kind": "visit",
+       "lat": 48.310443,
+       "lon": 14.298108,
+       "meal_type": null,
+       "name": "Area synthetic sight 090",
+       "place_id": "00000000-0000-4000-a000-000000000090",
+       "reasons": [
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 948,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 863,
+        "minutes": 12,
+        "mode": "walk",
+        "seconds": 690
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "asian"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 48.306133,
+       "lon": 14.298211,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 075",
+       "place_id": "00000000-0000-4000-b002-000000000075",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    }
+   ],
+   "notes": [
+    {
+     "code": "PROFILE_ESSENTIALS",
+     "params": {
+      "radius_km": 5
+     }
+    },
+    {
+     "code": "INTER_CITY_TRAVEL",
+     "params": {
+      "day": 3,
+      "from_name": "Synthetic Town A",
+      "label": "estimated",
+      "minutes": 225,
+      "to_name": "Synthetic Town C"
+     }
+    },
+    {
+     "code": "INTER_CITY_TRAVEL",
+     "params": {
+      "day": 4,
+      "from_name": "Synthetic Town C",
+      "label": "estimated",
+      "minutes": 189,
+      "to_name": "Synthetic Town B"
+     }
+    },
+    {
+     "code": "ESTIMATED_TRANSFERS",
+     "params": {
+      "estimated": 54,
+      "transfers": 54
+     }
+    }
+   ],
+   "profile": "essentials",
+   "stats": {
+    "day_utilisation_permille": 797,
+    "days_with_visits": 6,
+    "estimated_transfers": 54,
+    "intercity_legs": 2,
+    "meal_minutes": 900,
+    "meals": 12,
+    "routed_transfers": 0,
+    "travel_minutes": 878,
+    "travel_seconds": 51095,
+    "travel_share_permille": 235,
+    "visit_minutes": 1955,
+    "visits": 46
+   }
+  },
+  {
+   "days": [
+    {
+     "arrival": null,
+     "arrival_unknown": false,
+     "base_city_id": 990001,
+     "base_city_name": "Synthetic Town A",
+     "date": null,
+     "day_index": 1,
+     "items": [
+      {
+       "category": "memorial",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 555,
+       "kind": "visit",
+       "lat": 47.790673,
+       "lon": 13.048585,
+       "meal_type": null,
+       "name": "Area synthetic sight 022",
+       "place_id": "00000000-0000-4000-a000-000000000022",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4334,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 520
+       }
+      },
+      {
+       "category": "attraction",
+       "cuisines": null,
+       "duration_minutes": 45,
+       "end_minute": 609,
+       "kind": "visit",
+       "lat": 47.76121,
+       "lon": 13.056884,
+       "meal_type": null,
+       "name": "Area synthetic sight 008",
+       "place_id": "00000000-0000-4000-a000-000000000008",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 564,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 5799,
+        "minutes": 12,
+        "mode": "drive",
+        "seconds": 696
+       }
+      },
+      {
+       "category": "statue",
+       "cuisines": null,
+       "duration_minutes": 10,
+       "end_minute": 631,
+       "kind": "visit",
+       "lat": 47.799886,
+       "lon": 13.041048,
+       "meal_type": null,
+       "name": "Area synthetic sight 007",
+       "place_id": "00000000-0000-4000-a000-000000000007",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 621,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 161,
+        "minutes": 3,
+        "mode": "walk",
+        "seconds": 128
+       }
+      },
+      {
+       "category": "museum",
+       "cuisines": null,
+       "duration_minutes": 90,
+       "end_minute": 724,
+       "kind": "visit",
+       "lat": 47.799106,
+       "lon": 13.040773,
+       "meal_type": null,
+       "name": "Area synthetic sight 010",
+       "place_id": "00000000-0000-4000-a000-000000000010",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 634,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3504,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 420
+       }
+      },
+      {
+       "category": "church",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 761,
+       "kind": "visit",
+       "lat": 47.821338,
+       "lon": 13.055157,
+       "meal_type": null,
+       "name": "Area synthetic sight 047",
+       "place_id": "00000000-0000-4000-a000-000000000047",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 731,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4052,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 486
+       }
+      },
+      {
+       "category": "city_gate",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 785,
+       "kind": "visit",
+       "lat": 47.795898,
+       "lon": 13.037641,
+       "meal_type": null,
+       "name": "Area synthetic sight 056",
+       "place_id": "00000000-0000-4000-a000-000000000056",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 770,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 565,
+        "minutes": 8,
+        "mode": "walk",
+        "seconds": 452
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "cake"
+       ],
+       "duration_minutes": 60,
+       "end_minute": 853,
+       "kind": "meal",
+       "lat": 47.793636,
+       "lon": 13.035125,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 021",
+       "place_id": "00000000-0000-4000-b001-000000000021",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 793,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 506,
+        "minutes": 7,
+        "mode": "walk",
+        "seconds": 405
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 920,
+       "kind": "visit",
+       "lat": 47.795314,
+       "lon": 13.03795,
+       "meal_type": null,
+       "name": "Area synthetic sight 009",
+       "place_id": "00000000-0000-4000-a000-000000000009",
+       "reasons": [
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 860,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 1013,
+        "minutes": 14,
+        "mode": "walk",
+        "seconds": 810
+       }
+      },
+      {
+       "category": "cafe",
+       "cuisines": [
+        "seafood"
+       ],
+       "duration_minutes": 30,
+       "end_minute": 964,
+       "kind": "meal",
+       "lat": 47.797616,
+       "lon": 13.031253,
+       "meal_type": "snack",
+       "name": "Synthetic cafe 074",
+       "place_id": "00000000-0000-4000-b001-000000000074",
+       "reasons": [
+        "SNACK_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 934,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 7305,
+        "minutes": 15,
+        "mode": "drive",
+        "seconds": 877
+       }
+      },
+      {
+       "category": "palace",
+       "cuisines": null,
+       "duration_minutes": 75,
+       "end_minute": 1054,
+       "kind": "visit",
+       "lat": 47.799709,
+       "lon": 12.956085,
+       "meal_type": null,
+       "name": "Area synthetic sight 019",
+       "place_id": "00000000-0000-4000-a000-000000000019",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 979,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": null,
+     "arrival_unknown": false,
+     "base_city_id": 990001,
+     "base_city_name": "Synthetic Town A",
+     "date": null,
+     "day_index": 2,
+     "items": [
+      {
+       "category": "monument",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 555,
+       "kind": "visit",
+       "lat": 47.800246,
+       "lon": 13.054306,
+       "meal_type": null,
+       "name": "Area synthetic sight 035",
+       "place_id": "00000000-0000-4000-a000-000000000035",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3101,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 372
+       }
+      },
+      {
+       "category": "castle",
+       "cuisines": null,
+       "duration_minutes": 75,
+       "end_minute": 637,
+       "kind": "visit",
+       "lat": 47.778871,
+       "lon": 13.056948,
+       "meal_type": null,
+       "name": "Area synthetic sight 038",
+       "place_id": "00000000-0000-4000-a000-000000000038",
+       "reasons": [
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 562,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3121,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 374
+       }
+      },
+      {
+       "category": "gallery",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 704,
+       "kind": "visit",
+       "lat": 47.798725,
+       "lon": 13.044322,
+       "meal_type": null,
+       "name": "Area synthetic sight 034",
+       "place_id": "00000000-0000-4000-a000-000000000034",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 644,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3247,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 390
+       }
+      },
+      {
+       "category": "statue",
+       "cuisines": null,
+       "duration_minutes": 10,
+       "end_minute": 721,
+       "kind": "visit",
+       "lat": 47.81375,
+       "lon": 13.069178,
+       "meal_type": null,
+       "name": "Area synthetic sight 057",
+       "place_id": "00000000-0000-4000-a000-000000000057",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 711,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 13946,
+        "minutes": 28,
+        "mode": "drive",
+        "seconds": 1674
+       }
+      },
+      {
+       "category": "gallery",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 809,
+       "kind": "visit",
+       "lat": 47.848705,
+       "lon": 13.203129,
+       "meal_type": null,
+       "name": "Area synthetic sight 177",
+       "place_id": "00000000-0000-4000-a000-000000000177",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE"
+       ],
+       "start_minute": 749,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 271,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 217
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "italian"
+       ],
+       "duration_minutes": 60,
+       "end_minute": 873,
+       "kind": "meal",
+       "lat": 47.848194,
+       "lon": 13.201265,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 006",
+       "place_id": "00000000-0000-4000-b005-000000000006",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 813,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3980,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 478
+       }
+      },
+      {
+       "category": "memorial",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 896,
+       "kind": "visit",
+       "lat": 47.822219,
+       "lon": 13.187642,
+       "meal_type": null,
+       "name": "Area synthetic sight 176",
+       "place_id": "00000000-0000-4000-a000-000000000176",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED"
+       ],
+       "start_minute": 881,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3647,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 438
+       }
+      },
+      {
+       "category": "cafe",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 934,
+       "kind": "meal",
+       "lat": 47.844526,
+       "lon": 13.205203,
+       "meal_type": "snack",
+       "name": "Synthetic cafe 010",
+       "place_id": "00000000-0000-4000-b005-000000000010",
+       "reasons": [
+        "SNACK_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "CUISINE_NOT_SPECIFIED"
+       ],
+       "start_minute": 904,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 1019,
+        "minutes": 14,
+        "mode": "walk",
+        "seconds": 815
+       }
+      },
+      {
+       "category": "viewpoint",
+       "cuisines": null,
+       "duration_minutes": 20,
+       "end_minute": 968,
+       "kind": "visit",
+       "lat": 47.839443,
+       "lon": 13.205371,
+       "meal_type": null,
+       "name": "Area synthetic sight 180",
+       "place_id": "00000000-0000-4000-a000-000000000180",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 948,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2818,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 338
+       }
+      },
+      {
+       "category": "palace",
+       "cuisines": null,
+       "duration_minutes": 75,
+       "end_minute": 1049,
+       "kind": "visit",
+       "lat": 47.858216,
+       "lon": 13.197589,
+       "meal_type": null,
+       "name": "Area synthetic sight 181",
+       "place_id": "00000000-0000-4000-a000-000000000181",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 974,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 1510,
+        "minutes": 21,
+        "mode": "walk",
+        "seconds": 1208
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "regional"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 47.850714,
+       "lon": 13.198693,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 011",
+       "place_id": "00000000-0000-4000-b005-000000000011",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "NEAREST_SUITABLE",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": {
+      "confidence": "estimated",
+      "estimate_reason": "provider_not_asked",
+      "meters": 257290,
+      "minutes": 225,
+      "mode": "drive",
+      "seconds": 13453
+     },
+     "arrival_unknown": false,
+     "base_city_id": 990003,
+     "base_city_name": "Synthetic Town C",
+     "date": null,
+     "day_index": 3,
+     "items": [
+      {
+       "category": "monument",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 780,
+       "kind": "visit",
+       "lat": 47.058852,
+       "lon": 15.436698,
+       "meal_type": null,
+       "name": "Area synthetic sight 114",
+       "place_id": "00000000-0000-4000-a000-000000000114",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 765,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 658,
+        "minutes": 9,
+        "mode": "walk",
+        "seconds": 527
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 849,
+       "kind": "meal",
+       "lat": 47.061852,
+       "lon": 15.438678,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 064",
+       "place_id": "00000000-0000-4000-b003-000000000064",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "CUISINE_NOT_SPECIFIED"
+       ],
+       "start_minute": 789,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 468,
+        "minutes": 7,
+        "mode": "walk",
+        "seconds": 374
+       }
+      },
+      {
+       "category": "chapel",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 871,
+       "kind": "visit",
+       "lat": 47.059774,
+       "lon": 15.437123,
+       "meal_type": null,
+       "name": "Area synthetic sight 141",
+       "place_id": "00000000-0000-4000-a000-000000000141",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 856,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3309,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 397
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 938,
+       "kind": "visit",
+       "lat": 47.082087,
+       "lon": 15.444602,
+       "meal_type": null,
+       "name": "Area synthetic sight 140",
+       "place_id": "00000000-0000-4000-a000-000000000140",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 878,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2460,
+        "minutes": 33,
+        "mode": "walk",
+        "seconds": 1968
+       }
+      },
+      {
+       "category": "cafe",
+       "cuisines": [
+        "burger"
+       ],
+       "duration_minutes": 30,
+       "end_minute": 1001,
+       "kind": "meal",
+       "lat": 47.070766,
+       "lon": 15.437568,
+       "meal_type": "snack",
+       "name": "Synthetic cafe 003",
+       "place_id": "00000000-0000-4000-b003-000000000003",
+       "reasons": [
+        "SNACK_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "NEAREST_SUITABLE",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 971,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3379,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 405
+       }
+      },
+      {
+       "category": "church",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 1038,
+       "kind": "visit",
+       "lat": 47.049329,
+       "lon": 15.423902,
+       "meal_type": null,
+       "name": "Area synthetic sight 144",
+       "place_id": "00000000-0000-4000-a000-000000000144",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION"
+       ],
+       "start_minute": 1008,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3460,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 415
+       }
+      },
+      {
+       "category": "chapel",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 1060,
+       "kind": "visit",
+       "lat": 47.03012,
+       "lon": 15.402936,
+       "meal_type": null,
+       "name": "Area synthetic sight 145",
+       "place_id": "00000000-0000-4000-a000-000000000145",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1045,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3173,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 381
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "cake"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 47.05206,
+       "lon": 15.402114,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 051",
+       "place_id": "00000000-0000-4000-b003-000000000051",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "NEAREST_SUITABLE"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": {
+      "confidence": "estimated",
+      "estimate_reason": "provider_not_asked",
+      "meters": 210083,
+      "minutes": 189,
+      "mode": "drive",
+      "seconds": 11329
+     },
+     "arrival_unknown": false,
+     "base_city_id": 990002,
+     "base_city_name": "Synthetic Town B",
+     "date": null,
+     "day_index": 4,
+     "items": [
+      {
+       "category": "memorial",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 744,
+       "kind": "visit",
+       "lat": 48.333801,
+       "lon": 14.277398,
+       "meal_type": null,
+       "name": "Area synthetic sight 097",
+       "place_id": "00000000-0000-4000-a000-000000000097",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED"
+       ],
+       "start_minute": 729,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4171,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 501
+       }
+      },
+      {
+       "category": "statue",
+       "cuisines": null,
+       "duration_minutes": 10,
+       "end_minute": 763,
+       "kind": "visit",
+       "lat": 48.305024,
+       "lon": 14.274293,
+       "meal_type": null,
+       "name": "Area synthetic sight 084",
+       "place_id": "00000000-0000-4000-a000-000000000084",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 753,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3614,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 434
+       }
+      },
+      {
+       "category": "church",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 801,
+       "kind": "visit",
+       "lat": 48.298481,
+       "lon": 14.310569,
+       "meal_type": null,
+       "name": "Area synthetic sight 102",
+       "place_id": "00000000-0000-4000-a000-000000000102",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 771,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2675,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 321
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "turkish"
+       ],
+       "duration_minutes": 60,
+       "end_minute": 867,
+       "kind": "meal",
+       "lat": 48.296,
+       "lon": 14.283004,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 038",
+       "place_id": "00000000-0000-4000-b002-000000000038",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 807,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 690,
+        "minutes": 10,
+        "mode": "walk",
+        "seconds": 552
+       }
+      },
+      {
+       "category": "fountain",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 892,
+       "kind": "visit",
+       "lat": 48.292612,
+       "lon": 14.282064,
+       "meal_type": null,
+       "name": "Area synthetic sight 072",
+       "place_id": "00000000-0000-4000-a000-000000000072",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 877,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 529,
+        "minutes": 8,
+        "mode": "walk",
+        "seconds": 424
+       }
+      },
+      {
+       "category": "cafe",
+       "cuisines": [
+        "indian"
+       ],
+       "duration_minutes": 30,
+       "end_minute": 930,
+       "kind": "meal",
+       "lat": 48.291754,
+       "lon": 14.278302,
+       "meal_type": "snack",
+       "name": "Synthetic cafe 035",
+       "place_id": "00000000-0000-4000-b002-000000000035",
+       "reasons": [
+        "SNACK_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 900,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3912,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 469
+       }
+      },
+      {
+       "category": "church",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 968,
+       "kind": "visit",
+       "lat": 48.266503,
+       "lon": 14.263657,
+       "meal_type": null,
+       "name": "Area synthetic sight 075",
+       "place_id": "00000000-0000-4000-a000-000000000075",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION"
+       ],
+       "start_minute": 938,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3355,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 403
+       }
+      },
+      {
+       "category": "palace",
+       "cuisines": null,
+       "duration_minutes": 75,
+       "end_minute": 1050,
+       "kind": "visit",
+       "lat": 48.243966,
+       "lon": 14.272043,
+       "meal_type": null,
+       "name": "Area synthetic sight 091",
+       "place_id": "00000000-0000-4000-a000-000000000091",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 975,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": null,
+     "arrival_unknown": false,
+     "base_city_id": 990002,
+     "base_city_name": "Synthetic Town B",
+     "date": null,
+     "day_index": 5,
+     "items": [
+      {
+       "category": "memorial",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 555,
+       "kind": "visit",
+       "lat": 48.304407,
+       "lon": 14.290297,
+       "meal_type": null,
+       "name": "Area synthetic sight 078",
+       "place_id": "00000000-0000-4000-a000-000000000078",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 610,
+        "minutes": 9,
+        "mode": "walk",
+        "seconds": 488
+       }
+      },
+      {
+       "category": "gallery",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 624,
+       "kind": "visit",
+       "lat": 48.301643,
+       "lon": 14.292207,
+       "meal_type": null,
+       "name": "Area synthetic sight 070",
+       "place_id": "00000000-0000-4000-a000-000000000070",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 564,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 580,
+        "minutes": 8,
+        "mode": "walk",
+        "seconds": 464
+       }
+      },
+      {
+       "category": "viewpoint",
+       "cuisines": null,
+       "duration_minutes": 20,
+       "end_minute": 652,
+       "kind": "visit",
+       "lat": 48.299363,
+       "lon": 14.289521,
+       "meal_type": null,
+       "name": "Area synthetic sight 080",
+       "place_id": "00000000-0000-4000-a000-000000000080",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 632,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 387,
+        "minutes": 6,
+        "mode": "walk",
+        "seconds": 309
+       }
+      },
+      {
+       "category": "city_gate",
+       "cuisines": null,
+       "duration_minutes": 15,
+       "end_minute": 673,
+       "kind": "visit",
+       "lat": 48.298898,
+       "lon": 14.292338,
+       "meal_type": null,
+       "name": "Area synthetic sight 096",
+       "place_id": "00000000-0000-4000-a000-000000000096",
+       "reasons": [
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 658,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4233,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 508
+       }
+      },
+      {
+       "category": "museum",
+       "cuisines": null,
+       "duration_minutes": 90,
+       "end_minute": 772,
+       "kind": "visit",
+       "lat": 48.276191,
+       "lon": 14.26456,
+       "meal_type": null,
+       "name": "Area synthetic sight 104",
+       "place_id": "00000000-0000-4000-a000-000000000104",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 682,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3387,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 406
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "burger"
+       ],
+       "duration_minutes": 60,
+       "end_minute": 840,
+       "kind": "meal",
+       "lat": 48.298546,
+       "lon": 14.275099,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 049",
+       "place_id": "00000000-0000-4000-b002-000000000049",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY"
+       ],
+       "start_minute": 780,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 224,
+        "minutes": 3,
+        "mode": "walk",
+        "seconds": 180
+       }
+      },
+      {
+       "category": "archaeological_site",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 903,
+       "kind": "visit",
+       "lat": 48.299672,
+       "lon": 14.275007,
+       "meal_type": null,
+       "name": "Area synthetic sight 069",
+       "place_id": "00000000-0000-4000-a000-000000000069",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 843,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2683,
+        "minutes": 36,
+        "mode": "walk",
+        "seconds": 2146
+       }
+      },
+      {
+       "category": "cafe",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 969,
+       "kind": "meal",
+       "lat": 48.301064,
+       "lon": 14.295049,
+       "meal_type": "snack",
+       "name": "Synthetic cafe 002",
+       "place_id": "00000000-0000-4000-b002-000000000002",
+       "reasons": [
+        "SNACK_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "CUISINE_NOT_SPECIFIED"
+       ],
+       "start_minute": 939,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 987,
+        "minutes": 14,
+        "mode": "walk",
+        "seconds": 790
+       }
+      },
+      {
+       "category": "statue",
+       "cuisines": null,
+       "duration_minutes": 10,
+       "end_minute": 993,
+       "kind": "visit",
+       "lat": 48.301383,
+       "lon": 14.302451,
+       "meal_type": null,
+       "name": "Area synthetic sight 099",
+       "place_id": "00000000-0000-4000-a000-000000000099",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 983,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 727,
+        "minutes": 10,
+        "mode": "walk",
+        "seconds": 582
+       }
+      },
+      {
+       "category": "castle",
+       "cuisines": null,
+       "duration_minutes": 75,
+       "end_minute": 1078,
+       "kind": "visit",
+       "lat": 48.300945,
+       "lon": 14.29703,
+       "meal_type": null,
+       "name": "Area synthetic sight 094",
+       "place_id": "00000000-0000-4000-a000-000000000094",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1003,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 196,
+        "minutes": 3,
+        "mode": "walk",
+        "seconds": 156
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "vegetarian"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 48.300297,
+       "lon": 14.298138,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 091",
+       "place_id": "00000000-0000-4000-b002-000000000091",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    },
+    {
+     "arrival": null,
+     "arrival_unknown": false,
+     "base_city_id": 990002,
+     "base_city_name": "Synthetic Town B",
+     "date": null,
+     "day_index": 6,
+     "items": [
+      {
+       "category": "gallery",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 600,
+       "kind": "visit",
+       "lat": 48.277296,
+       "lon": 14.266569,
+       "meal_type": null,
+       "name": "Area synthetic sight 103",
+       "place_id": "00000000-0000-4000-a000-000000000103",
+       "reasons": [
+        "WIKIDATA_LINKED"
+       ],
+       "start_minute": 540,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3089,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 371
+       }
+      },
+      {
+       "category": "historic_building",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 637,
+       "kind": "visit",
+       "lat": 48.297359,
+       "lon": 14.27764,
+       "meal_type": null,
+       "name": "Area synthetic sight 106",
+       "place_id": "00000000-0000-4000-a000-000000000106",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 607,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 4018,
+        "minutes": 9,
+        "mode": "drive",
+        "seconds": 482
+       }
+      },
+      {
+       "category": "ruins",
+       "cuisines": null,
+       "duration_minutes": 40,
+       "end_minute": 686,
+       "kind": "visit",
+       "lat": 48.315024,
+       "lon": 14.245371,
+       "meal_type": null,
+       "name": "Area synthetic sight 073",
+       "place_id": "00000000-0000-4000-a000-000000000073",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 646,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3959,
+        "minutes": 8,
+        "mode": "drive",
+        "seconds": 475
+       }
+      },
+      {
+       "category": "attraction",
+       "cuisines": null,
+       "duration_minutes": 45,
+       "end_minute": 739,
+       "kind": "visit",
+       "lat": 48.304265,
+       "lon": 14.283235,
+       "meal_type": null,
+       "name": "Area synthetic sight 098",
+       "place_id": "00000000-0000-4000-a000-000000000098",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 694,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3081,
+        "minutes": 7,
+        "mode": "drive",
+        "seconds": 370
+       }
+      },
+      {
+       "category": "castle",
+       "cuisines": null,
+       "duration_minutes": 75,
+       "end_minute": 821,
+       "kind": "visit",
+       "lat": 48.302384,
+       "lon": 14.315155,
+       "meal_type": null,
+       "name": "Area synthetic sight 066",
+       "place_id": "00000000-0000-4000-a000-000000000066",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "TAGGED_TOURIST_ATTRACTION",
+        "HIGHLIGHT_CATEGORY",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 746,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 2641,
+        "minutes": 6,
+        "mode": "drive",
+        "seconds": 317
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "pizza"
+       ],
+       "duration_minutes": 60,
+       "end_minute": 887,
+       "kind": "meal",
+       "lat": 48.29906,
+       "lon": 14.288146,
+       "meal_type": "lunch",
+       "name": "Synthetic restaurant 084",
+       "place_id": "00000000-0000-4000-b002-000000000084",
+       "reasons": [
+        "LUNCH_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 827,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 248,
+        "minutes": 4,
+        "mode": "walk",
+        "seconds": 198
+       }
+      },
+      {
+       "category": "gallery",
+       "cuisines": null,
+       "duration_minutes": 60,
+       "end_minute": 951,
+       "kind": "visit",
+       "lat": 48.299284,
+       "lon": 14.28632,
+       "meal_type": null,
+       "name": "Area synthetic sight 107",
+       "place_id": "00000000-0000-4000-a000-000000000107",
+       "reasons": [
+        "WIKIDATA_LINKED",
+        "WIKIPEDIA_ARTICLE",
+        "HERITAGE_LISTED",
+        "NEAR_CENTRE"
+       ],
+       "start_minute": 891,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 512,
+        "minutes": 7,
+        "mode": "walk",
+        "seconds": 410
+       }
+      },
+      {
+       "category": "cafe",
+       "cuisines": [
+        "asian"
+       ],
+       "duration_minutes": 30,
+       "end_minute": 988,
+       "kind": "meal",
+       "lat": 48.300002,
+       "lon": 14.290013,
+       "meal_type": "snack",
+       "name": "Synthetic cafe 013",
+       "place_id": "00000000-0000-4000-b002-000000000013",
+       "reasons": [
+        "SNACK_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "ON_THE_WAY",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 958,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 6308,
+        "minutes": 13,
+        "mode": "drive",
+        "seconds": 757
+       }
+      },
+      {
+       "category": "ruins",
+       "cuisines": null,
+       "duration_minutes": 40,
+       "end_minute": 1041,
+       "kind": "visit",
+       "lat": 48.342131,
+       "lon": 14.307096,
+       "meal_type": null,
+       "name": "Area synthetic sight 079",
+       "place_id": "00000000-0000-4000-a000-000000000079",
+       "reasons": [
+        "HERITAGE_LISTED",
+        "TAGGED_TOURIST_ATTRACTION"
+       ],
+       "start_minute": 1001,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 3296,
+        "minutes": 44,
+        "mode": "walk",
+        "seconds": 2637
+       }
+      },
+      {
+       "category": "restaurant",
+       "cuisines": [
+        "greek"
+       ],
+       "duration_minutes": 90,
+       "end_minute": 1290,
+       "kind": "meal",
+       "lat": 48.326187,
+       "lon": 14.313321,
+       "meal_type": "dinner",
+       "name": "Synthetic restaurant 045",
+       "place_id": "00000000-0000-4000-b002-000000000045",
+       "reasons": [
+        "DINNER_WINDOW",
+        "VENUE_SUITS_MEAL",
+        "NEAREST_SUITABLE",
+        "NEW_CUISINE"
+       ],
+       "start_minute": 1200,
+       "transfer": null
+      }
+     ]
+    }
+   ],
+   "notes": [
+    {
+     "code": "PROFILE_WIDER",
+     "params": {
+      "radius_km": 15
+     }
+    },
+    {
+     "code": "DIVERSITY_ADJUSTED",
+     "params": {
+      "kept_percent": 50
+     }
+    },
+    {
+     "code": "INTER_CITY_TRAVEL",
+     "params": {
+      "day": 3,
+      "from_name": "Synthetic Town A",
+      "label": "estimated",
+      "minutes": 225,
+      "to_name": "Synthetic Town C"
+     }
+    },
+    {
+     "code": "INTER_CITY_TRAVEL",
+     "params": {
+      "day": 4,
+      "from_name": "Synthetic Town C",
+      "label": "estimated",
+      "minutes": 189,
+      "to_name": "Synthetic Town B"
+     }
+    },
+    {
+     "code": "MEALS_NOT_PLANNED",
+     "params": {
+      "count": 2,
+      "radius_km": 3
+     }
+    },
+    {
+     "code": "ESTIMATED_TRANSFERS",
+     "params": {
+      "estimated": 54,
+      "transfers": 54
+     }
+    }
+   ],
+   "profile": "wider",
+   "stats": {
+    "day_utilisation_permille": 753,
+    "days_with_visits": 6,
+    "estimated_transfers": 54,
+    "intercity_legs": 2,
+    "meal_minutes": 900,
+    "meals": 16,
+    "routed_transfers": 0,
+    "travel_minutes": 951,
+    "travel_seconds": 55497,
+    "travel_share_permille": 269,
+    "visit_minutes": 1675,
+    "visits": 42
+   }
+  }
+ ],
+ "seed": 0
+}

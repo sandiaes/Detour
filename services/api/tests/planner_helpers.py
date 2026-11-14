@@ -2,12 +2,13 @@
 towns of an invented area) and a request."""
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from functools import cache
 from pathlib import Path
 
-from detour_api.planner.types import BaseCity, Candidate, PlanRequest, Restaurant
+from detour_api.planner.types import BaseCity, Candidate, PlanRequest, Restaurant, RouteStop
 
 PLANNER_FIXTURES = Path(__file__).parent / "fixtures" / "planner"
 GOLDEN = PLANNER_FIXTURES / "golden"
@@ -83,6 +84,29 @@ def request(
         data_version=data_version,
         kind="city",
         base_cities=(BaseCity(SYNTHETIC_CITY_ID, "Synthetic City", lat, lon),),
+    )
+
+
+def route_request(
+    stops: Sequence[tuple[int, int, str | None]],
+    start: date | None = None,
+    data_version: str | None = "run-fixture",
+) -> PlanRequest:
+    """A multi-city trip over the synthetic area's towns (ADR 024): ``(town city_id, days,
+    country)`` in the user's order. A country in ``single_city_countries`` (``JP``) makes the legs
+    into and out of that stop unknown."""
+    by_id = {t.city_id: t for t in towns("area")}
+    route = tuple(RouteStop(by_id[cid], days, country) for cid, days, country in stops)
+    first = route[0].city
+    return PlanRequest(
+        destination_name="Synthetic Route",
+        lat=first.lat,
+        lon=first.lon,
+        days=sum(s.days for s in route),
+        start_date=start,
+        data_version=data_version,
+        kind="route",
+        stops=route,
     )
 
 

@@ -147,7 +147,11 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
             <View
               accessible
               accessibilityRole="button"
-              accessibilityLabel={`Transport: ${transport.arrival.mode === "walk" ? "walk" : "drive"} to ${transport.name}${transport.fromName ? ` from ${transport.fromName}` : ""}, ${formatSeconds(transport.arrival.seconds)}, ${transport.arrival.confidence}`}
+              accessibilityLabel={
+                transport.arrival.seconds === null
+                  ? `Transport: travel to ${transport.name}${transport.fromName ? ` from ${transport.fromName}` : ""}, time not calculated`
+                  : `Transport: ${transport.arrival.mode === "walk" ? "walk" : "drive"} to ${transport.name}${transport.fromName ? ` from ${transport.fromName}` : ""}, ${formatSeconds(transport.arrival.seconds)}, ${transport.arrival.confidence}`
+              }
               accessibilityHint="Highlights it in the list"
               accessibilityState={{ selected: selectedId === transport.id }}
               style={styles.hit}

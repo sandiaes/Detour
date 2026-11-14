@@ -100,6 +100,16 @@ def validate_plan(
         return [Violation("UNKNOWN_PROFILE", detail=plan.profile)]
     day_end = min(profile.day_end_minute, config.day_window_end_minute)
     bases = {b.city_id: b for b in request.base_cities}
+    # A multi-city trip (ADR 024): the stops, in the user's order, each for its days.
+    route_bases: list[int] = []
+    rail = set(config.single_city_countries)
+    country: dict[int, str | None] = {}
+    if request.kind == "route":
+        bases = {st.city.city_id: st.city for st in request.stops}
+        country = {st.city.city_id: st.country_iso2 for st in request.stops}
+        route_bases = [st.city.city_id for st in request.stops for _ in range(st.days)]
+        if len(route_bases) != request.days:
+            out.append(Violation("STOP_DAYS", detail=f"{len(route_bases)} != {request.days}"))
 
     if len(plan.days) != request.days:
         out.append(Violation("DAY_COUNT", detail=f"{len(plan.days)} != {request.days}"))
@@ -129,10 +139,23 @@ def validate_plan(
             out.append(Violation("UNKNOWN_BASE", d, detail=str(day.base_city_id)))
         elif day.base_city_name != bases[day.base_city_id].name:
             out.append(Violation("BASE_NAME_MISMATCH", d))
+        if route_bases and (
+            expected_index > len(route_bases) or day.base_city_id != route_bases[expected_index - 1]
+        ):
+            out.append(Violation("ROUTE_ORDER", d, detail=str(day.base_city_id)))
         moved = expected_index > 1 and day.base_city_id != previous_base
         day_start = config.day_start_minute
-        if moved != (day.arrival is not None):
+        rail_leg = moved and (
+            country.get(day.base_city_id or 0) in rail or country.get(previous_base or 0) in rail
+        )
+        if day.arrival_unknown and day.arrival is not None:
+            out.append(Violation("ARRIVAL_BOTH_KNOWN_AND_UNKNOWN", d))
+        if moved != (day.arrival is not None or day.arrival_unknown):
             out.append(Violation("ARRIVAL_MISMATCH", d))
+        elif day.arrival_unknown != rail_leg:
+            # Only a leg into or out of a country travelled by rail has no time; any other leg
+            # between stops is driven and has one (ADR 024, decisions 9 and 10).
+            out.append(Violation("UNKNOWN_LEG_MISMATCH", d))
         elif day.arrival is not None:
             arr = day.arrival
             intercity += 1
@@ -198,6 +221,12 @@ def validate_plan(
                         out.append(
                             Violation("DURATION_NOT_DEFAULT", d, pos, str(item.duration_minutes))
                         )
+                    stop = bases.get(day.base_city_id or 0) if route_bases else None
+                    if (
+                        stop is not None
+                        and round(distance_m(stop.coord, c.coord)) > profile.radius_m
+                    ):
+                        out.append(Violation("VISIT_OUTSIDE_STOP", d, pos, item.place_id))
                 if item.meal_type is not None or item.cuisines is not None:
                     out.append(Violation("VISIT_WITH_MEAL_FIELDS", d, pos))
                 if item.place_id in seen_visits:

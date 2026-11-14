@@ -1,4 +1,4 @@
-import type { DestinationResult, Trip } from "@detour/shared";
+import type { CoverCandidate, DestinationResult, Trip } from "@detour/shared";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 
@@ -6,6 +6,14 @@ import { useBackend } from "../api/BackendProvider";
 import { call, describeError, isOfflineError, planningIssues } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { Cover } from "../components/ds/Cover";
+import { CoverPicker } from "../components/ds/CoverPicker";
+import {
+  CitySearchSheet,
+  StopList,
+  type StopDraft,
+  evenSplit,
+  stopsProblem,
+} from "../components/StopList";
 import { Icon } from "../components/ds/Icon";
 import { IconButton } from "../components/ds/primitives";
 import { Notice, useAnnounceOnMount } from "../components/ui";
@@ -65,6 +73,10 @@ export function CreateTripScreen() {
     message: string;
   } | null>(null);
   const [chosen, setChosen] = useState<DestinationResult | null>(null);
+  // A multi-city trip (ADR 024): the cities in the user's order with their days. Null while the
+  // trip has one destination; "Add another city" starts it with the chosen city first.
+  const [stops, setStops] = useState<StopDraft[] | null>(null);
+  const [addingCity, setAddingCity] = useState(false);
   const [days, setDays] = useState(3);
   const [startDate, setStartDate] = useState("");
   const [calendar, setCalendar] = useState(false);
@@ -75,6 +87,11 @@ export function CreateTripScreen() {
   const [mode, setMode] = useState<"generate" | "empty">("generate");
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
   const [created, setCreated] = useState<Trip | null>(null);
+  // "Change photo" (ADR 022 amendment): a candidate chosen before the trip exists is set as its
+  // cover right after it is created.
+  const [cover, setCoverChoice] = useState<CoverCandidate | null>(null);
+  const [picker, setPicker] = useState(false);
+  const apiUrl = (useBackend().apiUrl ?? "").replace(/\/$/, "");
 
   const client = state.phase === "ready" ? state.connection.client : null;
   const waking = state.phase === "connecting" && state.waking;
@@ -147,19 +164,35 @@ export function CreateTripScreen() {
     setProblem(null);
     setMode(how);
     if (!chosen || hasErrors) return;
+    if (stops && stopsProblem(stops)) return;
     let trip = created;
     if (!trip) {
       setWorking("creating");
       try {
-        trip = await actions.createTrip({
-          // The trip is named after its destination: the country, region or city.
-          title: chosen.name,
-          destination_kind: chosen.kind,
-          destination_ref: chosen.ref,
-          duration_days: days,
-          start_date: startDate.trim() || null,
-        });
+        trip = await actions.createTrip(
+          stops
+            ? {
+                // The server names a multi-city trip after its cities ("Tokyo to Osaka").
+                title: "Multi-city trip",
+                destination_kind: "route",
+                stops: stops.map((x) => ({ city_id: x.cityId, days: x.days })),
+                duration_days: stops.reduce((n, x) => n + x.days, 0),
+                start_date: startDate.trim() || null,
+              }
+            : {
+                // The trip is named after its destination: the country, region or city.
+                title: chosen.name,
+                destination_kind: chosen.kind,
+                destination_ref: chosen.ref,
+                duration_days: days,
+                start_date: startDate.trim() || null,
+              },
+        );
         setCreated(trip);
+        if (cover) {
+          // A cover that cannot be set leaves the automatic photo; the trip is not held up.
+          trip = await actions.setCover(trip.id, cover.commons_file).catch(() => trip as Trip);
+        }
       } catch (e) {
         setProblem({ message: describeError(e), issues: [] });
         setWorking(null);
@@ -226,7 +259,9 @@ export function CreateTripScreen() {
                 label="Clear destination"
                 onPress={() => {
                   setChosen(null);
+                  setStops(null);
                   setCreated(null);
+                  setCoverChoice(null);
                 }}
               />
             ) : null}
@@ -239,13 +274,108 @@ export function CreateTripScreen() {
           {!chosen ? (
             <SearchResults search={search} waking={waking} query={q} onChoose={setChosen} />
           ) : (
-            <Cover
-              seedKey={chosen.ref}
-              height={120}
-              rounded={radius.md}
-              style={styles.cover}
-              testID="create-cover"
-            />
+            <>
+              <Cover
+                seedKey={chosen.ref}
+                uri={cover && apiUrl ? `${apiUrl}${cover.preview_url}` : null}
+                height={120}
+                rounded={radius.md}
+                style={styles.cover}
+                testID="create-cover"
+              />
+              <View style={styles.coverActions}>
+                <Button
+                  label="Change photo"
+                  icon="photos"
+                  variant="secondary"
+                  size="compact"
+                  hint="Choose the trip's photo from photos of the destination"
+                  disabled={!actions.connected}
+                  onPress={() => setPicker(true)}
+                  testID="change-photo"
+                />
+                {cover ? (
+                  <Text style={styles.hint} numberOfLines={1}>
+                    Photo: {cover.credit.author}, {cover.credit.licence}
+                  </Text>
+                ) : null}
+              </View>
+              {chosen.kind === "city" ? (
+                stops ? (
+                  <StopList
+                    stops={stops}
+                    onChange={(next) => {
+                      setCreated(null);
+                      if (next.length >= 2) {
+                        setStops(next);
+                        return;
+                      }
+                      // One city left: an ordinary city trip of that city again.
+                      const only = next[0];
+                      setStops(null);
+                      if (only) {
+                        setDays(only.days);
+                        if (String(only.cityId) !== chosen.ref) {
+                          setChosen({ ...chosen, ref: String(only.cityId), name: only.name });
+                        }
+                      }
+                    }}
+                  />
+                ) : (
+                  <Button
+                    label="Add another city"
+                    icon="add"
+                    variant="quiet"
+                    size="compact"
+                    hint="Plan a trip through several cities in your order"
+                    onPress={() => setAddingCity(true)}
+                    testID="add-city"
+                  />
+                )
+              ) : null}
+              {addingCity ? (
+                <CitySearchSheet
+                  onClose={() => setAddingCity(false)}
+                  onChoose={(r) => {
+                    setAddingCity(false);
+                    setCreated(null);
+                    const split = evenSplit(days, 2);
+                    setStops([
+                      {
+                        cityId: Number(chosen.ref),
+                        name: chosen.name,
+                        detail: describeResult(chosen),
+                        days: split[0] ?? 1,
+                      },
+                      {
+                        cityId: Number(r.ref),
+                        name: r.name,
+                        detail: describeResult(r),
+                        days: split[1] ?? 1,
+                      },
+                    ]);
+                  }}
+                />
+              ) : null}
+              {picker ? (
+                <CoverPicker
+                  visible
+                  sources={
+                    stops
+                      ? stops.map((x) => ({
+                          kind: "city" as const,
+                          ref: String(x.cityId),
+                          name: x.name,
+                        }))
+                      : [{ kind: chosen.kind, ref: chosen.ref, name: chosen.name }]
+                  }
+                  load={actions.coverCandidates}
+                  chosen={cover?.commons_file ?? null}
+                  onChoose={(c) => setCoverChoice(c)}
+                  onClose={() => setPicker(false)}
+                />
+              ) : null}
+            </>
           )}
         </View>
 
@@ -274,7 +404,16 @@ export function CreateTripScreen() {
           <View style={[styles.row, styles.half, styles.halfRule]}>
             <View style={styles.rowBody}>
               <Text style={styles.rowLabel}>Duration</Text>
-              <DaysStepper value={days} onChange={setDays} />
+              {stops ? (
+                <Text style={styles.input} testID="route-total">
+                  {pluralise(
+                    stops.reduce((n, x) => n + x.days, 0),
+                    "day",
+                  )}
+                </Text>
+              ) : (
+                <DaysStepper value={days} onChange={setDays} />
+              )}
             </View>
           </View>
         </View>
@@ -335,6 +474,11 @@ export function CreateTripScreen() {
           Travel style and public transport are saved for later. The plans do not use them yet.
         </Text>
 
+        {stops && stopsProblem(stops) ? (
+          <Notice tone="warning" label="Cities">
+            {stopsProblem(stops)}
+          </Notice>
+        ) : null}
         {problem ? (
           <Notice tone="error">
             {problem.message}
@@ -361,7 +505,12 @@ export function CreateTripScreen() {
             variant="ink"
             fill
             loading={working !== null && mode === "generate"}
-            disabled={!chosen || offline || (working !== null && mode !== "generate")}
+            disabled={
+              !chosen ||
+              offline ||
+              (stops !== null && stopsProblem(stops) !== null) ||
+              (working !== null && mode !== "generate")
+            }
             hint={chosen ? "Two different plans to compare" : "Choose a destination first"}
             onPress={() => void submit("generate")}
           />
@@ -372,7 +521,12 @@ export function CreateTripScreen() {
             variant="secondary"
             fill
             loading={working !== null && mode === "empty"}
-            disabled={!chosen || offline || (working !== null && mode !== "empty")}
+            disabled={
+              !chosen ||
+              offline ||
+              (stops !== null && stopsProblem(stops) !== null) ||
+              (working !== null && mode !== "empty")
+            }
             hint={
               chosen ? "No proposals: you add the places yourself" : "Choose a destination first"
             }
@@ -549,6 +703,7 @@ const styles = StyleSheet.create({
   placeholder: { color: colors.muted },
   chosenName: { ...type.heading, color: colors.text },
   cover: { marginTop: spacing.xs },
+  coverActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   pair: {
     flexDirection: "row",
     marginHorizontal: spacing.lg,

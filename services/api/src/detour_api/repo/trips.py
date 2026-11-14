@@ -14,6 +14,7 @@ from detour_api.models.trips import (
     Destination,
     Trip,
     TripCreate,
+    TripStop,
     TripUpdate,
     TripVisit,
     end_date_of,
@@ -25,7 +26,8 @@ MAX_TRIPS_PER_INSTALLATION = 100
 _TRIP_COLUMNS = """
     t.id, t.title, t.destination_kind, t.destination_ref, t.destination_name,
     ST_Y(t.destination_point) AS dlat, ST_X(t.destination_point) AS dlon, t.duration_days,
-    t.start_date, t.selected_itinerary_id, t.status, t.archived_at, t.is_seed, t.created_at, t.updated_at
+    t.start_date, t.selected_itinerary_id, t.status, t.archived_at, t.is_seed, t.created_at, t.updated_at,
+    t.stops_version
 """
 
 
@@ -41,7 +43,35 @@ def ensure_installation(conn: Connection, installation_id: uuid.UUID) -> None:
     )
 
 
-def _trip(row: Any, cover: Photo | None = None) -> Trip:
+def trip_stops(conn: Connection, trip_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[TripStop]]:
+    """The stops of multi-city trips, in order (ADR 024)."""
+    if not trip_ids:
+        return {}
+    rows = conn.execute(
+        text(
+            "SELECT trip_id, position, city_id, city_name, country_iso2, ST_Y(point) AS lat,"
+            " ST_X(point) AS lon, days FROM app.trip_stop"
+            " WHERE trip_id = ANY(CAST(:ids AS uuid[])) ORDER BY trip_id, position"
+        ),
+        {"ids": [str(t) for t in trip_ids]},
+    ).all()
+    out: dict[uuid.UUID, list[TripStop]] = {}
+    for r in rows:
+        out.setdefault(r.trip_id, []).append(
+            TripStop(
+                position=r.position,
+                city_id=r.city_id,
+                name=r.city_name,
+                country_iso2=r.country_iso2,
+                lat=r.lat,
+                lon=r.lon,
+                days=r.days,
+            )
+        )
+    return out
+
+
+def _trip(row: Any, cover: Photo | None = None, stops: list[TripStop] | None = None) -> Trip:
     return Trip(
         id=row.id,
         title=row.title,
@@ -60,6 +90,8 @@ def _trip(row: Any, cover: Photo | None = None) -> Trip:
         archived_at=row.archived_at,
         is_seed=row.is_seed,
         cover_image=cover,
+        stops=stops or [],
+        stops_version=row.stops_version,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -72,7 +104,8 @@ def get_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -
     ).first()
     if row is None:
         return None
-    return _trip(row, images.trip_covers(conn, [row.id]).get(row.id))
+    stops = trip_stops(conn, [row.id]) if row.destination_kind == "route" else {}
+    return _trip(row, images.trip_covers(conn, [row.id]).get(row.id), stops.get(row.id))
 
 
 def require_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
@@ -94,7 +127,8 @@ def list_trips(
         {"i": installation_id, "s": status},
     ).all()
     covers = images.trip_covers(conn, [r.id for r in rows])
-    return [_trip(r, covers.get(r.id)) for r in rows]
+    stops = trip_stops(conn, [r.id for r in rows if r.destination_kind == "route"])
+    return [_trip(r, covers.get(r.id), stops.get(r.id)) for r in rows]
 
 
 def create_trip(
@@ -106,6 +140,8 @@ def create_trip(
     lat: float,
     lon: float,
     is_seed: bool = False,
+    stops: "list[ResolvedStop] | None" = None,
+    title: str | None = None,
 ) -> Trip:
     count = conn.execute(
         text("SELECT count(*) FROM app.trip WHERE installation_id = :i"), {"i": installation_id}
@@ -127,7 +163,7 @@ def create_trip(
         {
             "id": trip_id,
             "inst": installation_id,
-            "title": body.title,
+            "title": title or body.title,
             "kind": body.destination_kind,
             "ref": body.destination_ref,
             "dname": destination_name,
@@ -138,7 +174,47 @@ def create_trip(
             "seed": is_seed,
         },
     )
+    if stops:
+        write_stops(conn, trip_id, stops)
     return require_trip(conn, installation_id, trip_id)
+
+
+class ResolvedStop:
+    """A stop checked against the gazetteer: its snapshot as stored."""
+
+    def __init__(
+        self, city_id: int, name: str, country_iso2: str | None, lat: float, lon: float, days: int
+    ) -> None:
+        self.city_id = city_id
+        self.name = name
+        self.country_iso2 = country_iso2
+        self.lat = lat
+        self.lon = lon
+        self.days = days
+
+
+def write_stops(conn: Connection, trip_id: uuid.UUID, stops: list[ResolvedStop]) -> None:
+    """Replace a trip's stops with these, in order."""
+    conn.execute(text("DELETE FROM app.trip_stop WHERE trip_id = :t"), {"t": trip_id})
+    for position, s in enumerate(stops, start=1):
+        conn.execute(
+            text(
+                "INSERT INTO app.trip_stop (id, trip_id, position, city_id, city_name,"
+                " country_iso2, point, days) VALUES (:id, :t, :p, :c, :n, :iso,"
+                " ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :d)"
+            ),
+            {
+                "id": uuid.uuid4(),
+                "t": trip_id,
+                "p": position,
+                "c": s.city_id,
+                "n": s.name,
+                "iso": s.country_iso2,
+                "lat": s.lat,
+                "lon": s.lon,
+                "d": s.days,
+            },
+        )
 
 
 def update_trip(
@@ -200,12 +276,21 @@ def update_trip(
 def _select_itinerary(conn: Connection, trip_id: uuid.UUID, itinerary_id: uuid.UUID | None) -> None:
     if itinerary_id is not None:
         owned = conn.execute(
-            text("SELECT 1 FROM app.itinerary WHERE id = :i AND trip_id = :t"),
+            text(
+                "SELECT it.stops_version, t.stops_version AS trip_version, t.destination_kind"
+                " FROM app.itinerary it JOIN app.trip t ON t.id = it.trip_id"
+                " WHERE it.id = :i AND it.trip_id = :t"
+            ),
             {"i": itinerary_id, "t": trip_id},
         ).first()
         if owned is None:
             raise invalid(
                 "itinerary_not_in_trip", "selected_itinerary_id is not an itinerary of this trip"
+            )
+        # A plan made for a multi-city trip's earlier stops cannot be chosen (ADR 024).
+        if owned.destination_kind == "route" and (owned.stops_version or 0) != owned.trip_version:
+            raise conflict(
+                "stops_changed", "this plan was made for the trip's earlier cities; make new ones"
             )
     conn.execute(
         text(
@@ -479,3 +564,19 @@ def set_visit_confirmed(
     if result.rowcount == 0:
         raise not_found("visit")
     return next(v for v in list_visits(conn, installation_id, trip_id) if v.id == visit_id)
+
+
+def cover_destinations(conn: Connection, trip_id: uuid.UUID) -> list[tuple[str, str]]:
+    """The destinations whose photos a trip's cover may be chosen from: its city or area, or each
+    stop's city for a multi-city trip (ADR 024)."""
+    row = conn.execute(
+        text("SELECT destination_kind, destination_ref FROM app.trip WHERE id = :id"),
+        {"id": trip_id},
+    ).one()
+    if row[0] in ("city", "area"):
+        return [(row[0], row[1])]
+    stops = conn.execute(
+        text("SELECT city_id::text FROM app.trip_stop WHERE trip_id = :id ORDER BY position"),
+        {"id": trip_id},
+    ).all()
+    return [("city", r[0]) for r in stops]

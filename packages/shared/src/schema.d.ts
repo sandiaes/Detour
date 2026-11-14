@@ -140,6 +140,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/cover-previews/{preview_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A small preview of a cover candidate, streamed by the backend. */
+    get: operations["get_cover_preview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/destinations/{kind}/{ref}/cover-candidates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Up to 12 freely licensed photos of a destination to choose a cover from (Wikimedia Commons, through the backend). Also starts looking up its automatic photo. */
+    get: operations["list_cover_candidates"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/destinations/search": {
     parameters: {
       query?: never;
@@ -315,6 +349,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/trips/{trip_id}/cover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Choose the trip's cover from the destination's candidates (GET /v1/destinations/{kind}/{ref}/cover-candidates), or null for the automatic photo. */
+    put: operations["set_trip_cover"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/stops": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Replace a multi-city trip's stops while it has no chosen plan (ADR 024). With a chosen plan, preview the change instead (POST /v1/trips/{id}/stops/preview). */
+    put: operations["replace_stops"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/itineraries/{itinerary_id}": {
     parameters: {
       query?: never;
@@ -471,6 +539,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/trips/{trip_id}/stops/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Preview new stops for a multi-city trip (ADR 024): the active plan repaired, with what each stop keeps, what is filled in and what leaves with a removed day. Apply or discard it like any change set. */
+    post: operations["preview_stops"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/restaurants/search": {
     parameters: {
       query?: never;
@@ -585,18 +670,19 @@ export interface components {
       from_base_city_name: string | null;
       /**
        * Mode
+       * @description unknown: a leg into or out of a country travelled by rail, which Detour does not plan yet; no time or distance is given (ADR 024)
        * @enum {string}
        */
-      mode: "walk" | "drive";
+      mode: "walk" | "drive" | "unknown";
       /** Seconds */
-      seconds: number;
+      seconds: number | null;
       /** Meters */
-      meters: number;
+      meters: number | null;
       /**
        * Confidence
        * @enum {string}
        */
-      confidence: "routed" | "estimated";
+      confidence: "routed" | "estimated" | "unknown";
     };
     /** AttributionEntry */
     AttributionEntry: {
@@ -678,7 +764,7 @@ export interface components {
        * Action
        * @enum {string}
        */
-      action: "add_place" | "remove_place" | "add_restaurant";
+      action: "add_place" | "remove_place" | "add_restaurant" | "edit_stops";
       /** Target Name */
       target_name: string;
       /**
@@ -772,6 +858,38 @@ export interface components {
       config_version: string;
       map: components["schemas"]["MapConfig"];
     };
+    /**
+     * CoverCandidate
+     * @description A photo the user may choose as a trip's cover ("Change photo", ADR 022 amendment).
+     */
+    CoverCandidate: {
+      /**
+       * Commons File
+       * @description The file's name on Wikimedia Commons, without File:
+       */
+      commons_file: string;
+      /**
+       * Preview Url
+       * @description Path on this API (GET /v1/cover-previews/{id}): a JPEG at most 500 px wide
+       */
+      preview_url: string;
+      /**
+       * Width
+       * @description Of the original file
+       */
+      width: number;
+      /** Height */
+      height: number;
+      credit: components["schemas"]["PhotoCredit"];
+    };
+    /**
+     * CoverChoice
+     * @description The cover chosen for a trip; null goes back to the automatic photo.
+     */
+    CoverChoice: {
+      /** Commons File */
+      commons_file: string | null;
+    };
     /** DataVersion */
     DataVersion: {
       /**
@@ -838,13 +956,16 @@ export interface components {
       /** Items */
       items: components["schemas"]["Item"][];
     };
-    /** Destination */
+    /**
+     * Destination
+     * @description For a multi-city trip (route): ``ref`` is the first stop's city and ``name`` the trip's.
+     */
     Destination: {
       /**
        * Kind
        * @enum {string}
        */
-      kind: "city" | "area";
+      kind: "city" | "area" | "route";
       /** Ref */
       ref: string;
       /** Name */
@@ -1455,6 +1576,11 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /**
+       * Stops Version
+       * @description A multi-city trip's stop version this plan was made for; a plan whose version is not the trip's was made for earlier cities and cannot be chosen
+       */
+      stops_version?: number | null;
       /** Days */
       days: components["schemas"]["Day"][];
     };
@@ -1516,6 +1642,11 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /**
+       * Stops Version
+       * @description A multi-city trip's stop version this plan was made for; a plan whose version is not the trip's was made for earlier cities and cannot be chosen
+       */
+      stops_version?: number | null;
     };
     /** ItineraryVersion */
     ItineraryVersion: {
@@ -1532,7 +1663,7 @@ export interface components {
        */
       change_set_id: string | null;
       /** Action */
-      action: ("add_place" | "remove_place" | "add_restaurant") | null;
+      action: ("add_place" | "remove_place" | "add_restaurant" | "edit_stops") | null;
       /** Target Name */
       target_name: string | null;
     };
@@ -2189,6 +2320,30 @@ export interface components {
        */
       issues: components["schemas"]["SlotReason"][];
     };
+    /**
+     * StopIn
+     * @description A stop of a multi-city trip, in the user's order (ADR 024).
+     */
+    StopIn: {
+      /**
+       * City Id
+       * @description The city's GeoNames id (a destination search result)
+       */
+      city_id: number;
+      /** Days */
+      days: number;
+    };
+    /**
+     * StopsEdit
+     * @description A multi-city trip's new stops, in order (ADR 024): add, remove, reorder or change days.
+     */
+    StopsEdit: {
+      /**
+       * Stops
+       * @description 2 to 6 cities; their days become the trip's length
+       */
+      stops: components["schemas"]["StopIn"][];
+    };
     /** SuggestionReason */
     SuggestionReason: {
       /** Code */
@@ -2258,6 +2413,17 @@ export interface components {
       /** @description The trip's photo: the one the user chose, else the one found for the destination city; null when there is none (the app then shows its illustration) */
       cover_image?: components["schemas"]["Photo"] | null;
       /**
+       * Stops
+       * @description A multi-city trip's cities in order; empty otherwise
+       */
+      stops?: components["schemas"]["TripStop"][];
+      /**
+       * Stops Version
+       * @description Counts applied stop edits; a plan records the one it was made for
+       * @default 0
+       */
+      stops_version: number;
+      /**
        * Created At
        * Format: date-time
        */
@@ -2270,19 +2436,50 @@ export interface components {
     };
     /** TripCreate */
     TripCreate: {
-      /** Title */
+      /**
+       * Title
+       * @description Ignored for a multi-city trip, whose name follows its stops
+       */
       title: string;
       /**
        * Destination Kind
        * @enum {string}
        */
-      destination_kind: "city" | "area";
-      /** Destination Ref */
-      destination_ref: string;
+      destination_kind: "city" | "area" | "route";
+      /**
+       * Destination Ref
+       * @description The city or area; not sent for a multi-city trip (route)
+       */
+      destination_ref?: string | null;
+      /**
+       * Stops
+       * @description Only for a multi-city trip: 2 to 6 cities in order, whose days add up to duration_days
+       */
+      stops?: components["schemas"]["StopIn"][] | null;
       /** Duration Days */
       duration_days: number;
       /** Start Date */
       start_date?: string | null;
+    };
+    /** TripStop */
+    TripStop: {
+      /**
+       * Position
+       * @description 1 for the first city
+       */
+      position: number;
+      /** City Id */
+      city_id: number;
+      /** Name */
+      name: string;
+      /** Country Iso2 */
+      country_iso2: string | null;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** Days */
+      days: number;
     };
     /**
      * TripUpdate
@@ -2632,6 +2829,96 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_cover_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        preview_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "image/jpeg": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_cover_candidates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        kind: "city" | "area";
+        ref: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CoverCandidate"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
         };
       };
     };
@@ -3494,6 +3781,130 @@ export interface operations {
       };
     };
   };
+  set_trip_cover: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CoverChoice"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  replace_stops: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StopsEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
   get_itinerary: {
     parameters: {
       query?: never;
@@ -4199,6 +4610,68 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  preview_stops: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StopsEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanningErrorBody"];
         };
       };
     };
