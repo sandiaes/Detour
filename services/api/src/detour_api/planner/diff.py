@@ -18,7 +18,6 @@ class DiffItem:
     key: str
     kind: str
     name: str
-    meal_type: str | None
     start_minute: int
     end_minute: int
     origin: str
@@ -41,7 +40,6 @@ class DiffRetime:
     kind: str
     name: str
     day: int
-    meal_type: str | None
     old_start_minute: int
     new_start_minute: int
 
@@ -82,7 +80,7 @@ class PlanDiff:
 
 
 def _item(day: int, e: Entry) -> DiffItem:
-    return DiffItem(day, e.key, e.kind, e.name, e.meal_type, e.start_minute, e.end_minute, e.origin)
+    return DiffItem(day, e.key, e.kind, e.name, e.start_minute, e.end_minute, e.origin)
 
 
 def _travel(days: Iterable[RDay]) -> int:
@@ -97,10 +95,8 @@ def _visits(plan: RPlan) -> dict[str, tuple[int, Entry]]:
     return {e.key: (d.day_index, e) for d in plan.days for e in d.items if e.kind == "visit"}
 
 
-def _meals(plan: RPlan) -> dict[tuple[int, str | None, str], Entry]:
-    return {
-        (d.day_index, e.meal_type, e.key): e for d in plan.days for e in d.items if e.kind == "meal"
-    }
+def _meals(plan: RPlan) -> dict[tuple[int, str], Entry]:
+    return {(d.day_index, e.key): e for d in plan.days for e in d.items if e.kind == "meal"}
 
 
 def _same_day(a: RDay, b: RDay) -> bool:
@@ -132,10 +128,10 @@ def compare(old: RPlan, new: RPlan) -> PlanDiff:
                 )
             elif oe.start_minute != ne.start_minute:
                 retimed.append(
-                    DiffRetime(key, "visit", ne.name, nd, None, oe.start_minute, ne.start_minute)
+                    DiffRetime(key, "visit", ne.name, nd, oe.start_minute, ne.start_minute)
                 )
     om, nm = _meals(old), _meals(new)
-    for mk in sorted(set(om) | set(nm), key=lambda k: (k[0], k[1] or "", k[2])):
+    for mk in sorted(set(om) | set(nm)):
         day = mk[0]
         if mk not in nm:
             removed.append(_item(day, om[mk]))
@@ -144,9 +140,7 @@ def compare(old: RPlan, new: RPlan) -> PlanDiff:
         elif om[mk].start_minute != nm[mk].start_minute:
             e = nm[mk]
             retimed.append(
-                DiffRetime(
-                    e.key, "meal", e.name, day, e.meal_type, om[mk].start_minute, e.start_minute
-                )
+                DiffRetime(e.key, "meal", e.name, day, om[mk].start_minute, e.start_minute)
             )
 
     old_days = {d.day_index: d for d in old.days}

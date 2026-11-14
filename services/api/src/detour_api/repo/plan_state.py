@@ -4,7 +4,7 @@ A **state** is a JSON-safe dict of an itinerary's days, items and transfers as r
 summary and the engine, configuration and data versions:
 
     {"days": [{id, day_index, date, base_city_id, base_city_name, arrival}],
-     "items": [{id, day_id, position, type, meal_type, place_id, user_place_id, display_name,
+     "items": [{id, day_id, position, type, place_id, user_place_id, display_name,
                 lat, lon, start_minute, end_minute, duration_minutes, duration_source, origin,
                 locked, reasons}],
      "transfers": [{from_item_id, to_item_id, mode, seconds, meters, confidence}],
@@ -58,7 +58,7 @@ def read_state(conn: Connection, itinerary_id: uuid.UUID) -> State:
     ).all()
     items = conn.execute(
         text(
-            "SELECT i.id, i.day_id, i.position, i.type, i.meal_type, i.place_id, i.user_place_id,"
+            "SELECT i.id, i.day_id, i.position, i.type, i.place_id, i.user_place_id,"
             " i.display_name, ST_Y(i.display_point) AS lat, ST_X(i.display_point) AS lon,"
             " i.start_time, i.end_time, i.duration_minutes, i.duration_source, i.origin,"
             " i.locked, i.reasons FROM app.itinerary_item i"
@@ -105,7 +105,6 @@ def read_state(conn: Connection, itinerary_id: uuid.UUID) -> State:
                 "day_id": str(r.day_id),
                 "position": r.position,
                 "type": r.type,
-                "meal_type": r.meal_type,
                 "place_id": None if r.place_id is None else str(r.place_id),
                 "user_place_id": None if r.user_place_id is None else str(r.user_place_id),
                 "display_name": r.display_name,
@@ -197,10 +196,10 @@ def write_state(conn: Connection, itinerary_id: uuid.UUID, state: State) -> None
         conn.execute(
             text(
                 """
-                INSERT INTO app.itinerary_item (id, day_id, position, type, meal_type, place_id,
+                INSERT INTO app.itinerary_item (id, day_id, position, type, place_id,
                     user_place_id, display_name, display_point, start_time, end_time,
                     duration_minutes, duration_source, origin, locked, reasons)
-                VALUES (:id, :d, :pos, :type, :meal, :place, :uplace, :name,
+                VALUES (:id, :d, :pos, :type, :place, :uplace, :name,
                     CASE WHEN CAST(:lat AS float8) IS NULL THEN NULL
                          ELSE ST_SetSRID(ST_MakePoint(:lon, :lat), 4326) END,
                     :start, :end, :minutes, :source, :origin, :locked, :reasons)
@@ -211,7 +210,6 @@ def write_state(conn: Connection, itinerary_id: uuid.UUID, state: State) -> None
                 "d": uuid.UUID(r["day_id"]),
                 "pos": r["position"],
                 "type": r["type"],
-                "meal": r["meal_type"],
                 "place": None if r["place_id"] is None else uuid.UUID(r["place_id"]),
                 "uplace": None if r["user_place_id"] is None else uuid.UUID(r["user_place_id"]),
                 "name": r["display_name"],
@@ -341,7 +339,6 @@ def to_rplan(state: State, profile: str, categories: dict[str, str] | None = Non
                     place_id=r["place_id"],
                     user_place_id=r["user_place_id"],
                     category=None if kind == "meal" else cats.get(r["place_id"] or ""),
-                    meal_type=r["meal_type"],
                     item_id=r["id"],
                 )
             )
@@ -407,7 +404,6 @@ def from_rplan(
                     "day_id": day_id,
                     "position": pos,
                     "type": e.kind,
-                    "meal_type": e.meal_type,
                     "place_id": e.place_id,
                     "user_place_id": e.user_place_id,
                     "display_name": e.name,

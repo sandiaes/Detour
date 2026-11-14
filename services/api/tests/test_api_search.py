@@ -108,11 +108,11 @@ PLACE_FIXTURES = [
         ["Testburg Museum", "Testburg Castle", "Testburg Zoo"],
         [],
     ),
-    ({"q": "cafe ostertal"}, ["Café Östertal"], []),  # accents ignored
-    ({"q": "cafe östertal"}, ["Café Östertal"], []),
-    ({"q": "東京"}, ["東京ラーメン"], []),
-    ({"q": "post", "region": "test-region", "kind": "restaurant"}, ["Zur Alten Post"], []),
-    ({"q": "post", "kind": "attraction"}, [], ["Zur Alten Post"]),
+    ({"q": "heimatmuseum ostertal"}, ["Östertal Heimatmuseum"], []),  # accents ignored
+    ({"q": "heimatmuseum östertal"}, ["Östertal Heimatmuseum"], []),
+    # ADR 026: restaurants and cafes are not imported, so none can be found
+    ({"q": "post"}, [], ["Zur Alten Post"]),
+    ({"q": "東京"}, [], ["東京ラーメン"]),
     ({"q": "notable"}, ["Notable memorial", "Notable yes"], []),
     ({"q": "plaque"}, [], ["Plaque"]),  # memorial subtype excluded by the selection rule
     ({"q": "plain memorial"}, [], ["Plain memorial"]),  # memorial without wikidata
@@ -126,10 +126,10 @@ PLACE_FIXTURES = [
     ({"q": "tree shrine"}, [], ["Tree shrine"]),
     ({"q": "heritage thing"}, [], ["Heritage thing"]),
     ({"q": "city wall"}, ["Old city wall"], ["City wall bit"]),
-    # ADR 011: restaurants and cafes only near attractions or towns
     ({"q": "remote gasthaus"}, [], ["Remote Gasthaus"]),
     ({"q": "remote cafe"}, [], ["Remote Cafe"]),
-    ({"q": "neustadt gasthaus"}, ["Neustadt Gasthaus"], []),  # near a town of 8,000 only
+    ({"q": "neustadt gasthaus"}, [], ["Neustadt Gasthaus"]),
+    ({"q": "cafe ostertal"}, [], ["Café Östertal"]),
 ]
 
 
@@ -166,27 +166,26 @@ def test_near_search_can_combine_text_and_kind(api_env: ApiEnv) -> None:
     body = search(
         api_env,
         "/v1/places/search",
-        q="post",
-        lat=48.2210,
-        lon=16.3810,
+        q="heimatmuseum",
+        lat=48.2215,
+        lon=16.3815,
         radius_m=200,
-        kind="restaurant",
+        kind="attraction",
     )
-    assert names(body) == ["Zur Alten Post"]
+    assert names(body) == ["Östertal Heimatmuseum"]
 
 
-def test_unnamed_places_are_returned_with_null_names(api_env: ApiEnv) -> None:
-    body = search(
-        api_env, "/v1/places/search", lat=48.2200, lon=16.3800, radius_m=50, kind="restaurant"
+def test_the_restaurant_kind_is_no_longer_searchable(api_env: ApiEnv) -> None:
+    r = api_env.client.get(
+        "/v1/places/search", params={"q": "post", "kind": "restaurant"}, headers=api_env.headers
     )
-    (cafe,) = body["results"]
-    assert cafe["name"] is None and cafe["category"] == "cafe" and cafe["cuisines"] is None
+    assert r.status_code == 422
 
 
-def test_restaurant_results_carry_cuisine_and_city(api_env: ApiEnv) -> None:
-    (post,) = search(api_env, "/v1/places/search", q="alten post")["results"]
-    assert post["cuisines"] == ["austrian", "regional"] and post["venue_type"] == "restaurant"
-    assert post["city_name"] is not None
+def test_search_results_carry_no_cuisine_or_meal_fields(api_env: ApiEnv) -> None:
+    museum = search(api_env, "/v1/places/search", q="testburg museum")["results"][0]
+    assert "cuisines" not in museum and "venue_type" not in museum
+    assert museum["city_name"] is not None
 
 
 @pytest.mark.parametrize(
@@ -237,7 +236,7 @@ def test_regions_and_attributions(api_env: ApiEnv) -> None:
     regions = api_env.client.get("/v1/regions").json()
     (region,) = regions
     assert region["id"] == "test-region" and region["status"] == "available"
-    assert region["counts"] == {"attraction": 11, "restaurant": 5}
+    assert region["counts"] == {"attraction": 11}
     assert region["data_version"]["import_run_id"]
     credits = api_env.client.get("/v1/attributions").json()
     by_name = {c["name"]: c for c in credits}

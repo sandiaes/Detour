@@ -14,7 +14,8 @@ import {
   SectionTitle,
   StatRow,
 } from "../components/ds/primitives";
-import { MEAL_LABEL, dayTitle } from "../components/plan/DayPlan";
+import { dayTitle } from "../components/plan/DayPlan";
+import { VENUE_LABEL } from "../domain/restaurants";
 import {
   EmptyState,
   ErrorState,
@@ -34,13 +35,11 @@ import { useResource } from "../data/DataProvider";
 import { STOP_KIND_LABEL, isEatKind, stopKind } from "../domain/itinerary";
 import { useNavigation } from "../nav/Navigator";
 import { colors, radius, spacing, type } from "../theme";
-import { formatClock, formatCuisines, formatDate, formatMinutes } from "../util/format";
+import { formatClock, formatDate, formatMinutes } from "../util/format";
 
 // One stop of a plan (ADR 021, step 3): what Detour knows about it, and nothing it does not.
 // There is no description, rating, price or opening hours in the data (ADR 003, ADR 017,
 // CLAUDE.md rule 5), so none is shown; notes, photos, tickets and reservations are planned.
-
-const VENUE_LABEL: Record<string, string> = { restaurant: "Restaurant", cafe: "Café" };
 
 /** "Hauptstraße 5, 8010 Graz" from the open data's address parts; null when there are none. */
 export function formatAddress(address: Record<string, string> | null | undefined): string | null {
@@ -270,8 +269,7 @@ export function PlaceDetailScreen({
   const where =
     [address, address ? null : town].filter(Boolean).join(", ") ||
     (item.lat !== null && item.lon !== null ? formatCoordinates(item.lat, item.lon) : null);
-  const venue = item.restaurant?.venue_type ?? detail?.venue_type ?? null;
-  const cuisines = item.restaurant?.cuisines ?? detail?.cuisines ?? null;
+  const venue = item.restaurant?.venue_type ?? null;
   const editable = plan.data.profile !== "manual" && trip?.status !== "past" && items.connected;
   const tags = [
     item.locked ? "Locked" : null,
@@ -358,15 +356,7 @@ export function PlaceDetailScreen({
 
           {meal ? (
             <FactCard>
-              {item.meal_type ? <Fact label="Meal" value={MEAL_LABEL[item.meal_type]} /> : null}
-              <Fact label="Type" value={venue ? (VENUE_LABEL[venue] ?? venue) : "Not specified"} />
-              <Fact label="Cuisine" value={formatCuisines(cuisines)} />
-              {detail?.diet_flags && detail.diet_flags.length > 0 ? (
-                <Fact
-                  label="Diet"
-                  value={detail.diet_flags.map((f: string) => f.replace(/_/g, " ")).join(", ")}
-                />
-              ) : null}
+              <Fact label="Type" value={venue ? VENUE_LABEL[venue] : "Not specified"} />
             </FactCard>
           ) : null}
 

@@ -44,7 +44,6 @@ _CARRIED = (
     "locked",
     "place_id",
     "user_place_id",
-    "meal_type",
 )
 
 

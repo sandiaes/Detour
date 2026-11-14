@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal
 
-from detour_api.planner.config import MealType, ProfileName
+from detour_api.planner.config import ProfileName
 from detour_api.travel.types import Confidence, Coord, EstimateReason, Mode
 
 # Parameters of a note: only what a fixed template needs, all JSON-safe.
@@ -114,8 +114,6 @@ class PlannedItem:
     duration_minutes: int
     reasons: tuple[str, ...]
     transfer: Leg | None  # to the next item of the day; None for the last one
-    meal_type: MealType | None = None  # meals only
-    cuisines: tuple[str, ...] | None = None  # meals only; None: not stated in the data
 
 
 @dataclass(frozen=True)

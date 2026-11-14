@@ -205,7 +205,7 @@ preview; whether users accept the first suggestion (a log KPI: `restaurant_slots
 [ADR 026](026-trip-manager-first.md) retires the slot engine: `planner/restaurant_slots.py`, the
 endpoint `POST /v1/itineraries/{id}/restaurant-suggestions`, the change-set action `add_restaurant`,
 and the app's suggested slots with reasons and detours. A restaurant is added by **searching
-Photon** (the local-data step goes with the imported restaurants) **or by manual entry**, with no
+Photon** (the imported restaurants and the local-data search are gone: migration `0014`) **or by manual entry**, with no
 cuisine and no served meals, and the user chooses its day and time ("Choose day and time"). The
 Photon adapter, the manual pin or typed coordinates, and the rule that a restaurant the user added
 is never left out by a recalculation stay. Until ADR 026 step 4 is built, this ADR describes the

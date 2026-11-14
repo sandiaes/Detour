@@ -70,7 +70,7 @@ PostgreSQL + PostGIS   Valhalla (FOSSGIS     External, backend-only, cached:
  app schema: user data
 
 Offline pipeline (CLI, not request path):
- Geofabrik .osm.pbf ─┬─► POI/restaurant import ─► geo schema
+ Geofabrik .osm.pbf ─┬─► attraction import ─► geo schema
                      └─► Valhalla tile build
  GeoNames dump ─► gazetteer      Wikidata ─► notability, English names (ADR 025, lazy)
 ```
@@ -198,11 +198,11 @@ The engine is `detour_api/planner/` (section 5); its reads and writes are `repo/
 edits of items delete transfers that no longer join neighbours (they are not recomputed; adding or
 removing a place through a change set, section 4.2.5, recalculates the days it changes).
 
-#### 4.2.4 Phase 6 API (ADR 016)
+#### 4.2.4 Phase 6 API (ADR 016; meals removed by ADR 026)
 
-- Generated itineraries contain **meals** (`type = meal`, `meal_type` breakfast, lunch, snack or
-  dinner) at imported places to eat; each meal item carries `restaurant: {venue_type, cuisines}`,
-  read from `geo` by identifier (cuisines null when the data states none).
+- Generated itineraries contain **sights only**. A restaurant or café stop (`type = meal`) is one the
+  user added; it carries `restaurant: {venue_type}` (restaurant or cafe, from the user's place) and no
+  meal type or cuisine.
 - Days carry `base_city_name` and, on the first day at a new base city of an area, `arrival`: the
   drive from the previous base (mode, seconds, metres, `routed` or `estimated`). For a multi-city
   trip (ADR 024) a leg into or out of a country travelled by rail is `mode` and `confidence`
@@ -246,9 +246,10 @@ timings), `repo/changes.py` and `repo/plan_state.py`. User places may now carry 
 2. `osmium tags-filter` keeps the candidate objects;
 3. `osm2pgsql` (flex output, `importer/osm.lua`) loads them into a temporary PostGIS;
 4. Python applies the selection rule (`importer/selection.py`, ADR 003 and ADR 011), derives
-   places, restaurant profiles and signals, and counts every exclusion by class and reason;
+   places and signals, and counts every exclusion by class and reason (restaurants and cafes are
+   not candidates, ADR 026);
 5. the rows are loaded into Supabase through the session-mode pooler in one transaction, the
-   report is checked against the database, the six ADR 009 gates are evaluated, and the region
+   report is checked against the database, gates 4 to 6 of ADR 009 are evaluated, and the region
    becomes `available` or `disabled`.
 
 Run twice on the same extract, it leaves identical data (tested). The original design follows.
@@ -256,7 +257,7 @@ Run twice on the same extract, it leaves identical data (tested). The original d
 A command-line job, run by the operator, that makes a region usable:
 
 1. Download the region's OSM extract.
-2. Filter and load attractions, restaurants and other relevant features into `geo.place` with
+2. Filter and load attractions and other relevant features into `geo.place` with
    their source tags preserved.
 3. Apply the attraction selection rule (ADR 003): wayside shrines and crosses, boundary stones,
    bomb craters and memorials without a `wikidata` tag are not imported. Count what was excluded.
@@ -264,7 +265,7 @@ A command-line job, run by the operator, that makes a region usable:
 5. Fetch Wikidata signals for places that carry a `wikidata` tag.
 6. Build Valhalla tiles from the same extract.
 7. Record an `import_run` with source dates and counts, and publish a **data quality report**
-   (how many places, share with cuisine, share with Wikidata link, objects excluded per class).
+   (how many places, share with Wikidata link, objects excluded per class).
 
 The MVP supports operator-imported **pilot regions**: Japan, Italy, Austria, Czechia and
 Hungary (D2). A
@@ -306,20 +307,12 @@ ADR 013.
 #### 4.2.6 Phase 8 API (ADR 019; **reduced by ADR 026**)
 
 `POST /v1/itineraries/{id}/restaurant-suggestions` and the change-set action `add_restaurant` are
-**removed** (2026-11-14). `GET /v1/restaurants/search` still reads imported places until the data
-step; it will keep only Photon and the user's saved restaurants. The table below is the API before
-the change.
+**removed**, and so are `planner/restaurant_slots.py` and the imported restaurants. What remains:
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /v1/restaurants/search` | Restaurants: imported places first (cuisines null when the data states none), then the user's saved restaurants, then, with `include_external` and only when both are empty, Photon through the backend (restaurants and cafés only, with venue type and meal types by the import's fixed rule, no cuisine). Manual entry is `POST /v1/user-places` with kind `restaurant` |
-| `POST /v1/itineraries/{id}/restaurant-suggestions` | Up to three day and meal slots for a restaurant (`place_id` or `user_place_id`, optionally limited to a `day` or `meal_type`): each with its times, the stops around it, the estimated detour and its label, the items that start at another time, the meal it replaces, a score and reasons rendered through fixed templates. Nothing is stored. `422 recalculation_impossible` with `issues` |
-| `POST /v1/itineraries/{id}/change-sets` | Action `add_restaurant` (`place_id` or `user_place_id`, `day`, `meal_type`, `after_item_id`) previews the chosen slot like any change set (ADR 018) |
-
-Code: `planner/restaurant_slots.py` (scoring, suggestions, placing), `Entry.floating` in
-`planner/recalc.py` (a meal whose time the layout finds inside its window),
-`revision_validator.py` (`added_meal`), `routers/restaurants.py`, `repo/changes.py`
-(`load_restaurant_context`, `load_dining`).
+| `GET /v1/restaurants/search` | Restaurants and cafés: the user's saved ones first, then, with `include_external` and only when none matches, Photon through the backend (restaurants and cafés only, each with its `venue_type`; no cuisine, no meal types). Manual entry is `POST /v1/user-places` with kind `restaurant` or `cafe` |
+| `POST /v1/itineraries/{id}/days/{n}/items` | Places the stop (`type = meal`, `user_place_id`) on the day and time the user chose, with a default length of 75 minutes (restaurant) or 45 (café); no preview |
 
 ### 4.6 Other services
 
@@ -327,8 +320,8 @@ Code: `planner/restaurant_slots.py` (scoring, suggestions, placing), `Entry.floa
   the region's places; if nothing suitable is found and the caller asked for it, a Photon query
   through the backend (`adapters/photon.py`: User-Agent, timeout, cache, daily budget, pause on
   failure); finally a manual entry (name plus map pin) saved as a user place. Restaurant search
-  (Phase 8) follows the same order with its own endpoint and a tag filter that is checked again on
-  the way back (ADR 019).
+  (Phase 8) searches the user's saved places, then Photon, with its own endpoint and a tag filter that
+  is checked again on the way back (ADR 019, ADR 026).
 - **FX service:** removed (ADR 017): the app has no currencies or prices.
 
 ### 4.7 Place names (ADR 025)
@@ -392,7 +385,7 @@ has added or locked. Defaults that the user does not see as features: day window
 > (`planner/daylayout.py`, idle time, not an item), a 09:00–20:00 window, and recalculation that
 > keeps that gap and treats a restaurant or café stop as fixed. The Phase 8 slot engine (section
 > 4.2.6, section 5.4 "Add a restaurant") is **removed**: a restaurant is a stop the user adds with a
-> chosen day and time. Restaurants, cafés and cuisines still leave `geo` in a later step. Sections
+> chosen day and time. Restaurants, cafés and cuisines have left `geo` and the API (migration `0014`). Sections
 > below that mention meals describe the engine before this change.
 
 ### 5.2 Pipeline

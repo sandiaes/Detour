@@ -1,15 +1,4 @@
-import { formatMealTypes, parseCoordinate, parseCuisines, restaurantMeta } from "./restaurants";
-
-test("cuisines are typed freely and stored as the open data stores them", () => {
-  expect(parseCuisines("Italian, pizza ; Sushi bar, italian")).toEqual([
-    "italian",
-    "pizza",
-    "sushi_bar",
-  ]);
-  // Nothing typed is "not specified", never an empty list.
-  expect(parseCuisines("")).toBeUndefined();
-  expect(parseCuisines(" , ; ")).toBeUndefined();
-});
+import { VENUES, parseCoordinate, venueLabel } from "./restaurants";
 
 test("typed coordinates are validated", () => {
   expect(parseCoordinate("48.2082", "lat")).toBe(48.2082);
@@ -21,18 +10,10 @@ test("typed coordinates are validated", () => {
   expect(parseCoordinate("", "lon")).toBeNull();
 });
 
-test("what the data does not state is said so", () => {
-  expect(formatMealTypes(null)).toBe("Meals not specified");
-  expect(formatMealTypes(["dinner", "lunch"])).toBe("Lunch, Dinner");
-  expect(restaurantMeta({ cuisines: null, venue_type: "cafe", meal_types: ["snack"] })).toBe(
-    "Cuisine not specified · Café · Afternoon snack",
-  );
-  expect(
-    restaurantMeta({
-      cuisines: ["austrian", "regional"],
-      venue_type: "restaurant",
-      meal_types: ["dinner", "lunch"],
-      city_name: "Vienna",
-    }),
-  ).toBe("Austrian, regional · Restaurant · Lunch, Dinner · Vienna");
+test("a restaurant or café is only what Photon can say: its kind", () => {
+  expect(VENUES).toEqual(["restaurant", "cafe"]);
+  expect(venueLabel("cafe")).toBe("Café");
+  expect(venueLabel("restaurant")).toBe("Restaurant");
+  expect(venueLabel(null)).toBe("Restaurant or café");
+  expect(venueLabel("bar")).toBe("Restaurant or café");
 });

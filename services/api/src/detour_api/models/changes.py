@@ -7,7 +7,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, Field, model_validator
 
 from detour_api.models.common import StrictModel
-from detour_api.models.trips import Itinerary, MealType, PlanNote, StopIn
+from detour_api.models.trips import Itinerary, PlanNote, StopIn
 
 
 class ChangeSetCreate(StrictModel):
@@ -58,7 +58,6 @@ class DiffItem(BaseModel):
     day: int
     kind: Literal["visit", "meal"]
     name: str
-    meal_type: MealType | None
     start_time: time
     end_time: time
     added_by_you: bool = Field(description="True for the place you add (and places you added)")
@@ -77,7 +76,6 @@ class DiffRetime(BaseModel):
     kind: Literal["visit", "meal"]
     name: str
     day: int
-    meal_type: MealType | None
     old_start_time: time
     new_start_time: time
 

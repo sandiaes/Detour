@@ -1,7 +1,6 @@
 import type {
   ExternalRestaurant,
   Itinerary,
-  RestaurantResult,
   RestaurantSearchResponse,
   Trip,
   UserPlace,
@@ -14,23 +13,20 @@ import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
 import { AttributionBar } from "../components/AttributionBar";
 import { Button } from "../components/Button";
-import { ChooseSlot, type ChosenSlot } from "../components/ChooseSlot";
+import { ChooseSlot, type ChosenSlot, EATING_START } from "../components/ChooseSlot";
 import { Chip, Field, Notice, ScreenHeader } from "../components/ui";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
 import {
-  MEALS,
-  MEAL_LABEL,
-  type Meal,
-  formatMealTypes,
+  VENUES,
+  VENUE_LABEL,
+  type Venue,
   parseCoordinate,
-  parseCuisines,
-  restaurantMeta,
+  venueLabel,
 } from "../domain/restaurants";
 import { type Route, useNavigation } from "../nav/Navigator";
 import { TOUCH, colors, radius, spacing, type } from "../theme";
-import { formatCuisines } from "../util/format";
 
 type AddRoute = Extract<Route, { name: "addRestaurant" }>;
 
@@ -39,29 +35,25 @@ const MIN_QUERY = 2;
 /** Restaurants are searched within this distance of the trip's destination. */
 export const RESTAURANT_RADIUS_M = 50_000;
 
-/** What the user picked: an imported place to eat, one saved earlier, an external search result,
- * or a restaurant entered by hand. */
+/** What the user picked: a place saved earlier, a Photon search result, or a restaurant or café
+ * entered by hand (ADR 026: nothing is imported). */
 export type Choice =
-  | { kind: "imported"; place: RestaurantResult }
   | { kind: "saved"; place: UserPlace }
   | { kind: "external"; place: ExternalRestaurant }
   | { kind: "hand" };
 
 type Form = {
   name: string;
-  cuisines: string;
-  meals: Meal[];
+  venue: Venue;
   lat: string;
   lon: string;
 };
 
-const EMPTY_FORM: Form = { name: "", cuisines: "", meals: [], lat: "", lon: "" };
+const EMPTY_FORM: Form = { name: "", venue: "restaurant", lat: "", lon: "" };
 
 /** The name the choice goes by. */
 function choiceName(c: Choice, form: Form): string {
   switch (c.kind) {
-    case "imported":
-      return c.place.name ?? "this place";
     case "saved":
     case "external":
       return c.place.name;
@@ -87,13 +79,11 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
     ),
   );
   const [mode, setMode] = useState<"search" | "hand">("search");
-  const [query, setQuery] = useState(route.preset?.name ?? "");
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<Record<string, RestaurantSearchResponse>>({});
   const [wide, setWide] = useState<Record<string, RestaurantSearchResponse>>({});
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [choice, setChoice] = useState<Choice | null>(
-    route.preset ? { kind: "imported", place: route.preset } : null,
-  );
+  const [choice, setChoice] = useState<Choice | null>(null);
   const [form, setForm] = useState<Form>(EMPTY_FORM);
   // The user place made for an external or hand-entered restaurant, so retrying does not save it
   // twice.
@@ -160,11 +150,10 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
     setSavedId(null);
     reset();
     if (c.kind === "external") {
-      // The venue rule's meals are the starting point; the user can change them.
+      // Photon gives the name, the point and the kind; the user can change them.
       setForm({
-        ...EMPTY_FORM,
         name: c.place.name,
-        meals: MEALS.filter((m) => c.place.meal_types.includes(m)),
+        venue: c.place.venue_type,
         lat: String(c.place.lat),
         lon: String(c.place.lon),
       });
@@ -176,13 +165,6 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
     reset();
   };
 
-  const toggleMeal = (meal: Meal) =>
-    edit({
-      meals: form.meals.includes(meal)
-        ? form.meals.filter((m) => m !== meal)
-        : [...form.meals, meal],
-    });
-
   // Entered by hand or found outside: the user's own place, with what they typed.
   const editable = choice?.kind === "hand" || choice?.kind === "external";
   const lat = parseCoordinate(form.lat, "lat");
@@ -191,28 +173,19 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   const ready = choice !== null && (!editable || handReady) && !working;
 
   /** The place reference the server wants; saves the user's own place first when needed. */
-  const reference = async (): Promise<{ place_id?: string; user_place_id?: string }> => {
+  const reference = async (): Promise<{ user_place_id: string }> => {
     if (!choice) throw new Error("nothing chosen");
-    if (choice.kind === "imported") return { place_id: choice.place.id };
     if (choice.kind === "saved") return { user_place_id: choice.place.id };
-    if (lat === null || lon === null) throw new Error("no location");
-    const fields = {
-      name: form.name.trim(),
-      lat,
-      lon,
-      cuisines: parseCuisines(form.cuisines) ?? null,
-      meal_types: form.meals.length ? form.meals : null,
-    };
+    if (lat === null || lat === undefined || lon === null) throw new Error("no location");
+    const fields = { name: form.name.trim(), lat, lon };
     if (savedId) {
+      // The kind of a saved place is fixed; a changed kind makes a new place.
       const updated = await changes.updatePlace(savedId, fields);
       return { user_place_id: updated.id };
     }
-    const { cuisines, meal_types, ...rest } = fields;
     const place = await changes.savePlace({
-      kind: "restaurant",
-      ...rest,
-      ...(cuisines ? { cuisines } : {}),
-      ...(meal_types ? { meal_types } : {}),
+      kind: form.venue,
+      ...fields,
       ...(choice.kind === "external" && choice.place.ref
         ? {
             source: "search_result" as const,
@@ -225,7 +198,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
     return { user_place_id: place.id };
   };
 
-  /** Adds the restaurant at the day, meal and time the user picked, with no proposal. */
+  /** Adds the restaurant or café at the day and time the user picked, with no proposal. */
   const addAt = async (slot: ChosenSlot) => {
     setWorking("preview");
     setProblem(null);
@@ -233,9 +206,8 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
       const ref = await reference();
       await changes.addItem(route.tripId, route.itineraryId, slot.day, {
         type: "meal",
-        meal_type: slot.meal ?? "lunch",
-        place_id: ref.place_id ?? null,
-        user_place_id: ref.user_place_id ?? null,
+        place_id: null,
+        user_place_id: ref.user_place_id,
         start_time: slot.time,
         duration_minutes: slot.minutes,
         position: slot.position,
@@ -252,20 +224,19 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   const found = results[key];
   const wider = wide[key];
   const widerResults = wider?.external.results ?? [];
-  const nothingFound =
-    found !== undefined && found.results.length === 0 && found.your_places.length === 0;
+  const nothingFound = found !== undefined && found.your_places.length === 0;
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <ScreenHeader
-        title="Add a restaurant"
+        title="Add a restaurant or café"
         subtitle={trip ? `${trip.title} · ${trip.destination.name}` : undefined}
         onBack={nav.back}
       />
       <View style={styles.section}>
         <Text style={styles.lead}>
-          Find a restaurant or enter it yourself, then choose its day and time. Opening hours are
-          not checked.
+          Find a restaurant or café or enter it yourself, then choose its day and time. Opening
+          hours are not checked.
         </Text>
         <View style={styles.row}>
           <Chip
@@ -295,7 +266,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
       {mode === "search" ? (
         <View style={styles.section}>
           <Field
-            label="Restaurant name"
+            label="Restaurant or café name"
             value={query}
             onChangeText={(t) => {
               setQuery(t);
@@ -303,24 +274,11 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
               reset();
             }}
             autoCorrect={false}
-            hint="At least two letters. The map data is searched first."
+            hint="At least two letters. Places you saved are searched first."
           />
           {searchError ? <Notice tone="error">{searchError}</Notice> : null}
           {q.length >= MIN_QUERY && found === undefined && !searchError ? (
             <Text style={styles.muted}>Searching…</Text>
-          ) : null}
-          {found?.results.length ? (
-            <ResultGroup title="Restaurants in the map data">
-              {found.results.map((p) => (
-                <ResultRow
-                  key={p.id}
-                  title={p.name ?? "Unnamed place"}
-                  meta={restaurantMeta(p)}
-                  selected={choice?.kind === "imported" && choice.place.id === p.id}
-                  onPress={() => pick({ kind: "imported", place: p })}
-                />
-              ))}
-            </ResultGroup>
           ) : null}
           {found?.your_places.length ? (
             <ResultGroup title="Saved by you">
@@ -328,7 +286,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
                 <ResultRow
                   key={p.id}
                   title={p.name}
-                  meta={`${formatCuisines(p.cuisines)} · ${formatMealTypes(p.meal_types)}`}
+                  meta={venueLabel(p.kind)}
                   selected={choice?.kind === "saved" && choice.place.id === p.id}
                   onPress={() => pick({ kind: "saved", place: p })}
                 />
@@ -337,7 +295,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
           ) : null}
           {nothingFound ? (
             <View style={styles.gap}>
-              <Text style={styles.muted}>Nothing in the imported data matches “{q}”.</Text>
+              <Text style={styles.muted}>Nothing you saved matches “{q}”.</Text>
               {wider === undefined ? (
                 <Button
                   label="Search more widely"
@@ -348,22 +306,17 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
               ) : widerResults.length === 0 ? (
                 <Text style={styles.muted}>
                   {wider.external.state === "ok" || wider.external.state === "cached"
-                    ? "The wider search found no restaurant either."
+                    ? "The wider search found no restaurant or café either."
                     : "The wider search is not available right now."}{" "}
-                  You can enter the restaurant by hand.
+                  You can enter it by hand.
                 </Text>
               ) : (
-                <ResultGroup title="Other restaurants (OpenStreetMap, via Photon)">
+                <ResultGroup title="Found on the map (OpenStreetMap, via Photon)">
                   {widerResults.map((p, n) => (
                     <ResultRow
                       key={`${p.ref ?? n}`}
                       title={p.name}
-                      meta={[
-                        "Cuisine not specified",
-                        p.venue_type === "cafe" ? "Café" : "Restaurant",
-                        p.city,
-                        p.country,
-                      ]
+                      meta={[venueLabel(p.venue_type), p.city, p.country]
                         .filter(Boolean)
                         .join(" · ")}
                       selected={choice?.kind === "external" && choice.place === p}
@@ -388,35 +341,19 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
 
       {editable ? (
         <View style={styles.section}>
-          <Field
-            label="Name of the restaurant"
-            value={form.name}
-            onChangeText={(t) => edit({ name: t })}
-          />
-          <Field
-            label="Cuisine (optional)"
-            value={form.cuisines}
-            onChangeText={(t) => edit({ cuisines: t })}
-            autoCorrect={false}
-            hint="For example “italian, pizza”. Left empty it stays “Cuisine not specified”."
-          />
-          <Text style={styles.label}>Meals it serves (optional)</Text>
+          <Field label="Name" value={form.name} onChangeText={(t) => edit({ name: t })} />
+          <Text style={styles.label}>Kind</Text>
           <View style={styles.row}>
-            {MEALS.map((m) => (
+            {VENUES.map((v) => (
               <Chip
-                key={m}
-                label={MEAL_LABEL[m]}
-                selected={form.meals.includes(m)}
-                onPress={() => toggleMeal(m)}
+                key={v}
+                label={VENUE_LABEL[v]}
+                selected={form.venue === v}
+                onPress={() => edit({ venue: v })}
+                testID={`venue-${v}`}
               />
             ))}
           </View>
-          {form.meals.length === 0 ? (
-            <Text style={styles.muted}>
-              None chosen: the meals it serves are not specified, so it is judged by place and
-              timing alone.
-            </Text>
-          ) : null}
           <Text style={styles.label}>Where it is</Text>
           <Text style={styles.muted}>Tap the map, or type the coordinates.</Text>
           {mapConfig && centre ? (
@@ -439,7 +376,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
                 />
                 {lat !== null && lon !== null ? (
                   <Marker id="pin" lngLat={[lon, lat]} anchor="bottom">
-                    <View style={styles.pin} accessible accessibilityLabel="The restaurant's pin" />
+                    <View style={styles.pin} accessible accessibilityLabel="The pin" />
                   </Marker>
                 ) : null}
               </Map>
@@ -488,7 +425,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
             <ChooseSlot
               days={itinerary.data.days}
               startDate={trip?.start_date ?? null}
-              meal
+              defaultTime={EATING_START}
               minutes={null}
               name={choiceName(choice, form)}
               working={working === "preview"}
@@ -499,7 +436,9 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
             <Text style={styles.muted}>Reading the plan…</Text>
           )}
           {!changes.connected ? (
-            <Text style={styles.muted}>Adding a restaurant needs a connection to the server.</Text>
+            <Text style={styles.muted}>
+              Adding a restaurant or café needs a connection to the server.
+            </Text>
           ) : null}
         </View>
       ) : null}

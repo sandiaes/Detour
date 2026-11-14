@@ -224,8 +224,6 @@ def validate_plan(
                         and round(distance_m(stop.coord, c.coord)) > profile.radius_m
                     ):
                         out.append(Violation("VISIT_OUTSIDE_STOP", d, pos, item.place_id))
-                if item.meal_type is not None or item.cuisines is not None:
-                    out.append(Violation("VISIT_WITH_MEAL_FIELDS", d, pos))
                 if item.place_id in seen_visits:
                     out.append(Violation("DUPLICATE_VISIT", d, pos, item.place_id))
                 seen_visits.add(item.place_id)

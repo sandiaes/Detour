@@ -10,7 +10,6 @@ from detour_api.models.common import Latitude, Longitude, PlaceName, StrictModel
 from detour_api.models.images import Photo
 
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]
-ALLOWED_MEAL_TYPES = ("breakfast", "lunch", "dinner", "snack")
 
 
 # -- trips -------------------------------------------------------------------------------------
@@ -155,29 +154,11 @@ class ArchiveInfo(BaseModel):
 # -- user places -------------------------------------------------------------------------------
 
 
-def _clean_list(
-    values: list[str] | None, label: str, allowed: tuple[str, ...] | None
-) -> list[str] | None:
-    if values is None:
-        return None
-    cleaned = sorted({v.strip().lower().replace(" ", "_") for v in values if v.strip()})
-    if not cleaned:
-        return None
-    for item in cleaned:
-        if allowed is not None and item not in allowed:
-            raise ValueError(f"{label}: {item!r} is not one of {', '.join(allowed)}")
-        if allowed is None and not (1 <= len(item) <= 40 and item.replace("_", "").isalnum()):
-            raise ValueError(f"{label}: {item!r} is not a valid cuisine name")
-    return cleaned
-
-
 class UserPlaceCreate(StrictModel):
-    kind: Literal["city", "location", "restaurant"]
+    kind: Literal["city", "location", "restaurant", "cafe"]
     name: str = Field(min_length=1, max_length=200)
     lat: Latitude
     lon: Longitude
-    cuisines: list[str] | None = Field(default=None, max_length=10, description="Restaurants only")
-    meal_types: list[str] | None = Field(default=None, max_length=4, description="Restaurants only")
     source: Literal["manual_pin", "search_result"]
     search_provider: Literal["photon", "geonames"] | None = Field(
         default=None,
@@ -188,10 +169,6 @@ class UserPlaceCreate(StrictModel):
 
     @model_validator(mode="after")
     def _rules(self) -> Self:
-        self.cuisines = _clean_list(self.cuisines, "cuisines", None)
-        self.meal_types = _clean_list(self.meal_types, "meal_types", ALLOWED_MEAL_TYPES)
-        if self.kind != "restaurant" and (self.cuisines or self.meal_types):
-            raise ValueError("cuisines and meal_types are only for restaurants")
         has_provider = self.search_provider is not None and self.search_ref is not None
         if self.source == "search_result" and not has_provider:
             raise ValueError("a search_result needs search_provider and search_ref")
@@ -204,26 +181,20 @@ class UserPlaceUpdate(StrictModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     lat: Latitude | None = None
     lon: Longitude | None = None
-    cuisines: list[str] | None = None
-    meal_types: list[str] | None = None
 
     @model_validator(mode="after")
     def _rules(self) -> Self:
         if (self.lat is None) != (self.lon is None):
             raise ValueError("lat and lon must be changed together")
-        self.cuisines = _clean_list(self.cuisines, "cuisines", None)
-        self.meal_types = _clean_list(self.meal_types, "meal_types", ALLOWED_MEAL_TYPES)
         return self
 
 
 class UserPlace(BaseModel):
     id: uuid.UUID
-    kind: Literal["city", "location", "restaurant"]
+    kind: Literal["city", "location", "restaurant", "cafe"]
     name: str
     lat: float
     lon: float
-    cuisines: list[str] | None
-    meal_types: list[str] | None
     source: Literal["manual_pin", "search_result"]
     search_provider: str | None
     search_ref: str | None
@@ -236,7 +207,6 @@ class UserPlace(BaseModel):
 
 class ItemCreate(StrictModel):
     type: Literal["visit", "meal", "free_time"]
-    meal_type: MealType | None = None
     place_id: uuid.UUID | None = Field(default=None, description="A geo.place")
     user_place_id: uuid.UUID | None = None
     start_time: time | None = Field(default=None, description="Local time at the destination")
@@ -251,10 +221,6 @@ class ItemCreate(StrictModel):
 
     @model_validator(mode="after")
     def _shape(self) -> Self:
-        if self.type == "meal" and self.meal_type is None:
-            raise ValueError("a meal needs meal_type")
-        if self.type != "meal" and self.meal_type is not None:
-            raise ValueError("meal_type is only for meals")
         both = self.place_id is not None and self.user_place_id is not None
         neither = self.place_id is None and self.user_place_id is None
         if self.type == "free_time":
@@ -275,7 +241,6 @@ class ItemUpdate(StrictModel):
     locked: bool | None = None
     position: int | None = Field(default=None, ge=1)
     day_index: int | None = Field(default=None, ge=1, description="Move to another day")
-    meal_type: MealType | None = None
 
 
 class Transfer(BaseModel):
@@ -304,15 +269,11 @@ class Arrival(BaseModel):
 
 
 class RestaurantInfo(BaseModel):
-    """What the open data says about a meal's place to eat. There is no price, rating or opening
-    hours."""
+    """What is known about a restaurant or cafe stop: only its kind. There is no cuisine, meal
+    type, price, rating or opening hours (ADR 026)."""
 
-    venue_type: str | None = Field(
-        description="restaurant or cafe (from the OpenStreetMap amenity tag); null when unknown"
-    )
-    cuisines: list[str] | None = Field(
-        description="From the OpenStreetMap cuisine tag; null when the data states no cuisine "
-        "(shown as 'Cuisine not specified')"
+    venue_type: Literal["restaurant", "cafe"] | None = Field(
+        description="The kind of the user's place; null when unknown"
     )
 
 
@@ -321,7 +282,6 @@ class Item(BaseModel):
     day_id: uuid.UUID
     position: int
     type: Literal["visit", "meal", "free_time"]
-    meal_type: MealType | None
     place_id: uuid.UUID | None
     user_place_id: uuid.UUID | None
     display_name: str
@@ -343,7 +303,7 @@ class Item(BaseModel):
         "has been computed (items added or moved by hand)",
     )
     restaurant: RestaurantInfo | None = Field(
-        default=None, description="Meals only: the place to eat as the open data describes it"
+        default=None, description="Restaurant and cafe stops only: its kind"
     )
     image: Photo | None = Field(
         default=None,

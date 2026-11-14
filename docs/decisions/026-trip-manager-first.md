@@ -152,7 +152,7 @@ This changes the product's emphasis and removes a set of built features, so it n
    021, and the product brief, CLAUDE.md, KPIs, design, app plan, architecture and data model.
 2. **Planner:** sights only, the midday gap, the day window, recalculation and validators,
    `CONFIG_VERSION`, golden files.
-3. **Data:** importer rules version, the migration that deletes restaurants and cafés and drops
+3. **Data (built):** importer rules version, the migration that deletes restaurants and cafés and drops
    `geo.restaurant_profile` and the cuisine and meal-type columns, gates 1 to 3 of ADR 009 removed.
 4. **Retire the slot engine** (item 17) and move Add a restaurant to Photon and manual entry.
 5. **History:** the archive keeps the day record (item 19), the past-trip screen shows days.
@@ -189,14 +189,51 @@ Built and tested on synthetic fixtures; engine `planner-3.0.0`, planner configur
   floating meals: `planner/restaurant_slots.py`, `POST /v1/itineraries/{id}/restaurant-suggestions`,
   the `add_restaurant` request action, the request fields `meal_type` and `after_item_id`, and the
   slot models are gone; the app's add-a-restaurant screen now always offers "Choose day and time".
-  Stored change sets with the action `add_restaurant` still read (the response models keep the
-  value); the migration `0008` columns stay until the data step.
+  Stored change sets with the action `add_restaurant` still read until the data step (the response
+  models keep the value); step 3 deleted them.
 - **Reason and note templates of meals stay** (stored plans render them); `SIGHTS_ONLY` replaces
   `MEALS_FROM_MAP_DATA` in new plans. `PlanStats.meals` and `meal_minutes` stay (a plan with
   restaurants the user added counts them; generated plans have 0).
-- **Not built yet:** the data step (importer, migration, `geo.restaurant_profile`, cuisine and meal
-  type columns, `meal_type`), history, the app's Free-time row, buttons, labels and cuisine/meal
-  fields of the add-restaurant form (they still show; `ChooseSlot` still asks "Meal").
+- **Not built yet after step 2:** see "As built: step 3" below for the data step; history and the
+  app's Free-time row and buttons remain.
+
+## As built: step 3, data (2026-11-14, awaiting acceptance)
+
+Migration `0014_no_imported_restaurants`; importer rules `2026-11-14.1`. Tested on the synthetic
+extract and on a database filled at revision `0013` (`tests/test_migration_0014.py`); **not run
+against the production database**.
+
+- **Importer.** `amenity=restaurant|cafe` is not a candidate (no longer in the `osmium` tag filter or
+  `osm.lua`; `amenity`, `cuisine` and `diet:*` are no longer copied out of the extract), the 500 m and
+  town rules and `importer/proximity.py` are gone, nothing builds a restaurant profile, and the
+  report has no restaurant counts or cuisine share. **Gates 1 to 3 are retired and 4, 5 and 6 keep
+  their numbers** (not renumbered: every earlier reference stays valid, ADR 009 amendment).
+- **Migration.** Every itinerary stop that pointed at an imported restaurant becomes the same
+  installation's own place (`app.user_place`, kind `restaurant`, or `cafe` for category `cafe`, name
+  from the stop, point from the place) so no stored plan loses a stop, a name, a point or a time;
+  then the imported restaurants and cafés and everything in `geo` that hangs on them (source rows,
+  signals, profile, names, name lookups, photo lookups, name overrides) are deleted;
+  `geo.restaurant_profile` is dropped and `geo.place.kind` no longer allows `restaurant`. The
+  downgrade restores the structure only; the data comes back by importing the region again with an
+  earlier importer.
+- **Dropped columns:** `app.user_place.cuisines` and `meal_types`, `app.itinerary_item.meal_type`,
+  `app.change_set.slot_meal` and `after_item_id` (and the `add_restaurant` action and its rows). The
+  user-place kind `cafe` is new. `slot_day` stays (the one day an add-place preview was limited to).
+- **API.** `cuisines`, `meal_types`, `diet_flags` and `venue_type` are gone from place search, place
+  detail and user places; `kind=restaurant` is no longer a place-search filter; an item has no
+  `meal_type` (the field is refused); `restaurant` on an item is `{venue_type}` read from the user's
+  place; `GET /v1/restaurants/search` returns `your_places` and `external` only (no `results`), and a
+  Photon result carries its `venue_type` and nothing else; adding a stop of type `meal` needs a user
+  place of kind `restaurant` or `cafe`, with the default lengths 75 and 45 minutes when none is given.
+- **App.** The add-a-restaurant screen has no cuisine or meal fields and no local-data results: it
+  searches the user's saved places, then Photon, or takes a name, a kind (Restaurant or Café) and a
+  pin; the day-and-time step suggests 13:00 but has no meal chips; stops read "Restaurant · 1 h
+  15 min" or "Café · 45 min"; the day totals count "places to eat"; the add-place search asks for
+  sights and towns only.
+- **Leftovers to know about.** An itinerary version saved before the migration still holds meal
+  stops whose place is the deleted imported one; restoring it brings the stop back with its stored
+  name, point and times but no place behind it (it is not recalculated). Stored plans' meal reason
+  texts still render. The restaurant counters in `PlanStats` stay (user-added restaurants count).
 
 ## Alternatives
 

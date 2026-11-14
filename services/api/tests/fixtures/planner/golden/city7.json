@@ -42,13 +42,11 @@
      "items": [
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 585,
        "kind": "visit",
        "lat": 48.218927,
        "lon": 16.377069,
-       "meal_type": null,
        "name": "Synthetic sight 136",
        "place_id": "00000000-0000-4000-8000-000000000136",
        "reasons": [
@@ -68,13 +66,11 @@
       },
       {
        "category": "ruins",
-       "cuisines": null,
        "duration_minutes": 40,
        "end_minute": 631,
        "kind": "visit",
        "lat": 48.200812,
        "lon": 16.375692,
-       "meal_type": null,
        "name": "Synthetic sight 122",
        "place_id": "00000000-0000-4000-8000-000000000122",
        "reasons": [
@@ -96,13 +92,11 @@
       },
       {
        "category": "viewpoint",
-       "cuisines": null,
        "duration_minutes": 20,
        "end_minute": 657,
        "kind": "visit",
        "lat": 48.221258,
        "lon": 16.377273,
-       "meal_type": null,
        "name": "Synthetic sight 047",
        "place_id": "00000000-0000-4000-8000-000000000047",
        "reasons": [
@@ -122,13 +116,11 @@
       },
       {
        "category": "ruins",
-       "cuisines": null,
        "duration_minutes": 40,
        "end_minute": 703,
        "kind": "visit",
        "lat": 48.202751,
        "lon": 16.3749,
-       "meal_type": null,
        "name": "Synthetic sight 114",
        "place_id": "00000000-0000-4000-8000-000000000114",
        "reasons": [
@@ -149,13 +141,11 @@
       },
       {
        "category": "archaeological_site",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 765,
        "kind": "visit",
        "lat": 48.203157,
        "lon": 16.374798,
-       "meal_type": null,
        "name": "Synthetic sight 043",
        "place_id": "00000000-0000-4000-8000-000000000043",
        "reasons": [
@@ -176,13 +166,11 @@
       },
       {
        "category": "monument",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 874,
        "kind": "visit",
        "lat": 48.202773,
        "lon": 16.37695,
-       "meal_type": null,
        "name": "Synthetic sight 104",
        "place_id": "00000000-0000-4000-8000-000000000104",
        "reasons": [
@@ -204,13 +192,11 @@
       },
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 911,
        "kind": "visit",
        "lat": 48.224558,
        "lon": 16.372303,
-       "meal_type": null,
        "name": "Synthetic sight 072",
        "place_id": "00000000-0000-4000-8000-000000000072",
        "reasons": [
@@ -231,13 +217,11 @@
       },
       {
        "category": "castle",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 992,
        "kind": "visit",
        "lat": 48.20402,
        "lon": 16.370698,
-       "meal_type": null,
        "name": "Synthetic sight 014",
        "place_id": "00000000-0000-4000-8000-000000000014",
        "reasons": [
@@ -259,13 +243,11 @@
       },
       {
        "category": "archaeological_site",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 1060,
        "kind": "visit",
        "lat": 48.228235,
        "lon": 16.388369,
-       "meal_type": null,
        "name": "Synthetic sight 132",
        "place_id": "00000000-0000-4000-8000-000000000132",
        "reasons": [
@@ -290,13 +272,11 @@
      "items": [
       {
        "category": "statue",
-       "cuisines": null,
        "duration_minutes": 10,
        "end_minute": 550,
        "kind": "visit",
        "lat": 48.222839,
        "lon": 16.387614,
-       "meal_type": null,
        "name": "Synthetic sight 005",
        "place_id": "00000000-0000-4000-8000-000000000005",
        "reasons": [
@@ -314,13 +294,11 @@
       },
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 587,
        "kind": "visit",
        "lat": 48.209161,
        "lon": 16.35876,
-       "meal_type": null,
        "name": "Synthetic sight 006",
        "place_id": "00000000-0000-4000-8000-000000000006",
        "reasons": [
@@ -342,13 +320,11 @@
       },
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 638,
        "kind": "visit",
        "lat": 48.228854,
        "lon": 16.365696,
-       "meal_type": null,
        "name": "Synthetic sight 050",
        "place_id": "00000000-0000-4000-8000-000000000050",
        "reasons": [
@@ -369,13 +345,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 734,
        "kind": "visit",
        "lat": 48.209842,
        "lon": 16.372525,
-       "meal_type": null,
        "name": "Synthetic sight 049",
        "place_id": "00000000-0000-4000-8000-000000000049",
        "reasons": [
@@ -397,13 +371,11 @@
       },
       {
        "category": "memorial",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 751,
        "kind": "visit",
        "lat": 48.209783,
        "lon": 16.373475,
-       "meal_type": null,
        "name": "Synthetic sight 125",
        "place_id": "00000000-0000-4000-8000-000000000125",
        "reasons": [
@@ -424,13 +396,11 @@
       },
       {
        "category": "viewpoint",
-       "cuisines": null,
        "duration_minutes": 20,
        "end_minute": 863,
        "kind": "visit",
        "lat": 48.210227,
        "lon": 16.373016,
-       "meal_type": null,
        "name": "Synthetic sight 030",
        "place_id": "00000000-0000-4000-8000-000000000030",
        "reasons": [
@@ -451,13 +421,11 @@
       },
       {
        "category": "gallery",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 925,
        "kind": "visit",
        "lat": 48.210935,
        "lon": 16.373327,
-       "meal_type": null,
        "name": "Synthetic sight 015",
        "place_id": "00000000-0000-4000-8000-000000000015",
        "reasons": [
@@ -478,13 +446,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 1019,
        "kind": "visit",
        "lat": 48.212186,
        "lon": 16.373433,
-       "meal_type": null,
        "name": "Synthetic sight 169",
        "place_id": "00000000-0000-4000-8000-000000000169",
        "reasons": [
@@ -507,13 +473,11 @@
       },
       {
        "category": "tower",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 1055,
        "kind": "visit",
        "lat": 48.226465,
        "lon": 16.35505,
-       "meal_type": null,
        "name": "Synthetic sight 148",
        "place_id": "00000000-0000-4000-8000-000000000148",
        "reasons": [
@@ -533,13 +497,11 @@
       },
       {
        "category": "monument",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 1077,
        "kind": "visit",
        "lat": 48.204264,
        "lon": 16.361988,
-       "meal_type": null,
        "name": "Synthetic sight 055",
        "place_id": "00000000-0000-4000-8000-000000000055",
        "reasons": [
@@ -563,13 +525,11 @@
      "items": [
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 630,
        "kind": "visit",
        "lat": 48.226715,
        "lon": 16.37051,
-       "meal_type": null,
        "name": "Synthetic sight 149",
        "place_id": "00000000-0000-4000-8000-000000000149",
        "reasons": [
@@ -588,13 +548,11 @@
       },
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 666,
        "kind": "visit",
        "lat": 48.212626,
        "lon": 16.352616,
-       "meal_type": null,
        "name": "Synthetic sight 033",
        "place_id": "00000000-0000-4000-8000-000000000033",
        "reasons": [
@@ -614,13 +572,11 @@
       },
       {
        "category": "fountain",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 687,
        "kind": "visit",
        "lat": 48.196057,
        "lon": 16.368447,
-       "meal_type": null,
        "name": "Synthetic sight 140",
        "place_id": "00000000-0000-4000-8000-000000000140",
        "reasons": [
@@ -641,13 +597,11 @@
       },
       {
        "category": "fountain",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 708,
        "kind": "visit",
        "lat": 48.211171,
        "lon": 16.383337,
-       "meal_type": null,
        "name": "Synthetic sight 036",
        "place_id": "00000000-0000-4000-8000-000000000036",
        "reasons": [
@@ -668,13 +622,11 @@
       },
       {
        "category": "archaeological_site",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 774,
        "kind": "visit",
        "lat": 48.194616,
        "lon": 16.397759,
-       "meal_type": null,
        "name": "Synthetic sight 078",
        "place_id": "00000000-0000-4000-8000-000000000078",
        "reasons": [
@@ -696,13 +648,11 @@
       },
       {
        "category": "chapel",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 885,
        "kind": "visit",
        "lat": 48.207902,
        "lon": 16.377228,
-       "meal_type": null,
        "name": "Synthetic sight 051",
        "place_id": "00000000-0000-4000-8000-000000000051",
        "reasons": [
@@ -722,13 +672,11 @@
       },
       {
        "category": "castle",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 964,
        "kind": "visit",
        "lat": 48.20871,
        "lon": 16.378536,
-       "meal_type": null,
        "name": "Synthetic sight 080",
        "place_id": "00000000-0000-4000-8000-000000000080",
        "reasons": [
@@ -752,13 +700,11 @@
       },
       {
        "category": "statue",
-       "cuisines": null,
        "duration_minutes": 10,
        "end_minute": 980,
        "kind": "visit",
        "lat": 48.197495,
        "lon": 16.352895,
-       "meal_type": null,
        "name": "Synthetic sight 160",
        "place_id": "00000000-0000-4000-8000-000000000160",
        "reasons": [
@@ -779,13 +725,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 1076,
        "kind": "visit",
        "lat": 48.21539,
        "lon": 16.367065,
-       "meal_type": null,
        "name": "Synthetic sight 134",
        "place_id": "00000000-0000-4000-8000-000000000134",
        "reasons": [
@@ -810,13 +754,11 @@
      "items": [
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 570,
        "kind": "visit",
        "lat": 48.22098,
        "lon": 16.365671,
-       "meal_type": null,
        "name": "Synthetic sight 040",
        "place_id": "00000000-0000-4000-8000-000000000040",
        "reasons": [
@@ -836,13 +778,11 @@
       },
       {
        "category": "gallery",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 636,
        "kind": "visit",
        "lat": 48.204705,
        "lon": 16.352699,
-       "meal_type": null,
        "name": "Synthetic sight 032",
        "place_id": "00000000-0000-4000-8000-000000000032",
        "reasons": [
@@ -862,13 +802,11 @@
       },
       {
        "category": "memorial",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 657,
        "kind": "visit",
        "lat": 48.202016,
        "lon": 16.381348,
-       "meal_type": null,
        "name": "Synthetic sight 054",
        "place_id": "00000000-0000-4000-8000-000000000054",
        "reasons": [
@@ -891,13 +829,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 755,
        "kind": "visit",
        "lat": 48.180605,
        "lon": 16.407008,
-       "meal_type": null,
        "name": "Synthetic sight 109",
        "place_id": "00000000-0000-4000-8000-000000000109",
        "reasons": [
@@ -919,13 +855,11 @@
       },
       {
        "category": "chapel",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 868,
        "kind": "visit",
        "lat": 48.205105,
        "lon": 16.412357,
-       "meal_type": null,
        "name": "Synthetic sight 103",
        "place_id": "00000000-0000-4000-8000-000000000103",
        "reasons": [
@@ -945,13 +879,11 @@
       },
       {
        "category": "palace",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 949,
        "kind": "visit",
        "lat": 48.216798,
        "lon": 16.389313,
-       "meal_type": null,
        "name": "Synthetic sight 082",
        "place_id": "00000000-0000-4000-8000-000000000082",
        "reasons": [
@@ -972,13 +904,11 @@
       },
       {
        "category": "gallery",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 1015,
        "kind": "visit",
        "lat": 48.205539,
        "lon": 16.365696,
-       "meal_type": null,
        "name": "Synthetic sight 093",
        "place_id": "00000000-0000-4000-8000-000000000093",
        "reasons": [
@@ -999,13 +929,11 @@
       },
       {
        "category": "city_gate",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 1039,
        "kind": "visit",
        "lat": 48.175825,
        "lon": 16.363562,
-       "meal_type": null,
        "name": "Synthetic sight 156",
        "place_id": "00000000-0000-4000-8000-000000000156",
        "reasons": [
@@ -1025,13 +953,11 @@
       },
       {
        "category": "tower",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 1075,
        "kind": "visit",
        "lat": 48.177507,
        "lon": 16.3937,
-       "meal_type": null,
        "name": "Synthetic sight 112",
        "place_id": "00000000-0000-4000-8000-000000000112",
        "reasons": [
@@ -1055,13 +981,11 @@
      "items": [
       {
        "category": "castle",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 615,
        "kind": "visit",
        "lat": 48.189881,
        "lon": 16.401789,
-       "meal_type": null,
        "name": "Synthetic sight 157",
        "place_id": "00000000-0000-4000-8000-000000000157",
        "reasons": [
@@ -1082,13 +1006,11 @@
       },
       {
        "category": "chapel",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 636,
        "kind": "visit",
        "lat": 48.208622,
        "lon": 16.407508,
-       "meal_type": null,
        "name": "Synthetic sight 129",
        "place_id": "00000000-0000-4000-8000-000000000129",
        "reasons": [
@@ -1108,13 +1030,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 732,
        "kind": "visit",
        "lat": 48.195739,
        "lon": 16.387737,
-       "meal_type": null,
        "name": "Synthetic sight 145",
        "place_id": "00000000-0000-4000-8000-000000000145",
        "reasons": [
@@ -1135,13 +1055,11 @@
       },
       {
        "category": "palace",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 813,
        "kind": "visit",
        "lat": 48.213984,
        "lon": 16.380374,
-       "meal_type": null,
        "name": "Synthetic sight 001",
        "place_id": "00000000-0000-4000-8000-000000000001",
        "reasons": [
@@ -1163,13 +1081,11 @@
       },
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 939,
        "kind": "visit",
        "lat": 48.198015,
        "lon": 16.36651,
-       "meal_type": null,
        "name": "Synthetic sight 152",
        "place_id": "00000000-0000-4000-8000-000000000152",
        "reasons": [
@@ -1191,13 +1107,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 1035,
        "kind": "visit",
        "lat": 48.217388,
        "lon": 16.372935,
-       "meal_type": null,
        "name": "Synthetic sight 002",
        "place_id": "00000000-0000-4000-8000-000000000002",
        "reasons": [
@@ -1220,13 +1134,11 @@
       },
       {
        "category": "statue",
-       "cuisines": null,
        "duration_minutes": 10,
        "end_minute": 1051,
        "kind": "visit",
        "lat": 48.206974,
        "lon": 16.350845,
-       "meal_type": null,
        "name": "Synthetic sight 107",
        "place_id": "00000000-0000-4000-8000-000000000107",
        "reasons": [
@@ -1246,13 +1158,11 @@
       },
       {
        "category": "fountain",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 1069,
        "kind": "visit",
        "lat": 48.207124,
        "lon": 16.352289,
-       "meal_type": null,
        "name": "Synthetic sight 059",
        "place_id": "00000000-0000-4000-8000-000000000059",
        "reasons": [
@@ -1275,13 +1185,11 @@
      "items": [
       {
        "category": "fountain",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 555,
        "kind": "visit",
        "lat": 48.187414,
        "lon": 16.35664,
-       "meal_type": null,
        "name": "Synthetic sight 098",
        "place_id": "00000000-0000-4000-8000-000000000098",
        "reasons": [
@@ -1300,13 +1208,11 @@
       },
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 592,
        "kind": "visit",
        "lat": 48.209527,
        "lon": 16.366828,
-       "meal_type": null,
        "name": "Synthetic sight 179",
        "place_id": "00000000-0000-4000-8000-000000000179",
        "reasons": [
@@ -1328,13 +1234,11 @@
       },
       {
        "category": "monument",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 613,
        "kind": "visit",
        "lat": 48.211316,
        "lon": 16.394753,
-       "meal_type": null,
        "name": "Synthetic sight 053",
        "place_id": "00000000-0000-4000-8000-000000000053",
        "reasons": [
@@ -1354,13 +1258,11 @@
       },
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 664,
        "kind": "visit",
        "lat": 48.198743,
        "lon": 16.41632,
-       "meal_type": null,
        "name": "Synthetic sight 142",
        "place_id": "00000000-0000-4000-8000-000000000142",
        "reasons": [
@@ -1380,13 +1282,11 @@
       },
       {
        "category": "viewpoint",
-       "cuisines": null,
        "duration_minutes": 20,
        "end_minute": 690,
        "kind": "visit",
        "lat": 48.206709,
        "lon": 16.388986,
-       "meal_type": null,
        "name": "Synthetic sight 170",
        "place_id": "00000000-0000-4000-8000-000000000170",
        "reasons": [
@@ -1406,13 +1306,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 786,
        "kind": "visit",
        "lat": 48.219733,
        "lon": 16.367356,
-       "meal_type": null,
        "name": "Synthetic sight 161",
        "place_id": "00000000-0000-4000-8000-000000000161",
        "reasons": [
@@ -1433,13 +1331,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 973,
        "kind": "visit",
        "lat": 48.197718,
        "lon": 16.36163,
-       "meal_type": null,
        "name": "Synthetic sight 066",
        "place_id": "00000000-0000-4000-8000-000000000066",
        "reasons": [
@@ -1462,13 +1358,11 @@
       },
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 1024,
        "kind": "visit",
        "lat": 48.196977,
        "lon": 16.334231,
-       "meal_type": null,
        "name": "Synthetic sight 023",
        "place_id": "00000000-0000-4000-8000-000000000023",
        "reasons": [
@@ -1488,13 +1382,11 @@
       },
       {
        "category": "viewpoint",
-       "cuisines": null,
        "duration_minutes": 20,
        "end_minute": 1050,
        "kind": "visit",
        "lat": 48.206803,
        "lon": 16.310559,
-       "meal_type": null,
        "name": "Synthetic sight 021",
        "place_id": "00000000-0000-4000-8000-000000000021",
        "reasons": [
@@ -1514,13 +1406,11 @@
       },
       {
        "category": "viewpoint",
-       "cuisines": null,
        "duration_minutes": 20,
        "end_minute": 1076,
        "kind": "visit",
        "lat": 48.192034,
        "lon": 16.330911,
-       "meal_type": null,
        "name": "Synthetic sight 077",
        "place_id": "00000000-0000-4000-8000-000000000077",
        "reasons": [
@@ -1544,13 +1434,11 @@
      "items": [
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 630,
        "kind": "visit",
        "lat": 48.20476,
        "lon": 16.407953,
-       "meal_type": null,
        "name": "Synthetic sight 121",
        "place_id": "00000000-0000-4000-8000-000000000121",
        "reasons": [
@@ -1570,13 +1458,11 @@
       },
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 682,
        "kind": "visit",
        "lat": 48.206629,
        "lon": 16.374166,
-       "meal_type": null,
        "name": "Synthetic sight 091",
        "place_id": "00000000-0000-4000-8000-000000000091",
        "reasons": [
@@ -1597,13 +1483,11 @@
       },
       {
        "category": "ruins",
-       "cuisines": null,
        "duration_minutes": 40,
        "end_minute": 727,
        "kind": "visit",
        "lat": 48.208175,
        "lon": 16.373941,
-       "meal_type": null,
        "name": "Synthetic sight 095",
        "place_id": "00000000-0000-4000-8000-000000000095",
        "reasons": [
@@ -1623,13 +1507,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 818,
        "kind": "visit",
        "lat": 48.20817,
        "lon": 16.373793,
-       "meal_type": null,
        "name": "Synthetic sight 172",
        "place_id": "00000000-0000-4000-8000-000000000172",
        "reasons": [
@@ -1650,13 +1532,11 @@
       },
       {
        "category": "gallery",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 974,
        "kind": "visit",
        "lat": 48.211725,
        "lon": 16.400667,
-       "meal_type": null,
        "name": "Synthetic sight 018",
        "place_id": "00000000-0000-4000-8000-000000000018",
        "reasons": [
@@ -1675,13 +1555,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 1070,
        "kind": "visit",
        "lat": 48.216155,
        "lon": 16.371814,
-       "meal_type": null,
        "name": "Synthetic sight 034",
        "place_id": "00000000-0000-4000-8000-000000000034",
        "reasons": [
@@ -1739,13 +1617,11 @@
      "items": [
       {
        "category": "monument",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 555,
        "kind": "visit",
        "lat": 48.204264,
        "lon": 16.361988,
-       "meal_type": null,
        "name": "Synthetic sight 055",
        "place_id": "00000000-0000-4000-8000-000000000055",
        "reasons": [
@@ -1765,13 +1641,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 651,
        "kind": "visit",
        "lat": 48.195739,
        "lon": 16.387737,
-       "meal_type": null,
        "name": "Synthetic sight 145",
        "place_id": "00000000-0000-4000-8000-000000000145",
        "reasons": [
@@ -1793,13 +1667,11 @@
       },
       {
        "category": "tower",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 687,
        "kind": "visit",
        "lat": 48.177507,
        "lon": 16.3937,
-       "meal_type": null,
        "name": "Synthetic sight 112",
        "place_id": "00000000-0000-4000-8000-000000000112",
        "reasons": [
@@ -1821,13 +1693,11 @@
       },
       {
        "category": "monument",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 709,
        "kind": "visit",
        "lat": 48.19296,
        "lon": 16.372679,
-       "meal_type": null,
        "name": "Synthetic sight 106",
        "place_id": "00000000-0000-4000-8000-000000000106",
        "reasons": [
@@ -1847,13 +1717,11 @@
       },
       {
        "category": "city_gate",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 730,
        "kind": "visit",
        "lat": 48.175825,
        "lon": 16.363562,
-       "meal_type": null,
        "name": "Synthetic sight 156",
        "place_id": "00000000-0000-4000-8000-000000000156",
        "reasons": [
@@ -1874,13 +1742,11 @@
       },
       {
        "category": "statue",
-       "cuisines": null,
        "duration_minutes": 10,
        "end_minute": 747,
        "kind": "visit",
        "lat": 48.197495,
        "lon": 16.352895,
-       "meal_type": null,
        "name": "Synthetic sight 160",
        "place_id": "00000000-0000-4000-8000-000000000160",
        "reasons": [
@@ -1902,13 +1768,11 @@
       },
       {
        "category": "castle",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 918,
        "kind": "visit",
        "lat": 48.20871,
        "lon": 16.378536,
-       "meal_type": null,
        "name": "Synthetic sight 080",
        "place_id": "00000000-0000-4000-8000-000000000080",
        "reasons": [
@@ -1933,13 +1797,11 @@
       },
       {
        "category": "archaeological_site",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 984,
        "kind": "visit",
        "lat": 48.194616,
        "lon": 16.397759,
-       "meal_type": null,
        "name": "Synthetic sight 078",
        "place_id": "00000000-0000-4000-8000-000000000078",
        "reasons": [
@@ -1962,13 +1824,11 @@
       },
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 1035,
        "kind": "visit",
        "lat": 48.206629,
        "lon": 16.374166,
-       "meal_type": null,
        "name": "Synthetic sight 091",
        "place_id": "00000000-0000-4000-8000-000000000091",
        "reasons": [
@@ -1993,13 +1853,11 @@
      "items": [
       {
        "category": "statue",
-       "cuisines": null,
        "duration_minutes": 10,
        "end_minute": 550,
        "kind": "visit",
        "lat": 48.206974,
        "lon": 16.350845,
-       "meal_type": null,
        "name": "Synthetic sight 107",
        "place_id": "00000000-0000-4000-8000-000000000107",
        "reasons": [
@@ -2018,13 +1876,11 @@
       },
       {
        "category": "fountain",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 568,
        "kind": "visit",
        "lat": 48.207124,
        "lon": 16.352289,
-       "meal_type": null,
        "name": "Synthetic sight 059",
        "place_id": "00000000-0000-4000-8000-000000000059",
        "reasons": [
@@ -2045,13 +1901,11 @@
       },
       {
        "category": "palace",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 649,
        "kind": "visit",
        "lat": 48.213984,
        "lon": 16.380374,
-       "meal_type": null,
        "name": "Synthetic sight 001",
        "place_id": "00000000-0000-4000-8000-000000000001",
        "reasons": [
@@ -2074,13 +1928,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 745,
        "kind": "visit",
        "lat": 48.197718,
        "lon": 16.36163,
-       "meal_type": null,
        "name": "Synthetic sight 066",
        "place_id": "00000000-0000-4000-8000-000000000066",
        "reasons": [
@@ -2103,13 +1955,11 @@
       },
       {
        "category": "fountain",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 856,
        "kind": "visit",
        "lat": 48.211171,
        "lon": 16.383337,
-       "meal_type": null,
        "name": "Synthetic sight 036",
        "place_id": "00000000-0000-4000-8000-000000000036",
        "reasons": [
@@ -2130,13 +1980,11 @@
       },
       {
        "category": "chapel",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 877,
        "kind": "visit",
        "lat": 48.205105,
        "lon": 16.412357,
-       "meal_type": null,
        "name": "Synthetic sight 103",
        "place_id": "00000000-0000-4000-8000-000000000103",
        "reasons": [
@@ -2157,13 +2005,11 @@
       },
       {
        "category": "statue",
-       "cuisines": null,
        "duration_minutes": 10,
        "end_minute": 894,
        "kind": "visit",
        "lat": 48.213468,
        "lon": 16.443468,
-       "meal_type": null,
        "name": "Synthetic sight 056",
        "place_id": "00000000-0000-4000-8000-000000000056",
        "reasons": [
@@ -2182,13 +2028,11 @@
       },
       {
        "category": "gallery",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 961,
        "kind": "visit",
        "lat": 48.1943,
        "lon": 16.459857,
-       "meal_type": null,
        "name": "Synthetic sight 092",
        "place_id": "00000000-0000-4000-8000-000000000092",
        "reasons": [
@@ -2209,13 +2053,11 @@
       },
       {
        "category": "gallery",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 1030,
        "kind": "visit",
        "lat": 48.218979,
        "lon": 16.480996,
-       "meal_type": null,
        "name": "Synthetic sight 165",
        "place_id": "00000000-0000-4000-8000-000000000165",
        "reasons": [
@@ -2238,13 +2080,11 @@
      "items": [
       {
        "category": "fountain",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 555,
        "kind": "visit",
        "lat": 48.196057,
        "lon": 16.368447,
-       "meal_type": null,
        "name": "Synthetic sight 140",
        "place_id": "00000000-0000-4000-8000-000000000140",
        "reasons": [
@@ -2264,13 +2104,11 @@
       },
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 607,
        "kind": "visit",
        "lat": 48.218927,
        "lon": 16.377069,
-       "meal_type": null,
        "name": "Synthetic sight 136",
        "place_id": "00000000-0000-4000-8000-000000000136",
        "reasons": [
@@ -2291,13 +2129,11 @@
       },
       {
        "category": "ruins",
-       "cuisines": null,
        "duration_minutes": 40,
        "end_minute": 653,
        "kind": "visit",
        "lat": 48.200812,
        "lon": 16.375692,
-       "meal_type": null,
        "name": "Synthetic sight 122",
        "place_id": "00000000-0000-4000-8000-000000000122",
        "reasons": [
@@ -2320,13 +2156,11 @@
       },
       {
        "category": "fountain",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 674,
        "kind": "visit",
        "lat": 48.187414,
        "lon": 16.35664,
-       "meal_type": null,
        "name": "Synthetic sight 098",
        "place_id": "00000000-0000-4000-8000-000000000098",
        "reasons": [
@@ -2346,13 +2180,11 @@
       },
       {
        "category": "ruins",
-       "cuisines": null,
        "duration_minutes": 40,
        "end_minute": 720,
        "kind": "visit",
        "lat": 48.202751,
        "lon": 16.3749,
-       "meal_type": null,
        "name": "Synthetic sight 114",
        "place_id": "00000000-0000-4000-8000-000000000114",
        "reasons": [
@@ -2373,13 +2205,11 @@
       },
       {
        "category": "monument",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 739,
        "kind": "visit",
        "lat": 48.202773,
        "lon": 16.37695,
-       "meal_type": null,
        "name": "Synthetic sight 104",
        "place_id": "00000000-0000-4000-8000-000000000104",
        "reasons": [
@@ -2401,13 +2231,11 @@
       },
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 775,
        "kind": "visit",
        "lat": 48.22098,
        "lon": 16.365671,
-       "meal_type": null,
        "name": "Synthetic sight 040",
        "place_id": "00000000-0000-4000-8000-000000000040",
        "reasons": [
@@ -2429,13 +2257,11 @@
       },
       {
        "category": "archaeological_site",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 932,
        "kind": "visit",
        "lat": 48.241195,
        "lon": 16.358124,
-       "meal_type": null,
        "name": "Synthetic sight 135",
        "place_id": "00000000-0000-4000-8000-000000000135",
        "reasons": [
@@ -2456,13 +2282,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 1030,
        "kind": "visit",
        "lat": 48.237509,
        "lon": 16.319081,
-       "meal_type": null,
        "name": "Synthetic sight 167",
        "place_id": "00000000-0000-4000-8000-000000000167",
        "reasons": [
@@ -2487,13 +2311,11 @@
      "items": [
       {
        "category": "tower",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 570,
        "kind": "visit",
        "lat": 48.267567,
        "lon": 16.288532,
-       "meal_type": null,
        "name": "Synthetic sight 052",
        "place_id": "00000000-0000-4000-8000-000000000052",
        "reasons": [
@@ -2513,13 +2335,11 @@
       },
       {
        "category": "city_gate",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 594,
        "kind": "visit",
        "lat": 48.249484,
        "lon": 16.323968,
-       "meal_type": null,
        "name": "Synthetic sight 159",
        "place_id": "00000000-0000-4000-8000-000000000159",
        "reasons": [
@@ -2539,13 +2359,11 @@
       },
       {
        "category": "memorial",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 621,
        "kind": "visit",
        "lat": 48.262141,
        "lon": 16.379784,
-       "meal_type": null,
        "name": "Synthetic sight 115",
        "place_id": "00000000-0000-4000-8000-000000000115",
        "reasons": [
@@ -2565,13 +2383,11 @@
       },
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 676,
        "kind": "visit",
        "lat": 48.228854,
        "lon": 16.365696,
-       "meal_type": null,
        "name": "Synthetic sight 050",
        "place_id": "00000000-0000-4000-8000-000000000050",
        "reasons": [
@@ -2592,13 +2408,11 @@
       },
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 712,
        "kind": "visit",
        "lat": 48.209161,
        "lon": 16.35876,
-       "meal_type": null,
        "name": "Synthetic sight 006",
        "place_id": "00000000-0000-4000-8000-000000000006",
        "reasons": [
@@ -2620,13 +2434,11 @@
       },
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 763,
        "kind": "visit",
        "lat": 48.196977,
        "lon": 16.334231,
-       "meal_type": null,
        "name": "Synthetic sight 023",
        "place_id": "00000000-0000-4000-8000-000000000023",
        "reasons": [
@@ -2646,13 +2458,11 @@
       },
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 891,
        "kind": "visit",
        "lat": 48.209527,
        "lon": 16.366828,
-       "meal_type": null,
        "name": "Synthetic sight 179",
        "place_id": "00000000-0000-4000-8000-000000000179",
        "reasons": [
@@ -2674,13 +2484,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 992,
        "kind": "visit",
        "lat": 48.209842,
        "lon": 16.372525,
-       "meal_type": null,
        "name": "Synthetic sight 049",
        "place_id": "00000000-0000-4000-8000-000000000049",
        "reasons": [
@@ -2701,13 +2509,11 @@
       },
       {
        "category": "viewpoint",
-       "cuisines": null,
        "duration_minutes": 20,
        "end_minute": 1014,
        "kind": "visit",
        "lat": 48.210227,
        "lon": 16.373016,
-       "meal_type": null,
        "name": "Synthetic sight 030",
        "place_id": "00000000-0000-4000-8000-000000000030",
        "reasons": [
@@ -2729,13 +2535,11 @@
       },
       {
        "category": "memorial",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 1031,
        "kind": "visit",
        "lat": 48.209783,
        "lon": 16.373475,
-       "meal_type": null,
        "name": "Synthetic sight 125",
        "place_id": "00000000-0000-4000-8000-000000000125",
        "reasons": [
@@ -2759,13 +2563,11 @@
      "items": [
       {
        "category": "monument",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 555,
        "kind": "visit",
        "lat": 48.211316,
        "lon": 16.394753,
-       "meal_type": null,
        "name": "Synthetic sight 053",
        "place_id": "00000000-0000-4000-8000-000000000053",
        "reasons": [
@@ -2784,13 +2586,11 @@
       },
       {
        "category": "attraction",
-       "cuisines": null,
        "duration_minutes": 45,
        "end_minute": 606,
        "kind": "visit",
        "lat": 48.198743,
        "lon": 16.41632,
-       "meal_type": null,
        "name": "Synthetic sight 142",
        "place_id": "00000000-0000-4000-8000-000000000142",
        "reasons": [
@@ -2810,13 +2610,11 @@
       },
       {
        "category": "castle",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 690,
        "kind": "visit",
        "lat": 48.20402,
        "lon": 16.370698,
-       "meal_type": null,
        "name": "Synthetic sight 014",
        "place_id": "00000000-0000-4000-8000-000000000014",
        "reasons": [
@@ -2838,13 +2636,11 @@
       },
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 726,
        "kind": "visit",
        "lat": 48.224558,
        "lon": 16.372303,
-       "meal_type": null,
        "name": "Synthetic sight 072",
        "place_id": "00000000-0000-4000-8000-000000000072",
        "reasons": [
@@ -2865,13 +2661,11 @@
       },
       {
        "category": "gallery",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 793,
        "kind": "visit",
        "lat": 48.204705,
        "lon": 16.352699,
-       "meal_type": null,
        "name": "Synthetic sight 032",
        "place_id": "00000000-0000-4000-8000-000000000032",
        "reasons": [
@@ -2891,13 +2685,11 @@
       },
       {
        "category": "viewpoint",
-       "cuisines": null,
        "duration_minutes": 20,
        "end_minute": 909,
        "kind": "visit",
        "lat": 48.192034,
        "lon": 16.330911,
-       "meal_type": null,
        "name": "Synthetic sight 077",
        "place_id": "00000000-0000-4000-8000-000000000077",
        "reasons": [
@@ -2918,13 +2710,11 @@
       },
       {
        "category": "viewpoint",
-       "cuisines": null,
        "duration_minutes": 20,
        "end_minute": 935,
        "kind": "visit",
        "lat": 48.206803,
        "lon": 16.310559,
-       "meal_type": null,
        "name": "Synthetic sight 021",
        "place_id": "00000000-0000-4000-8000-000000000021",
        "reasons": [
@@ -2944,13 +2734,11 @@
       },
       {
        "category": "palace",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 1025,
        "kind": "visit",
        "lat": 48.176735,
        "lon": 16.250216,
-       "meal_type": null,
        "name": "Synthetic sight 131",
        "place_id": "00000000-0000-4000-8000-000000000131",
        "reasons": [
@@ -2973,13 +2761,11 @@
      "items": [
       {
        "category": "church",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 570,
        "kind": "visit",
        "lat": 48.198015,
        "lon": 16.36651,
-       "meal_type": null,
        "name": "Synthetic sight 152",
        "place_id": "00000000-0000-4000-8000-000000000152",
        "reasons": [
@@ -3000,13 +2786,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 666,
        "kind": "visit",
        "lat": 48.217388,
        "lon": 16.372935,
-       "meal_type": null,
        "name": "Synthetic sight 002",
        "place_id": "00000000-0000-4000-8000-000000000002",
        "reasons": [
@@ -3029,13 +2813,11 @@
       },
       {
        "category": "chapel",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 689,
        "kind": "visit",
        "lat": 48.208622,
        "lon": 16.407508,
-       "meal_type": null,
        "name": "Synthetic sight 129",
        "place_id": "00000000-0000-4000-8000-000000000129",
        "reasons": [
@@ -3055,13 +2837,11 @@
       },
       {
        "category": "castle",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 770,
        "kind": "visit",
        "lat": 48.189881,
        "lon": 16.401789,
-       "meal_type": null,
        "name": "Synthetic sight 157",
        "place_id": "00000000-0000-4000-8000-000000000157",
        "reasons": [
@@ -3083,13 +2863,11 @@
       },
       {
        "category": "memorial",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 881,
        "kind": "visit",
        "lat": 48.202016,
        "lon": 16.381348,
-       "meal_type": null,
        "name": "Synthetic sight 054",
        "place_id": "00000000-0000-4000-8000-000000000054",
        "reasons": [
@@ -3112,13 +2890,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 979,
        "kind": "visit",
        "lat": 48.180605,
        "lon": 16.407008,
-       "meal_type": null,
        "name": "Synthetic sight 109",
        "place_id": "00000000-0000-4000-8000-000000000109",
        "reasons": [
@@ -3140,13 +2916,11 @@
       },
       {
        "category": "tower",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 1020,
        "kind": "visit",
        "lat": 48.199269,
        "lon": 16.452296,
-       "meal_type": null,
        "name": "Synthetic sight 153",
        "place_id": "00000000-0000-4000-8000-000000000153",
        "reasons": [
@@ -3168,13 +2942,11 @@
      "items": [
       {
        "category": "palace",
-       "cuisines": null,
        "duration_minutes": 75,
        "end_minute": 615,
        "kind": "visit",
        "lat": 48.21781,
        "lon": 16.411081,
-       "meal_type": null,
        "name": "Synthetic sight 024",
        "place_id": "00000000-0000-4000-8000-000000000024",
        "reasons": [
@@ -3193,13 +2965,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 713,
        "kind": "visit",
        "lat": 48.212186,
        "lon": 16.373433,
-       "meal_type": null,
        "name": "Synthetic sight 169",
        "place_id": "00000000-0000-4000-8000-000000000169",
        "reasons": [
@@ -3222,13 +2992,11 @@
       },
       {
        "category": "archaeological_site",
-       "cuisines": null,
        "duration_minutes": 60,
        "end_minute": 779,
        "kind": "visit",
        "lat": 48.228235,
        "lon": 16.388369,
-       "meal_type": null,
        "name": "Synthetic sight 132",
        "place_id": "00000000-0000-4000-8000-000000000132",
        "reasons": [
@@ -3250,13 +3018,11 @@
       },
       {
        "category": "museum",
-       "cuisines": null,
        "duration_minutes": 90,
        "end_minute": 965,
        "kind": "visit",
        "lat": 48.21539,
        "lon": 16.367065,
-       "meal_type": null,
        "name": "Synthetic sight 134",
        "place_id": "00000000-0000-4000-8000-000000000134",
        "reasons": [
@@ -3278,13 +3044,11 @@
       },
       {
        "category": "chapel",
-       "cuisines": null,
        "duration_minutes": 15,
        "end_minute": 990,
        "kind": "visit",
        "lat": 48.228125,
        "lon": 16.412376,
-       "meal_type": null,
        "name": "Synthetic sight 008",
        "place_id": "00000000-0000-4000-8000-000000000008",
        "reasons": [
@@ -3304,13 +3068,11 @@
       },
       {
        "category": "historic_building",
-       "cuisines": null,
        "duration_minutes": 30,
        "end_minute": 1030,
        "kind": "visit",
        "lat": 48.252835,
        "lon": 16.447315,
-       "meal_type": null,
        "name": "Synthetic sight 070",
        "place_id": "00000000-0000-4000-8000-000000000070",
        "reasons": [

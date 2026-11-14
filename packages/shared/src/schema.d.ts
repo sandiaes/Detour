@@ -586,7 +586,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Search restaurants: imported places first, then your saved restaurants and, when nothing matches and asked for, Photon through the backend (cached, budgeted). */
+    /** Search restaurants and cafes: your saved places first and, when nothing matches and asked for, Photon through the backend (cached, budgeted). */
     get: operations["search_restaurants"];
     put?: never;
     post?: never;
@@ -1057,8 +1057,6 @@ export interface components {
       kind: "visit" | "meal";
       /** Name */
       name: string;
-      /** Meal Type */
-      meal_type: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /**
        * Start Time
        * Format: time
@@ -1126,8 +1124,6 @@ export interface components {
       name: string;
       /** Day */
       day: number;
-      /** Meal Type */
-      meal_type: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /**
        * Old Start Time
        * Format: time
@@ -1209,9 +1205,8 @@ export interface components {
     };
     /**
      * ExternalRestaurant
-     * @description A restaurant or café from the external provider (Photon). Not part of our data: save it as
-     *     a user place (kind restaurant, source search_result) to add it to a plan. The provider gives
-     *     no cuisine, so it is not specified unless you give one.
+     * @description A restaurant or cafe from the external provider (Photon). Not part of our data: save it as
+     *     a user place (kind restaurant or cafe, source search_result) to add it to a plan.
      */
     ExternalRestaurant: {
       /**
@@ -1257,31 +1252,16 @@ export interface components {
       licence: "ODbL-1.0";
       /**
        * Venue Type
+       * @description From the OpenStreetMap amenity value; also the kind to save it as
        * @enum {string}
        */
       venue_type: "restaurant" | "cafe";
-      /**
-       * Meal Types
-       * @description From the venue type by the same fixed rule as imported places: a restaurant serves lunch and dinner, a café breakfast and a snack. You can change them.
-       */
-      meal_types: ("breakfast" | "lunch" | "dinner" | "snack")[];
-      /**
-       * Meal Types Basis
-       * @default venue_type
-       * @constant
-       */
-      meal_types_basis: "venue_type";
-      /**
-       * Cuisines
-       * @description Always null: the provider's answer carries none
-       */
-      cuisines?: string[] | null;
     };
     /** ExternalRestaurantStatus */
     ExternalRestaurantStatus: {
       /**
        * State
-       * @description not_requested: include_external was false. not_needed: there are local or own results. unavailable, budget_exhausted and disabled: no external results; you can always enter the restaurant by hand (a name and a map pin).
+       * @description not_requested: include_external was false. not_needed: your saved places match. unavailable, budget_exhausted and disabled: no external results; you can always enter the place by hand (a name, a kind and a map pin).
        * @enum {string}
        */
       state:
@@ -1414,8 +1394,6 @@ export interface components {
        * @enum {string}
        */
       type: "visit" | "meal" | "free_time";
-      /** Meal Type */
-      meal_type: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /** Place Id */
       place_id: string | null;
       /** User Place Id */
@@ -1456,7 +1434,7 @@ export interface components {
       reason_texts: string[];
       /** @description To the next item of the day. Null for the last item, or when no transfer has been computed (items added or moved by hand) */
       transfer?: components["schemas"]["Transfer"] | null;
-      /** @description Meals only: the place to eat as the open data describes it */
+      /** @description Restaurant and cafe stops only: its kind */
       restaurant?: components["schemas"]["RestaurantInfo"] | null;
       /** @description Photo of an imported place, when one was found (restaurants have none yet) */
       image?: components["schemas"]["Photo"] | null;
@@ -1470,8 +1448,6 @@ export interface components {
        * @enum {string}
        */
       type: "visit" | "meal" | "free_time";
-      /** Meal Type */
-      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /**
        * Place Id
        * @description A geo.place
@@ -1518,8 +1494,6 @@ export interface components {
        * @description Move to another day
        */
       day_index?: number | null;
-      /** Meal Type */
-      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
     };
     /** Itinerary */
     Itinerary: {
@@ -1748,7 +1722,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "attraction" | "restaurant" | "transport_hub" | "other";
+      kind: "attraction" | "transport_hub" | "other";
       /** Category */
       category: string;
       /** Lat */
@@ -1761,13 +1735,6 @@ export interface components {
       city_id: number | null;
       /** City Name */
       city_name: string | null;
-      /**
-       * Cuisines
-       * @description Restaurants; null = unknown
-       */
-      cuisines?: string[] | null;
-      /** Venue Type */
-      venue_type?: string | null;
       /**
        * Distance M
        * @description From the search point, if given
@@ -1783,10 +1750,6 @@ export interface components {
       address: {
         [key: string]: string;
       } | null;
-      /** Meal Types */
-      meal_types: string[] | null;
-      /** Diet Flags */
-      diet_flags: string[] | null;
       /**
        * Default Visit Minutes
        * @description Null: no category rule table exists yet (Phase 4); never a guess
@@ -1993,7 +1956,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "attraction" | "restaurant" | "transport_hub" | "other";
+      kind: "attraction" | "transport_hub" | "other";
       /** Category */
       category: string;
       /** Lat */
@@ -2006,13 +1969,6 @@ export interface components {
       city_id: number | null;
       /** City Name */
       city_name: string | null;
-      /**
-       * Cuisines
-       * @description Restaurants; null = unknown
-       */
-      cuisines?: string[] | null;
-      /** Venue Type */
-      venue_type?: string | null;
       /**
        * Distance M
        * @description From the search point, if given
@@ -2126,93 +2082,23 @@ export interface components {
     };
     /**
      * RestaurantInfo
-     * @description What the open data says about a meal's place to eat. There is no price, rating or opening
-     *     hours.
+     * @description What is known about a restaurant or cafe stop: only its kind. There is no cuisine, meal
+     *     type, price, rating or opening hours (ADR 026).
      */
     RestaurantInfo: {
       /**
        * Venue Type
-       * @description restaurant or cafe (from the OpenStreetMap amenity tag); null when unknown
+       * @description The kind of the user's place; null when unknown
        */
-      venue_type: string | null;
-      /**
-       * Cuisines
-       * @description From the OpenStreetMap cuisine tag; null when the data states no cuisine (shown as 'Cuisine not specified')
-       */
-      cuisines: string[] | null;
-    };
-    /**
-     * RestaurantResult
-     * @description An imported place to eat. ``cuisines`` null means the data states none: shown as
-     *     "Cuisine not specified".
-     */
-    RestaurantResult: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /**
-       * Name
-       * @description Null when the source has no name
-       */
-      name: string | null;
-      /**
-       * Name En
-       * @description The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated.
-       */
-      name_en?: string | null;
-      /** @description The resolved English-facing name with the original local name (ADR 025) */
-      names?: components["schemas"]["PlaceName"] | null;
-      /**
-       * Kind
-       * @enum {string}
-       */
-      kind: "attraction" | "restaurant" | "transport_hub" | "other";
-      /** Category */
-      category: string;
-      /** Lat */
-      lat: number;
-      /** Lon */
-      lon: number;
-      /** Region Id */
-      region_id: string;
-      /** City Id */
-      city_id: number | null;
-      /** City Name */
-      city_name: string | null;
-      /**
-       * Cuisines
-       * @description Restaurants; null = unknown
-       */
-      cuisines?: string[] | null;
-      /** Venue Type */
-      venue_type?: string | null;
-      /**
-       * Distance M
-       * @description From the search point, if given
-       */
-      distance_m?: number | null;
-      /** Match */
-      match?: ("exact" | "prefix" | "word_prefix" | "contains" | "similar") | null;
-      /**
-       * Meal Types
-       * @description Derived from the venue type by the import's fixed rule
-       */
-      meal_types?: ("breakfast" | "lunch" | "dinner" | "snack")[] | null;
+      venue_type: ("restaurant" | "cafe") | null;
     };
     /** RestaurantSearchResponse */
     RestaurantSearchResponse: {
       /** Query */
       query: string;
       /**
-       * Results
-       * @description Imported places to eat, searched first
-       */
-      results: components["schemas"]["RestaurantResult"][];
-      /**
        * Your Places
-       * @description Restaurants you saved before (kind restaurant) whose name matches
+       * @description Restaurants and cafes you saved before whose name matches
        */
       your_places: components["schemas"]["UserPlace"][];
       external: components["schemas"]["ExternalRestaurantStatus"];
@@ -2433,17 +2319,13 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "city" | "location" | "restaurant";
+      kind: "city" | "location" | "restaurant" | "cafe";
       /** Name */
       name: string;
       /** Lat */
       lat: number;
       /** Lon */
       lon: number;
-      /** Cuisines */
-      cuisines: string[] | null;
-      /** Meal Types */
-      meal_types: string[] | null;
       /**
        * Source
        * @enum {string}
@@ -2470,7 +2352,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "city" | "location" | "restaurant";
+      kind: "city" | "location" | "restaurant" | "cafe";
       /** Name */
       name: string;
       /**
@@ -2483,16 +2365,6 @@ export interface components {
        * @description WGS 84 longitude
        */
       lon: number;
-      /**
-       * Cuisines
-       * @description Restaurants only
-       */
-      cuisines?: string[] | null;
-      /**
-       * Meal Types
-       * @description Restaurants only
-       */
-      meal_types?: string[] | null;
       /**
        * Source
        * @enum {string}
@@ -2514,10 +2386,6 @@ export interface components {
       lat?: number | null;
       /** Lon */
       lon?: number | null;
-      /** Cuisines */
-      cuisines?: string[] | null;
-      /** Meal Types */
-      meal_types?: string[] | null;
     };
     /** ValidationError */
     ValidationError: {
@@ -4700,7 +4568,6 @@ export interface operations {
         region?: string | null;
         lat?: number | null;
         lon?: number | null;
-        radius_m?: number | null;
         limit?: number;
         include_external?: boolean;
         lang?: string | null;
@@ -4761,7 +4628,7 @@ export interface operations {
   list_user_places: {
     parameters: {
       query?: {
-        kind?: ("city" | "location" | "restaurant") | null;
+        kind?: ("city" | "location" | "restaurant" | "cafe") | null;
       };
       header?: never;
       path?: never;

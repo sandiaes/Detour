@@ -31,13 +31,12 @@ import {
   placeSuggestionWhere,
   travelImpact,
 } from "../domain/placeSuggestions";
-import { restaurantMeta } from "../domain/restaurants";
 import { type Route, useNavigation } from "../nav/Navigator";
 import { TOUCH, colors, radius, spacing, type } from "../theme";
 import { formatMeters, formatMinutes } from "../util/format";
 
 // Adding a place (Phase 7, ADR 018; redesigned in ADR 021, step 4). Find it (sights, towns and
-// places to eat in the imported data, an address, or a pin), say how long to stay, and Detour's
+// towns, an address, or a pin), say how long to stay, and Detour's
 // recalculation suggests up to three days with the time, the travel it adds and what else moves.
 // The chosen day is previewed with its full diff; nothing changes until the user accepts.
 
@@ -60,7 +59,6 @@ export type Choice =
 type Mode = "search" | "address" | "pin";
 type Results = {
   sights: PlaceSummary[];
-  eat: PlaceSummary[];
   towns: DestinationResult[];
 };
 
@@ -192,15 +190,10 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
       void (async () => {
         try {
           const near = { lat: centre.lat, lon: centre.lon, radius_m: SIGHT_RADIUS_M, limit: 8 };
-          const [sights, eat, towns] = await Promise.all([
+          const [sights, towns] = await Promise.all([
             call(
               client.GET("/v1/places/search", {
                 params: { query: { q, kind: "attraction", ...near } },
-              }),
-            ),
-            call(
-              client.GET("/v1/places/search", {
-                params: { query: { q, kind: "restaurant", ...near, limit: 5 } },
               }),
             ),
             call(client.GET("/v1/destinations/search", { params: { query: { q, limit: 5 } } })),
@@ -211,7 +204,6 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
             ...r,
             [key]: {
               sights: sights.results.filter((p) => p.name),
-              eat: eat.results.filter((p) => p.name),
               towns: towns.results.filter((t) => t.kind === "city"),
             },
           }));
@@ -357,11 +349,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
 
   const found = results[key];
   const wider = wide[key];
-  const nothingFound =
-    found !== undefined &&
-    found.sights.length === 0 &&
-    found.towns.length === 0 &&
-    found.eat.length === 0;
+  const nothingFound = found !== undefined && found.sights.length === 0 && found.towns.length === 0;
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -372,8 +360,8 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
       />
       <View style={styles.section}>
         <Text style={styles.lead}>
-          Find a sight, a town or a place to eat, or add your own by address or pin. Detour suggests
-          the best days for it and shows what would change before anything changes.
+          Find a sight or a town, or add your own by address or pin. Detour suggests the best days
+          for it and shows what would change before anything changes.
         </Text>
       </View>
       <Tabs<Mode>
@@ -391,7 +379,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
         {mode === "search" ? (
           <View style={styles.gap}>
             <Field
-              label="Sight, town or restaurant"
+              label="Sight or town"
               value={query}
               onChangeText={(t) => {
                 setQuery(t);
@@ -427,29 +415,6 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                       .join(" · ")}
                     selected={choice?.kind === "sight" && choice.place.id === p.id}
                     onPress={() => pick({ kind: "sight", place: p })}
-                  />
-                ))}
-              </ResultGroup>
-            ) : null}
-            {found?.eat.length ? (
-              <ResultGroup title="Places to eat">
-                {found.eat.map((p) => (
-                  <ResultRow
-                    key={p.id}
-                    icon={p.venue_type === "cafe" ? "cafe" : "restaurant"}
-                    eat
-                    title={p.name ?? p.category}
-                    meta={restaurantMeta(p)}
-                    hint="Opens the restaurant flow: Detour suggests the best day and meal"
-                    selected={false}
-                    onPress={() =>
-                      nav.replace({
-                        name: "addRestaurant",
-                        tripId: route.tripId,
-                        itineraryId: route.itineraryId,
-                        preset: { ...p, meal_types: null },
-                      })
-                    }
                   />
                 ))}
               </ResultGroup>
@@ -659,7 +624,6 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 <ChooseSlot
                   days={itinerary.data.days}
                   startDate={trip?.start_date ?? null}
-                  meal={false}
                   minutes={minutes ?? 60}
                   name={choiceName(choice, customName)}
                   working={working === "preview"}
@@ -794,7 +758,6 @@ function ResultRow({
   selected,
   onPress,
   hint,
-  eat = false,
 }: {
   icon: IconName;
   title: string;
@@ -802,7 +765,6 @@ function ResultRow({
   selected: boolean;
   onPress: () => void;
   hint?: string;
-  eat?: boolean;
 }) {
   return (
     <Pressable
@@ -813,8 +775,8 @@ function ResultRow({
       onPress={onPress}
       style={[styles.result, selected && styles.resultSelected]}
     >
-      <View style={[styles.resultIcon, eat && styles.resultIconEat]}>
-        <Icon name={icon} size={18} color={eat ? colors.accentText : colors.primary} />
+      <View style={styles.resultIcon}>
+        <Icon name={icon} size={18} color={colors.primary} />
       </View>
       <View style={styles.resultText}>
         <Text style={styles.resultTitle}>
@@ -823,7 +785,6 @@ function ResultRow({
         </Text>
         {meta ? <Text style={styles.muted}>{meta}</Text> : null}
       </View>
-      {eat ? <Icon name="chevronRight" size={18} color={colors.muted} /> : null}
     </Pressable>
   );
 }
@@ -858,7 +819,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.primarySoft,
   },
-  resultIconEat: { backgroundColor: colors.accentSoft },
   resultText: { flex: 1, gap: spacing.xxs },
   resultTitle: { ...type.body, fontWeight: "700", color: colors.text },
   map: {

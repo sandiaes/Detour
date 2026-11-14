@@ -516,7 +516,7 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^(attraction|restaurant|transport_hub|other)$"
+                  "pattern": "^(attraction|transport_hub|other)$"
                 },
                 {
                   "type": "null"
@@ -3122,7 +3122,7 @@
         "tags": [
           "restaurants"
         ],
-        "summary": "Search restaurants: imported places first, then your saved restaurants and, when nothing matches and asked for, Photon through the backend (cached, budgeted).",
+        "summary": "Search restaurants and cafes: your saved places first and, when nothing matches and asked for, Photon through the backend (cached, budgeted).",
         "operationId": "search_restaurants",
         "security": [
           {
@@ -3192,24 +3192,6 @@
                 }
               ],
               "title": "Lon"
-            }
-          },
-          {
-            "name": "radius_m",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "number",
-                  "maximum": 50000,
-                  "exclusiveMinimum": 0
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Radius M"
             }
           },
           {
@@ -3403,7 +3385,8 @@
                   "enum": [
                     "city",
                     "location",
-                    "restaurant"
+                    "restaurant",
+                    "cafe"
                   ],
                   "type": "string"
                 },
@@ -4684,23 +4667,6 @@
             "type": "string",
             "title": "Name"
           },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
-          },
           "start_time": {
             "type": "string",
             "format": "time",
@@ -4722,7 +4688,6 @@
           "day",
           "kind",
           "name",
-          "meal_type",
           "start_time",
           "end_time",
           "added_by_you"
@@ -4828,23 +4793,6 @@
             "type": "integer",
             "title": "Day"
           },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
-          },
           "old_start_time": {
             "type": "string",
             "format": "time",
@@ -4861,7 +4809,6 @@
           "kind",
           "name",
           "day",
-          "meal_type",
           "old_start_time",
           "new_start_time"
         ],
@@ -5221,42 +5168,8 @@
               "restaurant",
               "cafe"
             ],
-            "title": "Venue Type"
-          },
-          "meal_types": {
-            "items": {
-              "type": "string",
-              "enum": [
-                "breakfast",
-                "lunch",
-                "dinner",
-                "snack"
-              ]
-            },
-            "type": "array",
-            "title": "Meal Types",
-            "description": "From the venue type by the same fixed rule as imported places: a restaurant serves lunch and dinner, a café breakfast and a snack. You can change them."
-          },
-          "meal_types_basis": {
-            "type": "string",
-            "const": "venue_type",
-            "title": "Meal Types Basis",
-            "default": "venue_type"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Always null: the provider's answer carries none"
+            "title": "Venue Type",
+            "description": "From the OpenStreetMap amenity value; also the kind to save it as"
           }
         },
         "type": "object",
@@ -5274,11 +5187,10 @@
           "street",
           "housenumber",
           "postcode",
-          "venue_type",
-          "meal_types"
+          "venue_type"
         ],
         "title": "ExternalRestaurant",
-        "description": "A restaurant or café from the external provider (Photon). Not part of our data: save it as\na user place (kind restaurant, source search_result) to add it to a plan. The provider gives\nno cuisine, so it is not specified unless you give one."
+        "description": "A restaurant or cafe from the external provider (Photon). Not part of our data: save it as\na user place (kind restaurant or cafe, source search_result) to add it to a plan."
       },
       "ExternalRestaurantStatus": {
         "properties": {
@@ -5294,7 +5206,7 @@
               "disabled"
             ],
             "title": "State",
-            "description": "not_requested: include_external was false. not_needed: there are local or own results. unavailable, budget_exhausted and disabled: no external results; you can always enter the restaurant by hand (a name and a map pin)."
+            "description": "not_requested: include_external was false. not_needed: your saved places match. unavailable, budget_exhausted and disabled: no external results; you can always enter the place by hand (a name, a kind and a map pin)."
           },
           "provider": {
             "anyOf": [
@@ -5545,23 +5457,6 @@
             ],
             "title": "Type"
           },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
-          },
           "place_id": {
             "anyOf": [
               {
@@ -5696,7 +5591,7 @@
                 "type": "null"
               }
             ],
-            "description": "Meals only: the place to eat as the open data describes it"
+            "description": "Restaurant and cafe stops only: its kind"
           },
           "image": {
             "anyOf": [
@@ -5727,7 +5622,6 @@
           "day_id",
           "position",
           "type",
-          "meal_type",
           "place_id",
           "user_place_id",
           "display_name",
@@ -5754,23 +5648,6 @@
               "free_time"
             ],
             "title": "Type"
-          },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
           },
           "place_id": {
             "anyOf": [
@@ -5912,23 +5789,6 @@
             ],
             "title": "Day Index",
             "description": "Move to another day"
-          },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
           }
         },
         "additionalProperties": false,
@@ -6438,7 +6298,6 @@
             "type": "string",
             "enum": [
               "attraction",
-              "restaurant",
               "transport_hub",
               "other"
             ],
@@ -6481,32 +6340,6 @@
               }
             ],
             "title": "City Name"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Restaurants; null = unknown"
-          },
-          "venue_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type"
           },
           "distance_m": {
             "anyOf": [
@@ -6566,34 +6399,6 @@
             ],
             "title": "Address"
           },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types"
-          },
-          "diet_flags": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Diet Flags"
-          },
           "default_visit_minutes": {
             "anyOf": [
               {
@@ -6642,8 +6447,6 @@
           "city_name",
           "names_i18n",
           "address",
-          "meal_types",
-          "diet_flags",
           "default_visit_minutes",
           "is_active",
           "wikidata_id",
@@ -7041,7 +6844,6 @@
             "type": "string",
             "enum": [
               "attraction",
-              "restaurant",
               "transport_hub",
               "other"
             ],
@@ -7084,32 +6886,6 @@
               }
             ],
             "title": "City Name"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Restaurants; null = unknown"
-          },
-          "venue_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type"
           },
           "distance_m": {
             "anyOf": [
@@ -7363,221 +7139,26 @@
           "venue_type": {
             "anyOf": [
               {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type",
-            "description": "restaurant or cafe (from the OpenStreetMap amenity tag); null when unknown"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "From the OpenStreetMap cuisine tag; null when the data states no cuisine (shown as 'Cuisine not specified')"
-          }
-        },
-        "type": "object",
-        "required": [
-          "venue_type",
-          "cuisines"
-        ],
-        "title": "RestaurantInfo",
-        "description": "What the open data says about a meal's place to eat. There is no price, rating or opening\nhours."
-      },
-      "RestaurantResult": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name",
-            "description": "Null when the source has no name"
-          },
-          "name_en": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name En",
-            "description": "The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated."
-          },
-          "names": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PlaceName"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The resolved English-facing name with the original local name (ADR 025)"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "attraction",
-              "restaurant",
-              "transport_hub",
-              "other"
-            ],
-            "title": "Kind"
-          },
-          "category": {
-            "type": "string",
-            "title": "Category"
-          },
-          "lat": {
-            "type": "number",
-            "title": "Lat"
-          },
-          "lon": {
-            "type": "number",
-            "title": "Lon"
-          },
-          "region_id": {
-            "type": "string",
-            "title": "Region Id"
-          },
-          "city_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City Id"
-          },
-          "city_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City Name"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Restaurants; null = unknown"
-          },
-          "venue_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type"
-          },
-          "distance_m": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Distance M",
-            "description": "From the search point, if given"
-          },
-          "match": {
-            "anyOf": [
-              {
                 "type": "string",
                 "enum": [
-                  "exact",
-                  "prefix",
-                  "word_prefix",
-                  "contains",
-                  "similar"
+                  "restaurant",
+                  "cafe"
                 ]
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Match"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "breakfast",
-                    "lunch",
-                    "dinner",
-                    "snack"
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types",
-            "description": "Derived from the venue type by the import's fixed rule"
+            "title": "Venue Type",
+            "description": "The kind of the user's place; null when unknown"
           }
         },
         "type": "object",
         "required": [
-          "id",
-          "name",
-          "kind",
-          "category",
-          "lat",
-          "lon",
-          "region_id",
-          "city_id",
-          "city_name"
+          "venue_type"
         ],
-        "title": "RestaurantResult",
-        "description": "An imported place to eat. ``cuisines`` null means the data states none: shown as\n\"Cuisine not specified\"."
+        "title": "RestaurantInfo",
+        "description": "What is known about a restaurant or cafe stop: only its kind. There is no cuisine, meal\ntype, price, rating or opening hours (ADR 026)."
       },
       "RestaurantSearchResponse": {
         "properties": {
@@ -7585,21 +7166,13 @@
             "type": "string",
             "title": "Query"
           },
-          "results": {
-            "items": {
-              "$ref": "#/components/schemas/RestaurantResult"
-            },
-            "type": "array",
-            "title": "Results",
-            "description": "Imported places to eat, searched first"
-          },
           "your_places": {
             "items": {
               "$ref": "#/components/schemas/UserPlace"
             },
             "type": "array",
             "title": "Your Places",
-            "description": "Restaurants you saved before (kind restaurant) whose name matches"
+            "description": "Restaurants and cafes you saved before whose name matches"
           },
           "external": {
             "$ref": "#/components/schemas/ExternalRestaurantStatus"
@@ -7608,7 +7181,6 @@
         "type": "object",
         "required": [
           "query",
-          "results",
           "your_places",
           "external"
         ],
@@ -8122,7 +7694,8 @@
             "enum": [
               "city",
               "location",
-              "restaurant"
+              "restaurant",
+              "cafe"
             ],
             "title": "Kind"
           },
@@ -8137,34 +7710,6 @@
           "lon": {
             "type": "number",
             "title": "Lon"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types"
           },
           "source": {
             "type": "string",
@@ -8214,8 +7759,6 @@
           "name",
           "lat",
           "lon",
-          "cuisines",
-          "meal_types",
           "source",
           "search_provider",
           "search_ref",
@@ -8231,7 +7774,8 @@
             "enum": [
               "city",
               "location",
-              "restaurant"
+              "restaurant",
+              "cafe"
             ],
             "title": "Kind"
           },
@@ -8254,38 +7798,6 @@
             "minimum": -180.0,
             "title": "Lon",
             "description": "WGS 84 longitude"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array",
-                "maxItems": 10
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Restaurants only"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array",
-                "maxItems": 4
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types",
-            "description": "Restaurants only"
           },
           "source": {
             "type": "string",
@@ -8378,34 +7890,6 @@
               }
             ],
             "title": "Lon"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types"
           }
         },
         "additionalProperties": false,

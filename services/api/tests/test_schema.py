@@ -87,9 +87,7 @@ def item(conn: psycopg.Connection[Any], day_id: uuid.UUID, **over: Any) -> None:
     [
         {"type": "visit", "place_id": None},  # visit without a place
         {"type": "visit", "user_place_id": uuid.uuid4()},  # both set (and a missing user place)
-        {"type": "free_time", "meal_type": None},  # free time with a place
-        {"type": "meal", "meal_type": None},  # meal without meal_type
-        {"type": "visit", "meal_type": "lunch"},  # meal_type on a visit
+        {"type": "free_time"},  # free time with a place
         {"start_time": "10:00", "end_time": None},
         {"start_time": "10:00", "end_time": "10:00"},
         {"start_time": "11:00", "end_time": "10:00"},
@@ -98,7 +96,7 @@ def item(conn: psycopg.Connection[Any], day_id: uuid.UUID, **over: Any) -> None:
         {"origin": "robot"},
         {"duration_source": "guess"},
         {"position": 0},
-        {"type": "meal", "meal_type": "brunch"},
+        {"type": "brunch"},
     ],
 )
 def test_item_constraints(db: psycopg.Connection[Any], over: dict[str, Any]) -> None:
@@ -106,12 +104,9 @@ def test_item_constraints(db: psycopg.Connection[Any], over: dict[str, Any]) -> 
         item(db, day(db), **over)
 
 
-def test_meal_types_include_snack_and_the_arrival_leg_is_all_or_nothing(
-    db: psycopg.Connection[Any],
-) -> None:
+def test_the_arrival_leg_is_all_or_nothing(db: psycopg.Connection[Any]) -> None:
     d = day(db)
-    for n, meal in enumerate(("breakfast", "lunch", "snack", "dinner"), start=1):
-        item(db, d, type="meal", meal_type=meal, position=n)
+    item(db, d, type="meal", position=1)
     db.execute(
         "UPDATE app.itinerary_day SET base_city_name = 'B', arrival_mode = 'drive',"
         " arrival_seconds = 3600, arrival_meters = 80000, arrival_confidence = 'routed'"
@@ -180,7 +175,7 @@ def test_user_place_constraints(db: psycopg.Connection[Any]) -> None:
     for bad in (
         {"source": "search_result"},
         {"search_provider": "photon", "search_ref": "N1"},
-        {"cuisines": ["x"]},  # only restaurants have cuisines
+        {"cuisines": ["x"]},  # cuisine is not stored (ADR 026)
         {"kind": "hotel"},
         {"name": ""},
     ):

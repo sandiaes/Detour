@@ -1,7 +1,6 @@
 import type { ChangeDiff, PlaceSuggestion } from "@detour/shared";
 
 import { formatClock, formatMinutes } from "../util/format";
-import { MEAL_LABEL } from "./restaurants";
 
 // How a suggested day for a place reads (ADR 021, step 4). The days, times, travel and the items
 // that move come from the server's recalculation; nothing here scores or decides anything.
@@ -44,10 +43,9 @@ export function affectedLines(d: ChangeDiff): { tone: "warn" | "info"; text: str
     });
   }
   for (const r of d.retimed) {
-    const what = r.meal_type ? `${MEAL_LABEL[r.meal_type]} at ${r.name}` : r.name;
     lines.push({
       tone: "info",
-      text: `${what}: ${clock(r.old_start_time)} → ${clock(r.new_start_time)}`,
+      text: `${r.name}: ${clock(r.old_start_time)} → ${clock(r.new_start_time)}`,
     });
   }
   return lines;

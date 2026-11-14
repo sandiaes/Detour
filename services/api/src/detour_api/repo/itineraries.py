@@ -34,7 +34,7 @@ from detour_api.models.trips import (
 from detour_api.names.api import to_api
 from detour_api.names.resolver import ResolvedName
 from detour_api.names.store import resolve_places
-from detour_api.planner.durations import visit_minutes
+from detour_api.planner.durations import VENUE_MINUTES, visit_minutes
 from detour_api.planner.reasons import ITEM_TEMPLATES, NOTE_TEMPLATES, item_text, note_text
 from detour_api.repo import geo, images, plan_state, trips, user_places
 
@@ -43,15 +43,13 @@ MAX_ITEMS_PER_DAY = 40
 MANUAL_VERSION = "manual"
 
 _ITEM_COLUMNS = """
-    i.id, i.day_id, i.position, i.type, i.meal_type, i.place_id, i.user_place_id, i.display_name,
+    i.id, i.day_id, i.position, i.type, i.place_id, i.user_place_id, i.display_name,
     ST_Y(i.display_point) AS lat, ST_X(i.display_point) AS lon, i.start_time, i.end_time,
     i.duration_minutes, i.duration_source, i.origin, i.locked, i.reasons,
-    rp.venue_type AS r_venue, COALESCE(rp.cuisines, up.cuisines) AS r_cuisines
+    up.kind AS r_venue
 """
-# Restaurant attributes are read from geo (or the user's place) by identifier at read time, never
-# copied into app (data model section 1). No foreign key is involved.
+# The kind of a restaurant or cafe stop is read from the user's place at read time (ADR 026).
 _ITEM_JOINS = """
-    LEFT JOIN geo.restaurant_profile rp ON i.type = 'meal' AND rp.place_id = i.place_id
     LEFT JOIN app.user_place up ON i.type = 'meal' AND up.id = i.user_place_id
 """
 
@@ -137,7 +135,6 @@ def _item(row: Any, transfer: Transfer | None = None) -> Item:
         day_id=row.day_id,
         position=row.position,
         type=row.type,
-        meal_type=row.meal_type,
         place_id=row.place_id,
         user_place_id=row.user_place_id,
         display_name=row.display_name,
@@ -154,8 +151,7 @@ def _item(row: Any, transfer: Transfer | None = None) -> Item:
         transfer=transfer,
         restaurant=(
             RestaurantInfo(
-                venue_type=row.r_venue,
-                cuisines=None if row.r_cuisines is None else list(row.r_cuisines),
+                venue_type=row.r_venue if row.r_venue in ("restaurant", "cafe") else None
             )
             if row.type == "meal"
             else None
@@ -380,6 +376,7 @@ def _resolve_place(
     """(display name, lat, lon, default minutes) of the item's place, validating its kind. An
     imported attraction's default is its category's visit duration (planner/durations.py)."""
     want_restaurant = body.type == "meal"
+    eating = ("restaurant", "cafe")
     if body.type == "free_time":
         return "Free time", None, None, None
     if body.place_id is not None:
@@ -387,10 +384,10 @@ def _resolve_place(
         if found is None or not found[4]:
             raise invalid("place_not_found", "place_id is not an active place")
         kind, name, lat, lon, _, default_minutes, category = found
-        if (kind == "restaurant") != want_restaurant:
+        if want_restaurant or kind in eating:
             raise invalid(
                 "wrong_place_kind",
-                "a meal needs a restaurant; a visit needs a place that is not a restaurant",
+                "a restaurant or cafe is added as your own place; a visit needs an attraction",
             )
         if default_minutes is None and kind == "attraction":
             default_minutes = visit_minutes(category)
@@ -399,12 +396,12 @@ def _resolve_place(
     place = user_places.get(conn, installation_id, body.user_place_id)
     if place is None:
         raise invalid("user_place_not_found", "user_place_id is not one of your places")
-    if (place.kind == "restaurant") != want_restaurant:
+    if (place.kind in eating) != want_restaurant:
         raise invalid(
             "wrong_place_kind",
-            "a meal needs a restaurant; a visit needs a place that is not a restaurant",
+            "a meal needs a restaurant or cafe; a visit needs a place that is not one",
         )
-    return place.name, place.lat, place.lon, None
+    return place.name, place.lat, place.lon, VENUE_MINUTES.get(place.kind)
 
 
 def create_item(
@@ -447,10 +444,10 @@ def create_item(
     conn.execute(
         text(
             """
-            INSERT INTO app.itinerary_item (id, day_id, position, type, meal_type, place_id,
+            INSERT INTO app.itinerary_item (id, day_id, position, type, place_id,
                 user_place_id, display_name, display_point, start_time, end_time,
                 duration_minutes, duration_source, origin, locked)
-            VALUES (:id, :d, :pos, :type, :meal, :place, :uplace, :name,
+            VALUES (:id, :d, :pos, :type, :place, :uplace, :name,
                 CASE WHEN CAST(:lat AS float8) IS NULL THEN NULL
                      ELSE ST_SetSRID(ST_MakePoint(:lon, :lat), 4326) END,
                 :start, :end, :minutes, :source, 'user', :locked)
@@ -461,7 +458,6 @@ def create_item(
             "d": ctx.day_id,
             "pos": position,
             "type": body.type,
-            "meal": body.meal_type,
             "place": body.place_id,
             "uplace": body.user_place_id,
             "name": name,
@@ -527,10 +523,6 @@ def update_item(
         raise conflict("trip_archived", "a past trip cannot be changed")
     changed = body.model_fields_set
     plan_state.snapshot(conn, row.itinerary_id)
-    if "meal_type" in changed and row.type != "meal":
-        raise invalid("not_a_meal", "meal_type can only be changed on a meal")
-    if "meal_type" in changed and body.meal_type is None:
-        raise invalid("meal_type_required", "a meal always has a meal_type")
 
     minutes = row.duration_minutes
     source = row.duration_source
@@ -599,9 +591,6 @@ def update_item(
     if "locked" in changed and body.locked is not None:
         sets.append("locked = :locked")
         params["locked"] = body.locked
-    if "meal_type" in changed:
-        sets.append("meal_type = :meal")
-        params["meal"] = body.meal_type
     conn.execute(text(f"UPDATE app.itinerary_item SET {', '.join(sets)} WHERE id = :i"), params)
     drop_stale_transfers(conn, [row.day_id, target_day_id])
     _bump(conn, row.itinerary_id)

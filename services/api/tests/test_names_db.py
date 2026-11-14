@@ -191,15 +191,14 @@ def _search(fx: Fx, q: str) -> list[dict[str, Any]]:
 
 
 def test_the_import_keeps_search_aliases_and_search_finds_them(fx: Fx) -> None:
-    [(aliases,)] = fx.sql("SELECT alias_norm FROM geo.place WHERE name = '東京ラーメン'")
-    assert "tokyo ramen" in aliases.split("|")
-    [ramen] = [r for r in _search(fx, "Tokyo Ramen") if r["name"] == "東京ラーメン"]
-    # A restaurant keeps its own name; the romanization only helps search.
-    assert ramen["names"]["display"] == "東京ラーメン" and ramen["names"]["type"] == "original"
+    [(aliases,)] = fx.sql("SELECT alias_norm FROM geo.place WHERE name = 'Östertal Heimatmuseum'")
+    assert "oestertal heimatmuseum" in aliases.split("|")
     # An accented name is found by its German ASCII spelling.
-    assert any(r["name"] == "Café Östertal" for r in _search(fx, "Oestertal"))
+    assert any(r["name"] == "Östertal Heimatmuseum" for r in _search(fx, "Oestertal"))
     museum = [r for r in _search(fx, "Testburger Museum") if r["name"] == "Testburg Museum"]
     assert museum, "name:de is a search alias"
+    # Restaurants are not imported (ADR 026), so nothing of them is searchable here.
+    assert not _search(fx, "Tokyo Ramen")
 
 
 # -- enrichment ---------------------------------------------------------------------------------------

@@ -125,8 +125,8 @@ test("stopSummary says what a stop is and how long it lasts", () => {
   expect(d1.items.map(stopSummary)).toEqual([
     "Attraction · 2 h",
     "Attraction · 1 h 30 min",
-    "Lunch · Restaurant · 1 h",
+    "Restaurant · 1 h",
     "Attraction · 1 h",
-    "Dinner · Restaurant · 1 h 30 min",
+    "Café · 1 h 30 min",
   ]);
 });

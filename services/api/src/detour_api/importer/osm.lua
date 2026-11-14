@@ -31,8 +31,8 @@ local boundary_table = osm2pgsql.define_table({
 
 -- Tags copied out. opening_hours is deliberately absent: it is out of scope (ADR 003).
 local KEYS = {
-    ['name'] = true, ['int_name'] = true, ['amenity'] = true, ['tourism'] = true,
-    ['historic'] = true, ['memorial'] = true, ['memorial:type'] = true, ['cuisine'] = true,
+    ['name'] = true, ['int_name'] = true, ['tourism'] = true,
+    ['historic'] = true, ['memorial'] = true, ['memorial:type'] = true,
     ['wikidata'] = true, ['wikipedia'] = true, ['heritage'] = true, ['website'] = true,
     ['contact:website'] = true, ['ISO3166-2'] = true, ['admin_level'] = true,
     ['boundary'] = true,
@@ -40,7 +40,7 @@ local KEYS = {
     ['official_name'] = true, ['short_name'] = true, ['alt_name'] = true, ['old_name'] = true,
     ['brand'] = true, ['brand:wikidata'] = true,
 }
-local PREFIXES = { 'name:', 'diet:', 'addr:', 'official_name:', 'short_name:', 'brand:' }
+local PREFIXES = { 'name:', 'addr:', 'official_name:', 'short_name:', 'brand:' }
 
 local function keep_tags(tags)
     local out = {}
@@ -63,10 +63,8 @@ local TOURISM = {
     attraction = true, museum = true, gallery = true, viewpoint = true,
     zoo = true, theme_park = true, aquarium = true,
 }
-local FOOD = { restaurant = true, cafe = true }
 
 local function is_candidate(tags)
-    if tags.amenity and FOOD[tags.amenity] then return true end
     if tags.tourism and TOURISM[tags.tourism] then return true end
     if tags.historic then return true end
     return false

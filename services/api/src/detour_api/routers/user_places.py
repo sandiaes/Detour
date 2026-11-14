@@ -25,7 +25,7 @@ def create_user_place(session: SessionDep, body: UserPlaceCreate) -> UserPlace:
 @router.get("", summary="The caller's own places.", responses=AUTH)
 def list_user_places(
     session: SessionDep,
-    kind: Annotated[Literal["city", "location", "restaurant"] | None, Query()] = None,
+    kind: Annotated[Literal["city", "location", "restaurant", "cafe"] | None, Query()] = None,
 ) -> list[UserPlace]:
     with session.tx() as conn:
         return user_places.list_all(conn, session.installation_id, kind)

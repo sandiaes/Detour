@@ -36,7 +36,7 @@ test("what else changes: left out first, as a warning", () => {
     { tone: "info", text: "Belvedere moves from day 1 to day 2" },
   ]);
   expect(affectedLines(best.diff)).toEqual([
-    { tone: "info", text: "Dinner at Café Ohne Angabe: 18:30 → 19:00" },
+    { tone: "info", text: "Café Ohne Angabe: 18:30 → 19:00" },
   ]);
   expect(
     affectedLines({

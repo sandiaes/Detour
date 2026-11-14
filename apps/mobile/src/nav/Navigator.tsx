@@ -1,5 +1,3 @@
-import type { RestaurantResult } from "@detour/shared";
-
 import type { DocCategory, DocLink } from "../documents/model";
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
@@ -52,13 +50,7 @@ export type Route =
       category?: DocCategory;
     }
   | { name: "addPlace"; tripId: string; itineraryId: string }
-  | {
-      name: "addRestaurant";
-      tripId: string;
-      itineraryId: string;
-      /** A place to eat already chosen in the add-place search (ADR 021). */
-      preset?: RestaurantResult;
-    }
+  | { name: "addRestaurant"; tripId: string; itineraryId: string }
   | { name: "changePreview"; tripId: string; itineraryId: string; changeSetId: string };
 
 export type Navigation = {

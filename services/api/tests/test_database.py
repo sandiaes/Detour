@@ -61,7 +61,6 @@ GEO_TABLES = [
     "place_signal",
     "place_source",
     "region",
-    "restaurant_profile",
     "travel_time",
 ]
 APP_TABLES = [

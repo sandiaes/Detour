@@ -1,35 +1,23 @@
-"""Models for adding a restaurant (Phase 8, ADR 019): restaurant search, slot suggestions."""
+"""Models for adding a restaurant or cafe (ADR 019, narrowed by ADR 026): search through Photon.
+
+Restaurants and cafes are not imported. The provider gives a name, a point, the OpenStreetMap key
+and value and an address; nothing else is stored or shown (no cuisine, no meal types).
+"""
 
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from detour_api.models.search import ExternalPlace, PlaceSummary
-from detour_api.models.trips import MealType, UserPlace
-
-
-class RestaurantResult(PlaceSummary):
-    """An imported place to eat. ``cuisines`` null means the data states none: shown as
-    "Cuisine not specified"."""
-
-    meal_types: list[MealType] | None = Field(
-        default=None, description="Derived from the venue type by the import's fixed rule"
-    )
+from detour_api.models.search import ExternalPlace
+from detour_api.models.trips import UserPlace
 
 
 class ExternalRestaurant(ExternalPlace):
-    """A restaurant or café from the external provider (Photon). Not part of our data: save it as
-    a user place (kind restaurant, source search_result) to add it to a plan. The provider gives
-    no cuisine, so it is not specified unless you give one."""
+    """A restaurant or cafe from the external provider (Photon). Not part of our data: save it as
+    a user place (kind restaurant or cafe, source search_result) to add it to a plan."""
 
-    venue_type: Literal["restaurant", "cafe"]
-    meal_types: list[MealType] = Field(
-        description="From the venue type by the same fixed rule as imported places: a restaurant "
-        "serves lunch and dinner, a café breakfast and a snack. You can change them."
-    )
-    meal_types_basis: Literal["venue_type"] = "venue_type"
-    cuisines: list[str] | None = Field(
-        default=None, description="Always null: the provider's answer carries none"
+    venue_type: Literal["restaurant", "cafe"] = Field(
+        description="From the OpenStreetMap amenity value; also the kind to save it as"
     )
 
 
@@ -37,9 +25,9 @@ class ExternalRestaurantStatus(BaseModel):
     state: Literal[
         "not_requested", "not_needed", "ok", "cached", "unavailable", "budget_exhausted", "disabled"
     ] = Field(
-        description="not_requested: include_external was false. not_needed: there are local or "
-        "own results. unavailable, budget_exhausted and disabled: no external results; you can "
-        "always enter the restaurant by hand (a name and a map pin)."
+        description="not_requested: include_external was false. not_needed: your saved places "
+        "match. unavailable, budget_exhausted and disabled: no external results; you can always "
+        "enter the place by hand (a name, a kind and a map pin)."
     )
     provider: Literal["photon"] | None = None
     results: list[ExternalRestaurant] = Field(default_factory=list)
@@ -47,8 +35,7 @@ class ExternalRestaurantStatus(BaseModel):
 
 class RestaurantSearchResponse(BaseModel):
     query: str
-    results: list[RestaurantResult] = Field(description="Imported places to eat, searched first")
     your_places: list[UserPlace] = Field(
-        description="Restaurants you saved before (kind restaurant) whose name matches"
+        description="Restaurants and cafes you saved before whose name matches"
     )
     external: ExternalRestaurantStatus

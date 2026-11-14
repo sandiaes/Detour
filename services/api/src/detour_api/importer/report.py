@@ -21,9 +21,6 @@ GEO_SIZE_LIMIT_BYTES = 250 * 1_000_000
 # Phase 2, so the share decides. Set to True only when a display rule exists.
 DISPLAY_RULE_IMPLEMENTED = False
 
-MIN_RESTAURANT_NAMED_PCT = 90.0
-MIN_RESTAURANT_CUISINE_PCT = 30.0
-MIN_RESTAURANTS = 5000
 MIN_NAMED_ATTRACTIONS = 5000
 MIN_ATTRACTION_NAMED_PCT = 40.0
 MIN_LATIN_NAME_PCT = 90.0
@@ -46,7 +43,6 @@ class KindStats:
     total: int = 0
     named: int = 0
     named_latin: int = 0
-    with_cuisine: int = 0
     with_wikidata: int = 0
     with_name_en: int = 0
 
@@ -56,8 +52,6 @@ class KindStats:
             self.named += 1
             if has_latin_letters(place.name):
                 self.named_latin += 1
-        if place.profile is not None and place.profile.cuisines:
-            self.with_cuisine += 1
         if place.signal.wikidata_id is not None:
             self.with_wikidata += 1
         if place.names_i18n and "en" in place.names_i18n:
@@ -70,8 +64,6 @@ class KindStats:
             "named_pct": pct(self.named, self.total),
             "named_with_latin_letters": self.named_latin,
             "latin_name_pct": pct(self.named_latin, self.named),
-            "with_cuisine": self.with_cuisine,
-            "cuisine_pct": pct(self.with_cuisine, self.total),
             "with_wikidata": self.with_wikidata,
             "wikidata_pct": pct(self.with_wikidata, self.total),
             "with_name_en": self.with_name_en,
@@ -171,8 +163,8 @@ def _at_least(label: str, value: float | int | None, threshold: float | int) -> 
 
 
 def evaluate_gates(counters: Counters, geo_bytes: int) -> list[Gate]:
-    """The six gates of ADR 009, in its order."""
-    restaurants = counters.kinds.get("restaurant", KindStats())
+    """Gates 4 to 6 of ADR 009. Gates 1 to 3 (restaurants) were retired by ADR 026: restaurants
+    and cafes are no longer imported. The numbers are kept so references stay valid."""
     attractions = counters.kinds.get("attraction", KindStats())
     latin_checks = [
         _at_least(
@@ -180,36 +172,11 @@ def evaluate_gates(counters: Counters, geo_bytes: int) -> list[Gate]:
             ratio(stats.named_latin, stats.named),
             MIN_LATIN_NAME_PCT,
         )
-        for kind, stats in (("restaurants", restaurants), ("attractions", attractions))
+        for kind, stats in (("attractions", attractions),)
     ]
     if DISPLAY_RULE_IMPLEMENTED:
         latin_checks = [Check("a display rule is implemented", True, True, True)]
     return [
-        Gate(
-            1,
-            "Restaurants with a name",
-            [
-                _at_least(
-                    "named (%)",
-                    ratio(restaurants.named, restaurants.total),
-                    MIN_RESTAURANT_NAMED_PCT,
-                )
-            ],
-        ),
-        Gate(
-            2,
-            "Restaurants with a cuisine",
-            [
-                _at_least(
-                    "with cuisine (%)",
-                    ratio(restaurants.with_cuisine, restaurants.total),
-                    MIN_RESTAURANT_CUISINE_PCT,
-                )
-            ],
-        ),
-        Gate(
-            3, "Enough restaurants", [_at_least("restaurants", restaurants.total, MIN_RESTAURANTS)]
-        ),
         Gate(
             4,
             "Named attractions",
@@ -265,22 +232,14 @@ def render_markdown(report: dict[str, Any]) -> str:
             )
     out += ["", "## Places kept", ""]
     out += [
-        "| Kind | Total | Named | Named % | Latin names % | With cuisine % | With Wikidata % |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| Kind | Total | Named | Named % | Latin names % | With Wikidata % |",
+        "|---|---:|---:|---:|---:|---:|",
     ]
     for kind, stats in sorted(report["kinds"].items()):
         out.append(
             f"| {kind} | {stats['total']} | {stats['named']} | {stats['named_pct']} | "
-            f"{stats['latin_name_pct']} | {stats['cuisine_pct']} | {stats['wikidata_pct']} |"
+            f"{stats['latin_name_pct']} | {stats['wikidata_pct']} |"
         )
-    rule = report.get("proximity_rule")
-    if rule:
-        out += [
-            "",
-            f"Restaurants and cafes are kept within {rule['radius_m']} m of one of "
-            f"{rule['attraction_anchors']} attractions, or within {rule['town_radius_m']} m of one of "
-            f"{rule['town_anchors']} towns of {rule['town_min_population']} or more inhabitants.",
-        ]
     out += ["", f"Administrative areas imported: {report['admin_areas']}", ""]
     out += ["## Excluded objects by class", "", "| Class | Reason | Count |", "|---|---|---:|"]
     for row in report["excluded"]["by_class"]:

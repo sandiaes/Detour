@@ -1,8 +1,7 @@
-"""Adding a restaurant through the API (Phase 8, ADR 019): search (local, then Photon through the
-backend, then manual entry), on the imported fixture region with the planner's synthetic sights and
-places to eat (Testburg). The slot suggestions and the change-set placement were retired by ADR 026
-(the user chooses the day and time). Photon answers from a recorded-response stub, never the
-network.
+"""Adding a restaurant or cafe through the API (ADR 019, ADR 026): search (the user's saved places,
+then Photon through the backend), and manual entry. Restaurants and cafes are not imported; the
+slot suggestions and the change-set placement are gone (the user chooses the day and time). Photon
+answers from a recorded-response stub, never the network.
 """
 
 import json
@@ -14,7 +13,6 @@ import pytest
 
 from tests.conftest import PHOTON_BUDGET, ApiEnv
 from tests.test_api_changes import _plan, _preview
-from tests.test_api_planning import sql
 
 pytestmark = pytest.mark.db
 
@@ -33,33 +31,12 @@ def _save(env: ApiEnv, **body: Any) -> dict[str, Any]:
     return saved
 
 
-# -- search: local data first, then Photon, then manual entry ------------------------------------
-
-
-def test_local_restaurants_are_searched_first_and_photon_is_not_asked(api_env: ApiEnv) -> None:
-    body = _search(api_env, q="alten post", include_external="true").json()
-    assert [r["name"] for r in body["results"]] == ["Zur Alten Post"]
-    r = body["results"][0]
-    assert r["cuisines"] == ["austrian", "regional"] and r["venue_type"] == "restaurant"
-    assert r["meal_types"] == ["dinner", "lunch"]
-    assert body["external"]["state"] == "not_needed" and api_env.photon_requests == []
-
-
-def test_a_restaurant_without_cuisine_data_is_returned_as_unknown(api_env: ApiEnv) -> None:
-    rows = sql(
-        api_env,
-        "SELECT p.name FROM geo.place p JOIN geo.restaurant_profile rp ON rp.place_id = p.id"
-        " WHERE rp.cuisines IS NULL AND p.name IS NOT NULL LIMIT 1",
-    )
-    if not rows:
-        pytest.skip("the fixture region has no restaurant without cuisine data")
-    body = _search(api_env, q=rows[0][0][:8]).json()
-    assert any(r["cuisines"] is None for r in body["results"])
+# -- search: your saved places first, then Photon, then manual entry -----------------------------
 
 
 def test_nothing_local_asks_photon_for_restaurants_only(api_env: ApiEnv) -> None:
     body = _search(api_env, q="examplestadt", include_external="true", region="test-region").json()
-    assert body["results"] == [] and body["your_places"] == []
+    assert "results" not in body and body["your_places"] == []
     (request,) = api_env.photon_requests
     params = httpx.QueryParams(request.url.query)
     assert params.get_list("osm_tag") == ["amenity:restaurant", "amenity:cafe"]
@@ -70,7 +47,7 @@ def test_nothing_local_asks_photon_for_restaurants_only(api_env: ApiEnv) -> None
     assert body["external"]["state"] == "ok" and body["external"]["results"] == []
 
 
-def test_photon_restaurants_get_meal_types_from_the_venue_rule_and_no_cuisine(
+def test_photon_results_carry_their_venue_type_and_no_cuisine_or_meal_types(
     api_env: ApiEnv,
 ) -> None:
     payload = {
@@ -96,9 +73,12 @@ def test_photon_restaurants_get_meal_types_from_the_venue_rule_and_no_cuisine(
     body = _search(api_env, q="beispiel", include_external="true").json()
     found = {r["name"]: r for r in body["external"]["results"]}
     assert set(found) == {"Gasthaus Beispiel", "Café Beispiel"}
-    assert found["Gasthaus Beispiel"]["meal_types"] == ["dinner", "lunch"]
-    assert found["Café Beispiel"]["meal_types"] == ["breakfast", "snack"]
-    assert all(r["cuisines"] is None and r["licence"] == "ODbL-1.0" for r in found.values())
+    assert found["Gasthaus Beispiel"]["venue_type"] == "restaurant"
+    assert found["Café Beispiel"]["venue_type"] == "cafe"
+    assert all(
+        "cuisines" not in r and "meal_types" not in r and r["licence"] == "ODbL-1.0"
+        for r in found.values()
+    )
     assert found["Gasthaus Beispiel"]["ref"] == "N1"
 
 
@@ -142,9 +122,14 @@ def test_search_needs_a_query_and_a_token(api_env: ApiEnv) -> None:
 def test_manual_entry_keeps_what_the_user_gave_and_nothing_else(api_env: ApiEnv) -> None:
     saved = _save(api_env, name="Mein Lokal", lat=48.21, lon=16.37)
     assert saved["kind"] == "restaurant" and saved["name"] == "Mein Lokal"
-    assert saved["cuisines"] is None and saved["meal_types"] is None  # nothing is guessed
+    assert "cuisines" not in saved and "meal_types" not in saved  # nothing Photon cannot give
     found = _search(api_env, q="Mein Lokal").json()
     assert [p["name"] for p in found["your_places"]] == ["Mein Lokal"]
+    cafe = _save(api_env, kind="cafe", name="Mein Café", lat=48.21, lon=16.37)
+    assert cafe["kind"] == "cafe"
+    assert [p["name"] for p in _search(api_env, q="Mein Caf").json()["your_places"]] == [
+        "Mein Café"
+    ]
 
 
 def test_a_restaurant_is_not_added_through_a_recalculation(api_env: ApiEnv) -> None:

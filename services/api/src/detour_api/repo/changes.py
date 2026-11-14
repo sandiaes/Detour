@@ -331,7 +331,7 @@ def _addition(conn: Connection, installation_id: uuid.UUID, body: ChangeSetCreat
     place = user_places.get(conn, installation_id, body.user_place_id)
     if place is None:
         raise invalid("user_place_not_found", "user_place_id is not one of your places")
-    if place.kind == "restaurant":
+    if place.kind in ("restaurant", "cafe"):
         raise invalid(
             "wrong_place_kind",
             "a restaurant or café is added by choosing its day and time, not through a recalculation",
@@ -387,7 +387,6 @@ def diff_model(d: PlanDiff) -> ChangeDiff:
                 day=i.day,
                 kind=i.kind,
                 name=i.name,
-                meal_type=i.meal_type,
                 start_time=_t(i.start_minute),
                 end_time=_t(i.end_minute),
                 added_by_you=i.origin == "user",
@@ -399,7 +398,6 @@ def diff_model(d: PlanDiff) -> ChangeDiff:
                 day=i.day,
                 kind=i.kind,
                 name=i.name,
-                meal_type=i.meal_type,
                 start_time=_t(i.start_minute),
                 end_time=_t(i.end_minute),
                 added_by_you=i.origin == "user",
@@ -422,7 +420,6 @@ def diff_model(d: PlanDiff) -> ChangeDiff:
                 kind=r.kind,
                 name=r.name,
                 day=r.day,
-                meal_type=r.meal_type,
                 old_start_time=_t(r.old_start_minute),
                 new_start_time=_t(r.new_start_minute),
             )
@@ -502,9 +499,9 @@ def save(
             """
             INSERT INTO app.change_set (id, itinerary_id, base_version, action, place_id,
                 user_place_id, item_id, duration_minutes, target_name, restores_version,
-                slot_day, slot_meal, after_item_id, proposal, diff, notes)
+                slot_day, proposal, diff, notes)
             VALUES (:id, :i, :v, :a, :p, :u, :item, :minutes, :name, :restores,
-                :slot_day, :slot_meal, :after,
+                :slot_day,
                 CAST(:proposal AS jsonb), CAST(:diff AS jsonb), CAST(:notes AS jsonb))
             """
         ),
@@ -520,8 +517,6 @@ def save(
             "name": ctx.target_name,
             "restores": None if ctx.restores is None else ctx.restores[0],
             "slot_day": ctx.only_day,
-            "slot_meal": None,
-            "after": None,
             "proposal": json.dumps(proposal, sort_keys=True),
             "diff": diff.model_dump_json(),
             "notes": json.dumps([{"code": n.code, "params": n.params} for n in notes]),

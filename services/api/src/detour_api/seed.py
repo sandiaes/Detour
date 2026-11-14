@@ -32,7 +32,6 @@ SEED_INSTALLATION_ID = stable_uuid("seed", "installation")
 SEED_TITLE = "SEED DATA: two illustrative days"
 SEED_REASON = "SEED_DATA"
 PLACEHOLDER_VISIT_MINUTES = 60
-PLACEHOLDER_MEAL_MINUTES = 60
 VISITS_PER_DAY = 3
 
 
@@ -74,25 +73,12 @@ def _attractions(conn: Connection, city_id: int, limit: int) -> list[tuple[uuid.
     return [(r.id, r.name) for r in rows]
 
 
-def _restaurant(conn: Connection, city_id: int) -> uuid.UUID | None:
-    row = conn.execute(
-        text(
-            "SELECT p.id FROM geo.place p JOIN geo.restaurant_profile rp ON rp.place_id = p.id"
-            " WHERE p.city_id = :c AND p.is_active AND p.name IS NOT NULL"
-            " ORDER BY (rp.cuisines IS NOT NULL) DESC, p.name, p.id LIMIT 1"
-        ),
-        {"c": city_id},
-    ).first()
-    return None if row is None else row.id
-
-
 def build_seed_trip(conn: Connection, region_id: str | None = None) -> uuid.UUID:
     """Replace the seed trip with a fresh one. Returns the trip id."""
     city_id, city_name, _ = _pick_city(conn, region_id)
     visits = _attractions(conn, city_id, VISITS_PER_DAY * 2)
     if len(visits) < 2:
         raise SeedError("fewer than two attractions in the chosen city")
-    restaurant = _restaurant(conn, city_id)
     city = conn.execute(
         text("SELECT ST_Y(geom) lat, ST_X(geom) lon FROM geo.city WHERE id = :i"),
         {"i": city_id},
@@ -136,19 +122,6 @@ def build_seed_trip(conn: Connection, region_id: str | None = None) -> uuid.UUID
                     type="visit", place_id=place_id, duration_minutes=PLACEHOLDER_VISIT_MINUTES
                 ),
             )
-    if restaurant is not None:
-        itineraries.create_item(
-            conn,
-            SEED_INSTALLATION_ID,
-            itinerary.id,
-            1,
-            ItemCreate(
-                type="meal",
-                meal_type="lunch",
-                place_id=restaurant,
-                duration_minutes=PLACEHOLDER_MEAL_MINUTES,
-            ),
-        )
     conn.execute(
         text(
             "UPDATE app.itinerary_item i SET reasons = ARRAY[:r] FROM app.itinerary_day d"

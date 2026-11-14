@@ -1,5 +1,5 @@
-"""Shared helpers for the planner tests: the synthetic fixtures (sights, places to eat, the
-towns of an invented area) and a request."""
+"""Shared helpers for the planner tests: the synthetic fixtures (sights, the towns of an invented
+area) and a request."""
 
 import json
 from collections.abc import Sequence
@@ -17,24 +17,9 @@ SYNTHETIC_CITY_ID = 900101
 
 
 @dataclass(frozen=True)
-class Restaurant:
-    """A synthetic place to eat. Only the database tests use them (to fill ``geo`` for the
-    restaurant search, until ADR 026 step 3 removes it); the planner no longer reads any."""
-
-    place_id: str
-    name: str
-    venue_type: str
-    lat: float
-    lon: float
-    meal_types: tuple[str, ...]
-    cuisines: tuple[str, ...] | None = None
-
-
-@dataclass(frozen=True)
 class _Fixture:
     centre: tuple[float, float]
     candidates: tuple[Candidate, ...]
-    restaurants: tuple[Restaurant, ...]
     towns: tuple[BaseCity, ...]
 
 
@@ -45,28 +30,12 @@ def _load(name: str) -> _Fixture:
     return _Fixture(
         centre=(data["centre"]["lat"], data["centre"]["lon"]),
         candidates=tuple(Candidate(**c) for c in data["candidates"]),
-        restaurants=tuple(
-            Restaurant(
-                place_id=r["place_id"],
-                name=r["name"],
-                venue_type=r["venue_type"],
-                lat=r["lat"],
-                lon=r["lon"],
-                meal_types=tuple(r["meal_types"]),
-                cuisines=None if r["cuisines"] is None else tuple(r["cuisines"]),
-            )
-            for r in data.get("restaurants", [])
-        ),
         towns=tuple(BaseCity(**t) for t in data.get("towns", [])),
     )
 
 
 def candidates(name: str) -> list[Candidate]:
     return list(_load(name).candidates)
-
-
-def restaurants(name: str) -> list[Restaurant]:
-    return list(_load(name).restaurants)
 
 
 def towns(name: str) -> list[BaseCity]:
@@ -146,23 +115,5 @@ def insert_synthetic_sights(database_url: str, region_id: str = "test-region") -
             conn.execute(
                 "INSERT INTO geo.place_signal (place_id, osm_signals, score) VALUES (%s, %s, 0)",
                 (c.place_id, json.dumps(c.signals)),
-            )
-        for r in restaurants("city-large"):
-            conn.execute(
-                "INSERT INTO geo.place (id, region_id, kind, category, name, name_norm, geom,"
-                " first_import_run_id, last_changed_import_run_id)"
-                " VALUES (%s, %s, 'restaurant', %s, %s, lower(%s),"
-                " ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s)",
-                (r.place_id, region_id, r.venue_type, r.name, r.name, r.lon, r.lat, run, run),
-            )
-            conn.execute(
-                "INSERT INTO geo.restaurant_profile (place_id, cuisines, venue_type, meal_types)"
-                " VALUES (%s, %s, %s, %s)",
-                (
-                    r.place_id,
-                    None if r.cuisines is None else list(r.cuisines),
-                    r.venue_type,
-                    list(r.meal_types),
-                ),
             )
     return len(rows)

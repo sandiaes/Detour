@@ -41,8 +41,6 @@ function server(handlers: Record<string, unknown> = {}) {
       region_id: "at",
       city_id: 900101,
       city_name: "Vienna",
-      cuisines: null,
-      venue_type: null,
       distance_m: null,
       match: null,
       names_i18n: null,
@@ -52,8 +50,6 @@ function server(handlers: Record<string, unknown> = {}) {
         postcode: "1130",
         city: "Wien",
       },
-      meal_types: null,
-      diet_flags: ["vegetarian"],
       default_visit_minutes: null,
       is_active: true,
       wikidata_id: null,
@@ -72,8 +68,6 @@ function server(handlers: Record<string, unknown> = {}) {
       name: "Belvedere",
       lat: 48.1916,
       lon: 16.3808,
-      cuisines: null,
-      meal_types: null,
       source: "manual",
       search_provider: null,
       search_ref: null,
@@ -120,14 +114,12 @@ test("an attraction shows when and where without labels, and no opening hours or
   );
 });
 
-test("a restaurant shows its meal, type and cuisine, and reservations as planned", async () => {
+test("a restaurant shows its kind and reservations as planned, and no cuisine", async () => {
   await open("m1");
   expect(await screen.findByRole("header", { name: "Gasthaus Zum Test" })).toBeOnTheScreen();
   expect(screen.getAllByText(/^Restaurant/).length).toBeGreaterThanOrEqual(2); // kind line and type
-  expect(screen.getByText("Lunch")).toBeOnTheScreen();
   expect(screen.getByLabelText("Type: Restaurant.")).toBeOnTheScreen();
-  expect(screen.getByText("Regional, coffee shop")).toBeOnTheScreen();
-  expect(await screen.findByText("vegetarian")).toBeOnTheScreen();
+  expect(screen.queryByText(/ruisine|Lunch|Diet|vegetarian/)).toBeNull();
   expect(screen.getByText("Notes, photos and reservations")).toBeOnTheScreen();
   expect(screen.getByText("Bookings and documents")).toBeOnTheScreen();
   // Opening hours are a sight's concern here; a meal has its planned window instead.
@@ -135,10 +127,10 @@ test("a restaurant shows its meal, type and cuisine, and reservations as planned
   expect(screen.queryByText(/€|EUR|price|rating/i)).toBeNull();
 });
 
-test("a restaurant with no cuisine in the data says so", async () => {
+test("a café shows its kind", async () => {
   await open("m2");
-  expect(await screen.findByText("Cuisine not specified")).toBeOnTheScreen();
-  expect(screen.getByText("Dinner")).toBeOnTheScreen();
+  expect(await screen.findByLabelText("Type: Café.")).toBeOnTheScreen();
+  expect(screen.queryByText(/ruisine|Dinner/)).toBeNull();
 });
 
 test("a place the user added says so", async () => {

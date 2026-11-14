@@ -62,6 +62,11 @@ VISIT_MINUTES: dict[str, int] = {
 }
 
 
+# ADR 026 (proposed lengths): the default length of a restaurant or cafe the user adds. The planner
+# never uses it (generated plans have no restaurants); the user can change it per stop.
+VENUE_MINUTES: dict[str, int] = {"restaurant": 75, "cafe": 45}
+
+
 def visit_minutes(category: str | None) -> int:
     """The default visit length for a category; the default for an unknown or missing one."""
     if category is None:

@@ -32,7 +32,7 @@ sightseeing plans are an occasional help, not the main way in.
 | 3 | Public transport when relevant | Schedule-based transit legs | After MVP (Phase 10) |
 | 4 | Add a city or location not in the proposal | Search or map pin; becomes a mandatory visit | MVP |
 | 5 | Automatic recalculation around the addition | Re-plan with minimal disruption; user reviews a diff | MVP |
-| 6 | Add a restaurant manually | Search through Photon, or manual entry with a name and a pin (ADR 026; the local-data step goes with the imported restaurants) | MVP |
+| 6 | Add a restaurant manually | Search through Photon (or your saved places), or manual entry with a name, a kind and a pin (ADR 026; no imported restaurants) | MVP |
 | 7 | ~~Best day and time for that restaurant~~ | **Retired (ADR 026):** the user chooses the day and time; the Phase 8 slot engine is removed | Retired |
 | 8 | ~~Restaurants categorised by cuisine, meal type~~ | **Removed (ADR 026):** a restaurant is a name, a point and a kind (restaurant or café); Photon supplies no cuisine | Removed |
 | 9 | User-defined expected price or budget | **Removed for now** (owner, 2026-11-13; ADR 017): no budgets, currencies or prices | — |

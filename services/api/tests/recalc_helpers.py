@@ -28,7 +28,6 @@ def as_rplan(plan: Plan) -> RPlan:
                 transfer=i.transfer,
                 place_id=i.place_id,
                 category=i.category,
-                meal_type=i.meal_type,
                 item_id=f"item-{d.day_index}-{n}",
             )
             for n, i in enumerate(d.items)

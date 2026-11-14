@@ -421,10 +421,10 @@ def _write_days(conn: Connection, itinerary_id: uuid.UUID, plan: Plan) -> None:
             conn.execute(
                 text(
                     """
-                    INSERT INTO app.itinerary_item (id, day_id, position, type, meal_type,
+                    INSERT INTO app.itinerary_item (id, day_id, position, type,
                         place_id, display_name, display_point, start_time, end_time,
                         duration_minutes, duration_source, origin, locked, reasons)
-                    VALUES (:id, :d, :pos, :type, :meal, :place, :name,
+                    VALUES (:id, :d, :pos, :type, :place, :name,
                         ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :start, :end, :minutes,
                         'category_default', 'engine', false, :reasons)
                     """
@@ -434,7 +434,6 @@ def _write_days(conn: Connection, itinerary_id: uuid.UUID, plan: Plan) -> None:
                     "d": day_id,
                     "pos": position,
                     "type": item.kind,
-                    "meal": item.meal_type,
                     "place": uuid.UUID(item.place_id),
                     "name": item.name,
                     "lat": item.lat,

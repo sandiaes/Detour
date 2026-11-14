@@ -224,8 +224,6 @@ def fill_days(
                     transfer=i.transfer,
                     place_id=i.place_id,
                     category=i.category,
-                    meal_type=i.meal_type,
-                    cuisines=i.cuisines,
                 )
                 for i in day.items
                 if i.place_id not in exclude

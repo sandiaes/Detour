@@ -30,7 +30,6 @@ DEFAULT_USER_AGENT = f"Detour-import/{IMPORTER_VERSION} (+https://github.com/san
 TAGS_FILTER = (
     "nwr/tourism=attraction,museum,gallery,viewpoint,zoo,theme_park,aquarium",
     "nwr/historic",
-    "nwr/amenity=restaurant,cafe",
     "r/admin_level=4,6",
 )
 # Simplification of boundary polygons, in degrees (about 100 m): areas are used to scope a

@@ -52,7 +52,7 @@ from datetime import date
 from typing import Literal
 
 from detour_api.planner import scoring
-from detour_api.planner.config import DEFAULT_CONFIG, MealType, PlannerConfig, Profile
+from detour_api.planner.config import DEFAULT_CONFIG, PlannerConfig, Profile
 from detour_api.planner.daylayout import gap_start
 from detour_api.planner.durations import visit_minutes
 from detour_api.planner.reasons import ITEM_TEMPLATES
@@ -154,8 +154,6 @@ class Entry:
     user_place_id: str | None = None
     # Visits: the attraction's category (None for a user place or when unknown). Meals: venue.
     category: str | None = None
-    meal_type: MealType | None = None
-    cuisines: tuple[str, ...] | None = None
     item_id: str | None = None  # the stored item it continues; None for a new one
 
     @property

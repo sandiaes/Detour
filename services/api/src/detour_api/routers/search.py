@@ -95,9 +95,7 @@ def search_places(
     session: SessionDep,
     q: Annotated[str | None, Query(min_length=2, max_length=100)] = None,
     region: Annotated[str | None, Query(max_length=60)] = None,
-    kind: Annotated[
-        str | None, Query(pattern="^(attraction|restaurant|transport_hub|other)$")
-    ] = None,
+    kind: Annotated[str | None, Query(pattern="^(attraction|transport_hub|other)$")] = None,
     category: Annotated[str | None, Query(max_length=60)] = None,
     lat: Annotated[float | None, Query(ge=-90, le=90)] = None,
     lon: Annotated[float | None, Query(ge=-180, le=180)] = None,

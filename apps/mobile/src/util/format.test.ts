@@ -4,7 +4,6 @@ import {
   formatDate,
   formatMeters,
   formatMinutes,
-  formatCuisines,
   formatSeconds,
   formatTripSpan,
   isValidIsoDate,
@@ -46,13 +45,6 @@ test("date validation rejects impossible dates", () => {
   expect(isValidIsoDate("2027-13-01")).toBe(false);
   expect(isValidIsoDate("27-05-01")).toBe(false);
   expect(isValidIsoDate("")).toBe(false);
-});
-
-test("cuisines from the open data, and unknown cuisine said plainly", () => {
-  expect(formatCuisines(["italian", "pizza"])).toBe("Italian, pizza");
-  expect(formatCuisines(["coffee_shop"])).toBe("Coffee shop");
-  expect(formatCuisines(null)).toBe("Cuisine not specified");
-  expect(formatCuisines([])).toBe("Cuisine not specified");
 });
 
 test("age of a saved copy", () => {

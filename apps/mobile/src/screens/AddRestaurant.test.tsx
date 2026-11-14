@@ -21,29 +21,24 @@ const planRoute = {
   day: 1,
 } as const;
 
-const POST = {
+const SAVED = {
   id: "00000000-0000-4000-8000-00000000ac01",
-  name: "Zur Alten Post",
   kind: "restaurant",
-  category: "restaurant",
+  name: "Zur Alten Post",
   lat: 48.22,
   lon: 16.38,
-  region_id: "austria",
-  city_id: 900101,
-  city_name: "Vienna",
-  cuisines: ["austrian", "regional"],
-  venue_type: "restaurant",
-  meal_types: ["dinner", "lunch"],
-  distance_m: 900,
+  source: "manual_pin",
+  search_provider: null,
+  search_ref: null,
+  created_at: "2026-11-14T10:00:00Z",
+  updated_at: "2026-11-14T10:00:00Z",
 };
 
-const NO_CUISINE = {
-  ...POST,
+const SAVED_CAFE = {
+  ...SAVED,
   id: "00000000-0000-4000-8000-00000000ac02",
+  kind: "cafe",
   name: "Café Stumm",
-  cuisines: null,
-  venue_type: "cafe",
-  meal_types: ["breakfast", "snack"],
 };
 
 const NOT_EXTERNAL = { state: "not_requested", provider: null, results: [] };
@@ -56,8 +51,7 @@ function server(over: Record<string, (c: never) => unknown> = {}) {
     "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
     "GET /v1/restaurants/search": () => ({
       query: "alte",
-      results: [POST, NO_CUISINE],
-      your_places: [],
+      your_places: [SAVED, SAVED_CAFE],
       external: NOT_EXTERNAL,
     }),
     [ITEM_PATH]: () => ({ id: "new-item" }),
@@ -80,35 +74,33 @@ async function openScreen(client = server()) {
     </Harness>,
   );
   await fireEvent.press(await screen.findByTestId("add-restaurant"));
-  expect(await screen.findByText("Add a restaurant")).toBeOnTheScreen();
+  expect(await screen.findByText("Add a restaurant or café")).toBeOnTheScreen();
   return client;
 }
 
 async function search(text: string) {
-  await fireEvent.changeText(screen.getByLabelText("Restaurant name"), text);
+  await fireEvent.changeText(screen.getByLabelText("Restaurant or café name"), text);
   await act(async () => {
     jest.advanceTimersByTime(RESTAURANT_DEBOUNCE_MS + 10);
   });
 }
 
-test("search the map data, pick the restaurant, choose the day and time", async () => {
+test("search your saved places, pick one, choose the day and time", async () => {
   const client = await openScreen();
   await search("alte");
   expect(client.calls.find((c) => c.path === "/v1/restaurants/search")?.params).toMatchObject({
     q: "alte",
     lat: 48.2082,
   });
-  // What the data states, and what it does not.
-  expect(
-    screen.getByText(/Austrian, regional · Restaurant · Lunch, Dinner · Vienna/),
-  ).toBeOnTheScreen();
-  expect(
-    screen.getByText(/Cuisine not specified · Café · Breakfast, Afternoon snack · Vienna/),
-  ).toBeOnTheScreen();
+  // Only the kind: nothing Photon cannot give (ADR 026).
+  expect(screen.getByLabelText("Zur Alten Post, Restaurant")).toBeOnTheScreen();
+  expect(screen.getByLabelText("Café Stumm, Café")).toBeOnTheScreen();
+  expect(screen.queryByText(/ruisine/)).toBeNull();
 
-  // No suggestions (ADR 026): the user chooses.
+  // No suggestions: the user chooses. The start time is only a first suggestion.
   expect(screen.queryByTestId("find-slots")).toBeNull();
-  await fireEvent.press(screen.getByLabelText(/Zur Alten Post, Austrian/));
+  await fireEvent.press(screen.getByLabelText("Zur Alten Post, Restaurant"));
+  expect(screen.getByTestId("slot-time")).toHaveProp("value", "13:00");
   await fireEvent.press(screen.getByTestId("slot-day-2"));
   await fireEvent.changeText(screen.getByTestId("slot-time"), "20:30");
   await fireEvent.press(screen.getByTestId("add-at-time"));
@@ -117,19 +109,21 @@ test("search the map data, pick the restaurant, choose the day and time", async 
   expect(added?.params).toMatchObject({ day_index: 2 });
   expect(added?.body).toMatchObject({
     type: "meal",
-    place_id: POST.id,
+    place_id: null,
+    user_place_id: SAVED.id,
     start_time: "20:30",
     locked: false,
   });
+  expect(added?.body).not.toHaveProperty("meal_type");
   // Nothing is previewed or recalculated.
   expect(client.count("POST /v1/itineraries/{itinerary_id}/change-sets")).toBe(0);
 });
 
-test("a restaurant entered by hand without a cuisine is saved as typed and added", async () => {
+test("a restaurant entered by hand is saved as typed, with its kind, and added", async () => {
   const client = await openScreen();
   await fireEvent.press(screen.getByTestId("hand-mode"));
   expect(screen.getByTestId("add-at-time")).toBeDisabled();
-  await fireEvent.changeText(screen.getByLabelText("Name of the restaurant"), "Mein Lokal");
+  await fireEvent.changeText(screen.getByLabelText("Name"), "Mein Lokal");
   // Typed coordinates (a decimal comma is accepted); an out-of-range value is refused.
   await fireEvent.changeText(screen.getByLabelText("Latitude"), "91");
   expect(screen.getByText(/A number from −90 to 90/)).toBeOnTheScreen();
@@ -144,42 +138,41 @@ test("a restaurant entered by hand without a cuisine is saved as typed and added
     lat: 48.2101,
     lon: 16.3702,
     source: "manual_pin",
-  }); // no cuisines, no meal types: unknown, never invented
+  }); // no cuisines, no meal types: they are not asked for
   expect(client.calls.find((c) => c.path.endsWith("/days/{day_index}/items"))?.body).toMatchObject({
     type: "meal",
     user_place_id: "00000000-0000-4000-8000-00000000cc09",
   });
 });
 
-test("tapping the map fills in the coordinates, and cuisines and meals are sent when given", async () => {
+test("a café is chosen as the kind, and tapping the map fills in the coordinates", async () => {
   const client = await openScreen();
   await fireEvent.press(screen.getByTestId("hand-mode"));
-  await fireEvent.changeText(screen.getByLabelText("Name of the restaurant"), "Trattoria");
+  await fireEvent.changeText(screen.getByLabelText("Name"), "Kaffeehaus");
+  await fireEvent.press(screen.getByTestId("venue-cafe"));
+  expect(screen.getByTestId("venue-cafe")).toBeSelected();
   await act(async () => {
     maplibre.map?.onPress({ nativeEvent: { lngLat: [16.4, 48.21] } });
   });
   expect(screen.getByLabelText("Latitude")).toHaveProp("value", "48.210000");
-  await fireEvent.changeText(screen.getByLabelText("Cuisine (optional)"), "Italian, pizza");
-  // The form's meal chips come first; the slot chooser has chips of its own.
-  await fireEvent.press(screen.getAllByLabelText("Dinner")[0]!);
+  // There is no cuisine field and no meal chips.
+  expect(screen.queryByLabelText("Cuisine (optional)")).toBeNull();
+  expect(screen.queryByLabelText("Dinner")).toBeNull();
   await fireEvent.press(screen.getByTestId("add-at-time"));
   expect(client.calls.find((c) => c.path === "/v1/user-places")?.body).toEqual({
-    kind: "restaurant",
-    name: "Trattoria",
+    kind: "cafe",
+    name: "Kaffeehaus",
     lat: 48.21,
     lon: 16.4,
-    cuisines: ["italian", "pizza"],
-    meal_types: ["dinner"],
     source: "manual_pin",
   });
 });
 
-test("nothing local: a wider search offers restaurants with the venue rule's meals", async () => {
+test("nothing saved: a wider search offers restaurants and cafés with their kind", async () => {
   const client = await openScreen(
     server({
       "GET /v1/restaurants/search": (c: { params: Record<string, unknown> }) => ({
         query: "Hütte",
-        results: [],
         your_places: [],
         external: c.params.include_external
           ? {
@@ -195,10 +188,7 @@ test("nothing local: a wider search offers restaurants with the venue rule's mea
                   city: "Hallstatt",
                   state: null,
                   country: "Austria",
-                  venue_type: "restaurant",
-                  meal_types: ["dinner", "lunch"],
-                  meal_types_basis: "venue_type",
-                  cuisines: null,
+                  venue_type: "cafe",
                 },
               ],
             }
@@ -207,22 +197,18 @@ test("nothing local: a wider search offers restaurants with the venue rule's mea
     }),
   );
   await search("Hütte");
-  expect(
-    await screen.findByText("Nothing in the imported data matches “Hütte”."),
-  ).toBeOnTheScreen();
+  expect(await screen.findByText("Nothing you saved matches “Hütte”.")).toBeOnTheScreen();
   await fireEvent.press(screen.getByText("Search more widely"));
-  await fireEvent.press(await screen.findByLabelText(/Alm Hütte, Cuisine not specified/));
-  // The venue rule's meals are the starting point, and the user can change them.
-  expect(screen.getAllByLabelText("Lunch")[0]).toBeSelected();
-  expect(screen.getAllByLabelText("Dinner")[0]).toBeSelected();
-  expect(screen.getAllByLabelText("Breakfast")[0]).not.toBeSelected();
+  await fireEvent.press(await screen.findByLabelText(/Alm Hütte, Café · Hallstatt/));
+  // The kind Photon gave is the starting point, and the user can change it.
+  expect(screen.getByTestId("venue-cafe")).toBeSelected();
+  expect(screen.getByTestId("venue-restaurant")).not.toBeSelected();
   await fireEvent.press(screen.getByTestId("add-at-time"));
   expect(client.calls.find((c) => c.path === "/v1/user-places")?.body).toEqual({
-    kind: "restaurant",
+    kind: "cafe",
     name: "Alm Hütte",
     lat: 47.5,
     lon: 13.1,
-    meal_types: ["lunch", "dinner"],
     source: "search_result",
     search_provider: "photon",
     search_ref: "N42",
@@ -234,7 +220,6 @@ test("when the outside search is used up, entering by hand still works", async (
     server({
       "GET /v1/restaurants/search": () => ({
         query: "Nirgends",
-        results: [],
         your_places: [],
         external: { state: "budget_exhausted", provider: "photon", results: [] },
       }),
@@ -246,5 +231,5 @@ test("when the outside search is used up, entering by hand still works", async (
     await screen.findByText(/The wider search is not available right now\./),
   ).toBeOnTheScreen();
   await fireEvent.press(screen.getByText("Enter it by hand"));
-  expect(screen.getByLabelText("Name of the restaurant")).toHaveProp("value", "Nirgends");
+  expect(screen.getByLabelText("Name")).toHaveProp("value", "Nirgends");
 });

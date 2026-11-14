@@ -15,13 +15,6 @@ from detour_api.textnorm import normalize_text, stable_uuid
 OSM_TYPE_WORD = {"N": "node", "W": "way", "R": "relation"}
 OSM_LICENCE = "ODbL-1.0"
 
-# Venue type -> meal types, a fixed rule (docs/data-model.md). Only the venue types the importer
-# produces are listed. Changing this table is a change of RULES_VERSION.
-MEAL_TYPES_BY_VENUE: dict[str, list[str]] = {
-    "restaurant": ["dinner", "lunch"],
-    "cafe": ["breakfast", "snack"],
-}
-
 # Weights of the deterministic ranking score. They only order places for the planner (tuned in
 # Phase 4); they are not facts about the places.
 SCORE_WEIGHTS = {
@@ -34,18 +27,9 @@ SCORE_WEIGHTS = {
 
 _LANG = re.compile(r"^[A-Za-z0-9_-]{1,30}$")
 _QID = re.compile(r"^Q[0-9]+$")
-_DIET = re.compile(r"^[a-z0-9_]{1,40}$")
 _CATEGORY_CLEAN = re.compile(r"[^a-z0-9_]+")
 # Keys that are copied into their own columns; place_source.tags does not repeat them.
 _OWN_COLUMN_PREFIXES = ("name:", "addr:")
-
-
-@dataclass(frozen=True)
-class RestaurantProfileRow:
-    cuisines: list[str] | None
-    venue_type: str
-    meal_types: list[str] | None
-    diet_flags: list[str] | None
 
 
 @dataclass(frozen=True)
@@ -70,7 +54,6 @@ class PlaceRow:
     osm_class: str
     source_ref: str
     source_tags: dict[str, str]
-    profile: RestaurantProfileRow | None
     signal: SignalRow
     review_tags: dict[str, str] = field(default_factory=dict)
     # The normalised English name (``name:en``), only when it differs from ``name_norm``: search
@@ -90,29 +73,6 @@ def clean(value: str | None) -> str | None:
         return None
     value = value.strip()
     return value or None
-
-
-def parse_cuisines(raw: str | None) -> list[str] | None:
-    """``cuisine=italian;pizza`` -> ``["italian", "pizza"]`` (sorted, unique, lower case)."""
-    if raw is None:
-        return None
-    items = {re.sub(r"\s+", "_", part.strip().lower()) for part in raw.split(";") if part.strip()}
-    return sorted(items) or None
-
-
-def parse_diet_flags(tags: Mapping[str, str]) -> list[str] | None:
-    flags: set[str] = set()
-    for key, value in tags.items():
-        if not key.startswith("diet:"):
-            continue
-        name = key[5:]
-        if not _DIET.match(name):
-            continue
-        if value == "yes":
-            flags.add(name)
-        elif value == "only":
-            flags.add(f"{name}_only")
-    return sorted(flags) or None
 
 
 def parse_names_i18n(tags: Mapping[str, str]) -> dict[str, str] | None:
@@ -175,15 +135,6 @@ def build_place(
     ref = source_ref(osm_type, osm_id)
     name = clean(tags.get("name"))
     category = _CATEGORY_CLEAN.sub("_", decision.category.strip().lower()).strip("_") or "historic"
-    profile = None
-    if decision.kind == "restaurant":
-        venue = decision.category
-        profile = RestaurantProfileRow(
-            cuisines=parse_cuisines(tags.get("cuisine")),
-            venue_type=venue,
-            meal_types=MEAL_TYPES_BY_VENUE.get(venue),
-            diet_flags=parse_diet_flags(tags),
-        )
     names = parse_names_i18n(tags)
     name_en = clean(names.get("en")) if names else None
     en_norm = normalize_text(name_en) if name_en else None
@@ -204,7 +155,6 @@ def build_place(
         osm_class=decision.osm_class,
         source_ref=ref,
         source_tags=source_tags,
-        profile=profile,
         signal=build_signal(tags, name),
         name_en_norm=en_norm or None,
         alias_norm=place_alias_norm(name, names, source_tags, en_norm or None),

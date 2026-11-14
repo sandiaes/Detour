@@ -45,7 +45,6 @@ export type PlaceSuggestionRequest = components["schemas"]["PlaceSuggestionReque
 export type PlaceSuggestion = components["schemas"]["PlaceSuggestion"];
 export type PlaceSuggestions = components["schemas"]["PlaceSuggestions"];
 export type ChangeDiff = components["schemas"]["ChangeDiff"];
-export type RestaurantResult = components["schemas"]["RestaurantResult"];
 export type ExternalRestaurant = components["schemas"]["ExternalRestaurant"];
 export type RestaurantSearchResponse = components["schemas"]["RestaurantSearchResponse"];
 export type ChangeSetApplied = components["schemas"]["ChangeSetApplied"];

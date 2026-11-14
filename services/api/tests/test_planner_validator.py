@@ -161,9 +161,7 @@ def test_items_outside_the_day_are_caught(generation: Generation) -> None:
 def test_a_meal_in_a_generated_plan_is_caught(generation: Generation) -> None:
     plan = generation.plans[0]
     pos = nth(plan, 0, "visit", 1)
-    as_meal = change_item(
-        plan, 0, pos, lambda v: dataclasses.replace(v, kind="meal", meal_type="lunch")
-    )
+    as_meal = change_item(plan, 0, pos, lambda v: dataclasses.replace(v, kind="meal"))
     assert "NOT_A_SIGHT" in check(as_meal)
 
 

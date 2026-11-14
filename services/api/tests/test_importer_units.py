@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from detour_api.importer import gazetteer, pipeline
-from detour_api.importer.derive import build_place, parse_cuisines, parse_diet_flags
+from detour_api.importer.derive import build_place
 from detour_api.importer.poly import poly_to_wkt
 from detour_api.importer.report import (
     GEO_SIZE_LIMIT_BYTES,
@@ -28,7 +28,9 @@ from detour_api.textnorm import has_latin_letters, normalize_text, stable_uuid
         ({"tourism": "museum", "name": " "}, False, "tourism=museum", "attraction_without_name"),
         ({"tourism": "hotel"}, None, None, None),
         ({"shop": "bakery"}, None, None, None),
-        ({"amenity": "restaurant"}, True, "amenity=restaurant", "food"),
+        # ADR 026: restaurants and cafes are no longer imported
+        ({"amenity": "restaurant"}, None, None, None),
+        ({"amenity": "cafe", "name": "x"}, None, None, None),
         ({"amenity": "pub"}, None, None, None),  # not imported in Phase 2
         # ADR 003: never imported
         (
@@ -179,8 +181,13 @@ from detour_api.textnorm import has_latin_letters, normalize_text, stable_uuid
             "historic=something_new",
             "historic_class_not_tourist",
         ),
-        # amenity wins over historic: a cafe in a castle is a cafe
-        ({"amenity": "cafe", "historic": "castle"}, True, "amenity=cafe", "food"),
+        # a cafe in a castle is the castle (the amenity is ignored)
+        (
+            {"amenity": "cafe", "historic": "castle", "name": "x"},
+            True,
+            "historic=castle",
+            "historic",
+        ),
     ],
 )
 def test_selection_rule(
@@ -211,7 +218,7 @@ def test_categories_of_generic_historic_classes_are_meaningful() -> None:
 
 
 def test_opening_hours_never_reach_the_source_tags() -> None:
-    tags = {"amenity": "restaurant", "name": "n", "opening_hours": "24/7", "name:en": "n"}
+    tags = {"tourism": "museum", "name": "n", "opening_hours": "24/7", "name:en": "n"}
     decision = decide(tags)
     assert isinstance(decision, Decision)
     place = build_place("r", "N", 1, decision, tags, 16.0, 48.0)
@@ -220,18 +227,6 @@ def test_opening_hours_never_reach_the_source_tags() -> None:
     # end in test_import). Here: names are not repeated in the source tags.
     assert "name:en" not in place.source_tags
     assert place.names_i18n == {"en": "n"}
-
-
-def test_cuisine_and_diet_parsing() -> None:
-    assert parse_cuisines("Italian; pizza ;italian") == ["italian", "pizza"]
-    assert parse_cuisines("fish and chips") == ["fish_and_chips"]
-    assert parse_cuisines(" ; ") is None
-    assert parse_cuisines(None) is None
-    assert parse_diet_flags({"diet:vegan": "yes", "diet:halal": "no", "diet:kosher": "only"}) == [
-        "kosher_only",
-        "vegan",
-    ]
-    assert parse_diet_flags({"name": "x"}) is None
 
 
 def test_invalid_wikidata_values_are_unknown_not_guessed() -> None:
@@ -272,35 +267,29 @@ def test_stable_uuid_is_deterministic_and_namespaced() -> None:
     assert a.version == 8
 
 
-def _counters(
-    restaurants: int, named: int, cuisine: int, attractions: int, att_named: int
-) -> Counters:
+def _counters(attractions: int, att_named: int, named_latin: int | None = None) -> Counters:
     from detour_api.importer.report import KindStats
 
     c = Counters()
-    c.kinds["restaurant"] = KindStats(
-        total=restaurants, named=named, named_latin=named, with_cuisine=cuisine
-    )
-    c.kinds["attraction"] = KindStats(total=attractions, named=att_named, named_latin=att_named)
+    latin = att_named if named_latin is None else named_latin
+    c.kinds["attraction"] = KindStats(total=attractions, named=att_named, named_latin=latin)
     return c
 
 
 def test_gates_pass_at_the_adr_009_thresholds() -> None:
-    gates = evaluate_gates(_counters(5000, 4500, 1500, 12000, 5000), GEO_SIZE_LIMIT_BYTES)
-    assert [g.passed for g in gates] == [True] * 6
+    # gates 1 to 3 (restaurants) were retired by ADR 026; the numbers 4 to 6 are kept
+    gates = evaluate_gates(_counters(12000, 5000), GEO_SIZE_LIMIT_BYTES)
+    assert [g.number for g in gates] == [4, 5, 6]
+    assert all(g.passed for g in gates)
 
 
 @pytest.mark.parametrize(
     ("counters", "size", "failing"),
     [
-        # 4499 / 5000 = 89.98 %: must fail a 90 % gate even though it displays as 90.0
-        (_counters(5000, 4499, 1500, 12000, 5000), 0, {1}),
-        (_counters(5000, 4500, 1499, 12000, 5000), 0, {2}),  # 29.98 % against 30 %
-        (_counters(4999, 4999, 1500, 12000, 5000), 0, {3}),
-        (_counters(5000, 4500, 1500, 12000, 4999), 0, {4}),
-        (_counters(5000, 4500, 1500, 12502, 5000), 0, {4}),  # 39.99 % named
-        (_counters(5000, 4500, 1500, 12000, 5000), GEO_SIZE_LIMIT_BYTES + 1, {6}),
-        (_counters(0, 0, 0, 0, 0), 0, {1, 2, 3, 4, 5}),  # unknown never passes
+        (_counters(12000, 4999), 0, {4}),
+        (_counters(12502, 5000), 0, {4}),  # 39.99 % named
+        (_counters(12000, 5000), GEO_SIZE_LIMIT_BYTES + 1, {6}),
+        (_counters(0, 0), 0, {4, 5}),  # unknown never passes
     ],
 )
 def test_each_gate_can_fail_on_its_own(counters: Counters, size: int, failing: set[int]) -> None:
@@ -310,19 +299,13 @@ def test_each_gate_can_fail_on_its_own(counters: Counters, size: int, failing: s
 
 def test_exactly_at_a_threshold_passes() -> None:
     # 12,500 attractions of which 5,000 are named: exactly 40 %
-    gates = evaluate_gates(_counters(5000, 4500, 1500, 12500, 5000), 0)
+    gates = evaluate_gates(_counters(12500, 5000), 0)
     assert all(g.passed for g in gates)
     assert pct(4499, 5000) == 90.0  # the display rounds; the gate does not
 
 
 def test_japan_like_names_fail_gate_5_while_no_display_rule_exists() -> None:
-    from detour_api.importer.report import KindStats
-
-    c = _counters(50000, 47000, 20000, 30000, 25000)
-    c.kinds["restaurant"] = KindStats(
-        total=50000, named=47000, named_latin=47000 // 5, with_cuisine=20000
-    )
-    gates = evaluate_gates(c, 0)
+    gates = evaluate_gates(_counters(30000, 25000, named_latin=5000), 0)
     assert [g.number for g in gates if not g.passed] == [5]
 
 
