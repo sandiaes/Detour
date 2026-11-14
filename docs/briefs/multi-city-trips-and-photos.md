@@ -49,20 +49,24 @@ before committing to it.
 1. **Data model.** New `app` table, e.g. `app.trip_stop` (trip, position, city reference by
    GeoNames id, snapshot of name and coordinates, days). No foreign key into `geo`. Next
    migration number after `0010`. A trip's `destination_kind` gains a value (for example
-   `route`); decide whether a single-destination trip stays as it is (recommended: yes, no change
-   for existing trips). The destination stays fixed after creation unless you decide otherwise;
-   say so.
+   `route`); a single-destination trip stays as it is. **Owner decision: stops can be edited
+   after creation** (add, remove, reorder, change days). Editing stops replans through the
+   Phase 7 change-set mechanism (preview with a diff, then apply or discard, locked items stay
+   fixed, versions kept) rather than silently regenerating; design this explicitly, including
+   what happens to places the user added in a removed stop.
 2. **Days.** The stops' days add up to the trip length. Default split is even; the user can
    change it. Validate in the API.
 3. **Order.** User-defined, never reordered by the planner. Optionally show the driving
    distance between consecutive stops as information.
-4. **Legs between stops, and the Japan rule (owner decision).** Rule 5 forbids invented travel
-   times. Options: (a) driving legs through the existing travel-time service where driving is
-   sensible; (b) for countries in `single_city_countries` (Japan), a leg labelled "by train, time
-   not calculated" with a fixed, configured, clearly labelled estimate block in the day's budget
-   (the existing estimate fallback is already labelled); (c) wait for Phase 10 (public
-   transport). Recommend (a) plus (b), with the label visible in the app, and lift the Japan
-   refusal only for explicit stops, not for areas. Ask the owner to confirm.
+4. **Legs between stops and the Japan rule. Owner decision: wait for public transport
+   (Phase 10); no rail estimate.** Rule 5 forbids invented travel times. So: where driving is
+   sensible (countries not in `single_city_countries`) the leg uses the existing travel-time
+   service, as area trips do. Between stops in a rail-dominant country (Japan), the leg is a
+   transport marker with the travel time **shown as unknown** ("time not calculated, public
+   transport is not built yet"), never a made-up figure. The ADR must say how the arrival day is
+   planned without a duration (recommended: planned normally and marked, so the user sees the
+   gap; do not invent a reserve). Explicit stops in Japan are allowed on that basis; **areas in
+   Japan stay refused** (`area_single_city_only`). Phase 10 later fills the leg in.
 5. **Regions.** Every stop must be in an `available` region (ADR 009). Otherwise
    `region_not_available`. Japan must be imported before it can be used; check the quality gate
    (gate 5, names without Latin letters) and what the planner does about it. If it does not pass,
@@ -81,8 +85,13 @@ before committing to it.
 8. **Mobile.** Create-trip screen: "Add another city" (destination search per stop), reorder,
    days per stop, total length shown. Overview and Itinerary show the city of each day and the
    transport markers between cities (existing markers). Trip card name for a route trip: decide
-   (for example "Tokyo to Osaka"; cards show only name, dates and length, ADR 021). Cover: the
-   first stop's photo unless the user chose one.
+   (cards show only name, dates and length, ADR 021). **Owner decision:** two stops: "Tokyo to
+   Osaka" (first city to last). Three or more stops: "Multi-city <place>", where the place is
+   the country if every stop is in one country (for example "Multi-city Japan"), the continent
+   or region if the stops span several countries (for example "Multi-city Europe"). Derive it
+   from the stops' country codes (GeoNames) with a fixed table; no generated text; when it
+   cannot be determined fall back to "Multi-city trip". The name follows stop edits. Cover:
+   the first stop's photo unless the user chose one.
 9. **Tests.** Engine golden tests, validator tests, API tests, app component tests, all on
    synthetic fixtures (state this in the docs, as earlier phases do). No test calls a public
    server.
@@ -111,8 +120,16 @@ because `geo.admin_area` does not keep a Wikidata item.
   and write the numbers in the ADR amendment. If countries and regions are still poor, propose a
   small curated set (hand-picked Commons files with stored licence data) as a follow-up; do not
   build it without the owner.
-- **Owner question:** portrait photos caused 16 of 24 attraction rejections. Keep the landscape
-  rule (default), or allow portrait on the place detail screen only.
+- **Owner decision: photos must fit their container.** Portrait photos caused 16 of 24
+  attraction rejections; instead of rejecting them, accept them and **crop to fill the frame**
+  (cover fit, with a focal point toward the upper centre for portraits, or stored crop
+  metadata) on every screen: card, trip header, place detail, candidates sheet. So the landscape
+  rule in decision 3 is dropped; keep the size minimum (decide one that suits both orientations,
+  for example shorter side and longer side thresholds), JPEG/PNG only. Stored rendition stays
+  one JPEG with the longest side 1,080 px; do not crop destructively in storage so every frame
+  shape can be served. Re-measure coverage afterwards (the Austria attraction figure should
+  rise above 76% with the re-run) and verify visually on a small phone and a tablet.
+  (Interpretation of "fit the container"; if the owner meant something else, ask.)
 
 ### 2b. "Change photo" with candidates (ADR 022 step 4)
 
@@ -158,10 +175,15 @@ The resolver runs on the API, not in a workflow:
    `ruff`, `mypy`, `pytest`; `tools/check_dependencies.py`), docs updated, then "awaits
    acceptance" in `CLAUDE.md`. Do not start the next phase or anything outside this brief.
 
-## Questions for the owner (collect answers in the ADR)
+## Owner's answers (2026-11-14), already folded in above
 
-- Leg between Japanese cities: labelled rail estimate now, or wait for public transport?
-- Portrait photos on the place detail screen: yes or no?
-- Name of a route trip on the card: "Tokyo to Osaka", or the first city?
-- May a trip's stops be edited after creation (add, remove, reorder), or fixed like the
-  destination today?
+1. Japan legs: wait for public transport, no rail estimate (unknown time shown).
+2. Photos fit their container: portrait photos accepted and cropped to fit.
+3. Names: "Tokyo to Osaka" for two stops; "Multi-city Japan" or "Multi-city Europe" for three or
+   more.
+4. Stops can be edited after creation.
+
+## Still open for the ADR to propose a default and the owner to confirm
+
+- How the arrival day in Japan is planned without a travel time (recommended: normally, marked).
+- Continent or region wording for stops across countries (a fixed table).
