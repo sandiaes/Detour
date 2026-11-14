@@ -183,12 +183,33 @@ def _cmd_images(args: argparse.Namespace) -> int:
         if not client.enabled:
             raise SystemExit("the Wikimedia adapter is disabled (DETOUR_WIKIMEDIA_ENABLED)")
         reports: dict[str, object] = {}
+        runs: list[resolver.Report] = []
+        if not args.dry_run_storage:
+            # A file missing from storage (an earlier dry run, a lost object) is fetched again first.
+            reports["repair"] = resolver.repair_missing(engine, client, store, settings)
         if args.cities:
-            cands = resolver.city_candidates(engine, region.countries, args.cities)
-            reports["cities"] = resolver.resolve(engine, client, store, settings, cands).as_dict()
+            cities = resolver.resolve(
+                engine,
+                client,
+                store,
+                settings,
+                resolver.city_candidates(engine, region.countries, args.cities),
+            )
+            runs.append(cities)
+            reports["cities"] = cities.as_dict()
         if args.places:
-            cands = resolver.place_candidates(engine, region.id, args.places)
-            reports["places"] = resolver.resolve(engine, client, store, settings, cands).as_dict()
+            places = resolver.resolve(
+                engine,
+                client,
+                store,
+                settings,
+                resolver.place_candidates(engine, region.id, args.places),
+            )
+            runs.append(places)
+            reports["places"] = places.as_dict()
+        if args.dry_run_storage:
+            resolver.discard_runs(engine, runs)  # no files kept, so no rows kept either
+            reports["dry_run"] = "measured only: nothing was kept in the database or in storage"
         with engine.begin() as conn:
             from sqlalchemy import text
 

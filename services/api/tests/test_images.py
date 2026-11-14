@@ -21,7 +21,7 @@ from sqlalchemy import create_engine, text
 
 from detour_api.adapters.wikimedia import WikimediaClient
 from detour_api.images import resolver
-from detour_api.images.store import MemoryImageStore, StoreError
+from detour_api.images.store import MemoryImageStore, StoreError, SupabaseImageStore
 from detour_api.main import create_app
 from detour_api.settings import Settings
 from tests.conftest import TEST_SECRET, ApiEnv
@@ -307,3 +307,74 @@ def test_the_schema_keeps_its_rules(fx: _Fixture) -> None:
             "SELECT count(*) FROM information_schema.columns"
             " WHERE table_schema = 'app' AND table_name = 'trip' AND column_name = 'cover_image_id'"
         ).fetchone() == (1,)
+
+
+@pytest.mark.db
+def test_a_dry_run_can_be_taken_back_leaving_nothing_behind(fx: _Fixture) -> None:
+    places = fx.resolve(resolver.place_candidates(fx.engine, TEST_REGION.id, 10))
+    cities = fx.resolve(resolver.city_candidates(fx.engine, ["AT"], 1))
+    # the same file served a place and a city: it was stored once, and a run can still undo it
+    assert fx.query("SELECT count(*) FROM geo.image")[0][0] == 3
+    resolver.discard_runs(fx.engine, [places, cities])
+    assert fx.query("SELECT count(*) FROM geo.image")[0][0] == 0
+    assert fx.query("SELECT count(*) FROM geo.image_lookup")[0][0] == 0
+    assert len(resolver.place_candidates(fx.engine, TEST_REGION.id, 10)) == 3  # asked again later
+
+
+@pytest.mark.db
+def test_discarding_a_run_keeps_what_an_earlier_real_run_stored(fx: _Fixture) -> None:
+    fx.resolve(resolver.place_candidates(fx.engine, TEST_REGION.id, 1))  # a real run: one place
+    dry = fx.resolve(resolver.place_candidates(fx.engine, TEST_REGION.id, 10))
+    resolver.discard_runs(fx.engine, [dry])
+    assert fx.query("SELECT count(*) FROM geo.image")[0][0] == 1
+    assert fx.query("SELECT count(*) FROM geo.image_lookup")[0][0] == 1
+
+
+@pytest.mark.db
+def test_images_missing_from_storage_are_fetched_again(fx: _Fixture) -> None:
+    fx.resolve(resolver.place_candidates(fx.engine, TEST_REGION.id, 10))
+    lost_key = f"{resolver.image_id_for('Retz - Stadtmauer.JPG')}.jpg"
+    del fx.store.objects[lost_key]
+    counts = resolver.repair_missing(fx.engine, fx.client(), fx.store, fx.settings)
+    assert counts == {"checked": 3, "missing": 1, "repaired": 1, "unrepairable": 0}
+    assert lost_key in fx.store.objects
+    # nothing missing: nothing downloaded
+    before = len(fx.wiki.requests)
+    again = resolver.repair_missing(fx.engine, fx.client(), fx.store, fx.settings)
+    assert again["missing"] == 0 and len(fx.wiki.requests) == before
+
+
+@pytest.mark.db
+def test_a_file_commons_no_longer_offers_is_counted_not_dropped(fx: _Fixture) -> None:
+    fx.resolve(resolver.place_candidates(fx.engine, TEST_REGION.id, 10))
+    fx.store.objects.clear()
+    retz = next(p for p in fx.wiki.imageinfo["query"]["pages"].values() if "Retz" in p["title"])
+    retz["imageinfo"][0]["extmetadata"]["LicenseShortName"]["value"] = "CC BY-NC 4.0"
+    counts = resolver.repair_missing(fx.engine, fx.client(), fx.store, fx.settings)
+    assert counts == {"checked": 3, "missing": 3, "repaired": 2, "unrepairable": 1}
+    assert fx.query("SELECT count(*) FROM geo.image")[0][0] == 3  # the row stays for the owner
+
+
+def test_the_supabase_store_uses_head_to_check_and_reports_refusals() -> None:
+    seen: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, request.url.path))
+        if request.url.path.endswith("/there.jpg"):
+            return httpx.Response(200)
+        if request.url.path.endswith("/denied.jpg"):
+            return httpx.Response(403)
+        return httpx.Response(404, json={"error": "not_found"})
+
+    settings = Settings(
+        environment="test",
+        token_secret=TEST_SECRET,
+        supabase_url="https://example.supabase.co/",
+        supabase_service_key="service-key",
+    )
+    store = SupabaseImageStore(settings, httpx.MockTransport(handler))
+    assert store.exists("there.jpg") is True
+    assert store.exists("gone.jpg") is False
+    with pytest.raises(StoreError):
+        store.exists("denied.jpg")
+    assert seen[0] == ("HEAD", "/storage/v1/object/public/photos/there.jpg")
