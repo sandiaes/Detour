@@ -7,7 +7,13 @@ import { Button } from "../components/Button";
 import { Cover } from "../components/ds/Cover";
 import { KindIcon } from "../components/ds/KindIcon";
 import { Icon, type IconName } from "../components/ds/Icon";
-import { Badge, IconButton, PlannedFeature, SectionTitle } from "../components/ds/primitives";
+import {
+  Badge,
+  IconButton,
+  PlannedFeature,
+  SectionTitle,
+  StatRow,
+} from "../components/ds/primitives";
 import { MEAL_LABEL, dayTitle } from "../components/plan/DayPlan";
 import {
   EmptyState,
@@ -25,8 +31,8 @@ import { placeKey } from "../documents/model";
 import { useResource } from "../data/DataProvider";
 import { STOP_KIND_LABEL, isEatKind, stopKind } from "../domain/itinerary";
 import { useNavigation } from "../nav/Navigator";
-import { colors, spacing, type } from "../theme";
-import { formatClock, formatCuisines, formatMinutes } from "../util/format";
+import { colors, radius, spacing, type } from "../theme";
+import { formatClock, formatCuisines, formatDate, formatMinutes } from "../util/format";
 
 // One stop of a plan (ADR 021, step 3): what Detour knows about it, and nothing it does not.
 // There is no description, rating, price or opening hours in the data (ADR 003, ADR 017,
@@ -151,12 +157,23 @@ export function PlaceDetailScreen({
   const detail = place.data;
   const start = formatClock(item.start_time);
   const end = formatClock(item.end_time);
-  // One line, no label: the day, the time and how long ("Day 3 · Wed 14 Mar · 09:00 to 11:00 · 2 h").
-  const when = [
-    dayTitle(day),
-    start ? `${start}${end ? ` to ${end}` : ""}` : "time not set",
-    formatMinutes(item.duration_minutes),
-  ].join(" · ");
+  // The time of day stays on the stop's row in the day list; here the day and the length are
+  // two flat figures under the name.
+  const timeText = start ? `${start}${end ? ` to ${end}` : ""}` : "time not set";
+  const dayFigure = {
+    key: "day",
+    icon: "calendar" as const,
+    value: `Day ${day.day_index}`,
+    label: day.date ? formatDate(day.date, false) : "Date not set",
+    spoken: `${dayTitle(day)}, ${timeText}`,
+  };
+  const lengthFigure = {
+    key: "length",
+    icon: "clock" as const,
+    value: formatMinutes(item.duration_minutes),
+    label: "Typical visit",
+    spoken: `Typical visit: ${formatMinutes(item.duration_minutes)}`,
+  };
   const address = formatAddress(detail?.address);
   const town = detail?.city_name ?? day.base_city_name ?? null;
   const where =
@@ -184,6 +201,7 @@ export function PlaceDetailScreen({
           seedKey={item.place_id ?? item.user_place_id ?? item.id}
           photo={item.image}
           height={200}
+          creditInset={radius.lg}
         >
           <View style={styles.heroTop}>
             <IconButton icon="back" label="Back" onImage onPress={nav.back} />
@@ -191,12 +209,6 @@ export function PlaceDetailScreen({
         </Cover>
 
         <View style={styles.body}>
-          <View style={styles.kindLine}>
-            <KindIcon kind={kind} size={16} />
-            <Text style={[styles.kindText, eat && styles.kindTextEat]}>
-              {STOP_KIND_LABEL[kind]}
-            </Text>
-          </View>
           <View
             ref={titleRef}
             accessible
@@ -210,6 +222,16 @@ export function PlaceDetailScreen({
               </Text>
             ) : null}
           </View>
+          <View
+            style={styles.kindLine}
+            accessible
+            accessibilityLabel={[STOP_KIND_LABEL[kind], town].filter(Boolean).join(", ")}
+          >
+            <KindIcon kind={kind} size={16} />
+            <Text style={[styles.kindText, eat && styles.kindTextEat]}>
+              {[STOP_KIND_LABEL[kind], town].filter(Boolean).join(" · ")}
+            </Text>
+          </View>
           {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
           {tags.length > 0 ? (
             <View style={styles.tagRow}>
@@ -219,10 +241,12 @@ export function PlaceDetailScreen({
             </View>
           ) : null}
 
-          <View style={styles.metaBlock}>
-            <MetaLine icon="calendar" text={when} />
-            {where ? <MetaLine icon="pin" text={where} /> : null}
-          </View>
+          <StatRow stats={[dayFigure, lengthFigure]} />
+          {where ? (
+            <View style={styles.metaBlock}>
+              <MetaLine icon="pin" text={where} />
+            </View>
+          ) : null}
 
           {meal ? (
             <FactCard>
@@ -332,7 +356,15 @@ const styles = StyleSheet.create({
   kindTextEat: { color: colors.accentText },
   title: { ...type.display, fontSize: 26, lineHeight: 32, color: colors.text },
   localName: { ...type.small, color: colors.muted, marginTop: spacing.xxs },
-  body: { padding: spacing.lg, gap: spacing.lg },
+  // A sheet whose top corners curve over the cover's lower edge, like the trip's tabs.
+  body: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+    marginTop: -radius.lg,
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+  },
   tagRow: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   metaBlock: { gap: spacing.xs },
   metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

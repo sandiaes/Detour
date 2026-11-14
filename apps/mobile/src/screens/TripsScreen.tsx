@@ -41,10 +41,10 @@ const PHASE_TONE: Record<TripPhase, BadgeTone> = {
   past: "solid",
 };
 
-const CARD_HEIGHT = 148;
+const CARD_HEIGHT = 168;
 
-/** The cover, then the trip's name, its dates and its length under it (docs/design.md): nothing
- * else, and nothing drawn over the photo but the status. */
+/** The cover with the trip's name, dates and length on it, bottom left, and the status at the top
+ * right (docs/design.md): nothing else. */
 export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   const phase = tripPhase(trip);
   const label = TRIP_PHASE_LABEL[phase];
@@ -69,19 +69,20 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
         photo={trip.cover_image}
         height={CARD_HEIGHT}
         rounded={radius.lg}
+        scrim
       >
         <View style={styles.cardBadge}>
           <Badge label={label} tone={PHASE_TONE[phase]} />
         </View>
+        <View style={styles.cardText} pointerEvents="none">
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {trip.title}
+          </Text>
+          <Text style={styles.cardMeta} numberOfLines={1}>
+            {span}
+          </Text>
+        </View>
       </Cover>
-      <View style={styles.cardText}>
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {trip.title}
-        </Text>
-        <Text style={styles.cardMeta} numberOfLines={1}>
-          {span}
-        </Text>
-      </View>
     </Pressable>
   );
 }
@@ -100,7 +101,7 @@ const EMPTY_TEXT: Record<TripTab, { title: string; text: string }> = {
 // The logo's wordmark alone, "Detour" and the orange dot, on a transparent ground
 // (assets/detour-wordmark.png, cut from docs/brand/detour-logo.png).
 const LOGO = require("../../assets/detour-wordmark.png") as number;
-const LOGO_HEIGHT = 34;
+const LOGO_HEIGHT = 31;
 const LOGO_WIDTH = Math.round((LOGO_HEIGHT * 774) / 184);
 
 export function TripsScreen() {
@@ -210,12 +211,20 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   brand: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs },
   list: { padding: spacing.lg, gap: spacing.lg },
-  card: { minHeight: 48, gap: spacing.sm },
+  card: { minHeight: 48 },
   pressed: { opacity: 0.88 },
   cardBadge: { position: "absolute", top: spacing.md, right: spacing.md },
-  cardText: { gap: spacing.xxs, paddingHorizontal: spacing.xs },
-  cardTitle: { ...type.title, color: colors.text },
-  cardMeta: { ...type.small, color: colors.muted, fontWeight: "500" },
+  // The name, dates and length sit on the photo, bottom left, over the cover's soft gradient;
+  // the right is left to the photo credit's "i".
+  cardText: {
+    position: "absolute",
+    left: spacing.md,
+    right: spacing.xxl,
+    bottom: spacing.md,
+    gap: spacing.xxs,
+  },
+  cardTitle: { ...type.title, color: colors.onImage },
+  cardMeta: { ...type.small, color: colors.onImage, fontWeight: "500" },
   empty: { paddingVertical: spacing.xxl, gap: spacing.sm, alignItems: "center" },
   emptyTitle: { ...type.heading, color: colors.text, textAlign: "center" },
   emptyText: { ...type.body, color: colors.muted, textAlign: "center" },

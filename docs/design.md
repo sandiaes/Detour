@@ -26,8 +26,8 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
 4. **Photos where the source has one, illustrations everywhere else, nothing invented.** A trip's
    cover on the Trips card and the trip header, and the photo of a place on its detail screen, are
    Wikimedia Commons photos the backend sends (ADR 022, step 3); a trip or place with none keeps the
-   generated illustration. A photo has no dark band; **the one place text sits on a photo is the trip's
-   header** (name, dates, length, in white over a soft top and bottom gradient; ADR 021, decision 43);
+   generated illustration. A photo has no dark band; **text sits on a photo only in the trip's
+   header and on a trip card of the Trips list** (name, dates, length, in white over a soft top and bottom gradient; ADR 021, decision 43);
    everywhere else names and dates sit beside it. Its average colour shows while it loads. It is never shown without its author and
    licence, kept behind a small "i" in its bottom right corner (pressed, it shows "Photo: author,
    licence, Wikimedia Commons (resized)" and opens the file's page; `Cover` draws it, so no screen can
@@ -89,9 +89,9 @@ Contrast of every text and background pair is asserted in `theme.test.ts`.
 ### Trips (screen 01)
 
 Title "Trips", tabs Upcoming and Past. Each trip is **one cover card** and nothing else: the
-cover, the status badge on its own pill at the top right of the photo, and under the photo the
-trip's **name** and its **dates and length** ("12–19 Mar 2026 · 8 days"). Nothing is drawn over
-the photo but the badge. No footer, no counts, no destination line, no extra request per card. A button "New trip" ends the Upcoming list.
+cover with the status badge on its own pill at the top right, and the trip's **name** and its
+**dates and length** ("12–19 Mar 2026 · 8 days") **on the photo**, bottom left, in white over the
+cover's soft gradient (owner, 2026-11-14, as screen 01). No footer, no counts, no destination line, no extra request per card. A button "New trip" ends the Upcoming list.
 
 **A trip is named after its destination** (the country, region or city chosen), never with its
 length: "Austria", not "Austria, 8 days".
@@ -155,8 +155,8 @@ not asked; it is the destination.
   2 h", "Lunch · Restaurant · 1 h"), a chevron to the place's details. The names are English where
   the source has an English name; the local name is on the place's details. Selecting a stop tints its row and
   highlights its marker, and the map moves to it; nothing opens under it. Lock and Remove are on the place's details.
-- **Travel between stops** is written into a hairline: a line, "Walk 3 min 170 m" in muted caption,
-  a line. No Routed or Estimated tag (the spoken label still says when a time is an estimate).
+- **Travel between stops** is written into a hairline: a line, "Walk · 3 min · 170 m" in muted caption,
+  a line. A stop row has no hairline of its own, so that travel line is the only divider between two stops. No Routed or Estimated tag (the spoken label still says when a time is an estimate).
 - **Type sizes here are small** (name 14, details 13) so more stops show at once.
 
 ### Kind icons
@@ -183,9 +183,11 @@ A past trip's map uses the same markers: cities navy with a city icon, attractio
 
 ### Place detail (screen 04)
 
-Cover (only the Back button over it); under it the kind icon and word, the name and, when the plan
-shows an English name, the local name; one quiet line with the day, time and length and one with the
-address (no labels); for places to eat the meal, venue and cuisine from the data; slim icon pills Show
+Cover (only the Back button over it), then a white sheet whose top corners curve over its lower edge.
+On it: the name and, when the plan shows an English name, the local name; one line with the kind icon,
+the kind and the town ("Attraction · Vienna"); two flat figures (as on the overview) for the day
+("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit"); one quiet line with the
+address (no label); for places to eat the meal, venue and cuisine from the data; slim icon pills Show
 on map, Lock, Remove and Add a document; the place's documents; the data source. No opening hours, no
 "why it is in the plan", no rating, price or description (CLAUDE.md rule 5).
 

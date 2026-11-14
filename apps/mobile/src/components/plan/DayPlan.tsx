@@ -298,7 +298,7 @@ export function StopRow({
 export function TransferRow({ row }: { row: Extract<DayRow, { kind: "transfer" }> }) {
   const { transfer, to } = row;
   const routed = transfer.confidence === "routed";
-  const text = `${modeLabel(transfer.mode)} ${formatSeconds(transfer.seconds)} ${formatMeters(transfer.meters)}`;
+  const text = `${modeLabel(transfer.mode)} · ${formatSeconds(transfer.seconds)} · ${formatMeters(transfer.meters)}`;
   const label =
     `${modeLabel(transfer.mode)} ${to ? `to ${to.display_name}` : "to the next stop"}, ` +
     `${formatSeconds(transfer.seconds)}, ${formatMeters(transfer.meters)}, ${confidenceLabel(transfer.confidence)}` +
@@ -544,13 +544,9 @@ const styles = StyleSheet.create({
   dayBaseLine: { ...type.caption, color: colors.muted, paddingTop: spacing.sm },
   empty: { ...type.small, color: colors.muted, paddingVertical: spacing.md },
 
-  // A stop is a flat row under a hairline. Selected: a light tint, announced as selected.
-  row: {
-    flexDirection: "row",
-    gap: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
+  // A stop is a flat row. Selected: a light tint, announced as selected.
+  // No hairline of its own: the travel line between two stops is the divider.
+  row: { flexDirection: "row", gap: spacing.md },
   rowSelected: { backgroundColor: colors.surfaceMuted },
   timeCol: { width: 40, paddingTop: spacing.md },
   time: { ...type.caption, fontWeight: "700", color: colors.text },

@@ -99,8 +99,11 @@ async function open(itemId: string, client = server()) {
 test("an attraction shows when and where without labels, and no opening hours or reasons", async () => {
   const client = await open("i1");
   expect(await screen.findByRole("header", { name: "Schönbrunn Palace" })).toBeOnTheScreen();
-  expect(screen.getByText("Attraction")).toBeOnTheScreen();
-  expect(screen.getByText("Day 1 · Sat 1 May · 09:00 to 11:00 · 2 h")).toBeOnTheScreen();
+  expect(screen.getByText(/^Attraction/)).toBeOnTheScreen();
+  expect(screen.getByText("Day 1")).toBeOnTheScreen();
+  expect(screen.getByText("Sat 1 May")).toBeOnTheScreen();
+  expect(screen.getByText("2 h")).toBeOnTheScreen();
+  expect(screen.getByText("Typical visit")).toBeOnTheScreen();
   expect(await screen.findByText("Schönbrunner Schloßstraße 47, 1130 Wien")).toBeOnTheScreen();
   for (const gone of ["When", "Duration", "Location", "Opening hours", "Not checked"]) {
     expect(screen.queryByText(gone)).toBeNull();
@@ -120,7 +123,7 @@ test("an attraction shows when and where without labels, and no opening hours or
 test("a restaurant shows its meal, type and cuisine, and reservations as planned", async () => {
   await open("m1");
   expect(await screen.findByRole("header", { name: "Gasthaus Zum Test" })).toBeOnTheScreen();
-  expect(screen.getAllByText("Restaurant")).toHaveLength(2); // the badge and the type
+  expect(screen.getAllByText(/^Restaurant/).length).toBeGreaterThanOrEqual(2); // kind line and type
   expect(screen.getByText("Lunch")).toBeOnTheScreen();
   expect(screen.getByLabelText("Type: Restaurant.")).toBeOnTheScreen();
   expect(screen.getByText("Regional, coffee shop")).toBeOnTheScreen();
@@ -142,7 +145,7 @@ test("a place the user added says so", async () => {
   await open("i2");
   expect(await screen.findByText("A place you added.")).toBeOnTheScreen();
   expect(screen.getByText("Added by you")).toBeOnTheScreen();
-  expect(screen.getByText(/ · 1 h 30 min$/)).toBeOnTheScreen();
+  expect(screen.getByText("1 h 30 min")).toBeOnTheScreen();
 });
 
 test("without an address the position is shown, never a made-up address", async () => {

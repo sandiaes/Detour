@@ -97,14 +97,16 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.85 },
   thumb: { width: 56 },
-  text: { flex: 1, gap: 2 },
+  text: { flex: 1 },
   head: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
+    // The same height with or without the badge, so the three lines are evenly spaced.
+    minHeight: 24,
   },
   title: { ...type.small, fontWeight: "700", color: colors.text, flexShrink: 1 },
-  tagline: { ...type.caption, color: colors.muted },
-  line: { ...type.caption, color: colors.muted },
+  tagline: { ...type.caption, lineHeight: 18, color: colors.muted },
+  line: { ...type.caption, lineHeight: 18, color: colors.muted },
 });
