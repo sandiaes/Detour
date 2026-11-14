@@ -136,7 +136,7 @@ This changes the product's emphasis and removes a set of built features, so it n
 
 24. **First: destinations outside the imported regions.** A trip can be created for any place
     found through Photon, with no imported data. Such a trip is empty by nature (no suggestions),
-    with a map, days, documents and manually added places. Needs ADR 027: how the destination is
+    with a map, days, documents and manually added places. Drafted as [ADR 027](027-destinations-outside-imported-regions.md) (proposed): how the destination is
     stored without a `geo` area, its cover photo, and what "Add a place" searches there.
 25. **Second: export and import of a trip as a file** (trip, days, places, notes and, optionally,
     documents), because trips and documents live under an anonymous installation token and on the
