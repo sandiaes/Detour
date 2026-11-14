@@ -1,11 +1,23 @@
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Query, Request, Response, status
+from sqlalchemy import text
 
+from detour_api.adapters.wikimedia import WikimediaClient
 from detour_api.deps import SessionDep
 from detour_api.errors import ApiError, invalid
+from detour_api.images import background as photo_background
+from detour_api.images.candidates import (
+    CandidatesUnavailable,
+    ChoiceRefused,
+    candidates_for,
+    store_choice,
+)
+from detour_api.images.queue import queue_resolve
+from detour_api.images.store import StoreError
 from detour_api.models.common import PlanningErrorBody
+from detour_api.models.images import CoverChoice
 from detour_api.models.trips import (
     ArchiveInfo,
     GenerationResult,
@@ -25,7 +37,15 @@ router = APIRouter(prefix="/v1/trips", tags=["trips"])
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Create a trip.", responses=ERRORS)
-def create_trip(session: SessionDep, body: TripCreate) -> Trip:
+def create_trip(
+    session: SessionDep, request: Request, background: BackgroundTasks, body: TripCreate
+) -> Trip:
+    trip = _create_trip(session, body)
+    queue_resolve(request, background, trip_ids=[trip.id])  # its photo, after the response
+    return trip
+
+
+def _create_trip(session: SessionDep, body: TripCreate) -> Trip:
     with session.tx() as conn:
         dest = geo.resolve_destination(conn, body.destination_kind, body.destination_ref)
         if dest is None:
@@ -51,11 +71,17 @@ def create_trip(session: SessionDep, body: TripCreate) -> Trip:
 @router.get("", summary="The caller's trips, newest first.", responses=AUTH)
 def list_trips(
     session: SessionDep,
+    request: Request,
+    background: BackgroundTasks,
     status_filter: Annotated[Literal["active", "past"] | None, Query(alias="status")] = None,
 ) -> list[Trip]:
     with session.tx() as conn:
         trips.archive_due_trips(conn, session.installation_id)  # ADR 006: after the last day
-        return trips.list_trips(conn, session.installation_id, status_filter)
+        found = trips.list_trips(conn, session.installation_id, status_filter)
+        active = photo_background.installation_trips(conn, session.installation_id)
+    # Self-healing: photos still missing for the active trips are looked up after the response.
+    queue_resolve(request, background, trip_ids=active)
+    return found
 
 
 @router.get("/{trip_id}", summary="One trip.", responses=ERRORS)
@@ -152,8 +178,52 @@ def list_itineraries(session: SessionDep, trip_id: uuid.UUID) -> list[ItineraryS
     responses={**ERRORS, 422: {"model": PlanningErrorBody}},
 )
 def generate_itineraries(
-    session: SessionDep, request: Request, trip_id: uuid.UUID
+    session: SessionDep, request: Request, background: BackgroundTasks, trip_id: uuid.UUID
 ) -> GenerationResult:
-    return generate_for_trip(
+    result = generate_for_trip(
         session, trip_id, request.app.state.travel_time, request.app.state.settings
     )
+    queue_resolve(request, background, trip_ids=[trip_id])  # photos of the planned places
+    return result
+
+
+@router.put(
+    "/{trip_id}/cover",
+    summary="Choose the trip's cover from the destination's candidates (GET /v1/destinations/"
+    "{kind}/{ref}/cover-candidates), or null for the automatic photo.",
+    responses=ERRORS,
+)
+def set_trip_cover(
+    session: SessionDep, request: Request, trip_id: uuid.UUID, body: CoverChoice
+) -> Trip:
+    with session.tx() as conn:
+        trip = trips.require_trip(conn, session.installation_id, trip_id)
+        destinations = trips.cover_destinations(conn, trip_id)
+    image_id = None
+    if body.commons_file is not None:
+        state = request.app.state
+        if state.image_store is None or state.engine is None:
+            raise ApiError(503, "images_unavailable", "photo storage is not configured")
+        client = WikimediaClient(state.settings, state.engine, state.wikimedia_transport)
+        if not client.enabled:
+            raise ApiError(503, "images_unavailable", "the photo source is switched off")
+        try:
+            offered = [
+                c
+                for kind, ref in destinations
+                for c in candidates_for(state.engine, client, state.image_store, kind, ref)
+            ]
+            image_id = store_choice(
+                state.engine, client, state.image_store, state.settings, body.commons_file, offered
+            )
+        except ChoiceRefused as exc:
+            raise invalid("cover_not_usable", f"this photo cannot be used ({exc.reason})") from exc
+        except (CandidatesUnavailable, StoreError) as exc:
+            raise ApiError(503, "images_unavailable", "the photo source cannot be reached") from exc
+    del trip
+    with session.tx() as conn:
+        conn.execute(
+            text("UPDATE app.trip SET cover_image_id = :img, updated_at = now() WHERE id = :id"),
+            {"img": image_id, "id": trip_id},
+        )
+        return trips.require_trip(conn, session.installation_id, trip_id)

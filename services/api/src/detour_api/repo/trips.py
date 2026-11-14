@@ -479,3 +479,19 @@ def set_visit_confirmed(
     if result.rowcount == 0:
         raise not_found("visit")
     return next(v for v in list_visits(conn, installation_id, trip_id) if v.id == visit_id)
+
+
+def cover_destinations(conn: Connection, trip_id: uuid.UUID) -> list[tuple[str, str]]:
+    """The destinations whose photos a trip's cover may be chosen from: its city or area, or each
+    stop's city for a multi-city trip (ADR 024)."""
+    row = conn.execute(
+        text("SELECT destination_kind, destination_ref FROM app.trip WHERE id = :id"),
+        {"id": trip_id},
+    ).one()
+    if row[0] in ("city", "area"):
+        return [(row[0], row[1])]
+    stops = conn.execute(
+        text("SELECT city_id::text FROM app.trip_stop WHERE trip_id = :id ORDER BY position"),
+        {"id": trip_id},
+    ).all()
+    return [("city", r[0]) for r in stops]

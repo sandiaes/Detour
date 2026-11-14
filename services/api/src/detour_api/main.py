@@ -47,6 +47,7 @@ def create_app(
     settings: Settings | None = None,
     *,
     photon_transport: httpx.BaseTransport | None = None,
+    wikimedia_transport: httpx.BaseTransport | None = None,
     routing_transport: httpx.BaseTransport | None = None,
     image_store: ImageStore | None = None,
 ) -> FastAPI:
@@ -88,6 +89,8 @@ def create_app(
     app.state.settings = settings
     app.state.engine = None
     app.state.image_store = image_store
+    # Tests inject recorded Wikimedia answers here; production leaves it None (the network).
+    app.state.wikimedia_transport = wikimedia_transport
     app.state.photon = PhotonClient(settings, None)
     app.state.travel_time = TravelTimeService(settings, None, ValhallaClient(settings, None))
     install_handlers(app)

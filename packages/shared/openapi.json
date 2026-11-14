@@ -225,6 +225,139 @@
         }
       }
     },
+    "/v1/cover-previews/{preview_id}": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "A small preview of a cover candidate, streamed by the backend.",
+        "operationId": "get_cover_preview",
+        "parameters": [
+          {
+            "name": "preview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Preview Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/destinations/{kind}/{ref}/cover-candidates": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Up to 12 freely licensed photos of a destination to choose a cover from (Wikimedia Commons, through the backend). Also starts looking up its automatic photo.",
+        "operationId": "list_cover_candidates",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "city",
+                "area"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CoverCandidate"
+                  },
+                  "title": "Response List Cover Candidates"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/destinations/search": {
       "get": {
         "tags": [
@@ -1578,6 +1711,94 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PlanningErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/trips/{trip_id}/cover": {
+      "put": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Choose the trip's cover from the destination's candidates (GET /v1/destinations/{kind}/{ref}/cover-candidates), or null for the automatic photo.",
+        "operationId": "set_trip_cover",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoverChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trip"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3718,6 +3939,66 @@
           "map"
         ],
         "title": "ClientConfig"
+      },
+      "CoverCandidate": {
+        "properties": {
+          "commons_file": {
+            "type": "string",
+            "title": "Commons File",
+            "description": "The file's name on Wikimedia Commons, without File:"
+          },
+          "preview_url": {
+            "type": "string",
+            "title": "Preview Url",
+            "description": "Path on this API (GET /v1/cover-previews/{id}): a JPEG at most 500 px wide"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "description": "Of the original file"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "credit": {
+            "$ref": "#/components/schemas/PhotoCredit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "commons_file",
+          "preview_url",
+          "width",
+          "height",
+          "credit"
+        ],
+        "title": "CoverCandidate",
+        "description": "A photo the user may choose as a trip's cover (\"Change photo\", ADR 022 amendment)."
+      },
+      "CoverChoice": {
+        "properties": {
+          "commons_file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commons File"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "commons_file"
+        ],
+        "title": "CoverChoice",
+        "description": "The cover chosen for a trip; null goes back to the automatic photo."
       },
       "DataVersion": {
         "properties": {

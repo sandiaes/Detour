@@ -49,6 +49,7 @@ GEO_TABLES = [
     "admin_code",
     "city",
     "country",
+    "cover_preview",
     "currency",
     "image",
     "image_lookup",

@@ -334,15 +334,16 @@ class WikimediaClient:
         }
         return parse_entities(self._api(self._settings.wikidata_api_url, params))
 
-    def file_infos(self, files: list[str]) -> dict[str, FileInfo]:
-        """Size, type, licence, author and thumbnail URL for up to 50 Commons files."""
+    def file_infos(self, files: list[str], width: int | None = None) -> dict[str, FileInfo]:
+        """Size, type, licence, author and a thumbnail URL ``width`` wide (default: the source
+        width of a stored photo) for up to 50 Commons files."""
         if not files:
             return {}
         params = {
             "action": "query",
             "prop": "imageinfo",
             "iiprop": "url|size|mime|extmetadata",
-            "iiurlwidth": str(self._settings.image_source_width),
+            "iiurlwidth": str(width or self._settings.image_source_width),
             "iiextmetadatafilter": "LicenseShortName|LicenseUrl|Artist",
             "titles": "|".join(f"File:{f}" for f in files[:BATCH_SIZE]),
             "format": "json",

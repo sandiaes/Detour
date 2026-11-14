@@ -140,6 +140,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/cover-previews/{preview_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A small preview of a cover candidate, streamed by the backend. */
+    get: operations["get_cover_preview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/destinations/{kind}/{ref}/cover-candidates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Up to 12 freely licensed photos of a destination to choose a cover from (Wikimedia Commons, through the backend). Also starts looking up its automatic photo. */
+    get: operations["list_cover_candidates"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/destinations/search": {
     parameters: {
       query?: never;
@@ -309,6 +343,23 @@ export interface paths {
     put?: never;
     /** Plan the trip: two meaningfully different itineraries of attractions, or one with the reason (Phase 4: city destinations, no meals). Replaces earlier unselected proposals. */
     post: operations["generate_itineraries"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/cover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Choose the trip's cover from the destination's candidates (GET /v1/destinations/{kind}/{ref}/cover-candidates), or null for the automatic photo. */
+    put: operations["set_trip_cover"];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -771,6 +822,38 @@ export interface components {
       /** Config Version */
       config_version: string;
       map: components["schemas"]["MapConfig"];
+    };
+    /**
+     * CoverCandidate
+     * @description A photo the user may choose as a trip's cover ("Change photo", ADR 022 amendment).
+     */
+    CoverCandidate: {
+      /**
+       * Commons File
+       * @description The file's name on Wikimedia Commons, without File:
+       */
+      commons_file: string;
+      /**
+       * Preview Url
+       * @description Path on this API (GET /v1/cover-previews/{id}): a JPEG at most 500 px wide
+       */
+      preview_url: string;
+      /**
+       * Width
+       * @description Of the original file
+       */
+      width: number;
+      /** Height */
+      height: number;
+      credit: components["schemas"]["PhotoCredit"];
+    };
+    /**
+     * CoverChoice
+     * @description The cover chosen for a trip; null goes back to the automatic photo.
+     */
+    CoverChoice: {
+      /** Commons File */
+      commons_file: string | null;
     };
     /** DataVersion */
     DataVersion: {
@@ -2636,6 +2719,96 @@ export interface operations {
       };
     };
   };
+  get_cover_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        preview_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "image/jpeg": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_cover_candidates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        kind: "city" | "area";
+        ref: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CoverCandidate"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
   search_destinations: {
     parameters: {
       query: {
@@ -3490,6 +3663,68 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlanningErrorBody"];
+        };
+      };
+    };
+  };
+  set_trip_cover: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CoverChoice"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
         };
       };
     };

@@ -25,3 +25,23 @@ class Photo(BaseModel):
     width: int
     height: int
     credit: PhotoCredit
+
+
+class CoverCandidate(BaseModel):
+    """A photo the user may choose as a trip's cover ("Change photo", ADR 022 amendment)."""
+
+    commons_file: str = Field(description="The file's name on Wikimedia Commons, without File:")
+    preview_url: str = Field(
+        description="Path on this API (GET /v1/cover-previews/{id}): a JPEG at most 500 px wide"
+    )
+    width: int = Field(description="Of the original file")
+    height: int
+    credit: PhotoCredit
+
+
+class CoverChoice(BaseModel):
+    """The cover chosen for a trip; null goes back to the automatic photo."""
+
+    model_config = {"extra": "forbid"}
+
+    commons_file: str | None = Field(min_length=1, max_length=300)

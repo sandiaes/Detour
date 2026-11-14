@@ -305,7 +305,7 @@ def _first_usable(
             continue
         reason = rejection_reason(info)
         if reason is None:
-            result = _ensure_image(engine, client, store, settings, info, qid, report)
+            result = ensure_image(engine, client, store, settings, info, qid, report)
             if result == "cap":
                 return None, first_reason, True
             if isinstance(result, uuid.UUID):
@@ -367,13 +367,13 @@ def _rest_of_chain(
     return False
 
 
-def _ensure_image(
+def ensure_image(
     engine: Engine,
     client: WikimediaClient,
     store: ImageStore,
     settings: Settings,
     info: FileInfo,
-    qid: str,
+    qid: str | None,
     report: Report,
 ) -> uuid.UUID | str:
     """The image id for this file, downloading and storing it first if it is new. Returns a

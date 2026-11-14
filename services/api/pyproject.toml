@@ -61,6 +61,7 @@ select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "RUF"]
 # join fixed column lists and clauses (reviewed in each file).
 "src/detour_api/repo/*.py" = ["E501", "S608"]
 "src/detour_api/importer/*.py" = ["E501", "S608"]
+"src/detour_api/images/*.py" = ["S608"]
 "src/detour_api/adapters/*.py" = ["E501"]
 "migrations/**" = ["E501"]
 
