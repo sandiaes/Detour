@@ -24,9 +24,9 @@ ITEM_TEMPLATES: dict[str, str] = {
     "ADDS_VARIETY": "Adds a kind of place this plan does not have yet.",
     # Meals (ADR 016).
     "BREAKFAST_WINDOW": "Breakfast, planned between 07:30 and 10:00.",
-    "LUNCH_WINDOW": "Lunch, planned between 12:00 and 14:30.",
+    "LUNCH_WINDOW": "Lunch, planned between 13:00 and 15:00.",
     "SNACK_WINDOW": "An afternoon snack, planned between 15:00 and 17:30.",
-    "DINNER_WINDOW": "Dinner, planned between 18:30 and 21:00.",
+    "DINNER_WINDOW": "Dinner, planned between 20:00 and 22:00.",
     "VENUE_SUITS_MEAL": "Its venue type in the map data (restaurant or café) suits this meal.",
     "ON_THE_WAY": "Close to the visits before and after it: little detour.",
     "NEAREST_SUITABLE": "The nearest suitable place to eat found in the map data.",

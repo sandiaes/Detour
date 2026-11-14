@@ -17,7 +17,7 @@ const GENERATION = "00000000-0000-4000-8000-0000000000f1";
 export function makeTrip(over: Partial<Trip> = {}): Trip {
   return {
     id: TRIP_ID,
-    title: "Vienna, 2 days",
+    title: "Vienna",
     destination: { kind: "city", ref: "900101", name: "Vienna", lat: 48.2082, lon: 16.3738 },
     duration_days: 2,
     start_date: "2027-05-01",
@@ -193,7 +193,7 @@ export function makeItinerary(
             start: "13:01:00",
             end: "14:01:00",
             minutes: 60,
-            reasons: ["Lunch, planned between 12:00 and 14:30."],
+            reasons: ["Lunch, planned between 13:00 and 15:00."],
             restaurant: { venue_type: "restaurant", cuisines: ["regional", "coffee_shop"] },
             transfer: { to: "i3", seconds: 120, meters: 90, confidence: "estimated" },
           }),
@@ -409,7 +409,7 @@ export function makeArchivedVisits(): TripVisit[] {
 export function makePastTrip(over: Partial<Trip> = {}): Trip {
   return makeTrip({
     id: TRIP_ID,
-    title: "Styria, 4 days",
+    title: "Styria trip",
     destination: { kind: "area", ref: "area-1", name: "Styria", lat: 47.2, lon: 15.3 },
     duration_days: 4,
     end_date: "2027-05-04",

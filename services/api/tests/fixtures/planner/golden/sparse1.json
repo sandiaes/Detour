@@ -1,14 +1,14 @@
 {
- "config_version": "2026-11-13.1+durations-2026-11-12.1",
+ "config_version": "2026-11-14.1+durations-2026-11-12.1",
  "data_version": "run-fixture",
  "distinct": true,
  "engine_version": "planner-2.0.0",
- "jaccard_permille": 375,
+ "jaccard_permille": 500,
  "notes": [
   {
    "code": "DISTINCT_PLANS",
    "params": {
-    "jaccard_percent": 37,
+    "jaccard_percent": 50,
     "max_percent": 60
    }
   },
@@ -97,7 +97,7 @@
         "pizza"
        ],
        "duration_minutes": 60,
-       "end_minute": 780,
+       "end_minute": 840,
        "kind": "meal",
        "lat": 48.208425,
        "lon": 16.376549,
@@ -110,7 +110,7 @@
         "ON_THE_WAY",
         "NEW_CUISINE"
        ],
-       "start_minute": 720,
+       "start_minute": 780,
        "transfer": {
         "confidence": "estimated",
         "estimate_reason": "provider_not_asked",
@@ -124,7 +124,7 @@
        "category": "theme_park",
        "cuisines": null,
        "duration_minutes": 240,
-       "end_minute": 1061,
+       "end_minute": 1121,
        "kind": "visit",
        "lat": 48.223583,
        "lon": 16.380018,
@@ -134,7 +134,7 @@
        "reasons": [
         "NAMED_SIGHT"
        ],
-       "start_minute": 821,
+       "start_minute": 881,
        "transfer": {
         "confidence": "estimated",
         "estimate_reason": "provider_not_asked",
@@ -148,7 +148,7 @@
        "category": "church",
        "cuisines": null,
        "duration_minutes": 30,
-       "end_minute": 1098,
+       "end_minute": 1158,
        "kind": "visit",
        "lat": 48.200651,
        "lon": 16.369334,
@@ -159,21 +159,46 @@
         "NEAR_CENTRE",
         "NEAR_PREVIOUS_ITEM"
        ],
-       "start_minute": 1068,
+       "start_minute": 1128,
        "transfer": {
         "confidence": "estimated",
         "estimate_reason": "provider_not_asked",
-        "meters": 1303,
-        "minutes": 18,
+        "meters": 419,
+        "minutes": 6,
         "mode": "walk",
-        "seconds": 1042
+        "seconds": 335
+       }
+      },
+      {
+       "category": "unlisted_category",
+       "cuisines": null,
+       "duration_minutes": 30,
+       "end_minute": 1194,
+       "kind": "visit",
+       "lat": 48.200051,
+       "lon": 16.366319,
+       "meal_type": null,
+       "name": "Sparse synthetic sight 3",
+       "place_id": "00000000-0000-4000-9000-000000000003",
+       "reasons": [
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM"
+       ],
+       "start_minute": 1164,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 1506,
+        "minutes": 21,
+        "mode": "walk",
+        "seconds": 1204
        }
       },
       {
        "category": "restaurant",
        "cuisines": null,
        "duration_minutes": 90,
-       "end_minute": 1206,
+       "end_minute": 1305,
        "kind": "meal",
        "lat": 48.207135,
        "lon": 16.370089,
@@ -186,7 +211,7 @@
         "NEAREST_SUITABLE",
         "CUISINE_NOT_SPECIFIED"
        ],
-       "start_minute": 1116,
+       "start_minute": 1215,
        "transfer": null
       }
      ]
@@ -200,33 +225,27 @@
      }
     },
     {
-     "code": "VISITS_REMOVED_TO_FIT",
-     "params": {
-      "removed": 1
-     }
-    },
-    {
      "code": "ESTIMATED_TRANSFERS",
      "params": {
-      "estimated": 5,
-      "transfers": 5
+      "estimated": 6,
+      "transfers": 6
      }
     }
    ],
    "profile": "essentials",
    "stats": {
-    "day_utilisation_permille": 854,
+    "day_utilisation_permille": 838,
     "days_with_visits": 1,
-    "estimated_transfers": 5,
+    "estimated_transfers": 6,
     "intercity_legs": 0,
     "meal_minutes": 150,
     "meals": 2,
     "routed_transfers": 0,
-    "travel_minutes": 85,
-    "travel_seconds": 5029,
-    "travel_share_permille": 138,
-    "visit_minutes": 380,
-    "visits": 4
+    "travel_minutes": 94,
+    "travel_seconds": 5526,
+    "travel_share_permille": 143,
+    "visit_minutes": 410,
+    "visits": 5
    }
   },
   {
@@ -360,10 +379,36 @@
        "transfer": {
         "confidence": "estimated",
         "estimate_reason": "provider_not_asked",
-        "meters": 719,
-        "minutes": 10,
+        "meters": 546,
+        "minutes": 8,
         "mode": "walk",
-        "seconds": 576
+        "seconds": 437
+       }
+      },
+      {
+       "category": "statue",
+       "cuisines": null,
+       "duration_minutes": 10,
+       "end_minute": 781,
+       "kind": "visit",
+       "lat": 48.207761,
+       "lon": 16.375687,
+       "meal_type": null,
+       "name": "Sparse synthetic sight 6",
+       "place_id": "00000000-0000-4000-9000-000000000006",
+       "reasons": [
+        "NEAR_CENTRE",
+        "NEAR_PREVIOUS_ITEM",
+        "ADDS_VARIETY"
+       ],
+       "start_minute": 771,
+       "transfer": {
+        "confidence": "estimated",
+        "estimate_reason": "provider_not_asked",
+        "meters": 175,
+        "minutes": 3,
+        "mode": "walk",
+        "seconds": 140
        }
       },
       {
@@ -372,7 +417,7 @@
         "pizza"
        ],
        "duration_minutes": 60,
-       "end_minute": 833,
+       "end_minute": 844,
        "kind": "meal",
        "lat": 48.208425,
        "lon": 16.376549,
@@ -385,39 +430,14 @@
         "ON_THE_WAY",
         "NEW_CUISINE"
        ],
-       "start_minute": 773,
+       "start_minute": 784,
        "transfer": {
         "confidence": "estimated",
         "estimate_reason": "provider_not_asked",
-        "meters": 175,
-        "minutes": 3,
+        "meters": 608,
+        "minutes": 9,
         "mode": "walk",
-        "seconds": 140
-       }
-      },
-      {
-       "category": "statue",
-       "cuisines": null,
-       "duration_minutes": 10,
-       "end_minute": 846,
-       "kind": "visit",
-       "lat": 48.207761,
-       "lon": 16.375687,
-       "meal_type": null,
-       "name": "Sparse synthetic sight 6",
-       "place_id": "00000000-0000-4000-9000-000000000006",
-       "reasons": [
-        "NEAR_CENTRE",
-        "ADDS_VARIETY"
-       ],
-       "start_minute": 836,
-       "transfer": {
-        "confidence": "estimated",
-        "estimate_reason": "provider_not_asked",
-        "meters": 524,
-        "minutes": 7,
-        "mode": "walk",
-        "seconds": 419
+        "seconds": 486
        }
       },
       {
@@ -433,7 +453,6 @@
        "place_id": "00000000-0000-4000-9000-000000000007",
        "reasons": [
         "NEAR_CENTRE",
-        "NEAR_PREVIOUS_ITEM",
         "ADDS_VARIETY"
        ],
        "start_minute": 853,
@@ -479,7 +498,7 @@
        "category": "restaurant",
        "cuisines": null,
        "duration_minutes": 90,
-       "end_minute": 1200,
+       "end_minute": 1290,
        "kind": "meal",
        "lat": 48.207135,
        "lon": 16.370089,
@@ -492,7 +511,7 @@
         "ON_THE_WAY",
         "CUISINE_NOT_SPECIFIED"
        ],
-       "start_minute": 1110,
+       "start_minute": 1200,
        "transfer": null
       }
      ]
@@ -521,7 +540,7 @@
    ],
    "profile": "wider",
    "stats": {
-    "day_utilisation_permille": 641,
+    "day_utilisation_permille": 592,
     "days_with_visits": 1,
     "estimated_transfers": 9,
     "intercity_legs": 0,
@@ -529,7 +548,7 @@
     "meals": 3,
     "routed_transfers": 0,
     "travel_minutes": 72,
-    "travel_seconds": 4086,
+    "travel_seconds": 4014,
     "travel_share_permille": 155,
     "visit_minutes": 210,
     "visits": 7

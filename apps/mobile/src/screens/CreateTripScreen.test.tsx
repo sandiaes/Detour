@@ -137,9 +137,9 @@ test("searching offline says it needs a connection", async () => {
   expect(await screen.findByText(/Searching needs a connection/)).toBeOnTheScreen();
 });
 
-test("Plan trip stays unavailable until a destination is chosen", async () => {
+test("Generate itineraries stays unavailable until a destination is chosen", async () => {
   await openForm();
-  const button = screen.getByRole("button", { name: "Plan trip" });
+  const button = screen.getByRole("button", { name: "Generate itineraries" });
   expect(button.props.accessibilityState).toMatchObject({ disabled: true });
 });
 
@@ -147,19 +147,19 @@ test("the whole flow: search, choose, set details, plan, land on the two proposa
   const client = await openForm();
   await typeDestination("Vie");
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
-  expect(screen.getByText("Change destination")).toBeOnTheScreen();
+  expect(screen.getByLabelText("Clear destination")).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByLabelText("More days"));
   await fireEvent.changeText(screen.getByLabelText("Start date (optional)"), "2027-05-01");
   // No currency and no meal budget: budgets are not part of the app (ADR 017).
   expect(screen.queryByLabelText("Currency (optional)")).toBeNull();
   expect(screen.queryByLabelText("Meal budget per person (optional)")).toBeNull();
-  await fireEvent.press(screen.getByRole("button", { name: "Plan trip" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
 
   expect(await screen.findByText("How they differ")).toBeOnTheScreen();
   const create = client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips");
   expect(create?.body).toEqual({
-    title: "Vienna, 4 days",
+    title: "Vienna",
     destination_kind: "city",
     destination_ref: "900101",
     duration_days: 4,
@@ -170,12 +170,51 @@ test("the whole flow: search, choose, set details, plan, land on the two proposa
   expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBe(0);
 });
 
+test("an empty trip is created without proposals and opens on its own plan", async () => {
+  const manual = makeItinerary("essentials", { profile: "manual" } as never);
+  const trip = makeTrip({ selected_itinerary_id: manual.id });
+  const client = await openForm(
+    server({
+      "POST /v1/trips/{trip_id}/itineraries": () => manual,
+      "PATCH /v1/trips/{trip_id}": () => trip,
+      "GET /v1/trips": () => [trip],
+    }),
+  );
+  await typeDestination("Vie");
+  await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
+  await fireEvent.press(screen.getByRole("button", { name: "Start with an empty trip" }));
+
+  expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
+  expect(screen.getByText("Manual plan")).toBeOnTheScreen();
+  // No proposals were asked for, and the trip is named after its destination alone.
+  expect(client.count("POST /v1/trips/{trip_id}/itineraries/generate")).toBe(0);
+  expect(client.count("POST /v1/trips/{trip_id}/itineraries")).toBe(1);
+  const create = client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips");
+  expect((create?.body as { title: string }).title).toBe("Vienna");
+  const select = client.calls.find((c) => c.method === "PATCH");
+  expect(select?.body).toEqual({ selected_itinerary_id: manual.id });
+});
+
+test("travel style and public transport are chosen but marked as not used yet", async () => {
+  const client = await openForm();
+  expect(screen.getByRole("radio", { name: "Balanced" }).props.accessibilityState).toMatchObject({
+    selected: true,
+  });
+  await fireEvent.press(screen.getByRole("radio", { name: "Relaxed" }));
+  expect(screen.getByRole("radio", { name: "Relaxed" }).props.accessibilityState).toMatchObject({
+    selected: true,
+  });
+  expect(screen.getByText(/saved for later/)).toBeOnTheScreen();
+  // Not part of the trip sent to the server.
+  expect(client.count("POST /v1/trips")).toBe(0);
+});
+
 test("an invalid start date blocks submission and says what is wrong", async () => {
   const client = await openForm();
   await typeDestination("Vie");
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
   await fireEvent.changeText(screen.getByLabelText("Start date (optional)"), "2027-02-31");
-  await fireEvent.press(screen.getByRole("button", { name: "Plan trip" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
   expect(await screen.findByText(/Use the form YYYY-MM-DD/)).toBeOnTheScreen();
   expect(client.count("POST /v1/trips")).toBe(0);
 });
@@ -185,7 +224,7 @@ test("an area is planned like a city, with its own explanation", async () => {
   await typeDestination("Vie");
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna Woods/ }));
   expect(screen.getByText(/choose base cities in the area/)).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole("button", { name: "Plan trip" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
   expect(await screen.findByText("How they differ")).toBeOnTheScreen();
   const create = client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips");
   expect(create?.body).toMatchObject({ destination_kind: "area", destination_ref: "a1" });
@@ -210,7 +249,7 @@ test("when planning fails the trip is kept, the reason is shown, and Try again p
   );
   await typeDestination("Vie");
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
-  await fireEvent.press(screen.getByRole("button", { name: "Plan trip" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
   expect(await screen.findByText(/does not have enough places/)).toBeOnTheScreen();
   expect(screen.getByText(/Only 2 places are known here/)).toBeOnTheScreen();
   expect(screen.getByText(/The trip was saved/)).toBeOnTheScreen();

@@ -17,7 +17,7 @@ Measurement sources:
 | Variant count | Share of plan requests returning at least two itineraries | ≥ 95% of fixtures; the rest return the explicit single-plan response | Fixture suite |
 | Variant diversity | Jaccard similarity of the visit sets of the two variants | ≤ 0.6, or different base cities or days per base (areas) | Fixture suite |
 | Feasibility | Generated itineraries passing the independent validator | 100% | Fixture suite, logs |
-| Day utilisation | Planned time (visits, meals, transfers, inter-city drives) as a share of the 09:00–21:00 window | 60–90% | Fixture suite |
+| Day utilisation | Planned time (visits, meals, transfers, inter-city drives) as a share of the 09:00–22:00 window | 60–90% | Fixture suite |
 | Meals in their windows | Planned meals that start and end inside their meal window (ADR 016) | 100% | Validator |
 | Travel share | Transfer and inter-city time as a share of planned time, Essentials profile | ≤ 25% | Fixture suite |
 | Determinism | Identical output for identical input, data version and engine version | 100% | Golden tests |

@@ -154,7 +154,7 @@ def test_items_outside_the_day_are_caught(generation: Generation) -> None:
     last = len(plan.days[0].items) - 1
 
     def late(v: PlannedItem) -> PlannedItem:
-        return dataclasses.replace(v, start_minute=20 * 60, end_minute=20 * 60 + v.duration_minutes)
+        return dataclasses.replace(v, start_minute=22 * 60, end_minute=22 * 60 + v.duration_minutes)
 
     assert "AFTER_DAY_END" in check(change_item(plan, 0, last, late))
 
@@ -173,7 +173,7 @@ def test_a_meal_outside_its_window_is_caught(generation: Generation) -> None:
     assert "MEAL_OUTSIDE_WINDOW" in check(change_item(plan, 0, lunch, early))
 
     def too_long_into_the_afternoon(m: PlannedItem) -> PlannedItem:
-        return dataclasses.replace(m, start_minute=14 * 60, end_minute=15 * 60)
+        return dataclasses.replace(m, start_minute=14 * 60 + 30, end_minute=15 * 60 + 30)
 
     assert "MEAL_OUTSIDE_WINDOW" in check(change_item(plan, 0, lunch, too_long_into_the_afternoon))
 

@@ -224,11 +224,11 @@ def test_up_to_three_suggestions_with_reasons_detour_and_moved_items(api_env: Ap
         assert isinstance(s["detour_metres"], int) and isinstance(s["travel_minutes_added"], int)
         assert isinstance(s["items_moved"], list)
         window = {
-            "lunch": ("12:00:00", "14:30:00"),
-            "dinner": ("18:30:00", "21:00:00"),
+            "lunch": ("13:00:00", "15:00:00"),
+            "dinner": ("20:00:00", "22:00:00"),
         }[s["meal_type"]]
         assert window[0] <= s["start_time"] < s["end_time"] <= window[1]
-        assert s["end_time"] <= "21:00:00"
+        assert s["end_time"] <= "22:00:00"
     # Suggestions store nothing.
     assert _get(api_env, plan["id"])["version"] == 1
     assert sql(api_env, "SELECT count(*) FROM app.change_set") == [(0,)]

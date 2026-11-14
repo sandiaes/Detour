@@ -314,7 +314,7 @@ def test_bad_inputs_are_programming_errors() -> None:
 
 
 def _slow_routed_table() -> dict[tuple[Coord, Coord], tuple[int, int]]:
-    """Synthetic "routed" answers three times slower than the estimate, for pairs within 3 km."""
+    """Synthetic "routed" answers six times slower than the estimate, for pairs within 3 km."""
     cs = candidates("city-large")
     table: dict[tuple[Coord, Coord], tuple[int, int]] = {}
     for a in cs:
@@ -323,7 +323,7 @@ def _slow_routed_table() -> dict[tuple[Coord, Coord], tuple[int, int]]:
                 continue
             mode: Mode = "walk" if distance_m(a.coord, b.coord) <= 2000 else "drive"
             seconds, meters = estimate(a.coord, b.coord, mode)
-            table[(a.coord, b.coord)] = (seconds * 3 + 120, meters * 12 // 10)
+            table[(a.coord, b.coord)] = (seconds * 6 + 300, meters * 12 // 10)
     return table
 
 
@@ -399,7 +399,7 @@ def test_the_gate_penalises_shared_visits_until_the_plans_differ() -> None:
 
 def test_a_much_smaller_second_variant_is_not_an_alternative() -> None:
     g = run("city-sparse", 1)
-    assert [p.stats.visits for p in g.plans] == [4, 7]  # Wider has 175 % of Essentials' visits
+    assert [p.stats.visits for p in g.plans] == [5, 7]  # Wider has 140 % of Essentials' visits
     demanding = dataclasses.replace(DEFAULT_CONFIG, min_second_variant_pct=200)
     g = run("city-sparse", 1, config=demanding)
     assert len(g.plans) == 1 and any(n.code == "SINGLE_PLAN" for n in g.notes)
@@ -507,3 +507,21 @@ def test_engine_latency_leaves_room_in_the_kpi_budget() -> None:
     elapsed = time.perf_counter() - started
     assert len(g.plans) == 2
     assert elapsed < 1.5, f"engine took {elapsed:.2f} s for 7 days"
+
+
+def test_meals_are_aimed_at_lunch_13_and_dinner_20() -> None:
+    """A meal starts at its window's start at the earliest (owner request, 2026-11-14)."""
+    assert DEFAULT_CONFIG.meal_window("lunch").start_minute == 13 * 60
+    assert DEFAULT_CONFIG.meal_window("dinner").start_minute == 20 * 60
+    # The day runs to 22:00 so that a 90-minute dinner at 20:00 ends inside it.
+    assert DEFAULT_CONFIG.day_window_end_minute == 22 * 60
+    for profile in DEFAULT_CONFIG.profiles:
+        assert profile.day_end_minute >= 20 * 60 + 90
+    g = run("city-large", 3)
+    for plan in g.plans:
+        for day in plan.days:
+            for meal in day.meals:
+                if meal.meal_type in ("lunch", "dinner"):
+                    assert (
+                        meal.start_minute >= DEFAULT_CONFIG.meal_window(meal.meal_type).start_minute
+                    )

@@ -1,11 +1,14 @@
 import type { DestinationResult, Trip } from "@detour/shared";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, isOfflineError, planningIssues } from "../api/unwrap";
 import { Button } from "../components/Button";
-import { Card, Field, Notice, ScreenHeader, Stepper } from "../components/ui";
+import { Cover } from "../components/ds/Cover";
+import { Icon } from "../components/ds/Icon";
+import { IconButton } from "../components/ds/primitives";
+import { Notice, useAnnounceOnMount } from "../components/ui";
 import { useTripActions } from "../data/actions";
 import { useNavigation } from "../nav/Navigator";
 import { TOUCH, colors, radius, spacing, type } from "../theme";
@@ -62,9 +65,12 @@ export function CreateTripScreen() {
   const [chosen, setChosen] = useState<DestinationResult | null>(null);
   const [days, setDays] = useState(3);
   const [startDate, setStartDate] = useState("");
-  const [name, setName] = useState("");
+  // Saved for later (docs/design.md): chosen here, not sent, and the plans do not use them yet.
+  const [style, setStyle] = useState<TravelStyle>("balanced");
+  const [publicTransport, setPublicTransport] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [working, setWorking] = useState<"creating" | "planning" | null>(null);
+  const [working, setWorking] = useState<"creating" | "planning" | "starting" | null>(null);
+  const [mode, setMode] = useState<"generate" | "empty">("generate");
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
   const [created, setCreated] = useState<Trip | null>(null);
 
@@ -123,16 +129,30 @@ export function CreateTripScreen() {
     }
   };
 
-  const submit = async () => {
+  const startEmpty = async (trip: Trip) => {
+    setWorking("starting");
+    try {
+      await actions.startEmptyTrip(trip.id);
+      nav.replace({ name: "tripOverview", tripId: trip.id });
+    } catch (e) {
+      setProblem({ message: describeError(e), issues: [] });
+    } finally {
+      setWorking(null);
+    }
+  };
+
+  const submit = async (how: "generate" | "empty") => {
     setSubmitted(true);
     setProblem(null);
+    setMode(how);
     if (!chosen || hasErrors) return;
     let trip = created;
     if (!trip) {
       setWorking("creating");
       try {
         trip = await actions.createTrip({
-          title: name.trim() || `${chosen.name}, ${pluralise(days, "day")}`,
+          // The trip is named after its destination: the country, region or city.
+          title: chosen.name,
           destination_kind: chosen.kind,
           destination_ref: chosen.ref,
           duration_days: days,
@@ -145,7 +165,8 @@ export function CreateTripScreen() {
         return;
       }
     }
-    await planNow(trip);
+    if (how === "empty") await startEmpty(trip);
+    else await planNow(trip);
   };
 
   const offline = !actions.connected && state.phase === "error";
@@ -153,7 +174,15 @@ export function CreateTripScreen() {
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <ScreenHeader title="New trip" onBack={nav.back} />
+        <View style={styles.top}>
+          <IconButton icon="back" label="Back" onPress={nav.back} />
+        </View>
+        <View style={styles.head}>
+          <TitleText />
+          <Text style={styles.subtitle}>
+            Tell us where you want to go and we&apos;ll help you build the perfect itinerary.
+          </Text>
+        </View>
 
         {offline ? (
           <Notice tone="warning" label="Offline">
@@ -162,79 +191,144 @@ export function CreateTripScreen() {
         ) : null}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Where to?</Text>
-          {chosen ? (
-            <Card accent>
-              <Text style={styles.resultName}>{chosen.name}</Text>
-              <Text style={styles.resultMeta}>
-                {chosen.kind === "area" ? "Area" : "City"}
-                {describeResult(chosen) ? ` · ${describeResult(chosen)}` : ""}
-              </Text>
-              {chosen.kind === "area" ? (
-                <Text style={styles.hint}>
-                  The plans choose base cities in the area and divide the days between them.
-                </Text>
-              ) : null}
-              <Button
-                label="Change destination"
-                variant="secondary"
+          <View style={styles.row}>
+            <Icon name="pin" size={22} color={colors.text} />
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>Destination</Text>
+              {chosen ? (
+                <>
+                  <Text style={styles.chosenName}>{chosen.name}</Text>
+                  <Text style={styles.hint}>
+                    {chosen.kind === "area" ? "Area" : "City"}
+                    {describeResult(chosen) ? ` · ${describeResult(chosen)}` : ""}
+                  </Text>
+                </>
+              ) : (
+                <TextInput
+                  testID="destination-input"
+                  accessibilityLabel="Destination"
+                  accessibilityHint="A city or an area in one of the imported regions, for example Vienna or Tyrol."
+                  placeholder="City or area, for example Vienna"
+                  placeholderTextColor={colors.muted}
+                  value={query}
+                  onChangeText={setQuery}
+                  autoCorrect={false}
+                  autoCapitalize="words"
+                  returnKeyType="search"
+                  style={styles.input}
+                />
+              )}
+            </View>
+            {chosen ? (
+              <IconButton
+                icon="close"
+                label="Clear destination"
                 onPress={() => {
                   setChosen(null);
                   setCreated(null);
                 }}
               />
-            </Card>
+            ) : null}
+          </View>
+          {chosen?.kind === "area" ? (
+            <Text style={styles.hint}>
+              The plans choose base cities in the area and divide the days between them.
+            </Text>
+          ) : null}
+          {!chosen ? (
+            <SearchResults search={search} waking={waking} query={q} onChoose={setChosen} />
           ) : (
-            <>
-              <Field
-                label="Destination"
-                testID="destination-input"
-                hint="A city or an area in one of the imported regions, for example Vienna or Tyrol."
-                value={query}
-                onChangeText={setQuery}
-                autoCorrect={false}
-                autoCapitalize="words"
-                returnKeyType="search"
-              />
-              <SearchResults search={search} waking={waking} query={q} onChoose={setChosen} />
-            </>
+            <Cover
+              seedKey={chosen.ref}
+              height={120}
+              rounded={radius.md}
+              style={styles.cover}
+              testID="create-cover"
+            />
           )}
         </View>
 
+        <View style={styles.pair}>
+          <View style={[styles.row, styles.half]}>
+            <Icon name="calendar" size={22} color={colors.text} />
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>Start date (optional)</Text>
+              <TextInput
+                accessibilityLabel="Start date (optional)"
+                accessibilityHint="Day dates follow it. Format YYYY-MM-DD."
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.muted}
+                value={startDate}
+                onChangeText={setStartDate}
+                keyboardType="numbers-and-punctuation"
+                autoCorrect={false}
+                maxLength={10}
+                style={styles.input}
+              />
+            </View>
+          </View>
+          <View style={[styles.row, styles.half, styles.halfRule]}>
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>Duration</Text>
+              <DaysStepper value={days} onChange={setDays} />
+            </View>
+          </View>
+        </View>
+        {submitted || startDate.length === 10 ? (
+          errors.date ? (
+            <Text style={styles.error} accessibilityLiveRegion="polite">
+              Problem: {errors.date}
+            </Text>
+          ) : null
+        ) : null}
+
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Details</Text>
-          <Stepper
-            label="Days"
-            value={days}
-            min={1}
-            max={MAX_DAYS}
-            onChange={setDays}
-            unit={(n) => pluralise(n, "day")}
-          />
-          <Field
-            label="Start date (optional)"
-            hint="Day dates follow it. Format YYYY-MM-DD."
-            value={startDate}
-            onChangeText={setStartDate}
-            keyboardType="numbers-and-punctuation"
-            autoCorrect={false}
-            maxLength={10}
-            error={submitted || startDate.length === 10 ? (errors.date ?? null) : null}
-          />
-          <Field
-            label="Trip name (optional)"
-            hint={chosen ? `Left empty: "${chosen.name}, ${pluralise(days, "day")}".` : undefined}
-            value={name}
-            onChangeText={setName}
-            maxLength={120}
+          <Text accessibilityRole="header" style={styles.sectionTitle}>
+            Travel style
+          </Text>
+          <View style={styles.chips} accessibilityRole="radiogroup">
+            {TRAVEL_STYLES.map((t) => {
+              const on = style === t.key;
+              return (
+                <Pressable
+                  key={t.key}
+                  accessibilityRole="radio"
+                  accessibilityLabel={t.label}
+                  accessibilityState={{ selected: on, checked: on }}
+                  onPress={() => setStyle(t.key)}
+                  style={[styles.chip, on && styles.chipOn]}
+                  testID={`style-${t.key}`}
+                >
+                  <Text style={[styles.chipText, on && styles.chipTextOn]}>{t.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={[styles.row, styles.transportRow]}>
+          <Icon name="transport" size={22} color={colors.text} />
+          <View style={styles.rowBody}>
+            <Text style={styles.rowTitle}>Public transport</Text>
+          </View>
+          <Switch
+            accessibilityLabel="Public transport"
+            value={publicTransport}
+            onValueChange={setPublicTransport}
+            trackColor={{ true: colors.primary, false: colors.outline }}
+            thumbColor={colors.surface}
+            style={styles.switch}
           />
         </View>
+        <Text style={styles.later}>
+          Travel style and public transport are saved for later. The plans do not use them yet.
+        </Text>
 
         {problem ? (
           <Notice tone="error">
             {problem.message}
             {problem.issues.length > 0 ? ` ${problem.issues.join(" ")}` : ""}
-            {created ? " The trip was saved; you can plan it again." : ""}
+            {created ? " The trip was saved; you can try again." : ""}
           </Notice>
         ) : null}
         {working === "planning" ? (
@@ -244,25 +338,101 @@ export function CreateTripScreen() {
           </Notice>
         ) : null}
 
-        <View style={styles.section}>
+        <View style={styles.actions}>
           <Button
             testID="plan-trip"
-            label={created ? "Try planning again" : "Plan trip"}
+            label={
+              created && problem && mode === "generate"
+                ? "Try planning again"
+                : "Generate itineraries"
+            }
+            icon="route"
+            variant="ink"
             fill
-            loading={working !== null}
-            disabled={!chosen || offline}
-            hint={chosen ? undefined : "Choose a destination first"}
-            onPress={() => void submit()}
+            loading={working !== null && mode === "generate"}
+            disabled={!chosen || offline || (working !== null && mode !== "generate")}
+            hint={chosen ? "Two different plans to compare" : "Choose a destination first"}
+            onPress={() => void submit("generate")}
+          />
+          <Button
+            testID="empty-trip"
+            label="Start with an empty trip"
+            icon="add"
+            variant="secondary"
+            fill
+            loading={working !== null && mode === "empty"}
+            disabled={!chosen || offline || (working !== null && mode !== "empty")}
+            hint={
+              chosen ? "No proposals: you add the places yourself" : "Choose a destination first"
+            }
+            onPress={() => void submit("empty")}
           />
           {created && problem ? (
             <Button
               label="Open the trip without a plan"
               variant="quiet"
-              onPress={() => nav.replace({ name: "trip", tripId: created.id })}
+              onPress={() => nav.replace({ name: "tripOverview", tripId: created.id })}
             />
           ) : null}
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+type TravelStyle = "relaxed" | "balanced" | "active";
+const TRAVEL_STYLES: { key: TravelStyle; label: string }[] = [
+  { key: "relaxed", label: "Relaxed" },
+  { key: "balanced", label: "Balanced" },
+  { key: "active", label: "Active" },
+];
+
+function TitleText() {
+  const ref = useAnnounceOnMount();
+  return (
+    <View ref={ref} accessible accessibilityRole="header" accessibilityLabel="Create new trip">
+      <Text style={styles.title}>Create new trip</Text>
+    </View>
+  );
+}
+
+function DaysStepper({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const text = pluralise(value, "day");
+  return (
+    <View style={styles.stepper}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Fewer days"
+        accessibilityState={{ disabled: value <= 1 }}
+        disabled={value <= 1}
+        onPress={() => onChange(value - 1)}
+        style={styles.stepButton}
+      >
+        <Text style={[styles.stepText, value <= 1 && styles.stepOff]}>−</Text>
+      </Pressable>
+      <View
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel="Days"
+        accessibilityValue={{ min: 1, max: MAX_DAYS, now: value, text }}
+        accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+        onAccessibilityAction={(e) => {
+          if (e.nativeEvent.actionName === "increment" && value < MAX_DAYS) onChange(value + 1);
+          if (e.nativeEvent.actionName === "decrement" && value > 1) onChange(value - 1);
+        }}
+      >
+        <Text style={styles.stepValue}>{text}</Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="More days"
+        accessibilityState={{ disabled: value >= MAX_DAYS }}
+        disabled={value >= MAX_DAYS}
+        onPress={() => onChange(value + 1)}
+        style={styles.stepButton}
+      >
+        <Text style={[styles.stepText, value >= MAX_DAYS && styles.stepOff]}>+</Text>
+      </Pressable>
     </View>
   );
 }
@@ -339,25 +509,93 @@ function SearchResults({
   );
 }
 
+const RULE = StyleSheet.hairlineWidth;
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { paddingBottom: spacing.xxl },
+  top: { paddingHorizontal: spacing.sm, paddingTop: spacing.sm },
+  head: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.xs },
+  title: { ...type.display, color: colors.text },
+  subtitle: { ...type.body, color: colors.muted },
   section: { paddingHorizontal: spacing.lg, gap: spacing.md, marginBottom: spacing.lg },
   sectionTitle: { ...type.heading, color: colors.text },
+  // A field is an icon, a small label and a value over a hairline: no boxes.
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    minHeight: TOUCH + 12,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: RULE,
+    borderBottomColor: colors.border,
+  },
+  rowBody: { flex: 1, gap: 2 },
+  rowLabel: { ...type.caption, color: colors.muted },
+  rowTitle: { ...type.body, color: colors.text },
+  input: { ...type.body, color: colors.text, minHeight: 32, paddingVertical: 0 },
+  chosenName: { ...type.heading, color: colors.text },
+  cover: { marginTop: spacing.xs },
+  pair: {
+    flexDirection: "row",
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  half: { flex: 1, borderBottomWidth: RULE },
+  halfRule: { marginLeft: spacing.lg },
   hint: { ...type.small, color: colors.muted },
-  results: { gap: spacing.sm },
+  error: {
+    ...type.small,
+    color: colors.errorText,
+    fontWeight: "600",
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  results: { gap: 0 },
   result: {
     minHeight: TOUCH + 8,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
+    borderBottomWidth: RULE,
+    borderBottomColor: colors.border,
+    paddingVertical: spacing.md,
     gap: 2,
   },
-  resultDisabled: { backgroundColor: colors.surfaceMuted },
+  resultDisabled: { opacity: 0.7 },
   pressed: { opacity: 0.85 },
   resultName: { ...type.heading, color: colors.text },
   resultMeta: { ...type.small, color: colors.muted },
   reason: { ...type.small, color: colors.errorText, fontWeight: "600" },
+
+  chips: { flexDirection: "row", gap: spacing.sm },
+  chip: {
+    flex: 1,
+    minHeight: TOUCH,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.outline,
+  },
+  chipOn: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
+  chipText: { ...type.small, color: colors.text },
+  chipTextOn: { fontWeight: "700", color: colors.primary },
+  transportRow: {
+    marginHorizontal: spacing.lg,
+    borderTopWidth: RULE,
+    borderTopColor: colors.border,
+  },
+  switch: { minHeight: TOUCH },
+  later: {
+    ...type.caption,
+    color: colors.muted,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  actions: { paddingHorizontal: spacing.lg, gap: spacing.md },
+
+  stepper: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  stepButton: { width: 36, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },
+  stepText: { fontSize: 24, color: colors.text },
+  stepOff: { color: colors.outline },
+  stepValue: { ...type.body, color: colors.text, minWidth: 64, textAlign: "center" },
 });

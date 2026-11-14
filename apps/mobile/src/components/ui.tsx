@@ -11,7 +11,7 @@ import {
   findNodeHandle,
 } from "react-native";
 
-import { TOUCH, colors, radius, shadow, spacing, type } from "../theme";
+import { TOUCH, colors, radius, spacing, type } from "../theme";
 import { Button } from "./Button";
 import { IconButton } from "./ds/primitives";
 
@@ -411,14 +411,12 @@ const styles = StyleSheet.create({
   notesToggle: { minHeight: TOUCH, justifyContent: "center" },
   notesToggleText: { ...type.small, color: colors.link, fontWeight: "600" },
   noteText: { ...type.small, color: colors.muted },
+  // Flat: a hairline under it, no box, no shadow (docs/design.md).
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+    paddingVertical: spacing.lg,
     gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadow.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  cardAccent: { borderColor: colors.primary, borderWidth: 1.5 },
+  cardAccent: { borderBottomColor: colors.primary },
 });

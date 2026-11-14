@@ -16,7 +16,7 @@ from typing import Literal
 from detour_api.planner.durations import DURATIONS_VERSION
 
 ENGINE_VERSION = "planner-2.0.0"
-CONFIG_VERSION = f"2026-11-13.1+durations-{DURATIONS_VERSION}"
+CONFIG_VERSION = f"2026-11-14.1+durations-{DURATIONS_VERSION}"
 
 ProfileName = Literal["essentials", "wider"]
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]
@@ -56,7 +56,9 @@ class Profile:
     # because accommodation is not modelled (product brief section 9).
     meals: tuple[MealType, ...] = ("lunch", "dinner")
     # Minutes of each day the sequencer leaves unplanned, so days are not packed edge to edge
-    # (KPI: planned time 60-90 % of the day window).
+    # (KPI: planned time 60-90 % of the day window). Lunch is aimed at 13:00 and dinner at 20:00
+    # (owner request, 2026-11-14), so the day runs to 22:00; the 90 and 60 minutes this added to
+    # Essentials and Wider are kept here, leaving the sightseeing volume as it was.
     free_minutes: int = 60
     # Area destinations: one base city per this many days (rounded up). Fewer bases means fewer
     # moves; more bases means more cities.
@@ -66,24 +68,24 @@ class Profile:
 ESSENTIALS = Profile(
     name="essentials",
     radius_m=5_000,
-    day_end_minute=20 * 60 + 30,
+    day_end_minute=22 * 60,
     travel_weight=10,
     edge_value_pct=50,
     repeat_category_pct=(100, 85, 70, 60),
     meals=("lunch", "dinner"),
-    free_minutes=60,
+    free_minutes=150,
     days_per_base=4,
 )
 
 WIDER = Profile(
     name="wider",
     radius_m=15_000,
-    day_end_minute=21 * 60,
+    day_end_minute=22 * 60,
     travel_weight=4,
     edge_value_pct=85,
     repeat_category_pct=(100, 60, 40, 30),
     meals=("lunch", "snack", "dinner"),
-    free_minutes=90,
+    free_minutes=150,
     days_per_base=3,
 )
 
@@ -94,7 +96,7 @@ class PlannerConfig:
     # The day window (architecture section 5.1). Days start at the first visit (no accommodation,
     # product brief section 9). The validator holds every item inside it.
     day_start_minute: int = 9 * 60
-    day_window_end_minute: int = 21 * 60
+    day_window_end_minute: int = 22 * 60
     # A transfer up to this straight-line distance is walked, a longer one driven.
     walk_max_m: int = 2_000
     # How many candidates a profile plans with: base + per_day x days, at most cap.
@@ -174,9 +176,9 @@ class PlannerConfig:
     # profile's day end). Opening hours are not known (ADR 003): a window is a planning choice.
     meal_windows: tuple[MealWindow, ...] = (
         MealWindow("breakfast", 7 * 60 + 30, 10 * 60),
-        MealWindow("lunch", 12 * 60, 14 * 60 + 30),
+        MealWindow("lunch", 13 * 60, 15 * 60),
         MealWindow("snack", 15 * 60, 17 * 60 + 30),
-        MealWindow("dinner", 18 * 60 + 30, 21 * 60),
+        MealWindow("dinner", 20 * 60, 22 * 60),
     )
     # Meal length in minutes by (meal type, venue type). The venue types are the ones the import
     # stores (geo.restaurant_profile.venue_type); another venue type takes the meal type's

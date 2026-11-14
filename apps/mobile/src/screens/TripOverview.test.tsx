@@ -43,12 +43,13 @@ async function open(
 
 test("the overview shows the cover, status, figures and the active itinerary", async () => {
   await open();
-  expect(await screen.findByRole("header", { name: "Vienna, 2 days" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Vienna" })).toBeOnTheScreen();
   expect(screen.getByTestId("trip-cover")).toBeOnTheScreen();
   expect(screen.getByText("Upcoming")).toBeOnTheScreen();
   expect(screen.getByText("1–2 May 2027 · 2 days")).toBeOnTheScreen();
   expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
-  expect(screen.getByLabelText("2 days")).toBeOnTheScreen();
+  // Cities, places and restaurants only: no days figure.
+  expect(screen.queryByLabelText("2 days")).toBeNull();
   expect(screen.getByLabelText("2 cities")).toBeOnTheScreen();
   expect(screen.getByLabelText("2 restaurants")).toBeOnTheScreen();
   // The five tabs, Overview selected.
@@ -58,9 +59,9 @@ test("the overview shows the cover, status, figures and the active itinerary", a
   expect(screen.getByRole("tab", { name: "Overview" }).props.accessibilityState).toMatchObject({
     selected: true,
   });
-  // The day preview, as a timeline.
-  expect(screen.getByRole("button", { name: /^Day 1 · Sat 1 May\. Vienna\. / })).toBeOnTheScreen();
-  expect(screen.getByRole("button", { name: /^Day 2 · Sun 2 May\. Graz\. / })).toBeOnTheScreen();
+  // No first days and no notes placeholder: the days are in the Itinerary tab.
+  expect(screen.queryByRole("button", { name: /^Day 1 · Sat 1 May/ })).toBeNull();
+  expect(screen.queryByTestId("notes-planned")).toBeNull();
 });
 
 test("the original proposals are in the trip menu, not on the overview", async () => {
@@ -81,28 +82,31 @@ test("the trip menu opens the trip settings", async () => {
   expect(await screen.findByRole("header", { name: "Trip settings" })).toBeOnTheScreen();
 });
 
-test("a day of the timeline opens that day in the Itinerary tab", async () => {
+test("the Itinerary tab lists the days as a timeline without the trip header", async () => {
   await open();
+  await fireEvent.press(await screen.findByRole("tab", { name: "Itinerary" }));
+  expect(screen.queryByTestId("trip-cover")).toBeNull();
+  expect(
+    await screen.findByRole("button", { name: /^Day 1 · Sat 1 May\. Vienna\. / }),
+  ).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: /^Day 2 · Sun 2 May\. Graz\. / })).toBeOnTheScreen();
+});
+
+test("a day of the timeline opens that day on the map, with its stops beneath", async () => {
+  await open();
+  await fireEvent.press(await screen.findByRole("tab", { name: "Itinerary" }));
   await fireEvent.press(await screen.findByTestId("day-row-2"));
-  expect(screen.getByRole("tab", { name: "Itinerary" }).props.accessibilityState).toMatchObject({
+  expect(screen.getByRole("tab", { name: "Map" }).props.accessibilityState).toMatchObject({
     selected: true,
   });
+  expect(await screen.findByTestId("map")).toBeOnTheScreen();
   expect(await screen.findByText("Hofburg")).toBeOnTheScreen();
   expect(screen.getByRole("tab", { name: "Day 2, Sun 2 May" }).props.accessibilityState).toEqual({
     selected: true,
   });
-});
-
-test("the Itinerary tab shows the active itinerary a day at a time, with details a tap away", async () => {
-  await open();
-  await fireEvent.press(await screen.findByRole("tab", { name: "Itinerary" }));
-  expect(await screen.findByText("Schönbrunn Palace")).toBeOnTheScreen();
-  expect(screen.getByRole("tab", { name: "Day 1, Sat 1 May" })).toBeOnTheScreen();
-  // Lock and remove are offered on the active itinerary too.
-  await fireEvent.press(screen.getByTestId("stop-i1"));
-  expect(screen.getByLabelText("Lock Schönbrunn Palace")).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole("button", { name: "Details of Schönbrunn Palace" }));
-  expect(await screen.findByRole("header", { name: "Schönbrunn Palace" })).toBeOnTheScreen();
+  // A stop opens its details and can be locked or removed, as before.
+  await fireEvent.press(screen.getByTestId("stop-j1"));
+  expect(screen.getByLabelText("Lock Hofburg")).toBeOnTheScreen();
 });
 
 test("the Map tab shows the map with the day's list under it, sharing the selection", async () => {
@@ -110,7 +114,7 @@ test("the Map tab shows the map with the day's list under it, sharing the select
   await fireEvent.press(await screen.findByRole("tab", { name: "Map" }));
   expect(await screen.findByTestId("map")).toBeOnTheScreen();
   // A compact header keeps the trip's name, menu and tabs above the map.
-  expect(screen.getByRole("header", { name: "Vienna, 2 days" })).toBeOnTheScreen();
+  expect(screen.getByRole("header", { name: "Vienna" })).toBeOnTheScreen();
   expect(screen.getByRole("button", { name: "Trip menu" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("marker-m1"));
   expect(screen.getByTestId("stop-m1").props.accessibilityState).toMatchObject({ selected: true });

@@ -126,11 +126,11 @@ def test_a_larger_city_gets_two_distinct_itineraries(api_env: ApiEnv) -> None:
             for m in meals:
                 assert (
                     m["start_time"]
-                    >= {"lunch": "12:00", "snack": "15:00", "dinner": "18:30"}[m["meal_type"]]
+                    >= {"lunch": "13:00", "snack": "15:00", "dinner": "20:00"}[m["meal_type"]]
                 )
                 assert (
                     m["end_time"]
-                    <= {"lunch": "14:30", "snack": "17:30", "dinner": "21:00"}[m["meal_type"]]
+                    <= {"lunch": "15:00", "snack": "17:30", "dinner": "22:00"}[m["meal_type"]]
                 )
                 cuisines = m["restaurant"]["cuisines"]
                 assert cuisines is None or all(isinstance(c, str) for c in cuisines)
@@ -306,10 +306,14 @@ def test_routed_times_come_from_the_provider_and_are_cached(api_env: ApiEnv) -> 
         assert r.status_code == 201, r.text
         plans = r.json()["itineraries"]
         legs = [i["transfer"] for p in plans for i in items_of(p) if i["transfer"]]
-        assert legs and all(x["confidence"] == "routed" for x in legs)
+        # Routed, except that the provider rule (1 request a second, a 3 s budget per plan, ADR 013)
+        # can leave a leg of a longer day as a labelled estimate: at least four in five are routed.
+        routed = [x for x in legs if x["confidence"] == "routed"]
+        assert legs and len(routed) * 5 >= len(legs) * 4
+        assert all(x["confidence"] in ("routed", "estimated") for x in legs)
         assert all(len(b["sources"]) == 1 for b in stub.bodies)  # the matrix-v1 shape
         cached = sql(api_env, "SELECT count(*) FROM geo.travel_time WHERE confidence = 'routed'")
-        assert cached[0][0] >= len(legs)
+        assert cached[0][0] >= len(routed)
         # A second generation reads the cache first: with routed times in hand it may choose
         # other legs, but no cell is ever asked for twice.
         first_requests = len(stub.requests)

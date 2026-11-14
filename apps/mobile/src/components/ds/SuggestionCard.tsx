@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { TOUCH, colors, radius, shadow, spacing, type } from "../../theme";
+import { TOUCH, colors, spacing, type } from "../../theme";
 import { Icon } from "./Icon";
 import { Badge } from "./primitives";
 
@@ -98,14 +98,12 @@ const styles = StyleSheet.create({
   card: {
     minHeight: TOUCH,
     gap: spacing.xs,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    ...shadow.card,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  selected: { borderColor: colors.primary, borderWidth: 2 },
+  selected: { backgroundColor: colors.surfaceMuted },
   pressed: { opacity: 0.85 },
   head: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs },
   radio: {

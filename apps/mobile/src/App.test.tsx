@@ -66,7 +66,7 @@ test("the tab bar is hidden on pushed screens so back is the only way out", asyn
   await screen.findByText("No trips yet");
   expect(screen.getByRole("tab", { name: "Trips" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Add a trip" }));
-  expect(await screen.findByRole("header", { name: "New trip" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Create new trip" })).toBeOnTheScreen();
   expect(screen.queryByRole("tab", { name: "Trips" })).toBeNull();
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
   expect(await screen.findByRole("tab", { name: "Trips" })).toBeOnTheScreen();
@@ -156,7 +156,7 @@ test("create a trip, compare the proposals, select one, read its days, see it on
     await fireEvent.changeText(screen.getByLabelText("Destination"), "Vie");
     await act(async () => void jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS + 10));
     await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
-    await fireEvent.press(screen.getByRole("button", { name: "Plan trip" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
 
     expect(await screen.findByText("How they differ")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Select the Essentials plan" }));
@@ -165,11 +165,11 @@ test("create a trip, compare the proposals, select one, read its days, see it on
     expect(selected).toBe(ESSENTIALS_ID);
     // The itinerary and its map are tabs of the trip.
     await fireEvent.press(screen.getByRole("button", { name: "Open the itinerary" }));
+    // The days are a timeline; a day opens on the map with its stops beneath.
+    await fireEvent.press(await screen.findByTestId("day-row-1"));
+    expect(await screen.findByTestId("map")).toBeOnTheScreen();
     expect(await screen.findByText("Schönbrunn Palace")).toBeOnTheScreen();
     expect(screen.getAllByText("Estimated").length).toBeGreaterThan(0);
-
-    await fireEvent.press(screen.getByRole("tab", { name: "Map" }));
-    expect(await screen.findByTestId("map")).toBeOnTheScreen();
     expect(screen.getByText("Data from OpenStreetMap")).toBeOnTheScreen();
 
     // Back to the list of trips: the selected plan is shown there without refetching the list.

@@ -25,9 +25,9 @@ async function show(initial: Parameters<typeof Harness>[0]["initial"], client = 
 
 test("outside a trip, Add starts a new trip", async () => {
   await show({ name: "trips" });
-  await screen.findByText("Vienna, 2 days");
+  await screen.findByText("Vienna");
   await fireEvent.press(screen.getByRole("button", { name: "Add a trip" }));
-  expect(await screen.findByRole("header", { name: "New trip" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Create new trip" })).toBeOnTheScreen();
 });
 
 test("inside a trip, Add offers a place or restaurant through the adjustment flow", async () => {
@@ -90,7 +90,7 @@ test("a past trip cannot be added to", async () => {
 
 test("Explore, Photos and More are root tabs; the planned ones say they are not built", async () => {
   await show({ name: "trips" });
-  await screen.findByText("Vienna, 2 days");
+  await screen.findByText("Vienna");
   await fireEvent.press(screen.getByRole("tab", { name: "Explore" }));
   expect(await screen.findByTestId("explore-planned")).toBeOnTheScreen();
   expect(screen.getByRole("tab", { name: "Explore" }).props.accessibilityState).toMatchObject({

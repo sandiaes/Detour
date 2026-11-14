@@ -269,11 +269,11 @@ def test_an_addition_longer_than_any_day_is_explained() -> None:
     with pytest.raises(PlanningImpossible) as info:
         recalc.add_place(
             recalc_input(plan, rp, req, CANDS, RESTS),
-            _pin("Long walk", lat + 0.001, lon, minutes=600),
+            _pin("Long walk", lat + 0.001, lon, minutes=900),
             FixedTravelSource(),
         )
     [issue] = info.value.issues
-    assert issue.code == "ADDITION_LONGER_THAN_DAY" and issue.params["minutes"] == 600
+    assert issue.code == "ADDITION_LONGER_THAN_DAY" and issue.params["minutes"] == 900
 
 
 def test_days_full_of_locked_items_name_the_items_that_cannot_move() -> None:

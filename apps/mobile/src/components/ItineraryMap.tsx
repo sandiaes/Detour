@@ -27,9 +27,12 @@ import { Button } from "./Button";
 import { Icon } from "./ds/Icon";
 import { Notice } from "./ui";
 
+/** The touch target of a marker; the drawn marker inside it is smaller (docs/design.md). */
 export const MARKER_SIZE = 48;
+const DOT = 26;
+const DOT_SELECTED = 34;
 
-const PADDING = { top: 72, right: 56, bottom: 72, left: 56 };
+const PADDING = { top: 56, right: 48, bottom: 48, left: 48 };
 
 type Props = {
   day: Day;
@@ -123,13 +126,13 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
             id="transfers-routed"
             type="line"
             filter={["==", ["get", "confidence"], "routed"]}
-            style={{ lineColor: colors.markerSelected, lineWidth: 3 }}
+            style={{ lineColor: colors.outline, lineWidth: 2 }}
           />
           <Layer
             id="transfers-estimated"
             type="line"
             filter={["==", ["get", "confidence"], "estimated"]}
-            style={{ lineColor: colors.markerSelected, lineWidth: 3, lineDasharray: [1.5, 1.5] }}
+            style={{ lineColor: colors.outline, lineWidth: 2, lineDasharray: [2, 2] }}
           />
         </GeoJSONSource>
         {transport ? (
@@ -147,13 +150,17 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
               accessibilityLabel={`Transport: ${transport.arrival.mode === "walk" ? "walk" : "drive"} to ${transport.name}${transport.fromName ? ` from ${transport.fromName}` : ""}, ${formatSeconds(transport.arrival.seconds)}, ${transport.arrival.confidence}`}
               accessibilityHint="Highlights it in the list"
               accessibilityState={{ selected: selectedId === transport.id }}
-              style={[
-                styles.marker,
-                styles.markerTransport,
-                selectedId === transport.id && styles.markerSelected,
-              ]}
+              style={styles.hit}
             >
-              <Icon name="transport" size={22} color={colors.onPrimary} />
+              <View
+                style={[
+                  styles.dot,
+                  styles.dotTransport,
+                  selectedId === transport.id && styles.dotSelected,
+                ]}
+              >
+                <Icon name="transport" size={14} color={colors.onPrimary} />
+              </View>
             </View>
           </Marker>
         ) : null}
@@ -174,15 +181,19 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
                 accessibilityLabel={`Stop ${p.ordinal}, ${STOP_KIND_LABEL[p.kind]}: ${p.name}`}
                 accessibilityHint="Highlights it in the list"
                 accessibilityState={{ selected: isSelected }}
-                style={[
-                  styles.marker,
-                  isEatKind(p.kind) && styles.markerEat,
-                  isSelected && styles.markerSelected,
-                ]}
+                style={styles.hit}
               >
-                <Text style={styles.markerText} maxFontSizeMultiplier={1.3}>
-                  {p.ordinal}
-                </Text>
+                <View
+                  style={[
+                    styles.dot,
+                    isEatKind(p.kind) && styles.dotEat,
+                    isSelected && styles.dotSelected,
+                  ]}
+                >
+                  <Text style={styles.dotText} maxFontSizeMultiplier={1.3}>
+                    {p.ordinal}
+                  </Text>
+                </View>
               </View>
             </Marker>
           );
@@ -276,21 +287,29 @@ export function Legend() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  marker: {
-    width: MARKER_SIZE,
-    height: MARKER_SIZE,
-    borderRadius: MARKER_SIZE / 2,
+  hit: { width: MARKER_SIZE, height: MARKER_SIZE, alignItems: "center", justifyContent: "center" },
+  // Small flat discs with a thin white edge: sights round and teal, places to eat square-ish and
+  // orange, travel navy. The selected stop is larger and navy. No heavy rings.
+  dot: {
+    width: DOT,
+    height: DOT,
+    borderRadius: DOT / 2,
     backgroundColor: colors.marker,
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: colors.onPrimary,
     alignItems: "center",
     justifyContent: "center",
+    ...shadow.card,
   },
-  markerEat: { backgroundColor: colors.eat, borderRadius: radius.sm },
-  markerTransport: { backgroundColor: colors.ink, borderRadius: radius.sm },
-  // Selected: a dark fill and a thick yellow ring, and the state is announced.
-  markerSelected: { backgroundColor: colors.markerSelected, borderColor: colors.warning },
-  markerText: { color: colors.onPrimary, fontWeight: "700", fontSize: 16 },
+  dotEat: { backgroundColor: colors.eat, borderRadius: 8 },
+  dotTransport: { backgroundColor: colors.ink, borderRadius: 8 },
+  dotSelected: {
+    width: DOT_SELECTED,
+    height: DOT_SELECTED,
+    borderRadius: DOT_SELECTED / 2,
+    backgroundColor: colors.markerSelected,
+  },
+  dotText: { color: colors.onPrimary, fontWeight: "600", fontSize: 12 },
   failure: {
     position: "absolute",
     top: spacing.md,
@@ -334,13 +353,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...shadow.raised,
   },
-  keyMarker: { width: 16, height: 16, borderWidth: 2, borderColor: colors.onPrimary },
+  keyMarker: { width: 14, height: 14, borderWidth: 2, borderColor: colors.onPrimary },
   keySight: { backgroundColor: colors.marker, borderRadius: 8 },
   keyEat: { backgroundColor: colors.eat, borderRadius: 3 },
   keyTransport: { backgroundColor: colors.ink, borderRadius: 3 },
   legendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   legendText: { ...type.caption, color: colors.text, flexShrink: 1 },
-  swatch: { width: 36, height: 0, borderTopWidth: 3, borderColor: colors.markerSelected },
+  swatch: { width: 36, height: 0, borderTopWidth: 2, borderColor: colors.outline },
   swatchSolid: { borderStyle: "solid" },
   swatchDashed: { borderStyle: "dashed" },
 });

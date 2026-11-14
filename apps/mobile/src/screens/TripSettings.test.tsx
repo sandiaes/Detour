@@ -50,7 +50,7 @@ test("asking for new proposals plans again and shows them, keeping the chosen pl
   expect(client.count("POST /v1/trips/{trip_id}/itineraries/generate")).toBe(1);
   // Back from the proposals goes to the trip, not to the settings, and then to the trips.
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-  expect(await screen.findByRole("header", { name: "Vienna, 2 days" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Vienna" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
   expect(await screen.findByRole("header", { name: "Trips" })).toBeOnTheScreen();
 });

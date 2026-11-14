@@ -130,15 +130,16 @@ export function DayStrip({
             accessibilityLabel={`Day ${d.day_index}${date ? `, ${date}` : ""}`}
             accessibilityState={{ selected: active }}
             onPress={() => onChange(d.day_index)}
-            style={[styles.dayPill, active && styles.dayPillActive]}
+            style={styles.dayPill}
             testID={`day-tab-${d.day_index}`}
           >
             <Text style={[styles.dayPillTitle, active && styles.dayPillTextActive]}>
               Day {d.day_index}
             </Text>
             {date ? (
-              <Text style={[styles.dayPillDate, active && styles.dayPillTextActive]}>{date}</Text>
+              <Text style={[styles.dayPillDate, active && styles.dayPillDateActive]}>{date}</Text>
             ) : null}
+            <View style={[styles.dayPillLine, active && styles.dayPillLineActive]} />
           </Pressable>
         );
       })}
@@ -148,26 +149,15 @@ export function DayStrip({
 
 // ---- rows ------------------------------------------------------------------------------------
 
+/** No "Day 3 · Tue 1 Dec · 8 visits…" title: the strip above already names the day. Only a trip
+ * that moves between base cities says where the day is based, in one quiet line. */
 function DayHead({ day, showBase }: { day: Day; showBase: boolean }) {
   const base = showBase && day.base_city_name ? day.base_city_name : null;
+  if (!base) return null;
   return (
-    <View
-      style={styles.dayHead}
-      accessible
-      accessibilityRole="header"
-      accessibilityLabel={`${dayTitle(day)}. ${base ? `Based in ${base}. ` : ""}${dayTotalsText(day)}.`}
-    >
-      <View style={styles.dayHeadTop}>
-        <Text style={styles.dayHeadTitle}>{dayTitle(day)}</Text>
-        {base ? (
-          <View style={styles.basePill}>
-            <Icon name="city" size={14} color={colors.primary} />
-            <Text style={styles.basePillText}>{base}</Text>
-          </View>
-        ) : null}
-      </View>
-      <Text style={styles.meta}>{dayTotalsText(day)}</Text>
-    </View>
+    <Text style={styles.dayBaseLine} accessibilityLabel={`${dayTitle(day)}. Based in ${base}.`}>
+      {base}
+    </Text>
   );
 }
 
@@ -197,7 +187,7 @@ function ArrivalRow({
     `Transport. ${text}, ${routed ? "routed." : "estimated, a straight-line estimate and not a measured route."}` +
     (day.base_city_name ? ` Arrives in ${day.base_city_name}.` : "");
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, selected && styles.rowSelected]}>
       <View style={styles.timeCol}>
         <Text style={styles.time}>Start</Text>
       </View>
@@ -209,11 +199,11 @@ function ArrivalRow({
         accessible
         disabled={!selectable}
         onPress={onSelect}
-        style={[styles.card, styles.cardRow, selected && styles.cardSelected]}
+        style={[styles.body, styles.cardRow]}
         testID={`arrival-${day.day_index}`}
       >
         <View style={[styles.disc, styles.discTransport]}>
-          <Icon name="transport" size={18} color={colors.onPrimary} />
+          <Icon name="transport" size={14} color={colors.onPrimary} />
         </View>
         <View style={styles.cardText}>
           <Text style={styles.title}>
@@ -258,12 +248,12 @@ export function StopRow({
     .join(" · ");
   const busy = actions?.busyId === item.id;
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, selected && styles.rowSelected]}>
       <View style={styles.timeCol}>
         <Text style={styles.time}>{start ?? "–"}</Text>
         {end ? <Text style={styles.timeEnd}>{end}</Text> : null}
       </View>
-      <View style={[styles.card, eat && styles.cardEat, selected && styles.cardSelected]}>
+      <View style={styles.body}>
         <View style={styles.cardRow}>
           <Pressable
             accessibilityRole="button"
@@ -275,8 +265,8 @@ export function StopRow({
             testID={`stop-${item.id}`}
           >
             {ordinal ? (
-              // Sights are round and teal, places to eat square and orange, and the words below
-              // say it too: never colour alone.
+              // Sights are round and teal, places to eat rounded-square and orange, and the words
+              // below say it too: never colour alone.
               <View style={[styles.disc, eat && styles.discEat]}>
                 <Text style={styles.discText} maxFontSizeMultiplier={1.3}>
                   {ordinal}
@@ -284,7 +274,7 @@ export function StopRow({
               </View>
             ) : (
               <View style={[styles.disc, styles.discQuiet]}>
-                <Icon name="clock" size={18} color={colors.muted} />
+                <Icon name="clock" size={14} color={colors.muted} />
               </View>
             )}
             <View style={styles.cardText}>
@@ -309,7 +299,7 @@ export function StopRow({
               style={styles.chevron}
               testID={`details-${item.id}`}
             >
-              <Icon name="chevronRight" size={20} color={colors.muted} />
+              <Icon name="chevronRight" size={16} color={colors.muted} />
             </Pressable>
           ) : null}
         </View>
@@ -568,9 +558,10 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   embedded: { gap: spacing.sm, marginHorizontal: -spacing.lg },
   scrollContent: { paddingBottom: spacing.xxl },
-  mapArea: { flex: 1.1, minHeight: 220 },
+  // The map is the smaller part: the stops beneath it are what is read and tapped.
+  mapArea: { flex: 0.8, minHeight: 150 },
   sheet: {
-    flex: 1,
+    flex: 1.5,
     marginTop: -radius.lg,
     backgroundColor: colors.background,
     borderTopLeftRadius: radius.lg,
@@ -580,127 +571,98 @@ const styles = StyleSheet.create({
   sheetContent: { paddingBottom: spacing.xl },
   grabber: {
     alignSelf: "center",
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
     marginTop: spacing.sm,
+    marginBottom: spacing.xs,
     backgroundColor: colors.border,
   },
 
-  strip: { flexGrow: 0 },
-  stripContent: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
+  strip: {
+    flexGrow: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  stripContent: { paddingHorizontal: spacing.lg, gap: spacing.lg },
   dayPill: {
-    minHeight: TOUCH + 4,
-    minWidth: 72,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    minHeight: TOUCH,
+    justifyContent: "flex-end",
     alignItems: "center",
-    justifyContent: "center",
   },
-  dayPillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  dayPillTitle: { ...type.small, fontWeight: "700", color: colors.text },
-  dayPillDate: { ...type.caption, color: colors.muted },
-  dayPillTextActive: { color: colors.onPrimary },
+  dayPillTitle: { ...type.small, fontWeight: "600", color: colors.muted },
+  dayPillDate: { ...type.caption, color: colors.muted, paddingBottom: spacing.xs },
+  dayPillTextActive: { color: colors.text, fontWeight: "700" },
+  dayPillDateActive: { color: colors.text },
+  dayPillLine: { height: 2, alignSelf: "stretch", backgroundColor: "transparent" },
+  dayPillLineActive: { backgroundColor: colors.text },
 
-  list: { paddingHorizontal: spacing.lg, gap: spacing.sm },
-  dayHead: { paddingTop: spacing.md, paddingBottom: spacing.xs, gap: spacing.xxs },
-  dayHeadTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-    flexWrap: "wrap",
-  },
-  dayHeadTitle: { ...type.title, color: colors.text },
-  basePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-  },
-  basePillText: { ...type.caption, fontWeight: "600", color: colors.primary },
+  list: { paddingHorizontal: spacing.lg },
+  dayBaseLine: { ...type.caption, color: colors.muted, paddingTop: spacing.sm },
   empty: { ...type.small, color: colors.muted, paddingVertical: spacing.md },
 
-  row: { flexDirection: "row", gap: spacing.md },
-  timeCol: { width: 44, paddingTop: spacing.md },
-  time: { ...type.small, fontWeight: "700", color: colors.text },
-  timeEnd: { ...type.caption, color: colors.muted },
-  card: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadow.card,
+  // A stop is a flat row under a hairline. Selected: a light tint, announced as selected.
+  row: {
+    flexDirection: "row",
+    gap: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
+  rowSelected: { backgroundColor: colors.surfaceMuted },
+  timeCol: { width: 40, paddingTop: spacing.md },
+  time: { ...type.caption, fontWeight: "700", color: colors.text },
+  timeEnd: { ...type.caption, color: colors.muted },
+  body: { flex: 1 },
   cardRow: { flexDirection: "row", alignItems: "center" },
-  cardEat: { borderLeftWidth: 4, borderLeftColor: colors.eat },
-  // Selected: a thick teal border, and the state is announced.
-  cardSelected: { borderColor: colors.primary, borderWidth: 2 },
   select: {
     flex: 1,
-    minHeight: TOUCH + 16,
+    minHeight: TOUCH + 8,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    padding: spacing.md,
+    paddingVertical: spacing.sm,
   },
   chevron: { width: TOUCH, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },
   disc: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: colors.marker,
     alignItems: "center",
     justifyContent: "center",
   },
-  discEat: { backgroundColor: colors.eat, borderRadius: radius.sm },
-  discTransport: { backgroundColor: colors.ink, borderRadius: radius.sm, margin: spacing.md },
+  discEat: { backgroundColor: colors.eat, borderRadius: 7 },
+  discTransport: { backgroundColor: colors.ink, borderRadius: 7 },
   discQuiet: { backgroundColor: colors.surfaceMuted },
-  discText: { color: colors.onPrimary, fontWeight: "700", fontSize: 14 },
-  cardText: { flex: 1, gap: spacing.xxs, paddingVertical: spacing.sm },
-  title: { ...type.body, fontWeight: "700", color: colors.text },
-  kind: { ...type.small, fontWeight: "600" },
+  discText: { color: colors.onPrimary, fontWeight: "600", fontSize: 12 },
+  cardText: { flex: 1, gap: 1 },
+  title: { ...type.small, fontWeight: "600", color: colors.text },
+  kind: { ...type.caption, fontWeight: "500" },
   kindSight: { color: colors.primary },
   kindEat: { color: colors.accentText },
-  meta: { ...type.small, color: colors.muted },
+  meta: { ...type.caption, color: colors.muted },
   tags: { ...type.caption, fontWeight: "700", color: colors.primary },
-  expanded: {
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    paddingTop: spacing.sm,
-  },
-  reason: { ...type.small, color: colors.text },
+  expanded: { gap: spacing.xs, paddingBottom: spacing.md },
+  reason: { ...type.caption, color: colors.text },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs },
 
-  transfer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 28 },
+  transfer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 24 },
   connector: {
     width: 0,
-    height: 22,
-    borderLeftWidth: 2,
+    height: 16,
+    borderLeftWidth: 1,
     borderColor: colors.outline,
-    marginLeft: spacing.lg,
+    marginLeft: spacing.sm,
   },
   connectorDashed: { borderStyle: "dashed" },
   transferText: { ...type.caption, color: colors.muted },
   tag: {
     ...type.caption,
-    fontWeight: "700",
-    color: colors.text,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 1,
+    fontWeight: "600",
+    color: colors.muted,
+    paddingHorizontal: spacing.xs,
     borderRadius: radius.sm,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.outline,
     overflow: "hidden",
     alignSelf: "flex-start",
