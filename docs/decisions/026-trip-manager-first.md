@@ -1,8 +1,8 @@
 # ADR 026 — Trip manager and history first; generated plans are sights only; no restaurants in the data
 
 - **Status:** **Proposed** on 2026-11-14, at the owner's request. The documents were written first;
-  **build step 2 (the planner) and the slot-engine retirement of step 4 are built** (see "As built:
-  step 2" at the end); the data, history and app steps follow in the order of "Build order". The
+  **build steps 2 to 6 are built** (see the "As built" sections); destinations, export and Optimize
+  follow in the order of "Build order". The
   owner confirms or changes the numbers marked *proposed*.
 - **Date:** 2026-11-14
 - **Related:** [`006-past-trips-archive.md`](006-past-trips-archive.md) (amended),
@@ -155,8 +155,8 @@ This changes the product's emphasis and removes a set of built features, so it n
 3. **Data (built):** importer rules version, the migration that deletes restaurants and cafés and drops
    `geo.restaurant_profile` and the cuisine and meal-type columns, gates 1 to 3 of ADR 009 removed.
 4. **Retire the slot engine** (item 17) and move Add a restaurant to Photon and manual entry.
-5. **History:** the archive keeps the day record (item 19), the past-trip screen shows days.
-6. **App:** the new-trip buttons, labels, proposals and overview figures.
+5. **History (built):** the archive keeps the day record (item 19), the past-trip screen shows days.
+6. **App (built):** the new-trip buttons, labels, proposals and the Free time row.
 7. Then destinations (ADR 027), then export (ADR 028), then Optimize (ADR 029).
 
 Each step ends green: ruff, mypy, pytest, typecheck, lint and jest; the OpenAPI export and the
@@ -234,6 +234,38 @@ against the production database**.
   stops whose place is the deleted imported one; restoring it brings the stop back with its stored
   name, point and times but no place behind it (it is not recalculated). Stored plans' meal reason
   texts still render. The restaurant counters in `PlanStats` stay (user-added restaurants count).
+
+## As built: steps 5 and 6, history and app (2026-11-14, awaiting acceptance)
+
+Migration `0015_trip_day_record`. Tested on the synthetic fixtures and on a database filled at
+revision `0014` (`tests/test_migration_0015.py`); **not run against the production database**.
+
+- **Where the record lives.** `app.trip_visit` (no new table) holds a row per base city (once each,
+  no time) and per stop of the selected itinerary: kind `attraction`, `restaurant` or `cafe`
+  (a town the user added keeps `city` and is not listed twice if it is a base city), `day_number`,
+  `position`, `start_time` and `duration_minutes`. Free time is not a stop. The route geometry,
+  transfers, other itineraries, versions and change sets are deleted as before. The API's
+  `TripVisit` gained `position`, `start_time` and `duration_minutes`, and its `kind` the two eating
+  kinds; `ArchiveInfo` gained `places_to_eat`; the size line counts the rows.
+- **Visited flag.** `confirmed` is the flag: every stop is visited when archived and the user can
+  clear any of them (restaurants and cafés too), as before. A "planned" mark on stops of a trip
+  that has not ended is **not built** (nothing reads it until the trip is past). **Notes** are not
+  built (ADR 021), so the record has no note column.
+- **Older archives.** Rows archived before `0015` keep their map data and have no order or time (the
+  plans were gone, nothing is invented); the Days tab then says no stops were kept by day.
+- **Past trips created directly (decision 23).** The calendar never blocked past dates; what
+  changed is the auto-archive rule: a trip **created after its last day** is not archived by
+  itself, so there is time to fill it (the two-day rule still applies to every trip made before its
+  last day). The user marks it past with "Mark as past" as for any trip.
+- **App.** The past-trip screen has Map, **Days** and List tabs; the Days tab is the day record with
+  each stop's kind, start and length. New trip: "Start with an empty trip" is the dark main button
+  and "Suggest itineraries" the outlined second (labels, hints and the planning notice no longer
+  mention places to eat). Day lists draw a "Free time" row for any idle stretch of 30 minutes or
+  more after the transfer (the midday gap of a generated plan, or any gap in a hand-made plan).
+  The comparison of the proposals drops its "Meals" row when neither plan has places to eat
+  (renamed "Places to eat" when one does).
+- **Not changed.** The Trip overview's per-day line and the restaurant figure still count the
+  restaurants and cafés a plan holds (user-added ones, or those of plans made before this ADR).
 
 ## Alternatives
 

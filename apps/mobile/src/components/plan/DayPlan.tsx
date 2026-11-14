@@ -282,6 +282,23 @@ export function StopRow({
 
 /** Travel between two stops, written into a hairline: ———— Walk · 3 min · 170 m ————. The words
  * for a screen reader still say when a time is only an estimate. */
+/** An idle stretch between two stops, in a hairline like a transfer, with no place or icon. */
+export function FreeTimeRow({ row }: { row: Extract<DayRow, { kind: "free" }> }) {
+  const text = `Free time · ${formatMinutes(row.minutes)} · ${row.start} to ${row.end}`;
+  return (
+    <View
+      style={styles.transfer}
+      accessible
+      accessibilityLabel={`Free time, ${formatMinutes(row.minutes)}, from ${row.start} to ${row.end}`}
+      testID="free-time"
+    >
+      <View style={styles.transferLine} />
+      <Text style={styles.transferText}>{text}</Text>
+      <View style={styles.transferLine} />
+    </View>
+  );
+}
+
 export function TransferRow({ row }: { row: Extract<DayRow, { kind: "transfer" }> }) {
   const { transfer, to } = row;
   const routed = transfer.confidence === "routed";
@@ -345,6 +362,8 @@ export function DayPlanList({
               onDetails={onDetails ? () => onDetails(row.item) : undefined}
             />
           </View>
+        ) : row.kind === "free" ? (
+          <FreeTimeRow key={row.key} row={row} />
         ) : (
           <TransferRow key={row.key} row={row} />
         ),

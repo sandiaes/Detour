@@ -124,14 +124,22 @@ def end_date_of(start: date | None, days: int) -> date | None:
 
 
 class TripVisit(BaseModel):
+    """One stop of a past trip's day record, or one of its base cities (ADR 006, ADR 026)."""
+
     id: uuid.UUID
-    kind: Literal["city", "attraction"]
+    kind: Literal["city", "attraction", "restaurant", "cafe"]
     name: str
     lat: float
     lon: float
     geo_place_ref: str | None
     day_number: int
-    confirmed: bool
+    position: int | None = Field(
+        description="Order within the day; null for a base city row and for rows archived before "
+        "the day record existed"
+    )
+    start_time: str | None = Field(description="HH:MM; null when the stop had no time")
+    duration_minutes: int | None
+    confirmed: bool = Field(description="Visited. Set when archived; the user can clear it")
 
 
 class TripVisitUpdate(StrictModel):
@@ -144,6 +152,7 @@ class ArchiveInfo(BaseModel):
     trip_id: uuid.UUID
     cities: int = Field(description="Archived city rows (each base city once)")
     attractions: int
+    places_to_eat: int = Field(description="Restaurants and cafes the user added")
     skipped: int = Field(description="Visits the user cleared (confirmed = false)")
     size_bytes: int = Field(
         description="Stored row data of the trip row and its visit rows (PostgreSQL "

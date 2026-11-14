@@ -10,8 +10,8 @@ a length, and keeps such a plan coherent as places are added. Suggestions contai
 restaurants and cafés are always added by the user. Planning is deterministic: no language model is
 used at runtime.
 
-> **ADR 026 is proposed and documented; its code is built in steps** (planner, data, history, app).
-> Text below marked *(to change, ADR 026)* describes the app as it is until its step is built.
+> **ADR 026 is proposed; all six of its build steps are built** (planner, data, history, app) and
+> await acceptance. Destinations, export and Optimize are next, each with its own ADR.
 
 First platform: Android. The architecture must allow an iPhone version without a rewrite.
 
@@ -47,8 +47,8 @@ sightseeing plans are an occasional help, not the main way in.
 1. **Create a trip.** Choose a destination (a city or an area) from search results, set the number
    of days and optionally a start date, then **start with an empty trip** (the main button, ADR 026)
    or ask for suggested itineraries. An area is planned from base cities with the days divided
-   between them (ADR 016); areas in Japan are planned as single cities for now (D4). *(The button
-   order changes with ADR 026 step 6.)*
+   between them (ADR 016); areas in Japan are planned as single cities for now (D4). The empty trip is the main button; suggested itineraries are the second
+   (ADR 026).
 2. **Compare proposals (optional).** See two itineraries side by side with a short structured summary of
    how they differ (cities covered, number of visits, total travel time). Open either on the
    map or as a day list. Select one: it opens, and from then on the trip opens on that plan, not
@@ -70,8 +70,8 @@ sightseeing plans are an occasional help, not the main way in.
    review the diff and the saving, apply or discard. Never longer than the current plan; opening
    hours are not known and the preview says so.
 7. **Look back.** A past trip keeps its days, places, visited marks and documents, and the map of
-   the cities and attractions visited (ADR 006 amended by ADR 026). *(To change, ADR 026 step 5:
-   today a past trip keeps one snapshot per city and attraction.)*
+   the cities and attractions visited (ADR 006 amended by ADR 026). Built: a past trip's Days tab lists its stops by
+   day with their times.
 
 ## 5. What "meaningfully different" means
 

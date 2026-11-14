@@ -655,6 +655,11 @@ export interface components {
       /** Attractions */
       attractions: number;
       /**
+       * Places To Eat
+       * @description Restaurants and cafes the user added
+       */
+      places_to_eat: number;
+      /**
        * Skipped
        * @description Visits the user cleared (confirmed = false)
        */
@@ -2278,7 +2283,10 @@ export interface components {
       /** Selected Itinerary Id */
       selected_itinerary_id?: string | null;
     };
-    /** TripVisit */
+    /**
+     * TripVisit
+     * @description One stop of a past trip's day record, or one of its base cities (ADR 006, ADR 026).
+     */
     TripVisit: {
       /**
        * Id
@@ -2289,7 +2297,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "city" | "attraction";
+      kind: "city" | "attraction" | "restaurant" | "cafe";
       /** Name */
       name: string;
       /** Lat */
@@ -2300,7 +2308,22 @@ export interface components {
       geo_place_ref: string | null;
       /** Day Number */
       day_number: number;
-      /** Confirmed */
+      /**
+       * Position
+       * @description Order within the day; null for a base city row and for rows archived before the day record existed
+       */
+      position: number | null;
+      /**
+       * Start Time
+       * @description HH:MM; null when the stop had no time
+       */
+      start_time: string | null;
+      /** Duration Minutes */
+      duration_minutes: number | null;
+      /**
+       * Confirmed
+       * @description Visited. Set when archived; the user can clear it
+       */
       confirmed: boolean;
     };
     /** TripVisitUpdate */

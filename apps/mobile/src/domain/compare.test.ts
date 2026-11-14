@@ -6,7 +6,7 @@ test("the summary lists the measured differences in fixed wording", () => {
   expect(c.rows.map((r) => r.label)).toEqual([
     "Visits",
     "Days with visits",
-    "Meals",
+    "Places to eat",
     "Time at the sights",
     "Travel time",
     "Transfers",
@@ -48,4 +48,12 @@ test("facts of one plan", () => {
     "7 h at the sights",
   ]);
   expect(planFacts(makeSummary("essentials", { stats: null }))).toEqual([]);
+});
+
+test("a sights-only pair has no row for places to eat (ADR 026)", () => {
+  const a = makeSummary("essentials");
+  const b = makeSummary("wider");
+  a.stats = { ...a.stats!, meals: 0 };
+  b.stats = { ...b.stats!, meals: 0 };
+  expect(buildComparison(a, b).rows.map((r) => r.label)).not.toContain("Places to eat");
 });

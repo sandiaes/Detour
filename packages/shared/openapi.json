@@ -3688,6 +3688,11 @@
             "type": "integer",
             "title": "Attractions"
           },
+          "places_to_eat": {
+            "type": "integer",
+            "title": "Places To Eat",
+            "description": "Restaurants and cafes the user added"
+          },
           "skipped": {
             "type": "integer",
             "title": "Skipped",
@@ -3704,6 +3709,7 @@
           "trip_id",
           "cities",
           "attractions",
+          "places_to_eat",
           "skipped",
           "size_bytes"
         ],
@@ -7619,7 +7625,9 @@
             "type": "string",
             "enum": [
               "city",
-              "attraction"
+              "attraction",
+              "restaurant",
+              "cafe"
             ],
             "title": "Kind"
           },
@@ -7650,9 +7658,45 @@
             "type": "integer",
             "title": "Day Number"
           },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position",
+            "description": "Order within the day; null for a base city row and for rows archived before the day record existed"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time",
+            "description": "HH:MM; null when the stop had no time"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
           "confirmed": {
             "type": "boolean",
-            "title": "Confirmed"
+            "title": "Confirmed",
+            "description": "Visited. Set when archived; the user can clear it"
           }
         },
         "type": "object",
@@ -7664,9 +7708,13 @@
           "lon",
           "geo_place_ref",
           "day_number",
+          "position",
+          "start_time",
+          "duration_minutes",
           "confirmed"
         ],
-        "title": "TripVisit"
+        "title": "TripVisit",
+        "description": "One stop of a past trip's day record, or one of its base cities (ADR 006, ADR 026)."
       },
       "TripVisitUpdate": {
         "properties": {

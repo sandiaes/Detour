@@ -334,7 +334,7 @@ to reconsider later. Ideas discussed, none decided or built:
 
 Not a numbered phase. In the owner's order: (1) sights-only plans with a midday gap; (2) restaurants
 and cafés removed from the data, cuisine and meal types removed, slot engine retired, Add a
-restaurant through Photon and by hand; (3) past trips keep their days; (4) **destinations outside
+restaurant through Photon and by hand; (3) past trips keep their days (all of (1) to (3) are built); (4) **destinations outside
 the imported regions** (ADR 027, to be written); (5) **export and import of a trip as a file**
 (ADR 028, to be written); (6) **Optimize a hand-made trip** ([ADR 029](decisions/029-optimize-a-hand-made-trip.md),
 proposed): the engine reorders the stops for the least travel, within each day or across all days,
@@ -371,10 +371,9 @@ ideas, manual reordering, notes, trip summary and photos.
 
 ## 7. Recommended next task
 
-**ADR 026 (2026-11-14, proposed):** documents are written; next is its build order, step 2 (the
-planner: **built**, with the slot-engine removal), then the
-data change, the retirement of the slot engine, the history record, the app, then destinations
-(ADR 027) and export (ADR 028). The text below is older and still stands for the phases it names,
+**ADR 026 (2026-11-14, proposed):** all six build steps are **built** (planner, slot-engine removal,
+data change, history record, app); next are destinations (ADR 027), export (ADR 028) and Optimize
+(ADR 029), each needing its ADR accepted first. The text below is older and still stands for the phases it names,
 except where ADR 026 retires them (Phase 8's slot costs, the imported restaurants).
 
 **Accept Phases 3 to 8, then Phase 9 (MVP hardening), when the owner asks for it

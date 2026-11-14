@@ -92,7 +92,7 @@ imported. Decisions the build had to make:
    kept and what is deleted. Archiving cannot be undone. A past trip is read-only except for
    clearing visits and deleting the trip.
 
-## Amendment of 2026-11-14 (ADR 026): the archive keeps the days (proposed, not built)
+## Amendment of 2026-11-14 (ADR 026): the archive keeps the days (built, awaits acceptance)
 
 The owner wants the historical data kept. [ADR 026](026-trip-manager-first.md) section 5 changes
 decision 2: a past trip keeps **every item of the selected itinerary** as snapshots (day, order,
@@ -101,4 +101,5 @@ and attraction. Restaurants and cafés the user added are part of the record. Ro
 transfers, other itineraries, versions and change sets are still deleted. The past-trip screen
 gains the day list; documents on the phone stay linked to its days and places. The map of visited
 places and the "each city once" rule are unchanged. Decision 5 (restaurants are not archived) no
-longer holds. Until ADR 026 step 5 is built, the archive works as described above.
+longer holds. Built as migration `0015` on `app.trip_visit` (no new table); see ADR 026, "As built:
+step 5".

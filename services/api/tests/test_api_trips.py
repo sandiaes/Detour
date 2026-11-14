@@ -707,14 +707,16 @@ def test_archiving_keeps_snapshots_and_deletes_the_plans(api_env: ApiEnv) -> Non
     assert summary == [
         (1, "city", "Testburg"),
         (1, "attraction", "Testburg Museum"),
+        (1, "restaurant", "Zur Alten Post"),  # the user's own place is in the record (ADR 026)
         (2, "city", "Alpenau"),
         (2, "city", "Pin Town"),
         (2, "attraction", "Testburg Castle"),
     ]
     assert all(v["confirmed"] for v in visits)
-    assert visits[1]["geo_place_ref"] == museum["id"] and visits[3]["geo_place_ref"] is None
-    assert visits[1]["lat"] == pytest.approx(48.2082)  # a snapshot: no routes, no times
-    assert "start_time" not in visits[1] and "seconds" not in visits[1]
+    assert visits[1]["geo_place_ref"] == museum["id"] and visits[4]["geo_place_ref"] is None
+    assert visits[1]["lat"] == pytest.approx(48.2082)  # a snapshot: no routes
+    assert visits[1]["position"] == 1 and visits[2]["position"] == 2
+    assert visits[1]["duration_minutes"] == 60 and "seconds" not in visits[1]
 
     for table in ("itinerary", "itinerary_day", "itinerary_item", "transfer"):
         assert sql(api_env, f"SELECT count(*) FROM app.{table}") == [(0,)]  # noqa: S608

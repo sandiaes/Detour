@@ -380,7 +380,17 @@ export function makeChangeSet(over: Partial<ChangeSet> = {}): ChangeSet {
 export function makeVisit(
   over: Partial<TripVisit> & Pick<TripVisit, "id" | "kind" | "name">,
 ): TripVisit {
-  return { lat: 47.07, lon: 15.44, geo_place_ref: null, day_number: 1, confirmed: true, ...over };
+  return {
+    lat: 47.07,
+    lon: 15.44,
+    geo_place_ref: null,
+    day_number: 1,
+    position: null,
+    start_time: null,
+    duration_minutes: null,
+    confirmed: true,
+    ...over,
+  };
 }
 
 /** An area trip's archive: Graz on days 1 and 2, Leoben from day 3, in the archive's order. */
@@ -436,7 +446,15 @@ export function makePastTrip(over: Partial<Trip> = {}): Trip {
 }
 
 export function makeArchiveInfo(over: Partial<ArchiveInfo> = {}): ArchiveInfo {
-  return { trip_id: TRIP_ID, cities: 2, attractions: 3, skipped: 0, size_bytes: 4519, ...over };
+  return {
+    trip_id: TRIP_ID,
+    cities: 2,
+    attractions: 3,
+    places_to_eat: 0,
+    skipped: 0,
+    size_bytes: 4519,
+    ...over,
+  };
 }
 
 const EMPTY_DIFF = {

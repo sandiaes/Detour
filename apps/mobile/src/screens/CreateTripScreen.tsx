@@ -488,37 +488,16 @@ export function CreateTripScreen() {
         ) : null}
         {working === "planning" ? (
           <Notice tone="info" label="Planning">
-            Choosing sights and places to eat and working out travel times. This usually takes a few
-            seconds.
+            Choosing sights and working out travel times. This usually takes a few seconds.
           </Notice>
         ) : null}
 
         <View style={styles.actions}>
           <Button
-            testID="plan-trip"
-            label={
-              created && problem && mode === "generate"
-                ? "Try planning again"
-                : "Generate itineraries"
-            }
-            icon="route"
-            variant="ink"
-            fill
-            loading={working !== null && mode === "generate"}
-            disabled={
-              !chosen ||
-              offline ||
-              (stops !== null && stopsProblem(stops) !== null) ||
-              (working !== null && mode !== "generate")
-            }
-            hint={chosen ? "Two different plans to compare" : "Choose a destination first"}
-            onPress={() => void submit("generate")}
-          />
-          <Button
             testID="empty-trip"
             label="Start with an empty trip"
             icon="add"
-            variant="secondary"
+            variant="ink"
             fill
             loading={working !== null && mode === "empty"}
             disabled={
@@ -531,6 +510,30 @@ export function CreateTripScreen() {
               chosen ? "No proposals: you add the places yourself" : "Choose a destination first"
             }
             onPress={() => void submit("empty")}
+          />
+          <Button
+            testID="plan-trip"
+            label={
+              created && problem && mode === "generate"
+                ? "Try planning again"
+                : "Suggest itineraries"
+            }
+            icon="route"
+            variant="secondary"
+            fill
+            loading={working !== null && mode === "generate"}
+            disabled={
+              !chosen ||
+              offline ||
+              (stops !== null && stopsProblem(stops) !== null) ||
+              (working !== null && mode !== "generate")
+            }
+            hint={
+              chosen
+                ? "Two different sightseeing plans to compare, with no restaurants"
+                : "Choose a destination first"
+            }
+            onPress={() => void submit("generate")}
           />
           {created && problem ? (
             <Button

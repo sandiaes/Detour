@@ -1,11 +1,16 @@
 import type { TripVisit } from "@detour/shared";
 
-// What a past trip shows (ADR 006): the archived cities and attractions on a map, and as a list
-// grouped by city. The archive keeps snapshots only: no routes, travel times or times of day.
+import { formatMinutes } from "../util/format";
+
+// What a past trip shows (ADR 006, ADR 026): the archived cities and stops on a map, as a day
+// record (what was done on which day, with the start and length when they were kept) and as a list
+// grouped by city. The archive keeps snapshots only: no routes or travel times.
 
 export const VISIT_KIND_LABEL: Record<TripVisit["kind"], string> = {
   city: "City",
   attraction: "Attraction",
+  restaurant: "Restaurant",
+  cafe: "Café",
 };
 
 export type VisitGroup = {
@@ -14,7 +19,7 @@ export type VisitGroup = {
   name: string;
   /** The archived city row; null when the archive has none (an area trip without a plan). */
   city: TripVisit | null;
-  /** Attractions, by day. */
+  /** Stops (attractions, restaurants, cafés), by day. */
   visits: TripVisit[];
 };
 
@@ -33,7 +38,7 @@ function distance2(a: TripVisit, b: TripVisit): number {
  */
 export function groupVisitsByCity(visits: TripVisit[], fallbackName: string): VisitGroup[] {
   const cities = visits.filter((v) => v.kind === "city");
-  const attractions = visits.filter((v) => v.kind === "attraction");
+  const attractions = visits.filter((v) => v.kind !== "city");
   if (cities.length === 0) {
     return attractions.length === 0
       ? []
@@ -60,17 +65,54 @@ export function groupVisitsByCity(visits: TripVisit[], fallbackName: string): Vi
   return groups;
 }
 
-export type VisitCounts = { cities: number; attractions: number; skipped: number };
+export type VisitCounts = {
+  cities: number;
+  attractions: number;
+  placesToEat: number;
+  skipped: number;
+};
 
-/** Visited cities and attractions (not cleared by the user), and how many were cleared. */
+/** Visited cities, attractions and places to eat (not cleared by the user), and how many were
+ * cleared. */
 export function visitCounts(visits: TripVisit[]): VisitCounts {
-  const counts = { cities: 0, attractions: 0, skipped: 0 };
+  const counts = { cities: 0, attractions: 0, placesToEat: 0, skipped: 0 };
   for (const v of visits) {
     if (!v.confirmed) counts.skipped += 1;
     else if (v.kind === "city") counts.cities += 1;
-    else counts.attractions += 1;
+    else if (v.kind === "attraction") counts.attractions += 1;
+    else counts.placesToEat += 1;
   }
   return counts;
+}
+
+export type RecordDay = { day: number; stops: TripVisit[] };
+
+/**
+ * The day record: the stops of each day in the order they were planned (cities are base-city rows
+ * with no place in the day and are left out). A stop archived before the record existed has no
+ * order; it follows the ordered ones, by name. Days with no stop are not listed.
+ */
+export function dayRecord(visits: TripVisit[]): RecordDay[] {
+  const byDay = new Map<number, TripVisit[]>();
+  for (const v of visits) {
+    if (v.kind === "city") continue;
+    byDay.set(v.day_number, [...(byDay.get(v.day_number) ?? []), v]);
+  }
+  const order = (v: TripVisit) => v.position ?? Number.MAX_SAFE_INTEGER;
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([day, stops]) => ({
+      day,
+      stops: [...stops].sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name)),
+    }));
+}
+
+/** "Café · 11:00 · 45 min", or just "Attraction" when no time was kept. */
+export function stopRecordLine(v: TripVisit): string {
+  const parts: string[] = [VISIT_KIND_LABEL[v.kind]];
+  if (v.start_time) parts.push(v.start_time);
+  if (v.duration_minutes) parts.push(formatMinutes(v.duration_minutes));
+  return parts.join(" · ");
 }
 
 export type PastPoint = {

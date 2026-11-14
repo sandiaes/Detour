@@ -47,6 +47,14 @@ test("the list shows one day at a time, with times, kinds and durations", async 
   expect(screen.queryByText("Schönbrunn Palace")).toBeNull();
 });
 
+test("an idle stretch between two stops is a Free time row, not an item (ADR 026)", async () => {
+  await openDays();
+  await screen.findByText("Schönbrunn Palace");
+  const rows = screen.getAllByTestId("free-time");
+  expect(rows.length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/^Free time · .* · \d\d:\d\d to \d\d:\d\d$/).length).toBe(rows.length);
+});
+
 test("choosing a stop only selects it: nothing opens under it", async () => {
   await openDays();
   await fireEvent.press(await screen.findByTestId("stop-i1"));

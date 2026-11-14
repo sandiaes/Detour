@@ -10,8 +10,8 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
-**Direction change of 2026-11-14 (ADR 026, proposed; the planner step, the slot-engine removal and the
-data step are built, history and the rest of the app changes are not yet):** Detour is a **trip manager
+**Direction change of 2026-11-14 (ADR 026, proposed; all six build steps are built: the planner, the
+slot-engine removal, the data step, history and the app changes):** Detour is a **trip manager
 and travel history first**. Trips usually start empty; generating itineraries is an optional helper
 that now produces **sights only** (`planner-3.0.0`: no restaurants or cafés, one unplanned 90-minute
 midday gap per day, a 09:00–20:00 day). Restaurants and cafés are **no longer imported** (importer
@@ -20,9 +20,10 @@ and meal-type columns and `itinerary_item.meal_type`; a stored restaurant stop b
 place) and are added only through Photon or by hand as a user place of kind `restaurant` or `cafe`,
 with the user choosing the day and time (default 75 and 45 minutes, *proposed*). The Phase 8 slot
 engine (`planner/restaurant_slots.py`, `restaurant-suggestions`, `add_restaurant`) is **removed**.
-ADR 009 gates 1 to 3 are retired (4 to 6 keep their numbers). Still to do from ADR 026: history (past
-trips keep their days), and the app's new-trip buttons, the "Free time" row and labels. Next after
-that, in the owner's order: destinations outside the imported regions (ADR 027), then trip export
+ADR 009 gates 1 to 3 are retired (4 to 6 keep their numbers). A past trip keeps its day-by-day record (migration `0015`: stops with day,
+order, start and length in `app.trip_visit`; the past-trip screen has a Days tab); the new-trip screen
+leads with "Start with an empty trip" and "Suggest itineraries" is the second button; day lists show
+an idle stretch as "Free time". Next, in the owner's order: destinations outside the imported regions (ADR 027), then trip export
 (ADR 028), then **Optimize a hand-made trip** (ADR 029, proposed: the engine reorders the user's
 stops for the least travel, within or across days, with a preview). The build order is in ADR 026; the
 paragraphs below were written before this decision, so where they describe meals, meal windows,

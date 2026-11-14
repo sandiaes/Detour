@@ -316,14 +316,17 @@ installation.
 
 ### 3.5 `app.trip_visit`: the past-trip archive (ADR 006)
 
-> **ADR 026 (proposed): the archive will also keep a day-by-day record** of a past trip: every item
-> of the selected itinerary as snapshots (day, order, start, length, kind, name, point, `geo`
-> identifier, visited flag, note), restaurants and cafés the user added included, in a new table
-> added when step 5 is built. "Restaurants and meals are not archived" below then no longer holds.
-> `trip_visit` stays as the source of the map of visited places.
-One row per city or attraction of the selected itinerary of a past trip: `kind`, `name` and
-`point` (snapshots), `geo_place_ref` (a `geo.place` id for imported places, null for user places
-and cities; may no longer exist), `day_number`, `confirmed` (default true; the user can clear it).
+> **ADR 026, history step (built, migration `0015`): the archive is also the day-by-day record.**
+> `trip_visit` holds one row per base city (once each) and one per stop of the selected itinerary,
+> restaurants and cafés the user added included; free time is not a stop (it is read from the times).
+> "Restaurants and meals are not archived" no longer holds.
+One row per base city or stop of the selected itinerary of a past trip: `kind` (`city`,
+`attraction`, `restaurant`, `cafe`), `name` and `point` (snapshots), `geo_place_ref` (a `geo.place`
+id for imported places, null for user places and cities; may no longer exist), `day_number`,
+`position` (order within the day), `start_time` and `duration_minutes` (all three null for a city
+row and for rows archived before `0015`: their plans were already gone), `confirmed` (the visited
+flag: set when archived; the user can clear it). A town the user added that is also a base city is
+not listed twice. Notes (ADR 021) are not built, so there is no note column.
 Restaurants and meals are not archived (until step 5 of ADR 026). Each city is listed once, however many days are spent there.
 The archive stores no city for an attraction: the app groups attractions under the nearest city row.
 `GET /v1/trips/{id}/archive` reports the counts and `size_bytes`, the stored row data of the trip
@@ -388,7 +391,7 @@ carry no cuisine, meal type or price (ADR 026). Bringing prices back needs a new
 | **Discard a change** | The change set becomes `discarded` and loses its proposal |
 | **Delete a user place** | Refused (409) while an item uses it |
 | **Name lookup** (ADR 025) | Writes the entity's `geo.place_name` rows (replacing its earlier Wikidata rows) and its lookup row. `prune` (the `names` command) deletes expired names of entities nothing in `app` names (items, past-trip visits, overrides, a trip's cities and area), and the names and lookups of entities gone from `geo`; named entities keep theirs and are refreshed when due |
-| **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per base city (once each) and per visit item of the *selected* itinerary (or the destination city if there is none and the destination is a city); then **every** itinerary of the trip is deleted (days, items, transfers, route geometry, versions and change sets go with them; user places stay); the trip becomes `past`. One-way. A past trip is read-only except deletion and clearing visits |
+| **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per base city (once each) and per stop (visit or meal item) of the *selected* itinerary with its day, order, start and length (or the destination city if there is none and the destination is a city); then **every** itinerary of the trip is deleted (days, items, transfers, route geometry, versions and change sets go with them; user places stay); the trip becomes `past`. One-way. A past trip is read-only except deletion and clearing visits |
 | **A trip's last day passes** (ADR 006, amendment of 2026-11-13) | Reading the trips (`GET /v1/trips`, `GET /v1/trips/{id}`) first archives the caller's active, non-seed trips that have a start date and whose last day ended two days ago or more (the same archive as above). No scheduled job. A trip without a start date never becomes past by itself |
 | **Delete an installation** (no endpoint; operator action) | Cascades to everything it owns. Tokens are stateless, so the app would register a new installation |
 | **Limits** | 100 trips per installation, 5 itineraries per trip, 40 items per day, 500 user places, 30 kept versions per itinerary, one pending change set per itinerary |

@@ -126,13 +126,14 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
 4. **Public transport:** a switch.
 5. A line: travel style and public transport are saved for later; the plans do not use them yet.
 6. Two buttons:
-   - **Start with an empty trip** (dark): creates the trip and an empty plan, one empty day
+   - **Start with an empty trip** (dark, the main action): creates the trip and an empty plan, one empty day
      per trip day, chosen as its itinerary at once. No proposals. The trip opens on its overview.
    - **Suggest itineraries** (outlined): creates the trip and the two proposals to compare. Sights
      only, with a midday gap, no restaurants.
 
-   *(ADR 026, proposed, step 6: the app still has "Generate itineraries" dark and "Start with an
-   empty trip" outlined until then.)*
+   The empty trip comes first (ADR 026, built). A trip whose dates are all in the past is created
+   the same way (the calendar does not block past dates); the user fills it and marks it past, and
+   it is not archived by itself (the two-day rule applies only to trips made before their last day).
 
 Removed from the screen of the reference image: interests, budget and "Include popular
 highlights" and the personalised-itineraries note. "Change photo" is a slim outlined pill under
@@ -265,9 +266,11 @@ anything changes. Outside a trip it starts a new trip.
 - **A place's details** list that place's documents under "Tickets and documents" (sights) or
   "Bookings and documents" (places to eat), with "Attach a document".
 - **A past trip** is a flat page: a compact header with the settings icon, a summary, a Documents
-  row, underlined Map and List tabs, and hairline rows by city with plain Skip and Restore actions.
-  *(ADR 026 step 5, proposed: it gains a Days tab, the same day list as the itinerary tab without
-  routes or travel times, with a visited mark on every stop, and keeps its documents.)*
+  row, underlined Map, Days and List tabs, and hairline rows with plain Skip and Restore actions
+  (the visited mark of every stop, restaurants and cafés included). **Days** (ADR 026, built) is the
+  day record: a heading per day ("Day 2 · Sun 2 May") and its stops in their planned order, each
+  as "Café · 11:30 · 45 min" (kind, start and length when they were kept; a trip archived before
+  `0015` has no times and says so, pointing to the list). No routes or travel times.
 
 ### Edit cities (multi-city trips, ADR 024)
 
@@ -283,11 +286,12 @@ Planned features and a menu of hairline rows. Items that are not built say "Comi
 
 ## 5. Plans and times
 
-- **Suggested plans have no meals (ADR 026, planner built, app not yet).** Each day has one
+- **Suggested plans have no meals (ADR 026, built).** Each day has one
   unplanned gap at midday (90 minutes, starting 12:30 to 14:00). It is not an item: the app draws it
-  as a "Free time" hairline row with no kind icon and no place, derived from any idle stretch
-  between two stops that is longer than their transfer (app step 6; until then the day simply shows
-  the later start time). The day runs 09:00 to 20:00. A restaurant or
+  as a "Free time" hairline row ("Free time · 1 h 30 min · 12:45 to 14:15") with no kind icon and
+  no place, derived from any idle stretch of 30 minutes or more between two stops after the
+  transfer between them (`freeStretch` in `domain/itinerary.ts`); plans made by hand show it too.
+  The proposals' comparison has no "Places to eat" row unless an older plan has some. The day runs 09:00 to 20:00. A restaurant or
   café is a stop the user adds; it reads "Restaurant · 1 h 15 min" or "Café · 45 min", with no
   Lunch or Dinner label, no cuisine and no meal type. Everything below about meal times describes
   the app until step 2 is built.

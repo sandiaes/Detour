@@ -57,12 +57,17 @@ export function buildComparison(a: ItinerarySummary, b: ItinerarySummary): Compa
       a: sa ? String(sa.days_with_visits) : UNKNOWN,
       b: sb ? String(sb.days_with_visits) : UNKNOWN,
     },
-    {
-      key: "meals",
-      label: "Meals",
-      a: sa ? String(sa.meals ?? 0) : UNKNOWN,
-      b: sb ? String(sb.meals ?? 0) : UNKNOWN,
-    },
+    // Proposals are sights only (ADR 026): the row appears only for an older plan with meals.
+    ...((sa?.meals ?? 0) > 0 || (sb?.meals ?? 0) > 0
+      ? [
+          {
+            key: "meals",
+            label: "Places to eat",
+            a: sa ? String(sa.meals ?? 0) : UNKNOWN,
+            b: sb ? String(sb.meals ?? 0) : UNKNOWN,
+          },
+        ]
+      : []),
     {
       key: "visit-time",
       label: "Time at the sights",
