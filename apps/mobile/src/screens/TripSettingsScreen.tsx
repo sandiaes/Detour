@@ -109,6 +109,30 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
           <Notice tone="info">Changes to a trip need a connection to the server.</Notice>
         ) : null}
 
+        {!past && trip.destination.kind === "route" ? (
+          <View style={styles.pad}>
+            <Card>
+              <Text accessibilityRole="header" style={styles.heading}>
+                Your cities
+              </Text>
+              <Text style={styles.body}>
+                {`${(trip.stops ?? []).map((x) => `${x.name} (${x.days})`).join(", ")}. Add, remove or reorder cities and change their days. ${
+                  hasPlan
+                    ? "You see what changes in your plan before anything is saved."
+                    : "The proposals are made again for the new cities."
+                }`}
+              </Text>
+              <Button
+                testID="edit-stops"
+                label="Edit cities"
+                variant="secondary"
+                disabled={!actions.connected || busy !== null}
+                onPress={() => nav.push({ name: "editStops", tripId: trip.id })}
+              />
+            </Card>
+          </View>
+        ) : null}
+
         {!past ? (
           <View style={styles.pad}>
             <Card>

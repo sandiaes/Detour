@@ -57,7 +57,8 @@ def preview_stops(
             raise conflict("not_a_route", "only a multi-city trip has stops to edit")
         if trip.selected_itinerary_id is None:
             raise conflict(
-                "no_active_plan", "this trip has no chosen plan; change its stops directly"
+                "no_active_plan",
+                "this trip has no chosen plan; change its stops with PUT /v1/trips/{id}/stops",
             )
         new_stops, name = routes.resolve_stops(conn, stops, None)
         itinerary_id = trip.selected_itinerary_id

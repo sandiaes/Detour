@@ -266,3 +266,24 @@ def test_stops_of_a_city_trip_cannot_be_edited(api_env: ApiEnv) -> None:
     ).json()
     r = _preview_stops(api_env, city["id"], [(TESTBURG, 1), (ALPENAU, 1)])
     assert r.status_code == 409 and code(r) == "not_a_route"
+
+
+def test_stops_without_a_chosen_plan_are_replaced_directly(api_env: ApiEnv) -> None:
+    trip = route(api_env, [(TESTBURG, 1), (ALPENAU, 1)]).json()
+    r = api_env.client.put(
+        f"/v1/trips/{trip['id']}/stops",
+        json={"stops": [{"city_id": ALPENAU, "days": 2}, {"city_id": TESTBURG, "days": 1}]},
+        headers=api_env.headers,
+    )
+    assert r.status_code == 200, r.text
+    after = r.json()
+    assert after["title"] == "Alpenau to Testburg" and after["duration_days"] == 3
+    assert after["stops_version"] == 1
+    _, plan = _planned(api_env, [(TESTBURG, 1), (ALPENAU, 1)])
+    chosen_trip = plan["trip_id"]
+    refused = api_env.client.put(
+        f"/v1/trips/{chosen_trip}/stops",
+        json={"stops": [{"city_id": ALPENAU, "days": 1}, {"city_id": TESTBURG, "days": 1}]},
+        headers=api_env.headers,
+    )
+    assert refused.status_code == 409 and code(refused) == "preview_needed"

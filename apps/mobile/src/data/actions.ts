@@ -1,4 +1,5 @@
 import type {
+  ChangeSet,
   CoverCandidate,
   GenerationResult,
   Itinerary,
@@ -185,7 +186,37 @@ export function useTripActions() {
     [need, data],
   );
 
+  /** A multi-city trip with a chosen plan: preview new cities as a change set (ADR 024). */
+  const previewStops = useCallback(
+    async (tripId: string, stops: { city_id: number; days: number }[]): Promise<ChangeSet> =>
+      call(
+        need().POST("/v1/trips/{trip_id}/stops/preview", {
+          params: { path: { trip_id: tripId } },
+          body: { stops },
+        }),
+      ),
+    [need],
+  );
+
+  /** A multi-city trip without a chosen plan: its cities are replaced at once. */
+  const replaceStops = useCallback(
+    async (tripId: string, stops: { city_id: number; days: number }[]): Promise<Trip> => {
+      const trip = await call(
+        need().PUT("/v1/trips/{trip_id}/stops", {
+          params: { path: { trip_id: tripId } },
+          body: { stops },
+        }),
+      );
+      data.update<Trip[]>(keys.trips, (list) => list.map((t) => (t.id === trip.id ? trip : t)));
+      data.invalidate(keys.itineraries(tripId));
+      return trip;
+    },
+    [need, data],
+  );
+
   return {
+    previewStops,
+    replaceStops,
     coverCandidates,
     setCover,
     createTrip,

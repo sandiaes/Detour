@@ -16,6 +16,7 @@ from detour_api.images.candidates import (
 )
 from detour_api.images.queue import queue_resolve
 from detour_api.images.store import StoreError
+from detour_api.models.changes import StopsEdit
 from detour_api.models.common import PlanningErrorBody
 from detour_api.models.images import CoverChoice
 from detour_api.models.trips import (
@@ -241,5 +242,45 @@ def set_trip_cover(
         conn.execute(
             text("UPDATE app.trip SET cover_image_id = :img, updated_at = now() WHERE id = :id"),
             {"img": image_id, "id": trip_id},
+        )
+        return trips.require_trip(conn, session.installation_id, trip_id)
+
+
+@router.put(
+    "/{trip_id}/stops",
+    summary="Replace a multi-city trip's stops while it has no chosen plan (ADR 024). With a "
+    "chosen plan, preview the change instead (POST /v1/trips/{id}/stops/preview).",
+    responses=ERRORS,
+)
+def replace_stops(session: SessionDep, trip_id: uuid.UUID, body: StopsEdit) -> Trip:
+    with session.tx() as conn:
+        trip = trips.require_trip(conn, session.installation_id, trip_id)
+        if trip.status == "past":
+            raise ApiError(409, "trip_archived", "a past trip cannot be changed")
+        if trip.destination.kind != "route":
+            raise ApiError(409, "not_a_route", "only a multi-city trip has stops to edit")
+        if trip.selected_itinerary_id is not None:
+            raise ApiError(
+                409, "preview_needed", "this trip has a chosen plan: preview the change instead"
+            )
+        stops, name = routes.resolve_stops(conn, body.stops, None)
+        trips.write_stops(conn, trip_id, stops)
+        first = stops[0]
+        conn.execute(
+            text(
+                "UPDATE app.trip SET title = :name, destination_name = :name,"
+                " destination_ref = :ref,"
+                " destination_point = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326),"
+                " duration_days = :days, stops_version = stops_version + 1, updated_at = now()"
+                " WHERE id = :t"
+            ),
+            {
+                "name": name,
+                "ref": str(first.city_id),
+                "lat": first.lat,
+                "lon": first.lon,
+                "days": sum(s.days for s in stops),
+                "t": trip_id,
+            },
         )
         return trips.require_trip(conn, session.installation_id, trip_id)

@@ -366,6 +366,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/trips/{trip_id}/stops": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Replace a multi-city trip's stops while it has no chosen plan (ADR 024). With a chosen plan, preview the change instead (POST /v1/trips/{id}/stops/preview). */
+    put: operations["replace_stops"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/itineraries/{itinerary_id}": {
     parameters: {
       query?: never;
@@ -3776,6 +3793,68 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CoverChoice"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  replace_stops: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StopsEdit"];
       };
     };
     responses: {

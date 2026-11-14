@@ -163,7 +163,7 @@ function DayTimeline({
 /** Where a trip's cover can be chosen from: its city or area (or, for a multi-city trip, each
  * stop's city, ADR 024). */
 export function coverSources(trip: Trip): CoverSource[] {
-  const stops = (trip as Trip & { stops?: { city_id: number; name: string }[] }).stops ?? [];
+  const stops = trip.stops ?? [];
   if (stops.length > 0) {
     return stops.map((s) => ({ kind: "city" as const, ref: String(s.city_id), name: s.name }));
   }

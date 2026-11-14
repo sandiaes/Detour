@@ -101,7 +101,13 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <ScreenHeader
-        title={removing ? `Remove ${data.target_name}?` : `Add ${data.target_name}?`}
+        title={
+          data.action === "edit_stops"
+            ? "Change your cities?"
+            : removing
+              ? `Remove ${data.target_name}?`
+              : `Add ${data.target_name}?`
+        }
         subtitle="Nothing changes until you accept."
         onBack={nav.back}
       />
