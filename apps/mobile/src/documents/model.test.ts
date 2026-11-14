@@ -2,6 +2,7 @@ import type { Day } from "@detour/shared";
 
 import { makeItinerary } from "../testing/fixtures";
 import {
+  normaliseCategory,
   type TripDocument,
   fileLine,
   groupByCategory,
@@ -76,12 +77,17 @@ test("the places of a plan, once each in day order, and its journeys", () => {
 
 test("documents are grouped by kind in a fixed order, newest first", () => {
   const groups = groupByCategory([
-    doc({ id: "1", category: "insurance", createdAt: 1 }),
+    doc({ id: "1", category: "other", createdAt: 1 }),
     doc({ id: "2", category: "ticket", createdAt: 1 }),
     doc({ id: "3", category: "ticket", createdAt: 5 }),
   ]);
-  expect(groups.map((g) => g.category)).toEqual(["ticket", "insurance"]);
+  expect(groups.map((g) => g.category)).toEqual(["ticket", "other"]);
   expect(groups[0]?.docs.map((d) => d.id)).toEqual(["3", "2"]);
+});
+
+test("insurance, a kind until 2026-11-14, now reads as other", () => {
+  expect(normaliseCategory("insurance")).toBe("other");
+  expect(normaliseCategory("ticket")).toBe("ticket");
 });
 
 test("identifiers are unique enough on one device", () => {

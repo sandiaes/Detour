@@ -162,15 +162,6 @@ function DayHead({ day, showBase }: { day: Day; showBase: boolean }) {
   );
 }
 
-function Tag({ routed }: { routed: boolean }) {
-  // The label is a word, and the border differs (solid or dashed): not colour alone.
-  return (
-    <Text style={[styles.tag, routed ? styles.tagRouted : styles.tagEstimated]}>
-      {routed ? "Routed" : "Estimated"}
-    </Text>
-  );
-}
-
 function ArrivalRow({
   day,
   selectable,
@@ -211,7 +202,6 @@ function ArrivalRow({
             {day.base_city_name ? `To ${day.base_city_name}` : "Travel"}
           </Text>
           <Text style={styles.meta}>{text}</Text>
-          <Tag routed={routed} />
         </View>
       </Pressable>
     </View>
@@ -303,20 +293,21 @@ export function StopRow({
   );
 }
 
+/** Travel between two stops, written into a hairline: ———— Walk · 3 min · 170 m ————. The words
+ * for a screen reader still say when a time is only an estimate. */
 export function TransferRow({ row }: { row: Extract<DayRow, { kind: "transfer" }> }) {
   const { transfer, to } = row;
   const routed = transfer.confidence === "routed";
-  const text = `${modeLabel(transfer.mode)} · ${formatSeconds(transfer.seconds)} · ${formatMeters(transfer.meters)}`;
+  const text = `${modeLabel(transfer.mode)} ${formatSeconds(transfer.seconds)} ${formatMeters(transfer.meters)}`;
   const label =
     `${modeLabel(transfer.mode)} ${to ? `to ${to.display_name}` : "to the next stop"}, ` +
     `${formatSeconds(transfer.seconds)}, ${formatMeters(transfer.meters)}, ${confidenceLabel(transfer.confidence)}` +
     (routed ? "." : ", a straight-line estimate and not a measured route.");
   return (
     <View style={styles.transfer} accessible accessibilityLabel={label}>
-      <View style={styles.timeCol} />
-      <View style={[styles.connector, !routed && styles.connectorDashed]} />
+      <View style={styles.transferLine} />
       <Text style={styles.transferText}>{text}</Text>
-      <Tag routed={routed} />
+      <View style={styles.transferLine} />
     </View>
   );
 }
@@ -596,27 +587,12 @@ const styles = StyleSheet.create({
   meta: { ...type.caption, color: colors.muted },
   tags: { ...type.caption, fontWeight: "700", color: colors.primary },
 
-  transfer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 24 },
-  connector: {
-    width: 0,
-    height: 16,
-    borderLeftWidth: 1,
-    borderColor: colors.outline,
-    marginLeft: spacing.sm,
+  transfer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    minHeight: 28,
   },
-  connectorDashed: { borderStyle: "dashed" },
+  transferLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   transferText: { ...type.caption, color: colors.muted },
-  tag: {
-    ...type.caption,
-    fontWeight: "600",
-    color: colors.muted,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.outline,
-    overflow: "hidden",
-    alignSelf: "flex-start",
-  },
-  tagRouted: { borderStyle: "solid" },
-  tagEstimated: { borderStyle: "dashed" },
 });

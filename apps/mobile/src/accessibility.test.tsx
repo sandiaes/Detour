@@ -170,8 +170,8 @@ test("documents: the list, the form with a place chosen, and a document", async 
     {
       id: "doc-1",
       tripId: TRIP_ID,
-      title: "Travel insurance",
-      category: "insurance",
+      title: "Travel policy",
+      category: "other",
       link: { kind: "trip" },
       fileName: "policy.pdf",
       mimeType: "application/pdf",
@@ -192,14 +192,14 @@ test("documents: the list, the form with a place chosen, and a document", async 
       <AppContent />
     </Harness>,
   );
-  await screen.findByText("Travel insurance");
+  await screen.findByText("Travel policy");
   checkControls();
   await fireEvent.press(screen.getByTestId("add-document"));
   await fireEvent.press(await screen.findByTestId("choose-file"));
   await fireEvent.press(await screen.findByTestId("link-place"));
   checkControls();
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
-  await fireEvent.press(await screen.findByText("Travel insurance"));
+  await fireEvent.press(await screen.findByText("Travel policy"));
   await screen.findByTestId("open-document");
   checkControls();
 });
@@ -267,7 +267,7 @@ test("map with markers and the attribution links", async () => {
   expect(screen.getAllByLabelText(/^Stop \d+, (Attraction|Restaurant|Café): /).length).toBe(5);
   checkControls();
   await fireEvent.press(screen.getByRole("button", { name: "Map key" }));
-  await screen.findByText("Solid line: travel time routed");
+  await screen.findByText("Restaurant or café");
   checkControls();
 });
 
@@ -296,7 +296,7 @@ test("past trip: list by city, every skip control named for its place", async ()
       <AppContent />
     </Harness>,
   );
-  await fireEvent.press(await screen.findByRole("button", { name: "Show the list by city" }));
+  await fireEvent.press(await screen.findByRole("tab", { name: "Show the list by city" }));
   await screen.findByText("Kunsthaus Graz");
   expect(screen.getAllByRole("button", { name: /^Mark .+ as skipped$/ })).toHaveLength(5);
   checkControls();

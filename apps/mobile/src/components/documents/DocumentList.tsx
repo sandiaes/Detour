@@ -30,7 +30,6 @@ export const CATEGORY_ICON: Record<DocCategory, IconName> = {
   ticket: "ticket",
   booking: "calendar",
   transport: "transport",
-  insurance: "shield",
   other: "document",
 };
 
@@ -160,7 +159,7 @@ export function DocumentList({
         <View style={styles.art} accessible={false} importantForAccessibility="no-hide-descendants">
           <View style={styles.artCloud} />
           <View style={styles.artCard}>
-            <Icon name="transport" size={34} color={colors.onPrimary} />
+            <Icon name="transport" size={26} color={colors.onPrimary} />
           </View>
         </View>
         <Text accessibilityRole="header" style={styles.emptyTitle}>
@@ -176,12 +175,14 @@ export function DocumentList({
               accessibilityRole="button"
               accessibilityLabel={`${CATEGORY_GROUP[c]}. ${CATEGORY_HELP[c]}. Adds one.`}
               onPress={() => add(c)}
+              hitSlop={{ top: 4, bottom: 4 }}
               style={({ pressed }) => [styles.categoryTile, pressed && styles.pressed]}
               testID={`start-${c}`}
             >
-              <KindTile category={c} size={44} />
-              <Text style={styles.tileName}>{CATEGORY_GROUP[c]}</Text>
-              <Text style={styles.tileHelp}>{CATEGORY_HELP[c]}</Text>
+              <KindTile category={c} size={36} />
+              <Text style={styles.tileName} numberOfLines={1}>
+                {c === "other" ? "Other" : CATEGORY_GROUP[c]}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -366,35 +367,34 @@ const styles = StyleSheet.create({
   rowLine: { ...type.caption, color: colors.muted },
   thumb: { width: 40, height: 52, borderRadius: radius.sm, backgroundColor: colors.surfaceMuted },
 
-  empty: { alignItems: "center", gap: spacing.md, paddingVertical: spacing.lg },
-  art: { width: 150, height: 120, alignItems: "center", justifyContent: "center" },
+  empty: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md },
+  art: { width: 110, height: 84, alignItems: "center", justifyContent: "center" },
   artCloud: {
     position: "absolute",
-    width: 130,
-    height: 90,
-    borderRadius: 45,
+    width: 96,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.primarySoft,
   },
   artCard: {
-    width: 76,
-    height: 96,
+    width: 52,
+    height: 68,
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primary,
     transform: [{ rotate: "6deg" }],
   },
-  emptyTitle: { ...type.title, color: colors.text, textAlign: "center" },
+  emptyTitle: { ...type.heading, color: colors.text, textAlign: "center" },
   emptyText: { ...type.small, color: colors.muted, textAlign: "center" },
-  tiles: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: spacing.md },
+  // One row: the four kinds share the width, each a small tile over its name.
+  tiles: { flexDirection: "row", alignSelf: "stretch", paddingVertical: spacing.xs },
   categoryTile: {
-    width: "30%",
-    minWidth: 96,
+    flex: 1,
     minHeight: TOUCH,
     alignItems: "center",
-    gap: spacing.xxs,
-    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
   },
-  tileName: { ...type.small, fontWeight: "700", color: colors.text, textAlign: "center" },
-  tileHelp: { ...type.caption, color: colors.muted, textAlign: "center" },
+  tileName: { ...type.caption, fontWeight: "600", color: colors.text, textAlign: "center" },
 });

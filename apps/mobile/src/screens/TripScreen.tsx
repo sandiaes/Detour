@@ -6,7 +6,7 @@ import { call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { Cover } from "../components/ds/Cover";
 import { Icon, type IconName } from "../components/ds/Icon";
-import { Badge } from "../components/ds/primitives";
+import { Badge, IconButton } from "../components/ds/primitives";
 import { ResourceNotices } from "../components/ResourceNotices";
 import {
   Card,
@@ -14,8 +14,8 @@ import {
   ErrorState,
   LoadingState,
   Notice,
+  CompactHeader,
   PlanNotes,
-  ScreenHeader,
   WakingServer,
 } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
@@ -232,7 +232,7 @@ export function TripScreen({ tripId }: { tripId: string }) {
   if (trips.data === undefined) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Trip" onBack={nav.back} />
+        <CompactHeader title="Trip" onBack={nav.back} />
         {trips.status === "error" ? (
           <ErrorState text={describeError(trips.error)} onRetry={trips.refresh} />
         ) : trips.waking ? (
@@ -246,7 +246,7 @@ export function TripScreen({ tripId }: { tripId: string }) {
   if (!trip) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Trip" onBack={nav.back} />
+        <CompactHeader title="Trip" onBack={nav.back} />
         <EmptyState
           title="Trip not found"
           text="It may have been deleted."
@@ -363,19 +363,20 @@ export function TripScreen({ tripId }: { tripId: string }) {
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <ScreenHeader
+        <CompactHeader
           title={trip.selected_itinerary_id ? "Original proposals" : "Choose your itinerary"}
-          subtitle={subtitle}
           onBack={nav.back}
           right={
-            <Button
-              testID="trip-settings"
+            <IconButton
+              icon="settings"
               label="Trip settings"
-              variant="quiet"
+              compact
+              testID="trip-settings"
               onPress={() => nav.push({ name: "tripSettings", tripId })}
             />
           }
         />
+        <Text style={styles.intro}>{subtitle}</Text>
         <View style={styles.spanLine}>
           <Icon name="calendar" size={18} color={colors.muted} />
           <Text style={styles.spanText}>{span}</Text>
@@ -397,6 +398,13 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.8 },
   stack: { gap: spacing.xl },
   pad: { paddingHorizontal: spacing.lg },
+  intro: {
+    ...type.small,
+    color: colors.muted,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+  },
   spanLine: {
     flexDirection: "row",
     alignItems: "center",

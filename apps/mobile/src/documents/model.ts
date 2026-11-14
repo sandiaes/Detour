@@ -2,19 +2,18 @@ import type { Day, Item } from "@detour/shared";
 
 import { formatBytes, formatDayLabel } from "../util/format";
 
-// Trip documents (ADR 023): tickets, bookings, transport documents and insurance, kept on the
+// Trip documents (ADR 023): tickets, bookings, transport and other documents, kept on the
 // device only. A document belongs to a trip and can be about the whole trip, a day, a place of the
 // plan or the journey that starts a day at a new base city. Links name the place as it was when
 // linked, so they still read correctly after the plan changes or the trip becomes past.
 
-export const CATEGORIES = ["ticket", "booking", "transport", "insurance", "other"] as const;
+export const CATEGORIES = ["ticket", "booking", "transport", "other"] as const;
 export type DocCategory = (typeof CATEGORIES)[number];
 
 export const CATEGORY_LABEL: Record<DocCategory, string> = {
   ticket: "Ticket",
   booking: "Booking",
   transport: "Transport",
-  insurance: "Insurance",
   other: "Other",
 };
 
@@ -22,7 +21,6 @@ export const CATEGORY_GROUP: Record<DocCategory, string> = {
   ticket: "Tickets",
   booking: "Bookings",
   transport: "Transport",
-  insurance: "Insurance",
   other: "Other documents",
 };
 
@@ -53,12 +51,17 @@ export type TripDocument = {
 
 export const NOTES_MAX = 500;
 
+/** Insurance was a kind until 2026-11-14 (owner request); a document saved under it reads as
+ * "other" now, so nothing on the phone is lost or left without a kind. */
+export function normaliseCategory(category: string): DocCategory {
+  return (CATEGORIES as readonly string[]).includes(category) ? (category as DocCategory) : "other";
+}
+
 /** One line under each kind on the empty Documents tab: what belongs there. */
 export const CATEGORY_HELP: Record<DocCategory, string> = {
   ticket: "Entry and activity tickets",
   booking: "Hotels, tables, tours",
   transport: "Flights, trains, buses",
-  insurance: "Travel and health",
   other: "Visas, itineraries, more",
 };
 

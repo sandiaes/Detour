@@ -37,7 +37,7 @@ type LinkKind = DocLink["kind"];
 const LINK_KIND_LABEL: Record<LinkKind, string> = {
   trip: "Whole trip",
   day: "A day",
-  place: "A place",
+  place: "Attraction",
   leg: "A journey",
 };
 
@@ -140,12 +140,14 @@ function Form({
       : places;
   const legOptions =
     leg && !legs.some((l) => l.day === leg.day) ? [{ ...leg, from: null }, ...legs] : legs;
+  // Whole trip or an attraction. A document saved earlier about a day or a journey keeps its link
+  // and its chip, so editing it never loses what it was about.
   const kinds: LinkKind[] = [
     "trip",
-    "day",
     ...(placeOptions.length ? (["place"] as const) : []),
-    ...(legOptions.length ? (["leg"] as const) : []),
+    ...(start.kind === "day" || start.kind === "leg" ? [start.kind] : []),
   ];
+  const [picking, setPicking] = useState(false);
 
   const chosenLink: DocLink | null =
     kind === "trip"
@@ -309,7 +311,7 @@ function Form({
             <View style={styles.input}>
               <TextInput
                 accessibilityLabel="Title"
-                accessibilityHint="For example “Train to Salzburg” or “Travel insurance”."
+                accessibilityHint="For example “Train to Salzburg” or “Museum tickets”."
                 value={title}
                 onChangeText={setTitle}
                 maxLength={80}
@@ -340,7 +342,10 @@ function Form({
                   icon={LINK_KIND_ICON[k]}
                   selected={kind === k}
                   testID={`link-${k}`}
-                  onPress={() => setKind(k)}
+                  onPress={() => {
+                    setKind(k);
+                    setPicking(false);
+                  }}
                 />
               ))}
             </View>
@@ -356,17 +361,29 @@ function Form({
                 ))}
               </View>
             ) : null}
-            {kind === "place"
-              ? placeOptions.map((p) => (
+            {kind === "place" ? (
+              <Dropdown
+                label="Attraction"
+                placeholder="Choose an attraction"
+                value={place?.name ?? null}
+                open={picking}
+                onToggle={() => setPicking((o) => !o)}
+                testID="attraction-select"
+              >
+                {placeOptions.map((p) => (
                   <ChoiceRow
                     key={p.key}
                     title={p.name}
                     meta={p.day ? `Day ${p.day}` : "No longer in the plan"}
                     selected={place?.key === p.key}
-                    onPress={() => setPlace({ key: p.key, name: p.name, day: p.day || null })}
+                    onPress={() => {
+                      setPlace({ key: p.key, name: p.name, day: p.day || null });
+                      setPicking(false);
+                    }}
                   />
-                ))
-              : null}
+                ))}
+              </Dropdown>
+            ) : null}
             {kind === "leg"
               ? legOptions.map((l) => (
                   <ChoiceRow
@@ -569,6 +586,61 @@ function FileRow({
   );
 }
 
+/** A drop-down menu: a boxed field that opens a short scrolling list of choices under it. */
+function Dropdown({
+  label,
+  placeholder,
+  value,
+  open,
+  onToggle,
+  children,
+  testID,
+}: {
+  label: string;
+  placeholder: string;
+  value: string | null;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+  testID?: string;
+}) {
+  return (
+    <View style={styles.dropdown}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}, ${value ?? "none chosen"}`}
+        accessibilityHint={open ? "Closes the list" : "Opens a list to choose from"}
+        accessibilityState={{ expanded: open }}
+        onPress={onToggle}
+        hitSlop={{ top: 2, bottom: 2 }}
+        style={[styles.input, styles.dropdownField]}
+        testID={testID}
+      >
+        <Icon name="pin" size={18} color={colors.muted} />
+        <Text
+          style={[styles.inputText, styles.dateText, !value && styles.placeholder]}
+          numberOfLines={1}
+        >
+          {value ?? placeholder}
+        </Text>
+        <View style={open ? styles.chevronUp : styles.chevronDown}>
+          <Icon name="chevronRight" size={16} color={colors.muted} />
+        </View>
+      </Pressable>
+      {open ? (
+        <ScrollView
+          style={styles.dropdownList}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          testID={testID ? `${testID}-list` : undefined}
+        >
+          {children}
+        </ScrollView>
+      ) : null}
+    </View>
+  );
+}
+
 function ChoiceRow({
   title,
   meta,
@@ -680,16 +752,25 @@ const styles = StyleSheet.create({
   notesBox: { flexDirection: "column", alignItems: "stretch", paddingRight: spacing.md },
   notes: { minHeight: 72, paddingHorizontal: 0 },
   counter: { ...type.caption, color: colors.muted, textAlign: "right", paddingBottom: spacing.sm },
-  choice: {
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: 44,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+  dropdown: { gap: spacing.xs },
+  dropdownField: { paddingRight: spacing.md, gap: spacing.sm },
+  dropdownList: {
+    maxHeight: 232,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  choiceSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
+  chevronDown: { transform: [{ rotate: "90deg" }] },
+  chevronUp: { transform: [{ rotate: "-90deg" }] },
+  choice: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 48,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  choiceSelected: { backgroundColor: colors.primarySoft },
 });

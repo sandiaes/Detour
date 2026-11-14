@@ -7,7 +7,7 @@ import { Icon, type IconName } from "../components/ds/Icon";
 import { ListRow, RowGroup, Sheet } from "../components/ds/primitives";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
-import { TOUCH, colors, shadow, spacing, type } from "../theme";
+import { TOUCH, colors, spacing, type } from "../theme";
 import { type RootName, type Route, useNavigation } from "./Navigator";
 
 // The bottom navigation (ADR 021): Trips, Explore, Add, Photos, More. Add is contextual: outside a
@@ -147,7 +147,7 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
         <ListRow
           icon="document"
           title="Document"
-          detail="A ticket, booking or insurance, kept on this phone"
+          detail="A ticket, booking or transport document, kept on this phone"
           testID="add-sheet-document"
           onPress={() => go({ name: "documentForm", tripId })}
         />
@@ -159,12 +159,10 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
 const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    // The page's own colour, no line and no shadow: it melts into the page.
+    backgroundColor: colors.background,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
-    ...shadow.card,
   },
   item: {
     flex: 1,

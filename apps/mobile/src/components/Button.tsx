@@ -37,7 +37,7 @@ export function Button({
   const compact = size === "compact";
   const inactive = disabled || loading;
   const filled = variant === "primary" || variant === "accent" || variant === "ink";
-  const labelColor = filled ? colors.onPrimary : compact ? colors.text : colors.primary;
+  const labelColor = filled ? colors.onPrimary : variant === "quiet" ? colors.primary : colors.text;
   return (
     <Pressable
       accessibilityRole="button"
@@ -67,7 +67,11 @@ export function Button({
       <Text
         style={[
           styles.label,
-          filled ? styles.labelOnPrimary : compact ? styles.labelCompactLight : styles.labelOnLight,
+          filled
+            ? styles.labelOnPrimary
+            : variant === "quiet"
+              ? styles.labelQuiet
+              : styles.labelOnLight,
           compact && styles.labelCompact,
           // Disabled is shown by a lighter fill AND by the state read aloud, never colour alone:
           // the label stays at full contrast.
@@ -95,15 +99,16 @@ const styles = StyleSheet.create({
   compact: { minHeight: 36, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, gap: 6 },
   compactSecondary: { borderWidth: 1, borderColor: colors.outline },
   labelCompact: { ...type.small, fontSize: 13, lineHeight: 18 },
-  labelCompactLight: { color: colors.text },
   primary: { backgroundColor: colors.primary },
   accent: { backgroundColor: colors.accent },
   ink: { backgroundColor: colors.ink },
-  secondary: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary },
+  // Outlined: a thin grey-blue line and dark text, the same look at every size.
+  secondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.outline },
   quiet: { backgroundColor: "transparent" },
   inactive: { opacity: 0.55 },
   pressed: { opacity: 0.8 },
   label: { ...type.body, fontWeight: "600", flexShrink: 1, textAlign: "center" },
   labelOnPrimary: { color: colors.onPrimary },
-  labelOnLight: { color: colors.primary },
+  labelOnLight: { color: colors.text },
+  labelQuiet: { color: colors.primary },
 });

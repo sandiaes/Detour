@@ -332,8 +332,6 @@ export function TripOverviewScreen({
               plan={p}
               destination={trip.destination.name}
               coverKey={trip.destination.ref}
-              badge="Proposal"
-              badgeTone="neutral"
               hint="Opens this proposal, where you can choose it"
               testID={`open-proposal-${p.profile}`}
               onPress={() =>
@@ -509,7 +507,7 @@ export function TripOverviewScreen({
   );
 }
 
-const COVER_HEIGHT = 300;
+const COVER_HEIGHT = 260;
 const SHEET_RADIUS = 28;
 const textShadow = {
   textShadowColor: "rgba(13, 24, 40, 0.55)",
@@ -547,9 +545,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   sheetBody: { backgroundColor: colors.background },
-  body2: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.lg },
-  planBlock: { gap: spacing.sm },
-  cardTitle: { ...type.heading, color: colors.text },
+  body2: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.sm },
+  planBlock: { gap: spacing.xs },
+  cardTitle: { ...type.heading, color: colors.text, paddingTop: spacing.xs },
   body: { ...type.body, color: colors.text },
   meta: { ...type.small, color: colors.muted },
   planHead: {

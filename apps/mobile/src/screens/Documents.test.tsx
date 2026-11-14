@@ -85,10 +85,17 @@ test("add a ticket for a place: pick, title from the file, kind, place; it is ke
   // A kind is needed before saving.
   expect(screen.getByTestId("save-document")).toBeDisabled();
   await fireEvent.press(screen.getByRole("button", { name: "Ticket" }));
+  // Only the whole trip and an attraction can be chosen.
+  expect(screen.queryByTestId("link-day")).toBeNull();
+  expect(screen.queryByTestId("link-leg")).toBeNull();
   await fireEvent.press(screen.getByTestId("link-place"));
-  // A place must be chosen once "A place" is.
+  // An attraction must be chosen once "Attraction" is, from a drop-down, not a list.
   expect(screen.getByTestId("save-document")).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "Schönbrunn Palace, Day 1" })).toBeNull();
+  await fireEvent.press(screen.getByTestId("attraction-select"));
   await fireEvent.press(screen.getByRole("button", { name: "Schönbrunn Palace, Day 1" }));
+  // The menu closes on a choice.
+  expect(screen.queryByTestId("attraction-select-list")).toBeNull();
   await fireEvent.press(screen.getByTestId("save-document"));
 
   // The document opens; the file was copied into the app's storage.
@@ -127,16 +134,18 @@ test("a cancelled picker changes nothing; a file that is not a PDF or picture is
   expect(files.kept).toEqual([]);
 });
 
-test("a day, the whole trip or the journey to a new base city can be chosen", async () => {
+test("a document about the whole trip needs nothing more; a new one cannot be about a day or journey", async () => {
   const { documents } = await show({ name: "documentForm", tripId: TRIP_ID });
   await fireEvent.press(await screen.findByTestId("choose-file"));
   await fireEvent.press(screen.getByRole("button", { name: "Transport" }));
-  // The fixture plan moves to Graz on day 2: that journey can be chosen.
-  await fireEvent.press(screen.getByTestId("link-leg"));
-  await fireEvent.press(screen.getByRole("button", { name: "To Graz, Day 2 · from Vienna" }));
+  expect(screen.getByTestId("link-trip").props.accessibilityState).toMatchObject({
+    selected: true,
+  });
+  expect(screen.queryByTestId("link-day")).toBeNull();
+  expect(screen.queryByTestId("link-leg")).toBeNull();
   await fireEvent.press(screen.getByTestId("save-document"));
-  expect(await screen.findByLabelText("About: Journey to Graz · day 2")).toBeOnTheScreen();
-  expect((await documents.list(TRIP_ID))[0]?.link).toEqual({ kind: "leg", day: 2, name: "Graz" });
+  expect(await screen.findByLabelText("About: Whole trip")).toBeOnTheScreen();
+  expect((await documents.list(TRIP_ID))[0]?.link).toEqual({ kind: "trip" });
 });
 
 test("open, edit and delete a document", async () => {
@@ -153,16 +162,17 @@ test("open, edit and delete a document", async () => {
   await fireEvent.press(screen.getByTestId("open-document"));
   expect(await screen.findByText(/No app on this device can show/)).toBeOnTheScreen();
 
-  // Edit: a new title and a day instead of the journey; the file stays.
+  // Edit: a new title; the journey it was saved about keeps its chip and its link; the file stays.
   await fireEvent.press(screen.getByTestId("edit-document"));
   expect(await screen.findByRole("header", { name: "Edit document" })).toBeOnTheScreen();
   expect(screen.queryByTestId("choose-file")).toBeNull();
+  expect(screen.getByTestId("link-leg").props.accessibilityState).toMatchObject({
+    selected: true,
+  });
   await fireEvent.changeText(screen.getByLabelText("Title"), "ÖBB train, day 2");
-  await fireEvent.press(screen.getByTestId("link-day"));
-  await fireEvent.press(screen.getByRole("button", { name: "Day 2 · Sun 2 May" }));
   await fireEvent.press(screen.getByTestId("save-document"));
   expect(await screen.findByRole("header", { name: "ÖBB train, day 2" })).toBeOnTheScreen();
-  expect(screen.getByLabelText("About: Day 2 · Sun 2 May")).toBeOnTheScreen();
+  expect(screen.getByLabelText("About: Journey to Graz · day 2")).toBeOnTheScreen();
 
   // Delete asks first, then removes the entry and its file.
   await fireEvent.press(screen.getByTestId("delete-document"));
@@ -180,7 +190,7 @@ test("a place shows only its own documents, and a new one starts linked to it", 
       category: "ticket",
       link: { kind: "place", key: "name:Schönbrunn Palace", name: "Schönbrunn Palace", day: 1 },
     }),
-    saved({ id: "t2", title: "Insurance", category: "insurance", link: { kind: "trip" } }),
+    saved({ id: "t2", title: "Visa letter", category: "other", link: { kind: "trip" } }),
   ]);
   await show(
     { name: "placeDetail", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID, itemId: "i1" },
@@ -188,16 +198,17 @@ test("a place shows only its own documents, and a new one starts linked to it", 
   );
   expect(await screen.findByText("Tickets and documents")).toBeOnTheScreen();
   expect(await screen.findByText("Palace tickets")).toBeOnTheScreen();
-  expect(screen.queryByText("Insurance")).toBeNull();
+  expect(screen.queryByText("Visa letter")).toBeNull();
   await fireEvent.press(screen.getByRole("button", { name: "Add a document" }));
   expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("choose-file"));
   expect(screen.getByTestId("link-place").props.accessibilityState).toMatchObject({
     selected: true,
   });
+  // The drop-down shows the chosen attraction; its list is closed until it is opened.
   expect(
-    screen.getByRole("button", { name: "Schönbrunn Palace, Day 1" }).props.accessibilityState,
-  ).toMatchObject({ selected: true });
+    screen.getByRole("button", { name: "Attraction, Schönbrunn Palace" }).props.accessibilityState,
+  ).toMatchObject({ expanded: false });
 });
 
 test("Add on a trip offers a document", async () => {
@@ -247,10 +258,10 @@ test("a past trip keeps its documents, reached from its screen", async () => {
 test("the empty tab offers each kind; the list filters, sorts, and its menu opens or edits", async () => {
   const empty = await show(DOCS);
   expect(await screen.findByTestId("documents-empty")).toBeOnTheScreen();
-  await fireEvent.press(screen.getByTestId("start-insurance"));
+  await fireEvent.press(screen.getByTestId("start-transport"));
   await fireEvent.press(await screen.findByTestId("choose-file"));
   // The kind chosen on the tile is already selected.
-  expect(screen.getByRole("button", { name: "Insurance" }).props.accessibilityState).toMatchObject({
+  expect(screen.getByRole("button", { name: "Transport" }).props.accessibilityState).toMatchObject({
     selected: true,
   });
   expect(empty.documents).toBeDefined();

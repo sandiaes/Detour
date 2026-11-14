@@ -6,14 +6,16 @@ import { StyleSheet, Text, View } from "react-native";
 import { useProgressiveCount } from "../data/useProgressive";
 import { type PastPoint, VISIT_KIND_LABEL } from "../domain/pastTrip";
 import { boundsOf } from "../domain/itinerary";
-import { colors, radius, spacing, type } from "../theme";
+import { colors, radius, shadow, spacing, type } from "../theme";
 import { AttributionBar } from "./AttributionBar";
 import { Button } from "./Button";
+import { Icon } from "./ds/Icon";
 import { Notice } from "./ui";
 
 const PADDING = { top: 72, right: 56, bottom: 72, left: 56 };
-const CITY_SIZE = 44;
-const ATTRACTION_SIZE = 32;
+const CITY_SIZE = 26;
+const ATTRACTION_SIZE = 22;
+const SELECTED_SIZE = 32;
 /** Android's minimum touch target; the markers are drawn smaller inside it. */
 const TOUCH_SIZE = 48;
 
@@ -53,7 +55,7 @@ export function PastTripMap({ points, map, onShowList }: Props) {
 
   return (
     <View style={styles.fill}>
-      <View style={styles.fill}>
+      <View style={[styles.fill, styles.clip]}>
         <Map
           key={attempt}
           style={styles.fill}
@@ -93,11 +95,7 @@ export function PastTripMap({ points, map, onShowList }: Props) {
                       selectedId === p.id && styles.selected,
                     ]}
                   >
-                    {isCity ? (
-                      <Text style={styles.cityText} maxFontSizeMultiplier={1.3}>
-                        C
-                      </Text>
-                    ) : null}
+                    {isCity ? <Icon name="city" size={14} color={colors.onPrimary} /> : null}
                   </View>
                 </View>
               </Marker>
@@ -149,17 +147,13 @@ export function PastTripMap({ points, map, onShowList }: Props) {
           </>
         ) : (
           <View style={styles.legend}>
-            <Text style={styles.meta}>Tap a marker for details.</Text>
             <View style={styles.legendRow}>
-              <View style={[styles.city, styles.key]}>
-                <Text style={styles.cityText}>C</Text>
-              </View>
-              <Text style={styles.legendText}>Square, blue: city</Text>
-            </View>
-            <View style={styles.legendRow}>
+              <View style={[styles.city, styles.key]} />
+              <Text style={styles.legendText}>City</Text>
               <View style={[styles.attraction, styles.key]} />
-              <Text style={styles.legendText}>Round, green: attraction</Text>
+              <Text style={styles.legendText}>Attraction</Text>
             </View>
+            <Text style={styles.meta}>Tap a marker for details.</Text>
             <Text style={styles.legendText}>
               Past trips keep the places, not the routes or travel times.
             </Text>
@@ -172,6 +166,7 @@ export function PastTripMap({ points, map, onShowList }: Props) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  clip: { overflow: "hidden" },
   hit: {
     width: TOUCH_SIZE,
     height: TOUCH_SIZE,
@@ -179,27 +174,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // The same small flat markers as a plan's map: cities navy and square-ish, attractions teal and
+  // round, a thin white edge, a light shadow; the chosen one larger.
   city: {
     width: CITY_SIZE,
     height: CITY_SIZE,
-    borderRadius: radius.sm,
-    backgroundColor: colors.link,
-    borderWidth: 3,
+    borderRadius: 8,
+    backgroundColor: colors.ink,
+    borderWidth: 2,
     borderColor: colors.onPrimary,
     alignItems: "center",
     justifyContent: "center",
+    ...shadow.card,
   },
-  cityText: { color: colors.onPrimary, fontWeight: "700", fontSize: 16 },
   attraction: {
     width: ATTRACTION_SIZE,
     height: ATTRACTION_SIZE,
     borderRadius: ATTRACTION_SIZE / 2,
     backgroundColor: colors.marker,
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: colors.onPrimary,
+    ...shadow.card,
   },
-  selected: { backgroundColor: colors.markerSelected, borderColor: colors.warning },
-  key: { width: 20, height: 20, borderWidth: 2 },
+  selected: {
+    width: SELECTED_SIZE,
+    height: SELECTED_SIZE,
+    borderRadius: SELECTED_SIZE / 2,
+    backgroundColor: colors.markerSelected,
+  },
+  key: { width: 14, height: 14, borderWidth: 1.5, shadowOpacity: 0, elevation: 0 },
   failure: {
     position: "absolute",
     top: spacing.md,
@@ -219,14 +222,15 @@ const styles = StyleSheet.create({
   },
   tagText: { ...type.caption, color: colors.text },
   panel: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
+    backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.xxs,
   },
-  title: { ...type.heading, color: colors.text },
-  meta: { ...type.small, color: colors.muted },
+  title: { ...type.small, fontWeight: "700", color: colors.text },
+  meta: { ...type.caption, color: colors.muted },
   legend: { gap: spacing.xs },
   legendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   legendText: { ...type.caption, color: colors.muted, flexShrink: 1 },
