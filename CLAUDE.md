@@ -68,7 +68,9 @@ overview without the days figure, first days or notes, an Itinerary tab of days 
 that day, quieter map markers, a new-trip screen with travel style, public transport and "Start with
 an empty trip", and meals aimed at lunch 13:00 and dinner 20:00 (day window to 22:00). Adding places
 to an empty trip is not built yet (it needs the owner's approval). Covers are illustrations,
-not photos, until an image source has an ADR. **No budgets,
+not photos, until ADR 022 (accepted 2026-11-14: Wikimedia Commons photos through Wikidata, stored in
+Supabase Storage, a "Change photo" choice on the new-trip screen and an automatic photo otherwise)
+is built; its terms are recorded in the ADR, nothing is built yet and nothing calls Wikimedia. **No budgets,
 currencies or prices** (ADR 017, accepted 2026-11-13): none in the app, the API or the database;
 bringing them back needs a new ADR. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),
