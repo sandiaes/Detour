@@ -118,7 +118,8 @@ about 100 m): areas scope a destination, they are not for drawing borders.
 `id` (deterministic uuid), `region_id`, `name`, `name_norm`, `level`, `country_iso2` (from the
 `ISO3166-2` tag, or the region's only country; null if neither), `geom` (multipolygon), `source`
 (`osm`), `source_ref` (`relation/123`), `licence_code` (`ODbL-1.0`), `is_active`,
-`last_changed_import_run_id`.
+`last_changed_import_run_id`, `wikidata_id` (the `wikidata` tag, for the area's photo; migration
+`0011`).
 
 ### 2.6 `geo.place`: one real-world place that can appear in an itinerary
 
@@ -373,9 +374,7 @@ areas, **excluded objects per class and reason**, the largest categories, the si
 schema (measured after the vacuum that follows the commit, which is the size gate 6 uses), and
 the six gates of [ADR 009](decisions/009-region-readiness-thresholds.md) with their values. A region is `available` only if every gate passes; an unknown value never passes.
 
-## 8. Future: photos
-
-Reserved so later work needs no restructuring. Not built.
+## 8. Photos
 
 **Reference photos (destinations and attractions)** are a separate thing from the user's photos
 below. Accepted in [ADR 022](decisions/022-destination-and-attraction-photos.md); the tables are built
@@ -383,7 +382,11 @@ below. Accepted in [ADR 022](decisions/022-destination-and-attraction-photos.md)
 `geo.image` (a Commons file with author, licence, size, average colour and the Supabase Storage key),
 `geo.image_lookup` (what was found or not found for a place or city, and when) and a nullable
 `app.trip.cover_image_id` with no foreign key (migration `0009`). They carry their own licence and
-sit outside the ODbL data.
+sit outside the ODbL data. Migration `0011` (ADR 022 amendment): `geo.admin_area.wikidata_id` (the
+boundary's `wikidata` tag, kept by the import; areas imported earlier have none until their region is
+imported again), the lookup kind `area`, and `geo.cover_preview` (`id`, `commons_file`,
+`storage_key` under `previews/`, `created_date`): the 500 px previews of "Change photo", deleted after
+a week. The background resolver and the candidates write these tables from the API itself.
 
 **The user's own photos:**
 

@@ -27,6 +27,7 @@ import { PlaceDetailScreen } from "./screens/PlaceDetailScreen";
 import { PhotosScreen } from "./screens/PhotosScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TripOverviewScreen } from "./screens/TripOverviewScreen";
+import { ImageCreditsScreen } from "./screens/ImageCreditsScreen";
 import { TripScreen } from "./screens/TripScreen";
 import { TripSettingsScreen } from "./screens/TripSettingsScreen";
 import { TripsScreen } from "./screens/TripsScreen";
@@ -44,6 +45,8 @@ function CurrentScreen({ route }: { route: Route }) {
       return <MoreScreen />;
     case "settings":
       return <SettingsScreen />;
+    case "imageCredits":
+      return <ImageCreditsScreen />;
     case "tripOverview":
       // Keyed so that another trip never reuses this one's tab state.
       return (

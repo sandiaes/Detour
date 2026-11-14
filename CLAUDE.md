@@ -92,10 +92,13 @@ step 4. **No budgets,
 currencies or prices** (ADR 017, accepted 2026-11-13): none in the app, the API or the database;
 bringing them back needs a new ADR. The decisions in `docs/app-plan.md`
 section 1 are recorded; hosting (D3) is decided in ADR 005, the licence is Apache-2.0 (ADR 007),
-and the app is not distributed through app stores (ADR 008). **Proposed, awaiting the owner's approval, nothing
-built** (brief `docs/briefs/multi-city-trips-and-photos.md`): ADR 024 (multi-city trips with stops the user
-chooses) and an amendment to ADR 022 (photo fallback chain, portrait photos cropped to fit, "Change photo",
-a background resolver on the API); the Part 0 diagnosis is `docs/spikes/apk-photos-diagnosis.md`. Do not start the next phase until the
+and the app is not distributed through app stores (ADR 008). **Approved by the owner on 2026-11-14** (brief `docs/briefs/multi-city-trips-and-photos.md`; Part 0
+diagnosis in `docs/spikes/apk-photos-diagnosis.md`): **the ADR 022 amendment is built and awaits acceptance**
+(migration `0011`; a fallback chain for city and area photos through English Wikipedia lead images and
+Commons categories; portrait photos accepted and cropped to fit on screen; a background resolver on the API
+(`images/background.py`, advisory lock, no workflow needed); "Change photo" with up to 12 candidates and
+backend previews; "Image credits" under More; day thumbnails; coverage not yet measured, not checked on a
+device). **ADR 024 (multi-city trips, proposed and approved) is being built.** Do not start the next phase until the
 owner asks for it.
 
 ## Read first

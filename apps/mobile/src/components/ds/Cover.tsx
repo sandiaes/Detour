@@ -60,6 +60,62 @@ export function usePhotoUri(photo: Photo | null | undefined): string | null {
   return photo && apiUrl ? `${apiUrl.replace(/\/$/, "")}${photo.url}` : null;
 }
 
+/**
+ * Where a photo sits in its frame (ADR 022 amendment, decision e). The photo always fills the frame
+ * and the overflow is cropped. A landscape photo is centred. A portrait photo is anchored toward
+ * its upper part: the frame shows the band about a third of the way down, where towers and façades
+ * usually are. Nothing is cropped in storage; this is only how the stored photo is laid out.
+ */
+export function photoPlacement(
+  frame: { width: number; height: number },
+  photo: { width: number; height: number },
+): { width: number; height: number; left: number; top: number } {
+  if (frame.width <= 0 || frame.height <= 0 || photo.width <= 0 || photo.height <= 0) {
+    return { width: frame.width, height: frame.height, left: 0, top: 0 };
+  }
+  const scale = Math.max(frame.width / photo.width, frame.height / photo.height);
+  const width = photo.width * scale;
+  const height = photo.height * scale;
+  const spareX = width - frame.width;
+  const spareY = height - frame.height;
+  const portrait = photo.height > photo.width;
+  return {
+    width,
+    height,
+    left: -spareX / 2,
+    top: portrait ? -spareY / 3 : -spareY / 2,
+  };
+}
+
+/** A photo filling its frame, placed by `photoPlacement`. */
+export function FittedPhoto({
+  uri,
+  photoSize,
+  testID,
+}: {
+  uri: string;
+  photoSize?: { width: number; height: number } | null;
+  testID?: string;
+}) {
+  const [frame, setFrame] = useState<{ width: number; height: number } | null>(null);
+  const place = frame && photoSize ? photoPlacement(frame, photoSize) : null;
+  return (
+    <View
+      style={StyleSheet.absoluteFill}
+      onLayout={(e) =>
+        setFrame({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
+      }
+    >
+      <Image
+        source={{ uri }}
+        style={place ? { position: "absolute", ...place } : StyleSheet.absoluteFill}
+        resizeMode="cover"
+        testID={testID}
+      />
+    </View>
+  );
+}
+
 export function Cover({
   seedKey,
   photo,
@@ -108,14 +164,7 @@ export function Cover({
       accessibilityIgnoresInvertColors
     >
       {uri ? (
-        <>
-          <Image
-            source={{ uri }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-            testID="cover-photo"
-          />
-        </>
+        <FittedPhoto uri={uri} photoSize={givenUri ? null : photo} testID="cover-photo" />
       ) : (
         <Svg
           width="100%"

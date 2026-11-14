@@ -46,6 +46,7 @@ export function createFakeClient(handlers: Record<string, FakeHandler>): FakeCli
     GET: make("GET"),
     POST: make("POST"),
     PATCH: make("PATCH"),
+    PUT: make("PUT"),
     DELETE: make("DELETE"),
     calls,
     count: (key: string) => calls.filter((c) => `${c.method} ${c.path}` === key).length,

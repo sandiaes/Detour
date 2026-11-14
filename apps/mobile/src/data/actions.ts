@@ -1,4 +1,5 @@
 import type {
+  CoverCandidate,
   GenerationResult,
   Itinerary,
   ItinerarySummary,
@@ -157,7 +158,36 @@ export function useTripActions() {
     [need, data],
   );
 
+  /** Photos to choose a cover from (ADR 022 amendment): slow the first time for a destination
+   * (the backend asks Wikimedia and makes previews), then cached for a week. */
+  const coverCandidates = useCallback(
+    async (kind: "city" | "area", ref: string): Promise<CoverCandidate[]> =>
+      call(
+        need().GET("/v1/destinations/{kind}/{ref}/cover-candidates", {
+          params: { path: { kind, ref } },
+        }),
+      ),
+    [need],
+  );
+
+  /** Set the trip's cover to a candidate, or back to the automatic photo with null. */
+  const setCover = useCallback(
+    async (tripId: string, commonsFile: string | null): Promise<Trip> => {
+      const trip = await call(
+        need().PUT("/v1/trips/{trip_id}/cover", {
+          params: { path: { trip_id: tripId } },
+          body: { commons_file: commonsFile },
+        }),
+      );
+      data.update<Trip[]>(keys.trips, (list) => list.map((t) => (t.id === trip.id ? trip : t)));
+      return trip;
+    },
+    [need, data],
+  );
+
   return {
+    coverCandidates,
+    setCover,
     createTrip,
     generate,
     startEmptyTrip,

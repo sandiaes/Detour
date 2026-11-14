@@ -20,6 +20,7 @@ export type Route =
   | { name: "photos" }
   | { name: "more" }
   | { name: "settings" }
+  | { name: "imageCredits" }
   | { name: "tripOverview"; tripId: string; section?: TripSection }
   | { name: "createTrip" }
   | { name: "trip"; tripId: string }

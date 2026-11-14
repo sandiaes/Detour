@@ -278,8 +278,10 @@ responses and fixtures only, not on a device):
   portrait photos for attractions, and the candidate list for "Change photo" (step 4).
 
 **2026-11-14, proposed amendment: coverage, "Change photo" and loading without a workflow**
-(brief `docs/briefs/multi-city-trips-and-photos.md`, Part 2; **Proposed**, nothing built; the owner
-answered "photos fit their container" and "photos load without a GitHub workflow: yes").
+(brief `docs/briefs/multi-city-trips-and-photos.md`, Part 2; **approved by the owner on 2026-11-14**
+("Approved, go ahead with your defaults"), **built and awaiting acceptance**, see "Built" below; the
+owner answered "photos fit their container" and "photos load without a GitHub workflow: yes", and
+kept the 1,080 px longest side for portraits).
 
 *Part 0 first* (`docs/spikes/apk-photos-diagnosis.md`): the serving path works on the real
 deployment (the owner sees the Vienna and Salzburg covers in the APK). What the owner misses has two
@@ -333,9 +335,9 @@ Proposed decisions (letters, so they do not clash with 1 to 21):
 
 **"Change photo" (step 4):**
 
-- **g. `GET /v1/destinations/{kind}:{ref}/cover-candidates`**: up to 12 candidates passing the gate,
+- **g. `GET /v1/destinations/{kind}/{ref}/cover-candidates`**: up to 12 candidates passing the gate,
   in the chain's order (the destination's own image first), each with author, licence, file page,
-  size and a **preview** served by the backend (`/v1/cover-previews/{id}`, a 360 px JPEG fetched and
+  size and a **preview** served by the backend (`/v1/cover-previews/{id}`, a 500 px JPEG fetched and
   resized by the backend and kept in the `photos` bucket under `previews/` for a week, then deleted
   by the resolver). The candidate list is cached for a week in `app.provider_cache` and every
   Wikimedia request counts against the daily budget. The app still talks only to the backend.
@@ -372,3 +374,34 @@ Proposed decisions (letters, so they do not clash with 1 to 21):
 
 Migration `0011` (`geo.admin_area.wikidata_id`, `image_lookup.kind` value `area`, reason values)
 comes before ADR 024's `0012`.
+
+**2026-11-14, the amendment built** (awaits acceptance; tried on recorded responses and fixtures only,
+not on a device and not against Wikimedia from this session, whose network does not reach it):
+
+- **Adapter and resolver:** `page_images` and `category_files` in `adapters/wikimedia.py` with the
+  pure parsers `parse_pageimages` and `parse_category_files`; `EntityImage` keeps the `enwiki` title
+  and the P373 category; one request queue for the whole process (a lock and a shared clock); the
+  size gate is longer side 1,200 and shorter side 800 (`not_landscape` is gone); a file Commons
+  does not hold is `not_on_commons`. The resolver runs the chain for `city` and `area` only and
+  reports which step found each photo (`steps`: `city:image`, `city:wikipedia`, `city:category`,
+  `area:…`, `place:image`). The `images` command gained `--areas` (default 50).
+- **Migration `0011`:** `geo.admin_area.wikidata_id`, the lookup kind `area`, `geo.cover_preview`.
+  The Austrian areas get their item when "Import region" runs again for Austria.
+- **Background resolve** (`images/background.py`, `images/queue.py`): queued after `POST
+  /v1/trips`, after generation, after a cover-candidates request, and on every `GET /v1/trips` (the
+  self-healing read); advisory lock `22022022`; at most 100 lookups a run. FastAPI runs it after the
+  response in a worker thread.
+- **"Change photo":** the path is `/v1/destinations/{kind}/{ref}/cover-candidates` (two segments,
+  not `{kind}:{ref}`). `POST /v1/trips` does not take a cover: the app creates the trip, then calls
+  `PUT /v1/trips/{id}/cover` with the file chosen on the form (a failure leaves the automatic photo).
+  Only a file offered for the trip's destinations can be chosen (`cover_not_usable` otherwise).
+  The first request for a destination makes about 20 Wikimedia requests at one a second (the item,
+  the lead image, the category, file information, twelve preview downloads), so the sheet says it
+  can take half a minute; later requests in the week come from the cache.
+- **App:** `photoPlacement` and `FittedPhoto` in `Cover.tsx` (every cover, the day thumbnails and
+  the candidates use them); `CoverPicker`; "Change photo" on the new-trip screen and in the trip
+  menu; More, "Image credits" (the photos the app holds in memory in this session); day thumbnails
+  from the first visit with a photo.
+- **Not done here:** the coverage measurement of decision f needs a real run against Wikimedia
+  (the "Resolve images" workflow with `--areas`, after Austria is imported again), and the visual
+  check on a small phone and a tablet needs a device. Both are owed before acceptance.

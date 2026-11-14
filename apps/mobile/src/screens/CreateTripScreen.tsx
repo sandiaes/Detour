@@ -1,4 +1,4 @@
-import type { DestinationResult, Trip } from "@detour/shared";
+import type { CoverCandidate, DestinationResult, Trip } from "@detour/shared";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 
@@ -6,6 +6,7 @@ import { useBackend } from "../api/BackendProvider";
 import { call, describeError, isOfflineError, planningIssues } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { Cover } from "../components/ds/Cover";
+import { CoverPicker } from "../components/ds/CoverPicker";
 import { Icon } from "../components/ds/Icon";
 import { IconButton } from "../components/ds/primitives";
 import { Notice, useAnnounceOnMount } from "../components/ui";
@@ -75,6 +76,11 @@ export function CreateTripScreen() {
   const [mode, setMode] = useState<"generate" | "empty">("generate");
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
   const [created, setCreated] = useState<Trip | null>(null);
+  // "Change photo" (ADR 022 amendment): a candidate chosen before the trip exists is set as its
+  // cover right after it is created.
+  const [cover, setCoverChoice] = useState<CoverCandidate | null>(null);
+  const [picker, setPicker] = useState(false);
+  const apiUrl = (useBackend().apiUrl ?? "").replace(/\/$/, "");
 
   const client = state.phase === "ready" ? state.connection.client : null;
   const waking = state.phase === "connecting" && state.waking;
@@ -160,6 +166,10 @@ export function CreateTripScreen() {
           start_date: startDate.trim() || null,
         });
         setCreated(trip);
+        if (cover) {
+          // A cover that cannot be set leaves the automatic photo; the trip is not held up.
+          trip = await actions.setCover(trip.id, cover.commons_file).catch(() => trip as Trip);
+        }
       } catch (e) {
         setProblem({ message: describeError(e), issues: [] });
         setWorking(null);
@@ -227,6 +237,7 @@ export function CreateTripScreen() {
                 onPress={() => {
                   setChosen(null);
                   setCreated(null);
+                  setCoverChoice(null);
                 }}
               />
             ) : null}
@@ -239,13 +250,43 @@ export function CreateTripScreen() {
           {!chosen ? (
             <SearchResults search={search} waking={waking} query={q} onChoose={setChosen} />
           ) : (
-            <Cover
-              seedKey={chosen.ref}
-              height={120}
-              rounded={radius.md}
-              style={styles.cover}
-              testID="create-cover"
-            />
+            <>
+              <Cover
+                seedKey={chosen.ref}
+                uri={cover && apiUrl ? `${apiUrl}${cover.preview_url}` : null}
+                height={120}
+                rounded={radius.md}
+                style={styles.cover}
+                testID="create-cover"
+              />
+              <View style={styles.coverActions}>
+                <Button
+                  label="Change photo"
+                  icon="photos"
+                  variant="secondary"
+                  size="compact"
+                  hint="Choose the trip's photo from photos of the destination"
+                  disabled={!actions.connected}
+                  onPress={() => setPicker(true)}
+                  testID="change-photo"
+                />
+                {cover ? (
+                  <Text style={styles.hint} numberOfLines={1}>
+                    Photo: {cover.credit.author}, {cover.credit.licence}
+                  </Text>
+                ) : null}
+              </View>
+              {picker ? (
+                <CoverPicker
+                  visible
+                  sources={[{ kind: chosen.kind, ref: chosen.ref, name: chosen.name }]}
+                  load={actions.coverCandidates}
+                  chosen={cover?.commons_file ?? null}
+                  onChoose={(c) => setCoverChoice(c)}
+                  onClose={() => setPicker(false)}
+                />
+              ) : null}
+            </>
           )}
         </View>
 
@@ -549,6 +590,7 @@ const styles = StyleSheet.create({
   placeholder: { color: colors.muted },
   chosenName: { ...type.heading, color: colors.text },
   cover: { marginTop: spacing.xs },
+  coverActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   pair: {
     flexDirection: "row",
     marginHorizontal: spacing.lg,

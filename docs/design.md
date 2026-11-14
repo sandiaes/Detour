@@ -31,8 +31,14 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    everywhere else names and dates sit beside it. Its average colour shows while it loads. It is never shown without its author and
    licence, kept behind a small "i" in its bottom right corner (pressed, it shows "Photo: author,
    licence, Wikimedia Commons (resized)" and opens the file's page; `Cover` draws it, so no screen can
-   forget it). A photo is never a map marker. The "Change photo" control of screen 13 is not built yet (ADR 022,
-   decision 15).
+   forget it). A photo is never a map marker. **A photo fills its frame and the overflow is cropped**
+   (ADR 022 amendment, decision e): a landscape photo is centred, a portrait photo is anchored about a
+   third of the way down (`photoPlacement` in `Cover.tsx`); nothing is cropped in storage.
+   **"Change photo"** (the new-trip screen under the destination, and the trip menu) opens a sheet of up
+   to 12 photos of the destination, three across, each with its author and licence, and "Automatic
+   photo" (`CoverPicker`). For a multi-city trip it has one tab per stop. A day of the Itinerary tab
+   shows the photo of its first visit that has one. **More, Image credits** lists the author, licence
+   and page of every photo the app holds.
 5. **Honest about what is not built.** A control that does nothing yet says so in words
    ("Not built yet", "saved for later"). Nothing is faked.
 6. **Small type, large targets.** Body text is compact; every control is still at least 48 dp tall
@@ -115,7 +121,8 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
      per trip day, chosen as its itinerary at once. No proposals. The trip opens on its overview.
 
 Removed from the screen of the reference image: interests, budget and "Include popular
-highlights", the "Change photo" control and the personalised-itineraries note. The trip name is
+highlights" and the personalised-itineraries note. "Change photo" is a slim outlined pill under
+the destination's cover; the photo chosen there becomes the trip's cover as soon as it is created. The trip name is
 not asked; it is the destination.
 
 ### Trip overview (screens 02, 12)
@@ -269,7 +276,8 @@ the screen reader announcing a screen's title on arrival.
   owner's approval and an amendment to ADR 021 before it is built.
 - **Travel style and public transport** are stored nowhere. Using them needs a field on the trip
   and a rule in the planner, with an ADR.
-- **"Change photo"** (ADR 022, step 4) is not built.
+- **Photos are not checked on a device.** The crop rule and the "Change photo" sheet are tested by
+  component tests only; a look on a small phone and a tablet is still owed (brief, Part 2a).
 - **English names** exist only where OpenStreetMap has `name:en`; the rest keep their local name.
   Wikidata labels would fill more gaps but need an ADR for the provider.
 - **Notes, reservations, trip summary:** ADR 021, "Not built". Documents are built (ADR 023) and

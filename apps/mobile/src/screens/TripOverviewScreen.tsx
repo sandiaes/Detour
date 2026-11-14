@@ -30,7 +30,8 @@ import {
   WakingServer,
   useAnnounceOnMount,
 } from "../components/ui";
-import { keys } from "../data/actions";
+import { keys, useTripActions } from "../data/actions";
+import { CoverPicker, type CoverSource } from "../components/ds/CoverPicker";
 import { useResource } from "../data/DataProvider";
 import { useTripCounts } from "../data/tripCounts";
 import { PlanSummaryCard } from "../components/plan/PlanSummaryCard";
@@ -140,6 +141,7 @@ function DayTimeline({
             <View style={[styles.dayCard, i < days.length - 1 && styles.dayCardRule]}>
               <Cover
                 seedKey={`${coverKey}:${base ?? day.day_index}`}
+                photo={firstPhoto(day)}
                 height={56}
                 rounded={radius.sm + 2}
                 style={styles.thumb}
@@ -156,6 +158,33 @@ function DayTimeline({
       })}
     </View>
   );
+}
+
+/** Where a trip's cover can be chosen from: its city or area (or, for a multi-city trip, each
+ * stop's city, ADR 024). */
+export function coverSources(trip: Trip): CoverSource[] {
+  const stops = (trip as Trip & { stops?: { city_id: number; name: string }[] }).stops ?? [];
+  if (stops.length > 0) {
+    return stops.map((s) => ({ kind: "city" as const, ref: String(s.city_id), name: s.name }));
+  }
+  const kind = trip.destination.kind === "area" ? "area" : "city";
+  return [{ kind, ref: trip.destination.ref, name: trip.destination.name }];
+}
+
+/** The Commons file name a photo's page names ("…/wiki/File:Wien_-_Dom.jpg" is "Wien - Dom.jpg"). */
+export function commonsFileOf(sourceUrl: string | undefined): string | null {
+  const name = sourceUrl?.split("/File:")[1];
+  if (!name) return null;
+  try {
+    return decodeURIComponent(name).replace(/_/g, " ");
+  } catch {
+    return name.replace(/_/g, " ");
+  }
+}
+
+/** The photo of the day's first visit that has one (ADR 022, decision 19), else none. */
+export function firstPhoto(day: Day) {
+  return day.items.find((item) => item.type === "visit" && item.image)?.image ?? null;
 }
 
 function ChoosePlanCard({ trip }: { trip: Trip }) {
@@ -215,6 +244,8 @@ export function TripOverviewScreen({
   );
   const [section, setSectionState] = useState<TripSection>(initialSection);
   const [menu, setMenu] = useState(false);
+  const [picker, setPicker] = useState(false);
+  const actions = useTripActions();
   const [dayIndex, setDayIndex] = useState<number | null>(null);
   // The tabs stick to the top of the screen once the cover has scrolled away.
   const [stuck, setStuck] = useState(false);
@@ -380,6 +411,16 @@ export function TripOverviewScreen({
           }}
         />
         <ListRow
+          icon="photos"
+          title="Change photo"
+          detail="Choose the trip's cover from photos of the destination"
+          testID="menu-change-photo"
+          onPress={() => {
+            setMenu(false);
+            setPicker(true);
+          }}
+        />
+        <ListRow
           icon="settings"
           title="Trip settings"
           detail="New proposals, mark as past, delete"
@@ -391,6 +432,20 @@ export function TripOverviewScreen({
         />
       </RowGroup>
     </Sheet>
+  ) : null;
+
+  const pickerSheet = picker ? (
+    <CoverPicker
+      visible
+      sources={coverSources(trip)}
+      load={actions.coverCandidates}
+      chosen={commonsFileOf(trip.cover_image?.credit.source_url)}
+      onChoose={async (c) => {
+        await actions.setCover(trip.id, c?.commons_file ?? null);
+        trips.refresh();
+      }}
+      onClose={() => setPicker(false)}
+    />
   ) : null;
 
   const tabsFor = (compact: boolean) => (
@@ -445,6 +500,7 @@ export function TripOverviewScreen({
         {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
         {planView("map")}
         {menuSheet}
+        {pickerSheet}
       </View>
     );
   }
@@ -503,6 +559,7 @@ export function TripOverviewScreen({
         </View>
       </ScrollView>
       {menuSheet}
+      {pickerSheet}
     </View>
   );
 }
