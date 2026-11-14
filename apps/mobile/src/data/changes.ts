@@ -6,6 +6,7 @@ import type {
   ChangeSetApplied,
   ChangeSetCreate,
   Itinerary,
+  ItemCreate,
   ItinerarySummary,
   SlotRequest,
   SlotSuggestions,
@@ -128,6 +129,23 @@ export function useChangeActions() {
     [need, data],
   );
 
+  /** Puts a place on a day at a time the user chose, with no proposal (the item endpoint). The
+   * plan is read again afterwards. Used for empty (manual) plans, which cannot be recalculated,
+   * and as a direct choice on any plan. */
+  const addItem = useCallback(
+    async (tripId: string, itineraryId: string, day: number, body: ItemCreate): Promise<void> => {
+      await call(
+        need().POST("/v1/itineraries/{itinerary_id}/days/{day_index}/items", {
+          params: { path: { itinerary_id: itineraryId, day_index: day } },
+          body,
+        }),
+      );
+      data.invalidate(keys.itinerary(itineraryId));
+      data.invalidate(keys.itineraries(tripId));
+    },
+    [need, data],
+  );
+
   /** Locks or unlocks an item: a locked item is never moved or removed by a recalculation. */
   const setLocked = useCallback(
     async (itineraryId: string, itemId: string, locked: boolean): Promise<void> => {
@@ -178,6 +196,7 @@ export function useChangeActions() {
     apply,
     discard,
     setLocked,
+    addItem,
     connected: client !== null,
   };
 }

@@ -111,7 +111,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
   const label = PROFILE_LABEL[data.profile];
   const selected = data.status === "selected";
   // Planned itineraries of an active trip can be changed; a plan made by hand cannot be recalculated.
-  const editable = data.profile !== "manual" && trip?.status !== "past" && items.connected;
+  const editable = trip?.status !== "past" && items.connected;
   const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
   const estimatedNote = estimatedNoteOf(data);
   const error = problem ?? items.problem;
