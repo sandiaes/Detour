@@ -6,7 +6,8 @@
 # Needs the repository secret DETOUR_IMPORT_DATABASE_URL (the Supabase *session pooler* string,
 # port 5432). Storing the files needs DETOUR_SUPABASE_URL (https://<project>.supabase.co) and
 # DETOUR_SUPABASE_SERVICE_KEY as repository secrets and a public bucket named "photos". Until they
-# exist, leave "dry run" ticked: the run measures coverage and keeps the files in memory only.
+# exist, leave "dry run" ticked: the run measures coverage and keeps nothing (no files, no rows).
+# A real run first fetches again any image whose file is missing from storage.
 #
 # Wikimedia is called one request at a time with the identifying User-Agent below (ADR 022).
 name: Resolve images
@@ -28,7 +29,7 @@ on:
         required: true
         default: "500"
       dry_run:
-        description: "Dry run: do not use Supabase Storage (files are not kept)"
+        description: "Dry run: measure only, keep no files and no database rows"
         required: true
         type: boolean
         default: true

@@ -23,6 +23,8 @@ class ImageStore(Protocol):
 
     def get(self, key: str) -> bytes | None: ...
 
+    def exists(self, key: str) -> bool: ...
+
 
 class MemoryImageStore:
     """For tests and local runs without Supabase."""
@@ -36,6 +38,9 @@ class MemoryImageStore:
     def get(self, key: str) -> bytes | None:
         return self.objects.get(key)
 
+    def exists(self, key: str) -> bool:
+        return key in self.objects
+
 
 class SupabaseImageStore:
     def __init__(self, settings: Settings, transport: httpx.BaseTransport | None = None) -> None:
@@ -48,10 +53,18 @@ class SupabaseImageStore:
     def _client(self) -> httpx.Client:
         return httpx.Client(timeout=20.0, transport=self._transport)
 
+    def _auth_headers(self) -> dict[str, str]:
+        """A new-style secret key (``sb_secret_...``) is not a JWT and goes only in ``apikey``;
+        Supabase says to send it nowhere else. A legacy ``service_role`` key is a JWT (``eyJ...``)
+        and is also sent as the bearer token."""
+        headers = {"apikey": self._key}
+        if self._key.startswith("eyJ"):
+            headers["Authorization"] = f"Bearer {self._key}"
+        return headers
+
     def put(self, key: str, data: bytes, content_type: str = "image/jpeg") -> None:
         headers = {
-            "Authorization": f"Bearer {self._key}",
-            "apikey": self._key,
+            **self._auth_headers(),
             "Content-Type": content_type,
             "x-upsert": "true",
             "Cache-Control": "max-age=31536000",
@@ -77,6 +90,19 @@ class SupabaseImageStore:
         if response.status_code >= 400:
             raise StoreError(f"read refused: HTTP {response.status_code}")
         return response.content
+
+    def exists(self, key: str) -> bool:
+        """Whether the object is there, without downloading it (a HEAD request)."""
+        try:
+            with self._client() as client:
+                response = client.head(f"{self._base}/public/{self._bucket}/{key}")
+        except httpx.HTTPError as exc:
+            raise StoreError(type(exc).__name__) from exc
+        if response.status_code in (400, 404):
+            return False
+        if response.status_code >= 400:
+            raise StoreError(f"read refused: HTTP {response.status_code}")
+        return True
 
 
 def make_store(

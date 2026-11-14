@@ -65,6 +65,9 @@ class Report:
     stored_bytes: int = 0
     requests: int = 0
     stopped: str | None = None  # why the run ended early
+    # What this run wrote, so a dry run can take it back (see discard_run); not part of the report.
+    written: list[tuple[str, str]] = field(default_factory=list, repr=False)
+    created_images: list[uuid.UUID] = field(default_factory=list, repr=False)
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -192,6 +195,7 @@ def _resolve_batch(
     with engine.begin() as conn:
         for cand, status, reason, image_id in outcomes:
             _write_lookup(conn, cand, status, reason, image_id)
+            report.written.append((cand.kind, cand.ref_id))
             if status == "found":
                 report.found += 1
             elif status == "none":
@@ -265,6 +269,7 @@ def _ensure_image(
         )
     report.downloaded += 1
     report.stored_bytes += len(processed.data)
+    report.created_images.append(image_id)
     return image_id
 
 
@@ -292,3 +297,75 @@ def _write_lookup(
             "today": date.today(),
         },
     )
+
+
+def discard_runs(engine: Engine, reports: Sequence[Report]) -> None:
+    """Take back what dry runs wrote. A dry run keeps no files, so the rows it wrote would claim
+    photos that are stored nowhere, and its lookups would stop them being fetched later. Lookups
+    go first, across all the runs, so an image shared by two runs is removed too."""
+    with engine.begin() as conn:
+        for report in reports:
+            for kind, ref_id in report.written:
+                conn.execute(
+                    text("DELETE FROM geo.image_lookup WHERE kind = :k AND ref_id = :r"),
+                    {"k": kind, "r": ref_id},
+                )
+        for report in reports:
+            for image_id in report.created_images:
+                conn.execute(
+                    text(
+                        "DELETE FROM geo.image WHERE id = :id AND NOT EXISTS"
+                        " (SELECT 1 FROM geo.image_lookup WHERE image_id = :id)"
+                    ),
+                    {"id": image_id},
+                )
+
+
+def repair_missing(
+    engine: Engine, client: WikimediaClient, store: ImageStore, settings: Settings
+) -> dict[str, int]:
+    """Fetch again every image row whose file is missing from the store (a dry run, a lost
+    object). Returns counts; a file Commons no longer offers under the gate is left alone and
+    counted as ``unrepairable``, never silently dropped."""
+    with engine.begin() as conn:
+        rows = conn.execute(
+            text("SELECT id, commons_file, storage_key FROM geo.image ORDER BY id")
+        ).all()
+    missing = [r for r in rows if not store.exists(r[2])]
+    counts = {"checked": len(rows), "missing": len(missing), "repaired": 0, "unrepairable": 0}
+    for start in range(0, len(missing), BATCH_SIZE):
+        batch = missing[start : start + BATCH_SIZE]
+        infos = client.file_infos([r[1] for r in batch])
+        for image_id, file, key in batch:
+            info = infos.get(file)
+            url = info.thumb_url or info.original_url if info else None
+            if info is None or url is None or rejection_reason(info) is not None:
+                counts["unrepairable"] += 1
+                continue
+            try:
+                processed = process_image(
+                    client.download(url),
+                    max_side=settings.image_max_side,
+                    quality=settings.image_jpeg_quality,
+                )
+            except UndecodableImage:
+                counts["unrepairable"] += 1
+                continue
+            store.put(key, processed.data)
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "UPDATE geo.image SET width = :w, height = :h, bytes = :b, color = :c,"
+                        " fetched_date = :d WHERE id = :id"
+                    ),
+                    {
+                        "w": processed.width,
+                        "h": processed.height,
+                        "b": len(processed.data),
+                        "c": processed.color,
+                        "d": date.today(),
+                        "id": image_id,
+                    },
+                )
+            counts["repaired"] += 1
+    return counts

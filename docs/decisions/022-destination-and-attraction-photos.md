@@ -213,3 +213,39 @@ when the reported lag sits at 14 s. Why Wikidata reported that lag is not establ
 lag read from this session at about the same time was about 1 s; Wikidata may include other lag
 sources in the figure, which was not checked). A limit of 30 s still stops the run when the
 servers are really struggling, and `DETOUR_WIKIMEDIA_MAXLAG_SECONDS=5` restores the strict value.
+
+**2026-11-14, third run: the first real coverage figures** ("Resolve images", Austria, dry run, 20
+most populous cities and the 100 best-scored attractions; the downloads worked, so Wikimedia's
+`thumb.wikimedia.org` host and the 1,280 px width are confirmed):
+
+| | Asked | Photo | No image on the item | No Wikidata item matched | Rejected |
+|---|---|---|---|---|---|
+| Cities | 20 | 7 (35 %) | 7 | 5 | 1 (too small) |
+| Attractions | 100 | 76 (76 %) | 0 | 0 | 24: 16 not landscape, 5 too small, 2 licence, 1 no author |
+
+- **Size:** 83 stored photos, 14.46 MB, on average 174 KB, above the 150 KB estimate of decision 5.
+  At 4,000 images that is about 700 MB of the 1 GB allowance. The size can be brought down (quality
+  or longest side) if the headroom matters.
+- **The attractions were the best-scored 100 with a Wikidata tag**, so 76 % is an upper bound for
+  Austria, not an average; the rest of the 4,690 tagged attractions are less notable.
+- **Cities are the weak part.** Only 35 % of the 20 largest cities got a photo: a city item often
+  has no image property, and for five the GeoNames-ID search found no single item. A fallback chain
+  (image, then page banner, then the Commons category of the item) and trying the next candidate
+  after a rejected one would raise it. That is also the candidate list "Change photo" needs.
+- **Portrait photos are the main rejection for attractions** (16 of 24): towers and churches are
+  photographed upright. The landscape rule suits covers; for a detail screen a portrait photo may
+  be acceptable. Not changed: it is a design choice for the owner.
+- **Bug found by this run:** a dry run wrote `geo.image` and `geo.image_lookup` rows although it
+  keeps no files, which would have made a later real run skip those 83 places and leave their photos
+  unstored. Fixed: a dry run now takes back what it wrote (`discard_runs`), and a real run first
+  checks every image row against storage with a HEAD request and fetches missing files again
+  (`repair_missing`, reported under `repair`). The 83 rows already in the database are repaired by
+  the first real run.
+
+**2026-11-14, the storage key.** Supabase's API-keys page (read 2026-11-14) says the new secret key
+(`sb_secret_...`, the replacement of the legacy `service_role` key, elevated, bypasses row level
+security, backend use only) is not a JWT and must be sent in the `apikey` header, not as
+`Authorization: Bearer`; legacy keys are JWTs (`eyJ...`) and are being deprecated by the end of
+2026. The page does not mention Storage, so whether the new key works with
+`/storage/v1/object/...` is untested. The store now sends `apikey` always and the bearer header only
+for a legacy JWT key. The `photos` bucket was created on 2026-11-14 (public, JPEG only, 2 MB a file).
