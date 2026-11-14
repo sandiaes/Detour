@@ -224,9 +224,9 @@ def _resolve_batch(
     resolved: list[Candidate] = []
     for cand in batch:
         if cand.kind == "city" and cand.qid is None:
-            qid, reason = client.city_item(int(cand.ref_id))
-            if reason:
-                why[cand.ref_id] = reason
+            qid, missing = client.city_item(int(cand.ref_id))
+            if missing:
+                why[cand.ref_id] = missing
             cand = Candidate(cand.kind, cand.ref_id, qid)
         resolved.append(cand)
     qids = sorted({c.qid for c in resolved if c.qid})
