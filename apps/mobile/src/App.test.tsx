@@ -161,10 +161,10 @@ test("create a trip, compare the proposals, select one, read its days, see it on
     expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Select the Essentials plan" }));
     // Choosing a plan makes it the trip's active itinerary; the trip opens on its overview.
-    expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
+    expect(await screen.findByRole("header", { name: "Your itineraries" })).toBeOnTheScreen();
     expect(selected).toBe(ESSENTIALS_ID);
     // The itinerary and its map are tabs of the trip.
-    await fireEvent.press(screen.getByRole("button", { name: "Open the itinerary" }));
+    await fireEvent.press(screen.getByTestId("open-itinerary"));
     // The days are a timeline; a day opens on the map with its stops beneath.
     await fireEvent.press(await screen.findByTestId("day-row-1"));
     expect(await screen.findByTestId("map")).toBeOnTheScreen();

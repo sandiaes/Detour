@@ -47,17 +47,16 @@ test("the list shows one day at a time, with times, kinds and durations", async 
   expect(screen.queryByText("Schönbrunn Palace")).toBeNull();
 });
 
-test("choosing a stop shows why it is there and what its duration is based on", async () => {
+test("choosing a stop only selects it: nothing opens under it", async () => {
   await openDays();
-  expect(screen.queryByText("A well-known sight.")).toBeNull();
   await fireEvent.press(await screen.findByTestId("stop-i1"));
   expect(screen.getByTestId("stop-i1").props.accessibilityState).toMatchObject({ selected: true });
-  expect(screen.getByText("2 h · typical visit length")).toBeOnTheScreen();
-  expect(screen.getByText("A well-known sight.")).toBeOnTheScreen();
-  expect(screen.getByText("Close to the previous stop.")).toBeOnTheScreen();
-  await fireEvent.press(screen.getByTestId("stop-i2"));
-  expect(screen.getByText("1 h 30 min · set by you")).toBeOnTheScreen();
   expect(screen.queryByText("A well-known sight.")).toBeNull();
+  expect(screen.queryByText("2 h · typical visit length")).toBeNull();
+  expect(screen.queryByLabelText("Lock Schönbrunn Palace")).toBeNull();
+  await fireEvent.press(screen.getByTestId("stop-i2"));
+  expect(screen.getByTestId("stop-i2").props.accessibilityState).toMatchObject({ selected: true });
+  expect(screen.getByTestId("stop-i1").props.accessibilityState).toMatchObject({ selected: false });
 });
 
 test("meals show the meal, the venue type and the cuisine from the open data", async () => {
@@ -75,9 +74,6 @@ test("meals show the meal, the venue type and the cuisine from the open data", a
         "1 h, typical meal length. Why: Lunch, planned between 13:00 and 15:00.",
     ),
   ).toBeOnTheScreen();
-  await fireEvent.press(screen.getByTestId("stop-m1"));
-  expect(screen.getByText("1 h · typical meal length")).toBeOnTheScreen();
-  expect(screen.getByText("Lunch, planned between 13:00 and 15:00.")).toBeOnTheScreen();
 });
 
 test("an area plan names each day's base city and starts a new base with the journey", async () => {

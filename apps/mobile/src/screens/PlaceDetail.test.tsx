@@ -96,16 +96,17 @@ async function open(itemId: string, client = server()) {
   return client;
 }
 
-test("an attraction shows when, how long, where, and that opening hours are not checked", async () => {
+test("an attraction shows when and where without labels, and no opening hours or reasons", async () => {
   const client = await open("i1");
   expect(await screen.findByRole("header", { name: "Schönbrunn Palace" })).toBeOnTheScreen();
   expect(screen.getByText("Attraction")).toBeOnTheScreen();
-  expect(screen.getByText("Day 1 · Sat 1 May, 09:00 to 11:00")).toBeOnTheScreen();
-  expect(screen.getByText("2 h (typical visit length)")).toBeOnTheScreen();
+  expect(screen.getByText("Day 1 · Sat 1 May · 09:00 to 11:00 · 2 h")).toBeOnTheScreen();
   expect(await screen.findByText("Schönbrunner Schloßstraße 47, 1130 Wien")).toBeOnTheScreen();
-  expect(screen.getByText("Not checked")).toBeOnTheScreen();
-  expect(screen.getByText(/Check them before you go/)).toBeOnTheScreen();
-  expect(screen.getByText("• A well-known sight.")).toBeOnTheScreen();
+  for (const gone of ["When", "Duration", "Location", "Opening hours", "Not checked"]) {
+    expect(screen.queryByText(gone)).toBeNull();
+  }
+  expect(screen.queryByText("Why it is in the plan")).toBeNull();
+  expect(screen.queryByText("• A well-known sight.")).toBeNull();
   expect(screen.getByText("Data: © OpenStreetMap contributors (ODbL-1.0).")).toBeOnTheScreen();
   // Nothing invented: no price, rating or description.
   expect(screen.queryByText(/€|EUR|price|rating|★/i)).toBeNull();
@@ -141,7 +142,7 @@ test("a place the user added says so", async () => {
   await open("i2");
   expect(await screen.findByText("A place you added.")).toBeOnTheScreen();
   expect(screen.getByText("Added by you")).toBeOnTheScreen();
-  expect(screen.getByText("1 h 30 min (set by you)")).toBeOnTheScreen();
+  expect(screen.getByText(/ · 1 h 30 min$/)).toBeOnTheScreen();
 });
 
 test("without an address the position is shown, never a made-up address", async () => {

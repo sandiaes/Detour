@@ -223,13 +223,13 @@ test("a trip with a chosen plan opens on its overview, built around the active i
   );
   await fireEvent.press(await screen.findByRole("button", { name: /Upcoming/ }));
   expect(await screen.findByRole("header", { name: /^Vienna\./ })).toBeOnTheScreen();
-  expect(await screen.findByRole("header", { name: "Your itinerary" })).toBeOnTheScreen();
-  expect(screen.getByText("Essentials plan")).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Your itineraries" })).toBeOnTheScreen();
+  expect(screen.getByText("Classic Vienna")).toBeOnTheScreen();
   // The overview no longer previews the first days: the Itinerary tab has them.
   expect(screen.queryByRole("button", { name: /^Day 1/ })).toBeNull();
-  // The original proposals are not shown, and not even fetched.
+  // The comparison is not shown; the proposals are read once, for the second card.
   expect(screen.queryByText("How they differ")).toBeNull();
-  expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBe(0);
+  expect(client.count("GET /v1/trips/{trip_id}/itineraries")).toBeLessThanOrEqual(1);
   // The overview reads the plan once.
   expect(client.count("GET /v1/itineraries/{itinerary_id}")).toBe(1);
 });

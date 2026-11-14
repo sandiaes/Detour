@@ -4,11 +4,11 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 
 import { call } from "../api/unwrap";
 import { Button } from "../components/Button";
-import { DEVICE_ONLY_NOTE, KindTile } from "../components/documents/DocumentList";
+import { CATEGORY_ICON, DEVICE_ONLY_NOTE, KindTile } from "../components/documents/DocumentList";
 import { CalendarSheet } from "../components/ds/Calendar";
-import { Icon } from "../components/ds/Icon";
-import { IconButton, ListRow, RowGroup } from "../components/ds/primitives";
-import { Chip, EmptyState, Field, LoadingState, Notice, ScreenHeader } from "../components/ui";
+import { Icon, type IconName } from "../components/ds/Icon";
+import { Badge, IconButton } from "../components/ds/primitives";
+import { Chip, EmptyState, LoadingState, Notice, ScreenHeader } from "../components/ui";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useActivePlan } from "../data/tripCounts";
@@ -28,7 +28,7 @@ import {
   titleFromFileName,
 } from "../documents/model";
 import { useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { card, colors, docTones, radius, spacing, type } from "../theme";
 import { localToday, shortSpan } from "../domain/trips";
 import { formatDate, formatDayLabel } from "../util/format";
 
@@ -39,6 +39,13 @@ const LINK_KIND_LABEL: Record<LinkKind, string> = {
   day: "A day",
   place: "A place",
   leg: "A journey",
+};
+
+const LINK_KIND_ICON: Record<LinkKind, IconName> = {
+  trip: "trips",
+  day: "calendar",
+  place: "pin",
+  leg: "route",
 };
 
 /**
@@ -201,62 +208,39 @@ function Form({
     }
   };
 
-  // Step one (reference screen 16, left): how to add. Only the phone's file picker is built; it
-  // also reaches Google Drive, because Android's picker lists it.
+  // Step one (reference screen 16, left): how to add, as cards. Only the phone's file picker is
+  // built; it also reaches Google Drive, because Android's picker lists it.
   if (!existing && !picked) {
     return (
       <View style={styles.fill}>
         <ScrollView contentContainerStyle={styles.content}>
-          <ScreenHeader
-            title="Add document"
-            subtitle={`${trip.title} · ${shortSpan(trip)}`}
-            onBack={nav.back}
-          />
+          <FormHeader title="Add document" subtitle={`${trip.title} · ${shortSpan(trip)}`} />
           <View style={styles.body}>
             {problem ? <Notice tone="error">{problem}</Notice> : null}
             <Text style={styles.lead}>
               Keep your tickets, bookings and other travel documents in one place.
             </Text>
-            <RowGroup>
-              <ListRow
+            <View style={styles.cards}>
+              <OptionCard
                 icon="export"
+                tone="ticket"
                 title="Upload from device"
-                detail="Add a PDF or a picture from your phone, or from Google Drive through the phone's file picker."
+                detail="A PDF or a picture from your phone, or from Google Drive through the phone's file picker."
                 testID="choose-file"
                 onPress={() => void pick()}
               />
-              <ListRow
+              <OptionCard
                 icon="photos"
+                tone="transport"
                 title="Take a photo"
                 detail="Scan a ticket, reservation or document with the camera."
                 disabled
                 testID="take-photo"
               />
-              <ListRow
-                icon="route"
-                title="Add a link"
-                detail="A link to a ticket, a booking or a confirmation email."
-                disabled
-                testID="add-link"
-              />
-            </RowGroup>
-            <View style={styles.or}>
-              <View style={styles.orLine} />
-              <Text style={styles.orText}>or create manually</Text>
-              <View style={styles.orLine} />
             </View>
-            <RowGroup>
-              <ListRow
-                icon="document"
-                title="Create a document"
-                detail="A name, a kind and notes; you add the file later."
-                disabled
-                testID="create-document"
-              />
-            </RowGroup>
             {busy === "pick" ? <Text style={styles.muted}>Opening the file picker…</Text> : null}
             <View style={styles.privacy}>
-              <Icon name="shield" size={22} color={colors.primary} />
+              <Icon name="shield" size={20} color={colors.primary} />
               <View style={styles.fileText}>
                 <Text style={styles.privacyTitle}>Your documents stay private</Text>
                 <Text style={styles.muted}>{DEVICE_ONLY_NOTE}</Text>
@@ -278,10 +262,9 @@ function Form({
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <ScreenHeader
+        <FormHeader
           title={existing ? "Edit document" : "Add document"}
           subtitle={`${trip.title} · ${shortSpan(trip)}`}
-          onBack={nav.back}
         />
         <View style={styles.body}>
           {problem ? <Notice tone="error">{problem}</Notice> : null}
@@ -295,7 +278,9 @@ function Form({
               existing ? null : (
                 <Button
                   label="Replace file"
+                  icon="refresh"
                   variant="secondary"
+                  size="compact"
                   testID="replace-file"
                   loading={busy === "pick"}
                   onPress={() => void pick()}
@@ -311,6 +296,7 @@ function Form({
                 <Chip
                   key={c}
                   label={CATEGORY_LABEL[c]}
+                  icon={CATEGORY_ICON[c]}
                   selected={category === c}
                   onPress={() => setCategory(c)}
                 />
@@ -318,13 +304,29 @@ function Form({
             </View>
           </View>
 
-          <Field
-            label="Title"
-            value={title}
-            onChangeText={setTitle}
-            maxLength={80}
-            hint="For example “Train to Salzburg” or “Travel insurance”."
-          />
+          <View style={styles.gap}>
+            <Text style={styles.label}>Title</Text>
+            <View style={styles.input}>
+              <TextInput
+                accessibilityLabel="Title"
+                accessibilityHint="For example “Train to Salzburg” or “Travel insurance”."
+                value={title}
+                onChangeText={setTitle}
+                maxLength={80}
+                placeholder="For example “Train to Salzburg”"
+                placeholderTextColor={colors.muted}
+                style={styles.inputText}
+              />
+              {title ? (
+                <IconButton
+                  icon="close"
+                  label="Clear the title"
+                  compact
+                  onPress={() => setTitle("")}
+                />
+              ) : null}
+            </View>
+          </View>
 
           <View style={styles.gap}>
             <Text style={styles.label}>
@@ -335,6 +337,7 @@ function Form({
                 <Chip
                   key={k}
                   label={LINK_KIND_LABEL[k]}
+                  icon={LINK_KIND_ICON[k]}
                   selected={kind === k}
                   testID={`link-${k}`}
                   onPress={() => setKind(k)}
@@ -381,17 +384,18 @@ function Form({
             <Text style={styles.label}>
               Date <Text style={styles.optional}>(optional)</Text>
             </Text>
-            <View style={styles.dateRow}>
+            <View style={styles.input}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={date ? `Date, ${formatDate(date)}` : "Date, not set"}
                 accessibilityHint="Opens a calendar"
                 onPress={() => setCalendar(true)}
+                hitSlop={{ top: 2, bottom: 2 }}
                 style={styles.dateField}
                 testID="document-date"
               >
-                <Icon name="calendar" size={22} color={colors.text} />
-                <Text style={[styles.dateText, !date && styles.placeholder]}>
+                <Icon name="calendar" size={18} color={colors.muted} />
+                <Text style={[styles.inputText, styles.dateText, !date && styles.placeholder]}>
                   {date ? formatDate(date) : "Choose a date"}
                 </Text>
               </Pressable>
@@ -399,6 +403,7 @@ function Form({
                 <IconButton
                   icon="close"
                   label="Clear the date"
+                  compact
                   testID="clear-document-date"
                   onPress={() => setDate("")}
                 />
@@ -425,24 +430,26 @@ function Form({
             <Text style={styles.label}>
               Notes <Text style={styles.optional}>(optional)</Text>
             </Text>
-            <TextInput
-              accessibilityLabel="Notes (optional)"
-              value={notes}
-              onChangeText={setNotes}
-              maxLength={NOTES_MAX}
-              multiline
-              textAlignVertical="top"
-              placeholder="For example: outbound flight, confirmation email from the airline"
-              placeholderTextColor={colors.muted}
-              style={styles.notes}
-              testID="document-notes"
-            />
-            <Text
-              style={styles.counter}
-              accessibilityLabel={`${notes.length} of ${NOTES_MAX} characters`}
-            >
-              {notes.length}/{NOTES_MAX}
-            </Text>
+            <View style={[styles.input, styles.notesBox]}>
+              <TextInput
+                accessibilityLabel="Notes (optional)"
+                value={notes}
+                onChangeText={setNotes}
+                maxLength={NOTES_MAX}
+                multiline
+                textAlignVertical="top"
+                placeholder="For example: outbound flight, confirmation email from the airline"
+                placeholderTextColor={colors.muted}
+                style={[styles.inputText, styles.notes]}
+                testID="document-notes"
+              />
+              <Text
+                style={styles.counter}
+                accessibilityLabel={`${notes.length} of ${NOTES_MAX} characters`}
+              >
+                {notes.length}/{NOTES_MAX}
+              </Text>
+            </View>
           </View>
 
           <Button
@@ -458,6 +465,67 @@ function Form({
         </View>
       </ScrollView>
     </View>
+  );
+}
+
+/** A compact top bar: Back, the title centred, and the trip under it (reference screen 16). */
+function FormHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  const nav = useNavigation();
+  return (
+    <View style={styles.formHeader}>
+      <View style={styles.formHeaderBack}>
+        <IconButton icon="back" label="Back" compact onPress={nav.back} />
+      </View>
+      <View accessible accessibilityRole="header" accessibilityLabel={title}>
+        <Text style={styles.formTitle}>{title}</Text>
+      </View>
+      <Text style={styles.formSubtitle}>{subtitle}</Text>
+    </View>
+  );
+}
+
+/** A way to add, as a card: a tinted tile, a title, a line and a chevron. Disabled says why. */
+function OptionCard({
+  icon,
+  tone,
+  title,
+  detail,
+  disabled = false,
+  onPress,
+  testID,
+}: {
+  icon: IconName;
+  tone: DocCategory;
+  title: string;
+  detail: string;
+  disabled?: boolean;
+  onPress?: () => void;
+  testID?: string;
+}) {
+  const colour = docTones[tone];
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}. ${detail}${disabled ? " Coming later." : ""}`}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      testID={testID}
+      style={({ pressed }) => [styles.option, pressed && styles.pressed]}
+    >
+      <View style={[styles.optionTile, { backgroundColor: colour.bg }]}>
+        <Icon name={icon} size={22} color={colour.fg} />
+      </View>
+      <View style={styles.fileText}>
+        <Text style={styles.optionTitle}>{title}</Text>
+        <Text style={styles.muted}>{detail}</Text>
+      </View>
+      {disabled ? (
+        <Badge label="Coming later" />
+      ) : (
+        <Icon name="chevronRight" size={16} color={colors.muted} />
+      )}
+    </Pressable>
   );
 }
 
@@ -477,26 +545,26 @@ function FileRow({
 }) {
   return (
     <View style={styles.file}>
-      <View accessible accessibilityLabel={`File: ${name}. ${line}`} style={styles.fileHead}>
-        {uri ? (
-          <Image
-            source={{ uri }}
-            style={styles.filePicture}
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-            testID="file-picture"
-          />
-        ) : (
-          <KindTile category={category} size={64} />
-        )}
-        <View style={styles.fileText}>
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={styles.filePicture}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+          testID="file-picture"
+        />
+      ) : (
+        <KindTile category={category} size={56} />
+      )}
+      <View style={styles.fileText}>
+        <View accessible accessibilityLabel={`File: ${name}. ${line}`}>
           <Text style={styles.fileName} numberOfLines={2}>
             {name}
           </Text>
           <Text style={styles.muted}>{line}</Text>
         </View>
+        {action}
       </View>
-      {action}
     </View>
   );
 }
@@ -518,33 +586,51 @@ function ChoiceRow({
       accessibilityLabel={`${title}, ${meta}`}
       accessibilityState={{ selected }}
       onPress={onPress}
+      hitSlop={{ top: 2, bottom: 2 }}
       style={[styles.choice, selected && styles.choiceSelected]}
     >
       <View style={styles.fileText}>
-        <Text style={styles.fileName}>
-          {selected ? "✓ " : ""}
-          {title}
-        </Text>
+        <Text style={styles.fileName}>{title}</Text>
         <Text style={styles.muted}>{meta}</Text>
       </View>
+      {selected ? <Icon name="check" size={18} color={colors.primary} /> : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  pressed: { opacity: 0.85 },
   content: { paddingBottom: spacing.xxl },
-  body: { paddingHorizontal: spacing.lg, gap: spacing.xl },
+  body: { paddingHorizontal: spacing.lg, gap: spacing.lg },
   gap: { gap: spacing.sm },
   row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  label: { ...type.small, fontWeight: "700", color: colors.text },
-  muted: { ...type.small, color: colors.muted },
+  label: { ...type.caption, fontWeight: "700", color: colors.text },
+  muted: { ...type.caption, color: colors.muted },
   note: { ...type.caption, color: colors.muted },
-  lead: { ...type.body, color: colors.muted },
+  lead: { ...type.small, color: colors.muted },
   optional: { fontWeight: "400", color: colors.muted },
-  or: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
-  orText: { ...type.small, color: colors.muted },
+  formHeader: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.md },
+  formHeaderBack: { marginLeft: -spacing.md, alignSelf: "flex-start" },
+  formTitle: { ...type.title, color: colors.text },
+  formSubtitle: { ...type.caption, color: colors.muted, marginTop: spacing.xxs },
+  cards: { gap: spacing.sm },
+  option: {
+    ...card,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    minHeight: 64,
+    padding: spacing.md,
+  },
+  optionTile: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  optionTitle: { ...type.small, fontWeight: "700", color: colors.text },
   privacy: {
     flexDirection: "row",
     alignItems: "center",
@@ -555,49 +641,55 @@ const styles = StyleSheet.create({
   },
   privacyTitle: { ...type.small, fontWeight: "700", color: colors.text },
   file: {
+    ...card,
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.md,
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    padding: spacing.md,
   },
-  fileHead: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   filePicture: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceMuted,
   },
-  dateRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  fileText: { flex: 1, gap: spacing.xs },
+  fileName: { ...type.small, fontWeight: "700", color: colors.text },
+  // Boxed fields, as in the reference: white, a hairline, softly rounded, one slim line.
+  input: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 44,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  inputText: { ...type.small, color: colors.text, flex: 1, paddingVertical: spacing.sm },
   dateField: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    minHeight: TOUCH,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.outline,
+    gap: spacing.sm,
+    minHeight: 44,
   },
-  dateText: { ...type.body, color: colors.text },
+  dateText: { paddingVertical: 0 },
   placeholder: { color: colors.muted },
-  notes: {
-    ...type.body,
-    color: colors.text,
-    minHeight: 96,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.outline,
-    borderRadius: radius.md,
-  },
-  counter: { ...type.caption, color: colors.muted, textAlign: "right" },
-  fileText: { flex: 1, gap: spacing.xxs },
-  fileName: { ...type.body, fontWeight: "600", color: colors.text },
+  notesBox: { flexDirection: "column", alignItems: "stretch", paddingRight: spacing.md },
+  notes: { minHeight: 72, paddingHorizontal: 0 },
+  counter: { ...type.caption, color: colors.muted, textAlign: "right", paddingBottom: spacing.sm },
   choice: {
-    minHeight: TOUCH,
-    justifyContent: "center",
-    paddingVertical: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 44,
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  choiceSelected: { backgroundColor: colors.surfaceMuted },
+  choiceSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
 });

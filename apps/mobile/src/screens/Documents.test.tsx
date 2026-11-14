@@ -70,9 +70,12 @@ test("add a ticket for a place: pick, title from the file, kind, place; it is ke
   // Step one: how to add. Only the phone's file picker is built; the others say so.
   expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();
   expect(screen.queryByTestId("save-document")).toBeNull();
-  for (const id of ["take-photo", "add-link", "create-document"]) {
-    expect(screen.getByTestId(id).props.accessibilityState).toMatchObject({ disabled: true });
-  }
+  expect(screen.getByTestId("take-photo").props.accessibilityState).toMatchObject({
+    disabled: true,
+  });
+  // No link and no hand-made document: only cards that can be used or say "Coming later".
+  expect(screen.queryByTestId("add-link")).toBeNull();
+  expect(screen.queryByTestId("create-document")).toBeNull();
   expect(screen.getByText("Your documents stay private")).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByTestId("choose-file"));
@@ -186,7 +189,7 @@ test("a place shows only its own documents, and a new one starts linked to it", 
   expect(await screen.findByText("Tickets and documents")).toBeOnTheScreen();
   expect(await screen.findByText("Palace tickets")).toBeOnTheScreen();
   expect(screen.queryByText("Insurance")).toBeNull();
-  await fireEvent.press(screen.getByRole("button", { name: "Attach a document" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Add a document" }));
   expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("choose-file"));
   expect(screen.getByTestId("link-place").props.accessibilityState).toMatchObject({
@@ -199,7 +202,7 @@ test("a place shows only its own documents, and a new one starts linked to it", 
 
 test("Add on a trip offers a document", async () => {
   await show({ name: "tripOverview", tripId: TRIP_ID });
-  await screen.findByRole("header", { name: "Your itinerary" });
+  await screen.findByRole("header", { name: "Your itineraries" });
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   await fireEvent.press(await screen.findByTestId("add-sheet-document"));
   expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();

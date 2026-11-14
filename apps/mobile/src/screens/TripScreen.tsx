@@ -23,7 +23,7 @@ import { useResource } from "../data/DataProvider";
 import { PROFILE_EMPHASIS, PROFILE_LABEL, buildComparison, planNames } from "../domain/compare";
 import { useNavigation } from "../nav/Navigator";
 import { PastTripScreen } from "./PastTripScreen";
-import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { TOUCH, card, colors, radius, spacing, type } from "../theme";
 import { formatSeconds, formatTripSpan, pluralise } from "../util/format";
 
 /** Notes that need no space of their own: the profile is described on its card, the overlap in the
@@ -117,8 +117,8 @@ function PlanCard({
       <Cover
         seedKey={`${trip.destination.ref}:${plan.profile}`}
         photo={trip.cover_image}
-        height={168}
-        rounded={radius.lg}
+        height={150}
+        rounded={radius.md}
       >
         {names.badge || selected ? (
           <View style={styles.planBadge}>
@@ -158,6 +158,7 @@ function PlanCard({
               testID={`view-details-${plan.profile}`}
               label="View details"
               variant="secondary"
+              size="compact"
               fill
               onPress={onView}
               accessibilityLabel={`View the details of the ${label} plan`}
@@ -168,6 +169,7 @@ function PlanCard({
               testID={`select-${plan.profile}`}
               label={selected ? "Selected" : "Choose this itinerary"}
               variant="ink"
+              size="compact"
               fill
               accessibilityLabel={
                 selected ? `The ${label} plan is selected` : `Select the ${label} plan`
@@ -404,10 +406,11 @@ const styles = StyleSheet.create({
   },
   spanText: { ...type.small, fontWeight: "600", color: colors.text },
   sectionTitle: { ...type.heading, color: colors.text },
-  planCard: { gap: spacing.md },
-  planBadge: { position: "absolute", top: spacing.md, left: spacing.md },
-  planBody: { gap: spacing.sm },
-  planTitle: { ...type.title, color: colors.text },
+  // Each proposal is a card: the cover inside it, then the text, facts and two slim buttons.
+  planCard: { ...card, gap: spacing.md, padding: spacing.sm },
+  planBadge: { position: "absolute", top: spacing.sm, left: spacing.sm },
+  planBody: { gap: spacing.sm, paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
+  planTitle: { ...type.heading, color: colors.text },
   planTagline: { ...type.small, color: colors.muted },
   body: { ...type.small, color: colors.text },
   facts: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.lg, rowGap: spacing.xs },

@@ -1,13 +1,14 @@
-import type { Day, Itinerary, Trip } from "@detour/shared";
+import type { Day, Itinerary, ItinerarySummary, Trip } from "@detour/shared";
+import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { Cover } from "../components/ds/Cover";
 import { Icon } from "../components/ds/Icon";
 import {
-  Badge,
   IconButton,
   ListRow,
   PlannedFeature,
@@ -32,7 +33,7 @@ import {
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useTripCounts } from "../data/tripCounts";
-import { PROFILE_EMPHASIS, PROFILE_LABEL, planFacts } from "../domain/compare";
+import { PlanSummaryCard } from "../components/plan/PlanSummaryCard";
 import { dayTotals } from "../domain/itinerary";
 import { type TripCounts, localToday, shortSpan } from "../domain/trips";
 import { type TripSection, useNavigation } from "../nav/Navigator";
@@ -43,6 +44,7 @@ import { PlanDayView, dayTitle } from "../components/plan/DayPlan";
 import { useItemActions } from "../data/itemActions";
 import { DocumentList } from "../components/documents/DocumentList";
 import { PastTripScreen } from "./PastTripScreen";
+import { visiblePlans } from "./TripScreen";
 
 // A trip's home (ADR 021): its cover, dates and status, then five tabs. Once a plan is chosen it is
 // the trip's active itinerary and the overview is built around it; the original proposals are in
@@ -204,9 +206,24 @@ export function TripOverviewScreen({
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
   const { counts, plan } = useTripCounts(trip);
-  const [section, setSection] = useState<TripSection>(initialSection);
+  const insets = useSafeAreaInsets();
+  const proposals = useResource<ItinerarySummary[]>(
+    trip?.selected_itinerary_id ? keys.itineraries(tripId) : null,
+    (c) =>
+      call(c.GET("/v1/trips/{trip_id}/itineraries", { params: { path: { trip_id: tripId } } })),
+    { ttlMs: 10 * 60_000 },
+  );
+  const [section, setSectionState] = useState<TripSection>(initialSection);
   const [menu, setMenu] = useState(false);
   const [dayIndex, setDayIndex] = useState<number | null>(null);
+  // The tabs stick to the top of the screen once the cover has scrolled away.
+  const [stuck, setStuck] = useState(false);
+  // The section is kept in the route, so coming back from a screen opened on top of this one (a
+  // document form, a place) lands on the same tab.
+  const setSection = (next: TripSection) => {
+    setSectionState(next);
+    nav.replace({ name: "tripOverview", tripId, section: next });
+  };
   const titleRef = useAnnounceOnMount();
   const { state } = useBackend();
   const items = useItemActions(tripId, trip?.selected_itinerary_id ?? "");
@@ -250,7 +267,6 @@ export function TripOverviewScreen({
     setDayIndex(d);
     setSection(target);
   };
-  const editable = plan.data?.profile !== "manual" && items.connected;
   const planView = (mode: "list" | "map") =>
     plan.data ? (
       <PlanDayView
@@ -263,7 +279,6 @@ export function TripOverviewScreen({
         onDetails={(item) =>
           nav.push({ name: "placeDetail", tripId, itineraryId: planId, itemId: item.id })
         }
-        actions={editable ? items.actions : undefined}
         onShowList={() => setSection("itinerary")}
       />
     ) : null;
@@ -291,38 +306,47 @@ export function TripOverviewScreen({
     content = <PlanLoading plan={plan} />;
   } else if (section === "overview") {
     const data = plan.data;
+    const others = (proposals.data ? visiblePlans(proposals.data) : []).filter(
+      (p) => p.id !== planId && p.status !== "selected" && p.profile !== "manual",
+    );
     content = (
       <>
         <ResourceNotices resource={plan} noun="this itinerary" />
         {counts ? <StatRow stats={statsOf(counts)} /> : null}
         <View style={styles.planBlock}>
-          <View style={styles.planHead}>
-            <Text accessibilityRole="header" style={styles.cardTitle}>
-              Your itinerary
-            </Text>
-            <Badge label={`${PROFILE_LABEL[data.profile]} plan`} tone="primary" />
-          </View>
-          <Text style={styles.body}>{PROFILE_EMPHASIS[data.profile]}</Text>
-          {data.profile !== "manual" ? (
-            <Text style={styles.meta}>{planFacts(data).join(" · ")}</Text>
-          ) : null}
-          <View style={styles.actions}>
-            <Button
-              label="Itinerary"
-              icon="list"
-              testID="open-itinerary"
-              accessibilityLabel="Open the itinerary"
-              onPress={() => setSection("itinerary")}
+          <Text accessibilityRole="header" style={styles.cardTitle}>
+            Your itineraries
+          </Text>
+          <PlanSummaryCard
+            plan={data}
+            destination={trip.destination.name}
+            coverKey={trip.destination.ref}
+            badge="Active"
+            hint="Opens the itinerary"
+            testID="open-itinerary"
+            onPress={() => setSection("itinerary")}
+          />
+          {others.map((p) => (
+            <PlanSummaryCard
+              key={p.id}
+              plan={p}
+              destination={trip.destination.name}
+              coverKey={trip.destination.ref}
+              badge="Proposal"
+              badgeTone="neutral"
+              hint="Opens this proposal, where you can choose it"
+              testID={`open-proposal-${p.profile}`}
+              onPress={() =>
+                nav.push({
+                  name: "itinerary",
+                  tripId,
+                  itineraryId: p.id,
+                  view: "map",
+                  day: 1,
+                })
+              }
             />
-            <Button
-              label="Map"
-              icon="map"
-              variant="secondary"
-              testID="open-map"
-              accessibilityLabel="Open the itinerary map"
-              onPress={() => openDay(day, "map")}
-            />
-          </View>
+          ))}
         </View>
       </>
     );
@@ -371,20 +395,24 @@ export function TripOverviewScreen({
     </Sheet>
   ) : null;
 
-  const tabs = (
+  const tabsFor = (compact: boolean) => (
     <Tabs<TripSection>
       items={TRIP_SECTIONS}
       value={section}
       onChange={setSection}
       scrollable
+      compact={compact}
       testID="trip-sections"
     />
   );
+  const tabs = tabsFor(false);
 
   const compactHead = (
-    <>
+    // Above the map in drawing order too (zIndex and elevation), with its own background: markers
+    // dragged past the map's edge can never show over the back button, the title or the tabs.
+    <View style={styles.compactHeadWrap}>
       <View style={styles.compactHead}>
-        <IconButton icon="back" label="Back" onPress={nav.back} />
+        <IconButton icon="back" label="Back" compact onPress={nav.back} />
         <View
           ref={titleRef}
           style={styles.flex}
@@ -400,12 +428,13 @@ export function TripOverviewScreen({
           icon="dots"
           label="Trip menu"
           hint="Original proposals and trip settings"
+          compact
           testID="trip-menu"
           onPress={() => setMenu(true)}
         />
       </View>
-      {tabs}
-    </>
+      {tabsFor(true)}
+    </View>
   );
 
   // Only the Map tab leaves the cover behind (it needs the room): a compact header, the tabs, then
@@ -422,40 +451,54 @@ export function TripOverviewScreen({
     );
   }
   return (
-    <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.scroll} stickyHeaderIndices={[2]}>
-        <View style={styles.header}>
-          <IconButton icon="back" label="Back" onPress={nav.back} />
+    // The cover reaches the very top of the screen, under the status bar.
+    <View style={[styles.fill, { marginTop: -insets.top }]}>
+      <StatusBar style={stuck ? "dark" : "light"} />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        stickyHeaderIndices={[1]}
+        scrollEventThrottle={32}
+        onScroll={(e) => {
+          const isStuck = e.nativeEvent.contentOffset.y >= COVER_HEIGHT + insets.top - SHEET_RADIUS;
+          if (isStuck !== stuck) setStuck(isStuck);
+        }}
+      >
+        <Cover
+          seedKey={trip.destination.ref}
+          photo={trip.cover_image}
+          height={COVER_HEIGHT + insets.top}
+          scrim
+          creditInset={SHEET_RADIUS}
+          testID="trip-cover"
+        >
+          <View style={[styles.heroTop, { paddingTop: insets.top + spacing.xs }]}>
+            <IconButton icon="back" label="Back" onImage onPress={nav.back} />
+            <IconButton
+              icon="dots"
+              label="Trip menu"
+              hint="Original proposals and trip settings"
+              onImage
+              testID="trip-menu"
+              onPress={() => setMenu(true)}
+            />
+          </View>
           <View
             ref={titleRef}
-            style={styles.headerText}
+            style={styles.heroText}
             accessible
             accessibilityRole="header"
             accessibilityLabel={`${trip.title}. ${shortSpan(trip)}.`}
           >
-            <Text style={styles.headerTitle} numberOfLines={1}>
+            <Text style={styles.heroTitle} numberOfLines={1}>
               {trip.title}
             </Text>
-            <Text style={styles.headerMeta} numberOfLines={1}>
+            <Text style={styles.heroMeta} numberOfLines={1}>
               {shortSpan(trip)}
             </Text>
           </View>
-          <IconButton
-            icon="dots"
-            label="Trip menu"
-            hint="Original proposals and trip settings"
-            testID="trip-menu"
-            onPress={() => setMenu(true)}
-          />
-        </View>
-        <Cover
-          seedKey={trip.destination.ref}
-          photo={trip.cover_image}
-          height={210}
-          testID="trip-cover"
-        />
+        </Cover>
         {/* The tabs and what follows sit on a white sheet whose top corners curve over the photo. */}
-        <View style={styles.sheetTop}>{tabs}</View>
+        <View style={[styles.sheetTop, stuck && { paddingTop: insets.top }]}>{tabs}</View>
         <View style={styles.sheetBody}>
           <ResourceNotices resource={trips} noun="trips" />
           <View style={styles.body2}>{content}</View>
@@ -466,24 +509,36 @@ export function TripOverviewScreen({
   );
 }
 
+const COVER_HEIGHT = 300;
 const SHEET_RADIUS = 28;
+const textShadow = {
+  textShadowColor: "rgba(13, 24, 40, 0.55)",
+  textShadowRadius: 6,
+  textShadowOffset: { width: 0, height: 1 },
+};
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   flex: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
   pressed: { opacity: 0.8 },
-  // The trip's name and dates sit above its photo, centred, never over it (reference screen 08).
-  header: {
+  // The trip's name, dates and length sit on its photo, bottom left, above the curve of the sheet
+  // (reference screen 02). Back and the menu sit on it at the top.
+  heroTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
+    justifyContent: "space-between",
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
   },
-  headerText: { flex: 1, alignItems: "center" },
-  headerTitle: { ...type.heading, color: colors.text, textAlign: "center" },
-  headerMeta: { ...type.small, color: colors.muted, textAlign: "center" },
+  heroText: {
+    position: "absolute",
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: SHEET_RADIUS + spacing.sm,
+    gap: spacing.xxs,
+  },
+  heroTitle: { ...type.display, color: colors.onImage, ...textShadow },
+  heroMeta: { ...type.small, fontWeight: "600", color: colors.onImage, ...textShadow },
   sheetTop: {
     marginTop: -SHEET_RADIUS,
     backgroundColor: colors.background,
@@ -512,7 +567,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
+  compactHeadWrap: { zIndex: 3, elevation: 3, backgroundColor: colors.background },
   compactTitle: { ...type.heading, color: colors.text },
   dayRow: { flexDirection: "row", paddingHorizontal: spacing.lg, minHeight: TOUCH },
   rail: { width: 20, alignItems: "center" },

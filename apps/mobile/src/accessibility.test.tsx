@@ -106,7 +106,7 @@ test("trip overview, each of its tabs, its menu and the Add sheet", async () => 
       <AppContent />
     </Harness>,
   );
-  await screen.findByRole("header", { name: "Your itinerary" });
+  await screen.findByRole("header", { name: "Your itineraries" });
   checkControls();
   for (const tab of ["Itinerary", "Map", "Trip photos", "Trip documents"]) {
     await fireEvent.press(screen.getByRole("tab", { name: tab }));
@@ -226,7 +226,7 @@ test("trip overview: a day on the map with a stop chosen", async () => {
   );
   await fireEvent.press(await screen.findByTestId("day-row-1"));
   await fireEvent.press(await screen.findByTestId("stop-i1"));
-  await screen.findByLabelText("Lock Schönbrunn Palace");
+  await screen.findByTestId("details-i1");
   checkControls();
 });
 
