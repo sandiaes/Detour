@@ -248,6 +248,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/trips/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Every trip of the caller in the trip-file shape (ADR 028): a backup. */
+    get: operations["export_all"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One trip in the trip-file shape (ADR 028): the chosen plan, or a past trip's record. */
+    get: operations["export_one"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/import": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add the trips of a trip file as new trips (ADR 028). Never merges or overwrites; all or nothing. */
+    post: operations["import_trips"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/trips": {
     parameters: {
       query?: never;
@@ -1307,6 +1358,164 @@ export interface components {
       /** Results */
       results?: components["schemas"]["ExternalPlace"][];
     };
+    /** FileDay */
+    FileDay: {
+      /** Day Index */
+      day_index: number;
+      /** Base City Name */
+      base_city_name?: string | null;
+      /** Items */
+      items?: components["schemas"]["FileItem"][];
+    };
+    /** FileDestination */
+    FileDestination: {
+      /**
+       * Kind
+       * @description What it was in the app; it imports as a place
+       * @enum {string}
+       */
+      kind: "city" | "area" | "route" | "place";
+      /**
+       * Ref
+       * @description A provider reference (photon:N123, geonames:123, area:<uuid>) when known
+       */
+      ref?: string | null;
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description WGS 84 latitude
+       */
+      lat: number;
+      /**
+       * Lon
+       * @description WGS 84 longitude
+       */
+      lon: number;
+      /** Country Iso2 */
+      country_iso2?: string | null;
+    };
+    /** FileItem */
+    FileItem: {
+      /** Position */
+      position: number;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "sight" | "city" | "place" | "restaurant" | "cafe";
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description WGS 84 latitude
+       */
+      lat: number;
+      /**
+       * Lon
+       * @description WGS 84 longitude
+       */
+      lon: number;
+      /** Start Time */
+      start_time?: string | null;
+      /** Duration Minutes */
+      duration_minutes: number;
+      /**
+       * Duration Is User
+       * @default false
+       */
+      duration_is_user: boolean;
+      /**
+       * Locked
+       * @default false
+       */
+      locked: boolean;
+    };
+    /**
+     * FileStop
+     * @description A city of a multi-city trip, kept for reference (it imports as a single place trip).
+     */
+    FileStop: {
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description WGS 84 latitude
+       */
+      lat: number;
+      /**
+       * Lon
+       * @description WGS 84 longitude
+       */
+      lon: number;
+      /** Days */
+      days: number;
+      /** Country Iso2 */
+      country_iso2?: string | null;
+    };
+    /** FileTrip */
+    FileTrip: {
+      /** Title */
+      title: string;
+      destination: components["schemas"]["FileDestination"];
+      /** Duration Days */
+      duration_days: number;
+      /** Start Date */
+      start_date?: string | null;
+      /**
+       * Status
+       * @default active
+       * @enum {string}
+       */
+      status: "active" | "past";
+      /** Archived At */
+      archived_at?: string | null;
+      /** Stops */
+      stops?: components["schemas"]["FileStop"][];
+      /**
+       * Days
+       * @description The chosen plan; empty if none
+       */
+      days?: components["schemas"]["FileDay"][];
+      /** Visits */
+      visits?: components["schemas"]["FileVisit"][];
+    };
+    /**
+     * FileVisit
+     * @description One row of a past trip's day record.
+     */
+    FileVisit: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "city" | "attraction" | "restaurant" | "cafe";
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description WGS 84 latitude
+       */
+      lat: number;
+      /**
+       * Lon
+       * @description WGS 84 longitude
+       */
+      lon: number;
+      /** Day Number */
+      day_number: number;
+      /** Position */
+      position?: number | null;
+      /** Start Time */
+      start_time?: string | null;
+      /** Duration Minutes */
+      duration_minutes?: number | null;
+      /**
+       * Confirmed
+       * @default true
+       */
+      confirmed: boolean;
+    };
     /** GenerationResult */
     GenerationResult: {
       /**
@@ -1356,6 +1565,30 @@ export interface components {
        * @description Commit identifier of the deployed build
        */
       release?: string | null;
+    };
+    /** ImportResult */
+    ImportResult: {
+      /** Trips */
+      trips: components["schemas"]["ImportedTrip"][];
+    };
+    /** ImportedTrip */
+    ImportedTrip: {
+      /**
+       * Index
+       * @description Position of the trip in the file, from 0
+       */
+      index: number;
+      /** Trip Id */
+      trip_id: string;
+      /** Title */
+      title: string;
+      /**
+       * Days
+       * @description Days with at least one stop
+       */
+      days: number;
+      /** Stops */
+      stops: number;
     };
     /** InstallationInfo */
     InstallationInfo: {
@@ -2274,6 +2507,27 @@ export interface components {
       /** Start Date */
       start_date?: string | null;
     };
+    /**
+     * TripFile
+     * @description The contents of ``trip.json`` inside a ``.detour`` file.
+     */
+    TripFile: {
+      /**
+       * Format
+       * @default detour-trip
+       * @constant
+       */
+      format: "detour-trip";
+      /**
+       * Format Version
+       * @description Refused when higher than the server knows
+       */
+      format_version: number;
+      /** Exported At */
+      exported_at?: string | null;
+      /** Trips */
+      trips: components["schemas"]["FileTrip"][];
+    };
     /** TripStop */
     TripStop: {
       /**
@@ -2989,6 +3243,153 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlaceName"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  export_all: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripFile"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  export_one: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripFile"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  import_trips: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripFile"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ImportResult"];
         };
       };
       /** @description Unauthorized */

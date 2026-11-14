@@ -23,6 +23,7 @@ from detour_api.logging import configure_logging, get_logger
 from detour_api.routers import (
     changes,
     config,
+    exchange,
     health,
     images,
     installations,
@@ -133,6 +134,7 @@ def create_app(
     app.include_router(regions.router)
     app.include_router(images.router)
     app.include_router(search.router)
+    app.include_router(exchange.router)
     app.include_router(trips.router)
     app.include_router(itineraries.router)
     app.include_router(changes.router)

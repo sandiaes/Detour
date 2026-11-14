@@ -562,6 +562,11 @@ def list_visits(
     conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
 ) -> list[TripVisit]:
     require_trip(conn, installation_id, trip_id)
+    return list_visits_of(conn, trip_id)
+
+
+def list_visits_of(conn: Connection, trip_id: uuid.UUID) -> list[TripVisit]:
+    """The archived visits of a trip the caller already owns."""
     rows = conn.execute(
         text(
             "SELECT id, kind, name, ST_Y(point) lat, ST_X(point) lon, geo_place_ref, day_number,"

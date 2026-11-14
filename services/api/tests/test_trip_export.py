@@ -1,0 +1,260 @@
+"""Trip export and import as a file (ADR 028): the file shape, the round trip for every kind of
+trip, imports that are always new copies, and files that are refused without writing anything."""
+
+import json
+from typing import Any
+
+import pytest
+
+from tests.conftest import ApiEnv
+from tests.test_api_planning import add_synthetic_sights, generate, make_trip
+from tests.test_api_trips import add_item, make_itinerary
+from tests.test_past_trips import _archive, _visits
+from tests.test_place_destinations import PHOTON
+
+pytestmark = pytest.mark.db
+
+
+def _place_trip(env: ApiEnv, **over: Any) -> dict[str, Any]:
+    body = {"title": "Hallstatt", "duration_days": 2, **PHOTON, **over}
+    r = env.client.post("/v1/trips", json=body, headers=env.headers)
+    assert r.status_code == 201, r.text
+    trip: dict[str, Any] = r.json()
+    return trip
+
+
+def _own_place(env: ApiEnv, kind: str, name: str, lat: float, lon: float) -> str:
+    r = env.client.post(
+        "/v1/user-places",
+        json={"kind": kind, "name": name, "lat": lat, "lon": lon, "source": "manual_pin"},
+        headers=env.headers,
+    )
+    assert r.status_code == 201, r.text
+    return str(r.json()["id"])
+
+
+def _export(env: ApiEnv, trip: dict[str, Any] | None = None) -> dict[str, Any]:
+    url = "/v1/trips/export" if trip is None else f"/v1/trips/{trip['id']}/export"
+    r = env.client.get(url, headers=env.headers)
+    assert r.status_code == 200, r.text
+    body: dict[str, Any] = r.json()
+    return body
+
+
+def _import(env: ApiEnv, file: dict[str, Any]) -> Any:
+    return env.client.post("/v1/trips/import", json=file, headers=env.headers)
+
+
+def _stops(env: ApiEnv, trip_id: str) -> list[list[tuple[Any, ...]]]:
+    """Each day's stops of the chosen plan: name, start, minutes, who set the length, locked."""
+    trip = env.client.get(f"/v1/trips/{trip_id}", headers=env.headers).json()
+    plan = env.client.get(
+        f"/v1/itineraries/{trip['selected_itinerary_id']}", headers=env.headers
+    ).json()
+    return [
+        [
+            (
+                i["display_name"],
+                i["start_time"],
+                i["duration_minutes"],
+                i["duration_source"],
+                i["locked"],
+            )
+            for i in d["items"]
+            if i["type"] in ("visit", "meal")
+        ]
+        for d in plan["days"]
+    ]
+
+
+def test_a_hand_made_trip_survives_the_round_trip(api_env: ApiEnv) -> None:
+    trip = _place_trip(api_env, start_date="2027-06-01")
+    plan = make_itinerary(api_env, trip)
+    api_env.client.patch(
+        f"/v1/trips/{trip['id']}",
+        json={"selected_itinerary_id": plan["id"]},
+        headers=api_env.headers,
+    )
+    church = _own_place(api_env, "location", "Lutheran church", 47.5621, 13.6489)
+    cafe = _own_place(api_env, "cafe", "Seecafe", 47.5619, 13.6495)
+    add_item(
+        api_env,
+        plan,
+        1,
+        type="visit",
+        user_place_id=church,
+        start_time="09:30:00",
+        duration_minutes=50,
+    )
+    add_item(api_env, plan, 1, type="meal", user_place_id=cafe, start_time="11:00:00", locked=True)
+    add_item(api_env, plan, 2, type="visit", user_place_id=church, duration_minutes=20)
+    before = _stops(api_env, trip["id"])
+
+    file = _export(api_env, trip)
+    assert file["format"] == "detour-trip" and file["format_version"] == 1
+    assert [len(d["items"]) for d in file["trips"][0]["days"]] == [2, 1]
+
+    r = _import(api_env, file)
+    assert r.status_code == 201, r.text
+    made = r.json()["trips"][0]
+    assert made["trip_id"] != trip["id"] and made["stops"] == 3 and made["days"] == 2
+    assert _stops(api_env, made["trip_id"]) == before
+    copy = api_env.client.get(f"/v1/trips/{made['trip_id']}", headers=api_env.headers).json()
+    assert copy["title"] == "Hallstatt" and copy["start_date"] == "2027-06-01"
+    assert copy["destination"] == trip["destination"]
+    assert copy["selected_itinerary_id"] is not None
+
+
+def test_a_planned_trip_imports_as_a_manual_plan_of_the_users_own_places(api_env: ApiEnv) -> None:
+    add_synthetic_sights(api_env)
+    trip = make_trip(api_env, duration_days=2)
+    plans = generate(api_env, trip).json()["itineraries"]
+    api_env.client.patch(
+        f"/v1/trips/{trip['id']}",
+        json={"selected_itinerary_id": plans[0]["id"]},
+        headers=api_env.headers,
+    )
+    before = _stops(api_env, trip["id"])
+    file = _export(api_env, trip)
+    # A city of the gazetteer carries its GeoNames id as a reference; nothing else of ours leaves.
+    assert file["trips"][0]["destination"]["ref"] == "geonames:900101"
+    text = json.dumps(file)
+    assert "place_id" not in text and "itinerary" not in text and "installation" not in text
+
+    made = _import(api_env, file).json()["trips"][0]
+    copy = api_env.client.get(f"/v1/trips/{made['trip_id']}", headers=api_env.headers).json()
+    assert copy["destination"]["kind"] == "place"
+    assert copy["destination"]["ref"] == "geonames:900101"
+    plan = api_env.client.get(
+        f"/v1/itineraries/{copy['selected_itinerary_id']}", headers=api_env.headers
+    ).json()
+    assert plan["profile"] == "manual"
+    items = [i for d in plan["days"] for i in d["items"]]
+    assert items and all(i["place_id"] is None and i["user_place_id"] for i in items)
+    # Stops and times are those of the original; free time, if any, is derived by the app.
+    assert [[s[0] for s in day] for day in _stops(api_env, made["trip_id"])] == [
+        [s[0] for s in day] for day in before
+    ]
+    assert [[s[1:3] for s in day] for day in _stops(api_env, made["trip_id"])] == [
+        [s[1:3] for s in day] for day in before
+    ]
+
+
+def test_a_past_trip_comes_back_as_past_with_its_day_record(api_env: ApiEnv) -> None:
+    trip = _place_trip(api_env)
+    plan = make_itinerary(api_env, trip)
+    api_env.client.patch(
+        f"/v1/trips/{trip['id']}",
+        json={"selected_itinerary_id": plan["id"]},
+        headers=api_env.headers,
+    )
+    spot = _own_place(api_env, "location", "Salt mine", 47.5598, 13.6401)
+    add_item(
+        api_env,
+        plan,
+        1,
+        type="visit",
+        user_place_id=spot,
+        start_time="10:00:00",
+        duration_minutes=90,
+    )
+    _archive(api_env, trip)
+    visits = _visits(api_env, trip)
+    api_env.client.patch(
+        f"/v1/trips/{trip['id']}/visits/{visits[-1]['id']}",
+        json={"confirmed": False},
+        headers=api_env.headers,
+    )
+
+    file = _export(api_env, trip)
+    assert file["trips"][0]["status"] == "past" and file["trips"][0]["days"] == []
+    made = _import(api_env, file).json()["trips"][0]
+    copy = api_env.client.get(f"/v1/trips/{made['trip_id']}", headers=api_env.headers).json()
+    assert copy["status"] == "past" and copy["archived_at"] is not None
+    key = ("kind", "name", "day_number", "start_time", "duration_minutes", "confirmed")
+    assert [tuple(v[k] for k in key) for v in _visits(api_env, copy)] == [
+        tuple(v[k] for k in key) for v in _visits(api_env, trip)
+    ]
+
+
+def test_a_multi_city_trip_keeps_its_cities_in_the_file_and_imports_as_a_place(
+    api_env: ApiEnv,
+) -> None:
+    trip = _place_trip(api_env)
+    file = _export(api_env, trip)
+    file["trips"][0]["destination"]["kind"] = "route"
+    file["trips"][0]["stops"] = [
+        {"name": "Hallstatt", "lat": 47.56, "lon": 13.64, "days": 1},
+        {"name": "Bad Ischl", "lat": 47.71, "lon": 13.62, "days": 1},
+    ]
+    made = _import(api_env, file).json()["trips"][0]
+    copy = api_env.client.get(f"/v1/trips/{made['trip_id']}", headers=api_env.headers).json()
+    assert copy["destination"]["kind"] == "place" and copy["stops"] == []
+
+
+def test_the_backup_has_every_trip_and_an_import_is_always_a_new_copy(api_env: ApiEnv) -> None:
+    one = _place_trip(api_env, title="One")
+    two = _place_trip(api_env, title="Two", destination_ref="manual")
+    file = _export(api_env)
+    assert [t["title"] for t in file["trips"]] == ["One", "Two"]  # oldest first
+    assert file["trips"][1]["destination"]["ref"] == "manual"
+    r = _import(api_env, file)
+    assert r.status_code == 201 and len(r.json()["trips"]) == 2
+    again = _import(api_env, file)
+    assert again.status_code == 201
+    listed = api_env.client.get("/v1/trips", headers=api_env.headers).json()
+    assert len(listed) == 6 and {one["id"], two["id"]} <= {t["id"] for t in listed}
+    assert sorted(t["title"] for t in listed) == ["One"] * 3 + ["Two"] * 3
+    assert len({t["id"] for t in listed}) == 6
+
+
+def test_a_trip_can_be_exported_only_by_its_owner(api_env: ApiEnv) -> None:
+    trip = _place_trip(api_env)
+    r = api_env.client.get(f"/v1/trips/{trip['id']}/export", headers=api_env.other_installation())
+    assert r.status_code == 404
+    other = api_env.client.get("/v1/trips/export", headers=api_env.other_installation())
+    assert other.status_code == 200 and other.json()["trips"] == []
+
+
+def test_a_file_from_a_newer_version_is_refused(api_env: ApiEnv) -> None:
+    file = _export(api_env)
+    file["format_version"] = 2
+    r = _import(api_env, file)
+    assert r.status_code == 422 and r.json()["code"] == "format_too_new"
+
+
+def test_a_bad_file_writes_nothing(api_env: ApiEnv) -> None:
+    _place_trip(api_env)
+    good = _export(api_env)["trips"][0]
+    bad_day = {**good, "title": "Bad", "days": [{"day_index": 9, "items": []}]}
+    wrong_status = {**good, "title": "Worse", "visits": [good_visit()]}
+    for trips in ([good, bad_day], [good, wrong_status]):
+        r = _import(api_env, {"format": "detour-trip", "format_version": 1, "trips": trips})
+        assert r.status_code == 422, r.text
+    bad_point = {**good, "destination": {**good["destination"], "lat": 123}}
+    for body in (
+        {"format": "detour-trip", "format_version": 1, "trips": [good, bad_point]},
+        {"format": "something-else", "format_version": 1, "trips": [good]},
+        {"format_version": 1, "trips": [good], "surprise": True},
+    ):
+        assert _import(api_env, body).status_code == 422
+    assert len(api_env.client.get("/v1/trips", headers=api_env.headers).json()) == 1
+
+
+def good_visit() -> dict[str, Any]:
+    return {"kind": "attraction", "name": "X", "lat": 1, "lon": 1, "day_number": 1}
+
+
+def test_overlapping_stops_in_a_file_are_refused_and_nothing_is_written(api_env: ApiEnv) -> None:
+    good = _export(api_env, _place_trip(api_env))["trips"][0]
+    item = {"position": 1, "kind": "place", "name": "A", "lat": 1, "lon": 1, "duration_minutes": 60}
+    day = {
+        "day_index": 1,
+        "items": [
+            {**item, "start_time": "10:00:00"},
+            {**item, "position": 2, "start_time": "10:30:00"},
+        ],
+    }
+    r = _import(api_env, {"format_version": 1, "trips": [{**good, "days": [day]}]})
+    assert r.status_code == 409  # the plan's own overlap rule; the whole file rolls back
+    assert len(api_env.client.get("/v1/trips", headers=api_env.headers).json()) == 1
