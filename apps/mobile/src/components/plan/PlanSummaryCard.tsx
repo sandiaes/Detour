@@ -40,7 +40,8 @@ export function PlanSummaryCard({
   destination: string;
   coverKey: string;
   photo?: Photo | null;
-  badge: string;
+  /** Only the active plan carries a badge; another plan has none. */
+  badge?: string;
   badgeTone?: BadgeTone;
   hint: string;
   onPress: () => void;
@@ -51,7 +52,7 @@ export function PlanSummaryCard({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${names.title}. ${names.tagline}. ${line ? `${line}. ` : ""}${badge}.`}
+      accessibilityLabel={`${names.title}. ${names.tagline}. ${line ? `${line}. ` : ""}${badge ? `${badge}.` : ""}`}
       accessibilityHint={hint}
       onPress={onPress}
       testID={testID}
@@ -60,7 +61,7 @@ export function PlanSummaryCard({
       <Cover
         seedKey={`${coverKey}:${plan.profile}`}
         photo={photo}
-        height={64}
+        height={56}
         rounded={radius.md}
         style={styles.thumb}
       />
@@ -69,7 +70,7 @@ export function PlanSummaryCard({
           <Text style={styles.title} numberOfLines={1}>
             {names.title}
           </Text>
-          <Badge label={badge} tone={badgeTone} />
+          {badge ? <Badge label={badge} tone={badgeTone} /> : null}
         </View>
         <Text style={styles.tagline} numberOfLines={1}>
           {names.tagline}
@@ -92,10 +93,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     minHeight: 48,
-    padding: spacing.md,
+    padding: spacing.sm,
   },
   pressed: { opacity: 0.85 },
-  thumb: { width: 64 },
+  thumb: { width: 56 },
   text: { flex: 1, gap: 2 },
   head: {
     flexDirection: "row",

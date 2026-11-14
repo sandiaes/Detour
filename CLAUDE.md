@@ -70,7 +70,7 @@ cards, trip cards with only name, dates and length (a trip is named after its de
 overview without the days figure, first days or notes, an Itinerary tab of days that open the map of
 that day, quieter map markers, a new-trip screen with travel style, public transport and "Start with
 an empty trip", and meals aimed at lunch 13:00 and dinner 20:00 (day window to 22:00). Adding places
-to an empty trip is not built yet (it needs the owner's approval). **A third amendment of 2026-11-14** (ADR 021, decisions 42 to 54) is built and awaits acceptance: the
+to an empty trip is not built yet (it needs the owner's approval). **A fourth amendment of 2026-11-14** (ADR 021, decisions 55 to 67) is built and awaits acceptance: a consistency pass over every screen (compact headers, flat past trip, thin outlined buttons, soft edges, travel written into a hairline, a cleaner map key, four document kinds, a drop-down for "Attraction", the wordmark alone on Trips, a launcher icon that fits its mask). **A third amendment of 2026-11-14** (ADR 021, decisions 42 to 54) is built and awaits acceptance: the
 logo wordmark on Trips, the trip's name, dates and length on a full-bleed cover, a tighter and clipped
 map, stops that only select, compact day pills, Back from Add document to the Documents tab, a
 redesigned Add document with cards, slim pills, plan cards on the overview, cards for the proposals,

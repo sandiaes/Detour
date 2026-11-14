@@ -1,19 +1,20 @@
 import type { ArchiveInfo, Trip, TripVisit } from "@detour/shared";
 import { useMemo, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
 import { useBackend } from "../api/BackendProvider";
-import { Button } from "../components/Button";
+import { Icon } from "../components/ds/Icon";
+import { KindIcon } from "../components/ds/KindIcon";
+import { IconButton, ListRow, RowGroup, Tabs } from "../components/ds/primitives";
 import { PastTripMap } from "../components/PastTripMap";
 import { ResourceNotices } from "../components/ResourceNotices";
 import {
-  Chip,
+  CompactHeader,
   EmptyState,
   ErrorState,
   LoadingState,
   Notice,
-  ScreenHeader,
   WakingServer,
 } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
@@ -26,7 +27,7 @@ import {
   visitedPoints,
 } from "../domain/pastTrip";
 import { useNavigation } from "../nav/Navigator";
-import { colors, radius, spacing, type } from "../theme";
+import { colors, spacing, type } from "../theme";
 import { formatBytes, formatDayLabel, formatTripSpan, pluralise } from "../util/format";
 
 type Row =
@@ -75,7 +76,7 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
     const failed = trips.status === "error" ? trips : visits.status === "error" ? visits : null;
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Past trip" onBack={nav.back} />
+        <CompactHeader title="Past trip" onBack={nav.back} />
         {failed ? (
           <ErrorState
             text={describeError(failed.error)}
@@ -95,7 +96,7 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
   if (!trip) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Past trip" onBack={nav.back} />
+        <CompactHeader title="Past trip" onBack={nav.back} />
         <EmptyState
           title="Trip not found"
           text="It may have been deleted."
@@ -126,14 +127,16 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
 
   const header = (
     <View>
-      <ScreenHeader
+      <CompactHeader
         title={trip.title}
         subtitle={`${trip.destination.name} · ${formatTripSpan(trip.start_date, trip.end_date, trip.duration_days)}`}
         onBack={nav.back}
         right={
-          <Button
+          <IconButton
+            icon="settings"
             label="Trip settings"
-            variant="secondary"
+            hint="Mark as past, ask for new proposals or delete the trip"
+            compact
             testID="trip-settings"
             onPress={() => nav.push({ name: "tripSettings", tripId })}
           />
@@ -149,34 +152,26 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
           {archive.data ? ` Stored: ${formatBytes(archive.data.size_bytes)}.` : ""}
         </Text>
       </View>
-      <View style={styles.documents}>
-        <Button
-          label="Documents"
+      <RowGroup>
+        <ListRow
           icon="document"
-          variant="secondary"
+          title="Documents"
+          detail="Tickets and bookings, kept on this phone"
           testID="past-trip-documents"
-          hint="Tickets, bookings and other documents kept with this trip on this phone"
           onPress={() => nav.push({ name: "tripDocuments", tripId })}
         />
-      </View>
+      </RowGroup>
       <ResourceNotices resource={visits} noun="this trip" />
       {problem ? <Notice tone="error">{problem}</Notice> : null}
-      <View style={styles.toolbar}>
-        <Chip
-          label="Map"
-          testID="show-map"
-          selected={view === "map"}
-          onPress={() => setView("map")}
-          accessibilityLabel="Show the map"
-        />
-        <Chip
-          label="List"
-          testID="show-list"
-          selected={view === "list"}
-          onPress={() => setView("list")}
-          accessibilityLabel="Show the list by city"
-        />
-      </View>
+      <Tabs<"map" | "list">
+        items={[
+          { key: "map", label: "Map", accessibilityLabel: "Show the map" },
+          { key: "list", label: "List", accessibilityLabel: "Show the list by city" },
+        ]}
+        value={view}
+        onChange={setView}
+        testID="show"
+      />
     </View>
   );
 
@@ -259,18 +254,29 @@ function ToggleButton({
   disabled: boolean;
   onToggle: (v: TripVisit) => Promise<void>;
 }) {
+  const inactive = disabled || busy;
   return (
-    <Button
+    <Pressable
       testID={`toggle-${visit.id}`}
-      label={visit.confirmed ? "Skip" : "Restore"}
+      accessibilityRole="button"
       accessibilityLabel={
         visit.confirmed ? `Mark ${visit.name} as skipped` : `Mark ${visit.name} as visited again`
       }
-      variant="quiet"
-      loading={busy}
-      disabled={disabled}
+      accessibilityState={{ disabled: inactive, busy }}
+      disabled={inactive}
       onPress={() => void onToggle(visit)}
-    />
+      style={({ pressed }) => [
+        styles.action,
+        inactive && styles.actionInactive,
+        pressed && styles.pressed,
+      ]}
+    >
+      {busy ? (
+        <ActivityIndicator color={colors.primary} />
+      ) : (
+        <Text style={styles.actionText}>{visit.confirmed ? "Skip" : "Restore"}</Text>
+      )}
+    </Pressable>
   );
 }
 
@@ -289,6 +295,7 @@ function CityHeader({
   const skipped = city !== null && !city.confirmed;
   return (
     <View style={styles.cityRow}>
+      <Icon name="city" size={18} color={skipped ? colors.muted : colors.primary} />
       <View style={styles.rowText}>
         <Text accessibilityRole="header" style={[styles.cityName, skipped && styles.skipped]}>
           {group.name}
@@ -320,6 +327,7 @@ function VisitRow({
 }) {
   return (
     <View style={styles.visitRow}>
+      <KindIcon kind="attraction" size={16} color={visit.confirmed ? undefined : colors.muted} />
       <View style={styles.rowText}>
         <Text style={[styles.visitName, !visit.confirmed && styles.skipped]}>{visit.name}</Text>
         <Text style={styles.meta}>
@@ -333,41 +341,39 @@ function VisitRow({
 }
 
 const styles = StyleSheet.create({
-  documents: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   fill: { flex: 1 },
+  pressed: { opacity: 0.75 },
   list: { paddingBottom: spacing.xxl },
-  facts: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.xs },
+  facts: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.xxs },
   summary: { ...type.heading, color: colors.text },
   meta: { ...type.small, color: colors.muted },
-  toolbar: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
+  // Flat rows under hairlines, as everywhere else: no tinted boxes, no round buttons.
   cityRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     marginTop: spacing.md,
-    marginHorizontal: spacing.lg,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   visitRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    marginHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    paddingLeft: spacing.lg,
-    borderBottomWidth: 1,
+    marginLeft: spacing.lg + 2,
+    paddingRight: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  rowText: { flex: 1, gap: 2 },
-  cityName: { ...type.heading, color: colors.text },
-  visitName: { ...type.body, color: colors.text },
+  rowText: { flex: 1, gap: 1 },
+  cityName: { ...type.body, fontWeight: "700", color: colors.text },
+  visitName: { ...type.small, fontWeight: "600", color: colors.text },
+  action: { minHeight: 48, minWidth: 56, alignItems: "center", justifyContent: "center" },
+  actionInactive: { opacity: 0.55 },
+  actionText: { ...type.small, fontWeight: "600", color: colors.primary },
   // Skipped is also written in the line below the name: never colour or strike-through alone.
   skipped: { textDecorationLine: "line-through", color: colors.muted },
 });

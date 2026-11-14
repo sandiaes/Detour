@@ -312,6 +312,27 @@ app only; no backend change.
 | 53 | Cards are therefore also used for a proposal, a plan on the overview and a way to add a document (decision 33 kept them for trip covers only). |
 | 54 | **Not verified on a device:** the full-bleed cover, the clipping of map markers and the status bar colour depend on the phone's rendering; tests cover the structure, labels and touch sizes only. |
 
+## Amendment of 2026-11-14 (fourth): consistency pass over every screen
+
+Owner request: replace the components still in the older, heavier look with the compact, flat
+ones, and several specific changes. Decisions 55 to 70. Mobile app only; no backend change.
+
+| # | Decision |
+|---|---|
+| 55 | **Headers:** screens inside a trip use `CompactHeader` (Back, a one-line title, an icon button on the right). "Trip settings" is an icon button (`settings`), not a round text button, on the plan screen, the proposals and a past trip. `ScreenHeader` (pushed screens) now has a title-size heading (22) and a compact Back; only a root screen's title is display size. |
+| 56 | **Outlined buttons** are thin grey-blue outlines with dark text at every size (they were a thick green outline); the text link style (`quiet`) keeps the accent colour. |
+| 57 | **Past trip:** a flat page: a header with the settings icon, one summary, **Documents as a hairline row**, **underlined Map and List tabs**, cities and attractions as hairline rows with icons (no tinted box), Skip and Restore as plain text actions. Its map clips its own area and uses the same small flat markers as a plan (cities navy and square-ish with a city icon, attractions teal and round, the chosen one larger); its key is one line. |
+| 58 | **Plan screen** (a proposal opened from the overview): the compact header, underlined Map and List tabs, and "Add a place" and "Add a restaurant" as slim pills. |
+| 59 | **Overview, "Your itineraries":** only the active plan has a badge ("Active"); another proposal is a plain card with no badge (this replaces the "Proposal" badge of decision 50). The spacing under the figures and between the cards is tighter, the cover is 260 dp and the cards are 56 dp thumbnails with 8 dp padding, so both cards are fully visible when the overview opens. |
+| 60 | **Soft edges:** a short fade of the page colour (10 dp) at the top, under the status bar, and (14 dp) above the bottom bar, so scrolled content and the map dissolve instead of being cut by a line. The bottom bar has the page colour, no border and no shadow. The cover of the overview runs under the status bar and has no top fade; the plan screen, which has its own choose bar, has no bottom fade. |
+| 61 | **Travel between stops** is written into a hairline: a line, "Walk 3 min 170 m", a line. The labels "Routed" and "Estimated" are gone from the list; the spoken label still says when a time is an estimate. |
+| 62 | **Map key:** Attraction, Restaurant or café, Travel to a new base city, and one line for the direct (dashed if estimated) line; every key sits in one 20 dp column. The key button is a 36 dp flat disc with hit slop. |
+| 63 | **Documents:** four kinds only, Tickets, Bookings, Transport, Other. Insurance is removed; a document saved under it reads as Other. On the empty tab the four kinds are one row of small tiles with their names, and the illustration is smaller. |
+| 64 | **Add document, "Related to":** only Whole trip and Attraction. Attraction opens a **drop-down** of the plan's places; the long list is gone. A document saved earlier about a day or a journey keeps its link, and its chip while it is edited. |
+| 65 | **Trips header:** the wordmark alone ("Detour" and the orange dot) on a transparent ground (`assets/detour-wordmark.png`), 34 dp tall, with no mark and no white background (this replaces decision 42). |
+| 66 | **Launcher icon:** the Android adaptive icon was cut by the launcher's mask because the artwork filled the whole canvas. The foreground is now the artwork at 69 % of the canvas, inside the safe zone, over a background image (`adaptive-icon-background.png`) made from the artwork's own edge colours, so nothing is cut. `icon.png` is unchanged. |
+| 67 | **Not verified on a device:** the fades, the clipping of markers, the icon on a launcher and the status bar depend on the phone; tests cover structure, labels and touch sizes. |
+
 ## Not built (kept as references for later steps)
 
 | Item from the request or screens | Why not now | Where it goes |

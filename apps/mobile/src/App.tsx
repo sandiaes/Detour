@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { BackendProvider } from "./api/BackendProvider";
 import { BackendBanner } from "./components/BackendBanner";
+import { EdgeFade } from "./components/EdgeFade";
 import { deviceCacheStore } from "./cache/sqliteStore";
 import type { CacheStore } from "./cache/store";
 import { DataProvider } from "./data/DataProvider";
@@ -97,16 +98,27 @@ function CurrentScreen({ route }: { route: Route }) {
   }
 }
 
+/** The cover of a trip's Overview, Itinerary and other tabs runs under the status bar, so a fade
+ * there would wash over the photo; everywhere else the screen starts below it. */
+function coverUnderStatusBar(route: Route): boolean {
+  return route.name === "tripOverview" && route.section !== "map";
+}
+
 export function AppContent() {
   const nav = useNavigation();
+  const bottomNav = showsBottomNav(nav.route, nav.depth);
   return (
     <SafeAreaView style={styles.fill}>
       <StatusBar style="dark" />
       <BackendBanner />
       <View style={styles.fill}>
         <CurrentScreen route={nav.route} />
+        {/* Soft edges instead of hard lines at the top and above the bottom bar. The plan screen
+            keeps its own choose bar at the bottom, so it gets no fade there. */}
+        {coverUnderStatusBar(nav.route) ? null : <EdgeFade edge="top" size={10} />}
+        {bottomNav && nav.route.name !== "itinerary" ? <EdgeFade edge="bottom" size={14} /> : null}
       </View>
-      {showsBottomNav(nav.route, nav.depth) ? <BottomNav /> : null}
+      {bottomNav ? <BottomNav /> : null}
     </SafeAreaView>
   );
 }

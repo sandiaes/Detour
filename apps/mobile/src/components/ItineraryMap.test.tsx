@@ -91,11 +91,12 @@ test("transfer lines are drawn solid when routed and dashed when estimated, and 
   expect(routed?.style.lineDasharray).toBeUndefined();
   expect(estimated?.style.lineDasharray).toEqual([2, 2]);
   expect(routed?.filter).toEqual(["==", ["get", "confidence"], "routed"]);
-  // The map key explains both, in words, and that the line is not the road path.
+  // The map key names each marker and says the line is direct and dashed when estimated.
   await fireEvent.press(screen.getByRole("button", { name: "Map key" }));
-  expect(screen.getByText("Solid line: travel time routed")).toBeOnTheScreen();
-  expect(screen.getByText("Dashed line: travel time estimated")).toBeOnTheScreen();
-  expect(screen.getByText(/not the road path/)).toBeOnTheScreen();
+  expect(screen.getByText("Attraction")).toBeOnTheScreen();
+  expect(screen.getByText("Restaurant or café")).toBeOnTheScreen();
+  expect(screen.getByText("Travel to a new base city")).toBeOnTheScreen();
+  expect(screen.getByText(/dashed if estimated/)).toBeOnTheScreen();
 });
 
 test("a line appears only once both of its stops are on the map", async () => {

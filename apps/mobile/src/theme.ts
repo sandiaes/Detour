@@ -53,7 +53,6 @@ export const docTones = {
   ticket: { bg: "#e2eeeb", fg: "#2b6b64" },
   booking: { bg: "#f9e8dc", fg: "#8a3b12" },
   transport: { bg: "#e2ecf6", fg: "#1f5f8f" },
-  insurance: { bg: "#ece6f5", fg: "#5b3f94" },
   other: { bg: "#f2f2f0", fg: "#56616c" },
 } as const;
 

@@ -97,10 +97,11 @@ const EMPTY_TEXT: Record<TripTab, { title: string; text: string }> = {
   },
 };
 
-// The logo's own wordmark (docs/brand/detour-logo.png): the mark, "Detour" and the orange dot.
-const LOGO = require("../../assets/detour-logo.png") as number;
-const LOGO_HEIGHT = 40;
-const LOGO_WIDTH = Math.round((LOGO_HEIGHT * 1288) / 462);
+// The logo's wordmark alone, "Detour" and the orange dot, on a transparent ground
+// (assets/detour-wordmark.png, cut from docs/brand/detour-logo.png).
+const LOGO = require("../../assets/detour-wordmark.png") as number;
+const LOGO_HEIGHT = 34;
+const LOGO_WIDTH = Math.round((LOGO_HEIGHT * 774) / 184);
 
 export function TripsScreen() {
   const nav = useNavigation();

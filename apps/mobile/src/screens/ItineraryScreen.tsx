@@ -5,15 +5,15 @@ import { StyleSheet, Text, View } from "react-native";
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
+import { IconButton, Tabs } from "../components/ds/primitives";
 import { PlanDayView } from "../components/plan/DayPlan";
 import { ResourceNotices } from "../components/ResourceNotices";
 import {
-  Chip,
+  CompactHeader,
   ErrorState,
   LoadingState,
   Notice,
   PlanNotes,
-  ScreenHeader,
   WakingServer,
 } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
@@ -88,7 +88,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
   if (data === undefined) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Plan" onBack={nav.back} />
+        <CompactHeader title="Plan" onBack={nav.back} />
         {itinerary.status === "error" ? (
           <ErrorState
             title={itinerary.offline ? "You are offline" : "Something went wrong"}
@@ -126,43 +126,40 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
 
   const top = (
     <View>
-      <ScreenHeader
+      <CompactHeader
         title={trip ? planNames(data, trip.destination.name).title : `${label} plan`}
         subtitle={trip ? `${label} plan · ${trip.title}` : undefined}
         onBack={nav.back}
         right={
-          <Button
-            testID="trip-settings"
+          <IconButton
+            icon="settings"
             label="Trip settings"
-            variant="quiet"
             hint="Ask for new proposals or delete the trip"
+            compact
+            testID="trip-settings"
             onPress={() => nav.push({ name: "tripSettings", tripId: route.tripId })}
           />
         }
       />
       <ResourceNotices resource={itinerary} noun="this plan" />
       {error ? <Notice tone="error">{error}</Notice> : null}
-      <View style={styles.toolbar}>
-        <Chip
-          label="List"
-          selected={route.view === "days"}
-          onPress={() => setView("days")}
-          accessibilityLabel="Show the day list"
-        />
-        <Chip
-          label="Map"
-          testID="show-map"
-          selected={route.view === "map"}
-          onPress={() => setView("map")}
-          accessibilityLabel="Show the map"
-        />
-      </View>
+      <Tabs<"days" | "map">
+        items={[
+          { key: "map", label: "Map", accessibilityLabel: "Show the map" },
+          { key: "days", label: "List", accessibilityLabel: "Show the day list" },
+        ]}
+        value={route.view}
+        onChange={(v) => setView(v)}
+        compact
+        testID="show"
+      />
       {editable ? (
         <View style={styles.toolbar}>
           <Button
             label="Add a place"
             icon="sight"
             variant="secondary"
+            size="compact"
             testID="add-place"
             hint="Search or drop a pin; you see what would change first"
             onPress={() =>
@@ -173,6 +170,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
             label="Add a restaurant"
             icon="restaurant"
             variant="secondary"
+            size="compact"
             testID="add-restaurant"
             hint="Search or enter a restaurant; Detour suggests the best day and meal"
             onPress={() =>
@@ -247,7 +245,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingVertical: spacing.sm,
     flexWrap: "wrap",
   },
   choose: {

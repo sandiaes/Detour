@@ -20,7 +20,7 @@ import {
   transportFeature,
   transportPoint,
 } from "../domain/itinerary";
-import { TOUCH, colors, radius, shadow, spacing, type } from "../theme";
+import { colors, radius, shadow, spacing, type } from "../theme";
 import { formatSeconds } from "../util/format";
 import { AttributionBar } from "./AttributionBar";
 import { Button } from "./Button";
@@ -242,10 +242,11 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
           accessibilityLabel="Map key"
           accessibilityState={{ expanded: keyOpen }}
           onPress={() => setKeyOpen((o) => !o)}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           style={styles.keyButton}
           testID="map-key"
         >
-          <Icon name={keyOpen ? "close" : "list"} size={20} />
+          <Icon name={keyOpen ? "close" : "list"} size={18} />
         </Pressable>
         {keyOpen ? <Legend /> : null}
       </View>
@@ -264,28 +265,29 @@ export function Legend() {
   return (
     <View style={styles.legend} accessibilityLiveRegion="polite">
       <View style={styles.legendRow}>
-        <View style={[styles.keyMarker, styles.keySight]} />
-        <Text style={styles.legendText}>Round, teal: attraction</Text>
+        <View style={styles.legendKey}>
+          <View style={[styles.keyMarker, styles.keySight]} />
+        </View>
+        <Text style={styles.legendText}>Attraction</Text>
       </View>
       <View style={styles.legendRow}>
-        <View style={[styles.keyMarker, styles.keyEat]} />
-        <Text style={styles.legendText}>Square, orange: restaurant or café</Text>
+        <View style={styles.legendKey}>
+          <View style={[styles.keyMarker, styles.keyEat]} />
+        </View>
+        <Text style={styles.legendText}>Restaurant or café</Text>
       </View>
       <View style={styles.legendRow}>
-        <View style={[styles.keyMarker, styles.keyTransport]} />
-        <Text style={styles.legendText}>Square, navy: travel to a new base city</Text>
+        <View style={styles.legendKey}>
+          <View style={[styles.keyMarker, styles.keyTransport]} />
+        </View>
+        <Text style={styles.legendText}>Travel to a new base city</Text>
       </View>
       <View style={styles.legendRow}>
-        <View style={[styles.swatch, styles.swatchSolid]} />
-        <Text style={styles.legendText}>Solid line: travel time routed</Text>
+        <View style={styles.legendKey}>
+          <View style={styles.swatch} />
+        </View>
+        <Text style={styles.legendText}>Direct line between stops; dashed if estimated</Text>
       </View>
-      <View style={styles.legendRow}>
-        <View style={[styles.swatch, styles.swatchDashed]} />
-        <Text style={styles.legendText}>Dashed line: travel time estimated</Text>
-      </View>
-      <Text style={styles.legendText}>
-        Lines join the stops directly; they are not the road path.
-      </Text>
     </View>
   );
 }
@@ -326,8 +328,8 @@ const styles = StyleSheet.create({
   },
   loadingTag: {
     position: "absolute",
-    top: spacing.md,
-    left: spacing.md,
+    top: spacing.sm,
+    left: spacing.sm,
     backgroundColor: "rgba(255,255,255,0.94)",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
@@ -336,36 +338,37 @@ const styles = StyleSheet.create({
   loadingText: { ...type.caption, color: colors.text },
   keyCorner: {
     position: "absolute",
-    top: spacing.md,
-    right: spacing.md,
+    top: spacing.sm,
+    right: spacing.sm,
     alignItems: "flex-end",
     gap: spacing.sm,
-    maxWidth: 260,
+    maxWidth: 270,
   },
+  // A small flat button: 36 dp drawn, 48 dp to touch (hit slop).
   keyButton: {
-    width: TOUCH,
-    height: TOUCH,
-    minHeight: TOUCH,
-    borderRadius: TOUCH / 2,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
-    ...shadow.raised,
+    ...shadow.card,
   },
   legend: {
-    gap: spacing.xs,
+    gap: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.md,
-    ...shadow.raised,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    ...shadow.card,
   },
-  keyMarker: { width: 14, height: 14, borderWidth: 2, borderColor: colors.onPrimary },
-  keySight: { backgroundColor: colors.marker, borderRadius: 8 },
-  keyEat: { backgroundColor: colors.eat, borderRadius: 3 },
-  keyTransport: { backgroundColor: colors.ink, borderRadius: 3 },
-  legendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  // Every key sits in the same 20 dp column, so the words line up.
+  legendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 20 },
+  legendKey: { width: 20, alignItems: "center", justifyContent: "center" },
+  keyMarker: { width: 14, height: 14 },
+  keySight: { backgroundColor: colors.marker, borderRadius: 7 },
+  keyEat: { backgroundColor: colors.eat, borderRadius: 4 },
+  keyTransport: { backgroundColor: colors.ink, borderRadius: 4 },
   legendText: { ...type.caption, color: colors.text, flexShrink: 1 },
-  swatch: { width: 36, height: 0, borderTopWidth: 2, borderColor: colors.outline },
-  swatchSolid: { borderStyle: "solid" },
-  swatchDashed: { borderStyle: "dashed" },
+  swatch: { width: 20, height: 0, borderTopWidth: 2, borderColor: colors.outline },
 });

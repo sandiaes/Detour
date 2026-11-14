@@ -1,4 +1,4 @@
-import type { TripDocument } from "./model";
+import { type TripDocument, normaliseCategory } from "./model";
 
 // Where documents are listed (ADR 023): a table in the app's SQLite database, next to the read
 // cache but separate from it (clearing the cache never removes a document). The files themselves
@@ -54,7 +54,8 @@ export function createSqliteDocumentStore(open: () => Promise<DocumentDatabase>)
   };
   const parse = (json: string): TripDocument | null => {
     try {
-      return JSON.parse(json) as TripDocument;
+      const doc = JSON.parse(json) as TripDocument;
+      return { ...doc, category: normaliseCategory(doc.category) };
     } catch {
       return null; // a damaged row is skipped, not a crash
     }

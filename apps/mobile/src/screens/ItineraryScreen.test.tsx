@@ -96,10 +96,11 @@ test("an area plan names each day's base city and starts a new base with the jou
 test("every transfer says its mode, time, distance and whether it is routed or estimated", async () => {
   await openDays();
   await screen.findByText("Schönbrunn Palace");
-  expect(screen.getByText("Walk · 21 min · 1.5 km")).toBeOnTheScreen();
-  expect(screen.getByText("Drive · 10 min · 4.2 km")).toBeOnTheScreen();
-  expect(screen.getAllByText("Estimated").length).toBeGreaterThan(0);
-  expect(screen.getAllByText("Routed").length).toBeGreaterThan(0);
+  expect(screen.getByText("Walk 21 min 1.5 km")).toBeOnTheScreen();
+  expect(screen.getByText("Drive 10 min 4.2 km")).toBeOnTheScreen();
+  // The words Routed and Estimated are gone from the list; the spoken label keeps them.
+  expect(screen.queryByText("Estimated")).toBeNull();
+  expect(screen.queryByText("Routed")).toBeNull();
   // A screen reader hears the same, in a sentence, with what "estimated" means.
   expect(
     screen.getByLabelText(
@@ -227,14 +228,14 @@ test("the Android back button leaves the plan for the screen before it", async (
 test("switching to the map keeps the same plan and day, with the day's list under it", async () => {
   await openDays();
   await fireEvent.press(await screen.findByRole("tab", { name: "Day 2, Sun 2 May" }));
-  await fireEvent.press(await screen.findByRole("button", { name: "Show the map" }));
+  await fireEvent.press(await screen.findByRole("tab", { name: "Show the map" }));
   expect(await screen.findByTestId("map")).toBeOnTheScreen();
   expect(screen.getByRole("tab", { name: "Day 2, Sun 2 May" }).props.accessibilityState).toEqual({
     selected: true,
   });
   expect(screen.getByLabelText("Stop 1, Attraction: Hofburg")).toBeOnTheScreen();
   expect(screen.getByText("Hofburg")).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole("button", { name: "Show the day list" }));
+  await fireEvent.press(screen.getByRole("tab", { name: "Show the day list" }));
   expect(await screen.findByText("Hofburg")).toBeOnTheScreen();
   expect(screen.queryByTestId("map")).toBeNull();
 });

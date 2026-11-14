@@ -42,9 +42,10 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
 
 The logo is in `docs/brand/` (`detour-logo.png`: mark and wordmark; `detour-mark.png`: the rounded
 mark alone). The launcher icon is the mark cut to a full-bleed square, `apps/mobile/assets/icon.png`,
-also used as the Android adaptive-icon foreground over the dark green `#1b3f36`
-(`apps/mobile/app.json`; `expo prebuild` in the "Android APK" workflow picks it up). The Trips
-screen header is the logo's wordmark image (`assets/detour-logo.png`).
+shrunk to 69 % of the canvas as the Android adaptive-icon foreground (`adaptive-icon-foreground.png`),
+over `adaptive-icon-background.png`, so a launcher's mask never cuts it (`apps/mobile/app.json`;
+`expo prebuild` in the "Android APK" workflow picks it up). The Trips screen header is the
+wordmark alone, "Detour" and its orange dot, on a transparent ground (`assets/detour-wordmark.png`).
 
 ## 2. Tokens
 
@@ -76,7 +77,10 @@ Contrast of every text and background pair is asserted in `theme.test.ts`.
 | **Sheet** | A white surface whose top corners curve over what is behind it: the trip's tabs over its cover, the stops over the map, the Add menu |
 | **Field** | A small label over the value, over a hairline, with a leading line icon. No box |
 | **Chip** | A slim pill (36 dp, 13 dp text, optional icon) with an outline, filled soft green when selected, announced as selected; hit slop keeps the touch at 48 dp |
-| **Button** | `ink` filled for the screen's main action, outlined for the second, plain text for the third; `size="compact"` is the slim pill (36 dp, 13 dp text, icon) used for card actions and place actions |
+| **Compact header** | Back, a one-line title and an icon button (`CompactHeader`), for screens inside a trip; pushed screens use `ScreenHeader` with a title-size heading |
+| **Soft edge** | A 10 dp fade at the top and a 14 dp fade above the bottom bar (`EdgeFade`); no hard line or shadow between the page and the bars |
+| **Drop-down** | A boxed field that opens a short scrolling list under it (Add document, Attraction) |
+| **Button** | `ink` filled for the screen's main action, thin-outlined for the second, plain text for the third; `size="compact"` is the slim pill (36 dp, 13 dp text, icon) used for card actions and place actions |
 | **Badge** | A small pill with a word ("Upcoming"); the word carries the meaning |
 | **Planned feature** | Says what a part will do and "Not built yet" (`PlannedFeature`) |
 
@@ -125,8 +129,8 @@ not asked; it is the destination.
   share this layout; only Map gives up the cover.
 - **Overview tab:** three flat figures, **cities, places, restaurants** (no number of days: the
   header says it); then "Your itineraries": the active plan as a card (small cover, name, what it is, places,
-  restaurants, travel time, badge "Active") and the other proposal as a second card (badge
-  "Proposal"). Nothing else: no first days, no notes and reservations block.
+  restaurants, travel time, badge "Active") and the other proposal as a second card with no badge;
+  both fit on the first screen. Nothing else: no first days, no notes and reservations block.
 - **Itinerary tab (screen 12):** the same header, cover and tabs as Overview, then the trip's days
   as a **timeline**: a dot on a thin rail, a small illustrated
   thumbnail, "Day 3 · Wed 14 Mar", the town, "4 activities · 2 restaurants". A day opens the **Map
@@ -151,7 +155,8 @@ not asked; it is the destination.
   2 h", "Lunch · Restaurant · 1 h"), a chevron to the place's details. The names are English where
   the source has an English name; the local name is on the place's details. Selecting a stop tints its row and
   highlights its marker, and the map moves to it; nothing opens under it. Lock and Remove are on the place's details.
-- **Travel between stops** is one muted caption line with its Routed or Estimated tag.
+- **Travel between stops** is written into a hairline: a line, "Walk 3 min 170 m" in muted caption,
+  a line. No Routed or Estimated tag (the spoken label still says when a time is an estimate).
 - **Type sizes here are small** (name 14, details 13) so more stops show at once.
 
 ### Kind icons
@@ -172,7 +177,9 @@ Small, flat and quiet (screen 03's discs, without the heavy rings):
 | Selected | 34 dp, navy, white edge |
 | Lines | 2 px grey; solid when routed, dashed when estimated; straight, not the road path |
 
-Each marker keeps a 48 dp touch area around the drawn shape. The map key and attribution stay.
+Each marker keeps a 48 dp touch area around the drawn shape. The map key (a 36 dp flat button;
+Attraction, Restaurant or café, Travel to a new base city, the line) and the attribution stay.
+A past trip's map uses the same markers: cities navy with a city icon, attractions teal.
 
 ### Place detail (screen 04)
 
@@ -204,10 +211,11 @@ anything changes. Outside a trip it starts a new trip.
 
 ### Documents (screens 15, 16)
 
-- **The tab, empty:** an illustration, "No documents yet", a sentence, **one tile per kind**
-  (Tickets, Bookings, Transport, Insurance, Other documents, each with what belongs there) that
-  starts adding that kind, "Add a document" (dark) and the line that documents stay on this phone.
-- **The tab, with documents:** filter chips (All and the five kinds), "All documents" with **Sort**
+- **The tab, empty:** a small illustration, "No documents yet", a sentence, **one row of four
+  small tiles** (Tickets, Bookings, Transport, Other; icon over name) that start adding that kind,
+  "Add a document" (dark) and the line that documents stay on this phone. There is no Insurance kind;
+  a document saved as one reads as Other.
+- **The tab, with documents:** filter chips (All and the four kinds), "All documents" with **Sort**
   (newest, oldest, title), then rows: a tinted tile for the kind (`docTones`), the title, "Ticket ·
   PDF · 245.0 kB", the document's date (or what it is about), a thumbnail for a picture, and a "…"
   menu (Open, Edit).
@@ -217,8 +225,8 @@ anything changes. Outside a trip it starts a new trip.
   No link and no "Create a document" option.
 - **Add document, step two:** the file as a card (picture or kind tile, name, size, a **Replace file**
   pill with a refresh icon); **Document type** chips with icons; **Title** (filled from the file
-  name, with a clear button); **Related to**: Whole trip, A day (day chips), A place (the plan's
-  stops) or A journey (each day that starts at a new base city); **Date** (optional, the calendar);
+  name, with a clear button); **Related to**: Whole trip or Attraction (a drop-down of the plan's
+  stops, closed until opened); a document saved earlier about a day or a journey keeps that link; **Date** (optional, the calendar);
   **Notes** (optional, 500 characters, with a counter), all as boxed one-line fields. "Save document" is
   disabled until a file, a title, a type and a complete link are chosen. Back from the form (or
   from a saved document) returns to the Documents tab.
@@ -227,7 +235,8 @@ anything changes. Outside a trip it starts a new trip.
   phone's viewer), Edit (outlined), Delete (plain text, asks first).
 - **A place's details** list that place's documents under "Tickets and documents" (sights) or
   "Bookings and documents" (places to eat), with "Attach a document".
-- **A past trip** has a Documents button that opens the same list.
+- **A past trip** is a flat page: a compact header with the settings icon, a summary, a Documents
+  row, underlined Map and List tabs, and hairline rows by city with plain Skip and Restore actions.
 
 ### Photos, Explore, More (screens 07, 10, 11)
 

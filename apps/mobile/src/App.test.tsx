@@ -169,7 +169,7 @@ test("create a trip, compare the proposals, select one, read its days, see it on
     await fireEvent.press(await screen.findByTestId("day-row-1"));
     expect(await screen.findByTestId("map")).toBeOnTheScreen();
     expect(await screen.findByText("Schönbrunn Palace")).toBeOnTheScreen();
-    expect(screen.getAllByText("Estimated").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Estimated")).toBeNull();
     expect(screen.getByText("Data from OpenStreetMap")).toBeOnTheScreen();
 
     // Back to the list of trips: the selected plan is shown there without refetching the list.

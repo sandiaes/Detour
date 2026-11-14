@@ -52,7 +52,7 @@ export function ScreenHeader({
       <View style={styles.headerTop}>
         {onBack ? (
           <View style={styles.back}>
-            <IconButton icon="back" label="Back" onPress={onBack} />
+            <IconButton icon="back" label="Back" compact onPress={onBack} />
           </View>
         ) : (
           <View />
@@ -63,6 +63,46 @@ export function ScreenHeader({
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
       {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
+    </View>
+  );
+}
+
+/**
+ * The slim header of a screen inside a trip (docs/design.md): Back, the title on one line and an
+ * optional icon button on the right. Replaces the large title with round text buttons.
+ */
+export function CompactHeader({
+  title,
+  subtitle,
+  onBack,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  onBack?: () => void;
+  right?: ReactNode;
+}) {
+  const ref = useAnnounceOnMount();
+  return (
+    <View style={styles.compactHeader}>
+      {onBack ? <IconButton icon="back" label="Back" compact onPress={onBack} /> : <View />}
+      <View
+        ref={ref}
+        style={styles.compactText}
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
+      >
+        <Text style={styles.compactTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={styles.compactSubtitle} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {right ?? <View />}
     </View>
   );
 }
@@ -342,12 +382,24 @@ export function Card({ children, accent }: { children: ReactNode; accent?: boole
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.md },
 
   headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  back: { minHeight: TOUCH, justifyContent: "center", marginLeft: -spacing.md },
-  headerTitle: { ...type.display, color: colors.text },
-  headerSubtitle: { ...type.small, color: colors.muted, marginTop: spacing.xs },
+  back: { minHeight: 40, justifyContent: "center", marginLeft: -spacing.md },
+  // Pushed screens title themselves in the title size; only a root screen's title is display size.
+  headerTitle: { ...type.title, color: colors.text },
+  headerSubtitle: { ...type.caption, color: colors.muted, marginTop: spacing.xxs },
+
+  compactHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  compactText: { flex: 1 },
+  compactTitle: { ...type.heading, color: colors.text },
+  compactSubtitle: { ...type.caption, color: colors.muted },
 
   notice: {
     padding: spacing.md,
