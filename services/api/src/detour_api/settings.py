@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     wikimedia_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
     wikimedia_min_interval_seconds: float = Field(default=1.0, ge=0.5, le=60)
     wikimedia_daily_budget: int = Field(default=3000, ge=0)
+    # The API's maxlag: the server refuses a request while its replicas lag more than this many
+    # seconds. 5 is the figure Wikimedia's etiquette page uses in its examples.
+    wikimedia_maxlag_seconds: int = Field(default=5, ge=1, le=60)
     wikimedia_max_download_bytes: int = Field(default=12_000_000, ge=100_000)
     # Thumbnail width asked of Commons; it must be one of Wikimedia's standard thumbnail steps.
     image_source_width: int = 1280

@@ -194,3 +194,11 @@ command and the "Resolve images" workflow, `GET /v1/images/{id}`):
   after a trip is created, the candidates endpoint and "Change photo" (steps 3 and 4). The
   Supabase Storage request shapes follow its Storage API and are unchecked against the live
   service.
+
+**2026-11-14, first real run** ("Resolve images", Austria, dry run): every request was answered with
+the `maxlag` error, so nothing was resolved (cities 4 requests, places 4 more, then "servers are
+lagged"). The adapter gave up after four tries. It now waits for a lagged server (up to 10 tries,
+the server's `Retry-After` obeyed with at least 5 s, otherwise 5, 10, 20, 40 and then 60 s), names
+the lag the server reported when it gives up, and reads the limit from
+`DETOUR_WIKIMEDIA_MAXLAG_SECONDS` (default 5). Wikimedia's replica lag read from this session at the
+same hour was about 1 s, so the cause of the run's lag is unknown; the next report will say.
