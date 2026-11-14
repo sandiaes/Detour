@@ -2776,6 +2776,94 @@
         }
       }
     },
+    "/v1/trips/{trip_id}/stops/preview": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Preview new stops for a multi-city trip (ADR 024): the active plan repaired, with what each stop keeps, what is filled in and what leaves with a removed day. Apply or discard it like any change set.",
+        "operationId": "preview_stops",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopsEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSet"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/restaurants/search": {
       "get": {
         "tags": [
@@ -3713,7 +3801,8 @@
             "enum": [
               "add_place",
               "remove_place",
-              "add_restaurant"
+              "add_restaurant",
+              "edit_stops"
             ],
             "title": "Action"
           },
@@ -5795,6 +5884,18 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "stops_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stops Version",
+            "description": "A multi-city trip's stop version this plan was made for; a plan whose version is not the trip's was made for earlier cities and cannot be chosen"
+          },
           "days": {
             "items": {
               "$ref": "#/components/schemas/Day"
@@ -5930,6 +6031,18 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "stops_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stops Version",
+            "description": "A multi-city trip's stop version this plan was made for; a plan whose version is not the trip's was made for earlier cities and cannot be chosen"
           }
         },
         "type": "object",
@@ -5982,7 +6095,8 @@
                 "enum": [
                   "add_place",
                   "remove_place",
-                  "add_restaurant"
+                  "add_restaurant",
+                  "edit_stops"
                 ]
               },
               {
@@ -7606,6 +7720,25 @@
         ],
         "title": "StopIn",
         "description": "A stop of a multi-city trip, in the user's order (ADR 024)."
+      },
+      "StopsEdit": {
+        "properties": {
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/StopIn"
+            },
+            "type": "array",
+            "title": "Stops",
+            "description": "2 to 6 cities; their days become the trip's length"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stops"
+        ],
+        "title": "StopsEdit",
+        "description": "A multi-city trip's new stops, in order (ADR 024): add, remove, reorder or change days."
       },
       "SuggestionReason": {
         "properties": {

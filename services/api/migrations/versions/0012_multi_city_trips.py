@@ -32,6 +32,17 @@ def upgrade() -> None:
         "ALTER TABLE app.trip ADD CONSTRAINT trip_destination_kind_check"
         " CHECK (destination_kind IN ('city', 'area', 'route'))"
     )
+    op.execute("ALTER TABLE app.change_set DROP CONSTRAINT change_set_action_check")
+    op.execute(
+        "ALTER TABLE app.change_set ADD CONSTRAINT change_set_action_check"
+        " CHECK (action IN ('add_place', 'remove_place', 'add_restaurant', 'edit_stops'))"
+    )
+    # A stop edit names no place (its target is the trip's new name).
+    op.execute("ALTER TABLE app.change_set DROP CONSTRAINT change_set_place_xor")
+    op.execute(
+        "ALTER TABLE app.change_set ADD CONSTRAINT change_set_place_xor CHECK (action IN"
+        " ('remove_place', 'edit_stops') OR ((place_id IS NULL) <> (user_place_id IS NULL)))"
+    )
     op.execute("ALTER TABLE app.trip ADD COLUMN stops_version integer NOT NULL DEFAULT 0")
     op.execute("ALTER TABLE app.itinerary ADD COLUMN stops_version integer")
     op.execute(
@@ -75,6 +86,17 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute("DELETE FROM app.change_set WHERE action = 'edit_stops'")
+    op.execute("ALTER TABLE app.change_set DROP CONSTRAINT change_set_place_xor")
+    op.execute(
+        "ALTER TABLE app.change_set ADD CONSTRAINT change_set_place_xor"
+        " CHECK (action = 'remove_place' OR ((place_id IS NULL) <> (user_place_id IS NULL)))"
+    )
+    op.execute("ALTER TABLE app.change_set DROP CONSTRAINT change_set_action_check")
+    op.execute(
+        "ALTER TABLE app.change_set ADD CONSTRAINT change_set_action_check"
+        " CHECK (action IN ('add_place', 'remove_place', 'add_restaurant'))"
+    )
     op.execute("DELETE FROM app.trip WHERE destination_kind = 'route'")
     op.execute(
         "UPDATE app.itinerary_day SET arrival_mode = NULL, arrival_confidence = NULL"

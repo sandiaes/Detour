@@ -12,9 +12,10 @@ from detour_api.models.changes import (
     ItineraryVersion,
     PlaceSuggestionRequest,
     PlaceSuggestions,
+    StopsEdit,
 )
 from detour_api.models.common import PlanningErrorBody
-from detour_api.planner import change_service
+from detour_api.planner import change_service, stop_service
 from detour_api.repo import changes
 from detour_api.routers.responses import ERRORS
 
@@ -92,3 +93,23 @@ def discard_change_set(session: SessionDep, change_set_id: uuid.UUID) -> ChangeS
 def list_versions(session: SessionDep, itinerary_id: uuid.UUID) -> list[ItineraryVersion]:
     with session.tx() as conn:
         return changes.list_versions(conn, session.installation_id, itinerary_id)
+
+
+@router.post(
+    "/trips/{trip_id}/stops/preview",
+    status_code=status.HTTP_201_CREATED,
+    summary="Preview new stops for a multi-city trip (ADR 024): the active plan repaired, with "
+    "what each stop keeps, what is filled in and what leaves with a removed day. Apply or discard "
+    "it like any change set.",
+    responses={**ERRORS, 422: {"model": PlanningErrorBody}},
+)
+def preview_stops(
+    session: SessionDep, request: Request, trip_id: uuid.UUID, body: StopsEdit
+) -> ChangeSet:
+    return stop_service.preview_stops(
+        session,
+        trip_id,
+        body.stops,
+        request.app.state.travel_time,
+        request.app.state.settings,
+    )

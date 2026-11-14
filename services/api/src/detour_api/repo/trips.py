@@ -276,12 +276,21 @@ def update_trip(
 def _select_itinerary(conn: Connection, trip_id: uuid.UUID, itinerary_id: uuid.UUID | None) -> None:
     if itinerary_id is not None:
         owned = conn.execute(
-            text("SELECT 1 FROM app.itinerary WHERE id = :i AND trip_id = :t"),
+            text(
+                "SELECT it.stops_version, t.stops_version AS trip_version, t.destination_kind"
+                " FROM app.itinerary it JOIN app.trip t ON t.id = it.trip_id"
+                " WHERE it.id = :i AND it.trip_id = :t"
+            ),
             {"i": itinerary_id, "t": trip_id},
         ).first()
         if owned is None:
             raise invalid(
                 "itinerary_not_in_trip", "selected_itinerary_id is not an itinerary of this trip"
+            )
+        # A plan made for a multi-city trip's earlier stops cannot be chosen (ADR 024).
+        if owned.destination_kind == "route" and (owned.stops_version or 0) != owned.trip_version:
+            raise conflict(
+                "stops_changed", "this plan was made for the trip's earlier cities; make new ones"
             )
     conn.execute(
         text(

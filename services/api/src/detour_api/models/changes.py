@@ -7,7 +7,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, Field, model_validator
 
 from detour_api.models.common import StrictModel
-from detour_api.models.trips import Itinerary, MealType, PlanNote
+from detour_api.models.trips import Itinerary, MealType, PlanNote, StopIn
 
 
 class ChangeSetCreate(StrictModel):
@@ -135,7 +135,7 @@ class ChangeDiff(BaseModel):
 class ChangeSet(BaseModel):
     id: uuid.UUID
     itinerary_id: uuid.UUID
-    action: Literal["add_place", "remove_place", "add_restaurant"]
+    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops"]
     target_name: str
     status: Literal["pending", "applied", "discarded", "expired"] = Field(
         description="pending: previewed, nothing changed yet. expired: the itinerary changed "
@@ -162,7 +162,7 @@ class ItineraryVersion(BaseModel):
     version: int
     replaced_at: datetime
     change_set_id: uuid.UUID | None = Field(description="Null when a hand edit replaced it")
-    action: Literal["add_place", "remove_place", "add_restaurant"] | None
+    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops"] | None
     target_name: str | None
 
 
@@ -222,3 +222,9 @@ class PlaceSuggestions(BaseModel):
     issues: list[SuggestionReason] = Field(
         description="Why no day can take it, when there are no suggestions"
     )
+
+
+class StopsEdit(StrictModel):
+    """A multi-city trip's new stops, in order (ADR 024): add, remove, reorder or change days."""
+
+    stops: list[StopIn] = Field(description="2 to 6 cities; their days become the trip's length")

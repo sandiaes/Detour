@@ -414,6 +414,11 @@ class ItinerarySummary(BaseModel):
     notes: list[PlanNote] = Field(description="Plan-level explanations; empty for manual plans")
     stats: PlanStats | None = Field(description="Null for manual itineraries")
     created_at: datetime
+    stops_version: int | None = Field(
+        default=None,
+        description="A multi-city trip's stop version this plan was made for; a plan whose "
+        "version is not the trip's was made for earlier cities and cannot be chosen",
+    )
 
 
 class Itinerary(ItinerarySummary):

@@ -522,6 +522,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/trips/{trip_id}/stops/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Preview new stops for a multi-city trip (ADR 024): the active plan repaired, with what each stop keeps, what is filled in and what leaves with a removed day. Apply or discard it like any change set. */
+    post: operations["preview_stops"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/restaurants/search": {
     parameters: {
       query?: never;
@@ -730,7 +747,7 @@ export interface components {
        * Action
        * @enum {string}
        */
-      action: "add_place" | "remove_place" | "add_restaurant";
+      action: "add_place" | "remove_place" | "add_restaurant" | "edit_stops";
       /** Target Name */
       target_name: string;
       /**
@@ -1542,6 +1559,11 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /**
+       * Stops Version
+       * @description A multi-city trip's stop version this plan was made for; a plan whose version is not the trip's was made for earlier cities and cannot be chosen
+       */
+      stops_version?: number | null;
       /** Days */
       days: components["schemas"]["Day"][];
     };
@@ -1603,6 +1625,11 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /**
+       * Stops Version
+       * @description A multi-city trip's stop version this plan was made for; a plan whose version is not the trip's was made for earlier cities and cannot be chosen
+       */
+      stops_version?: number | null;
     };
     /** ItineraryVersion */
     ItineraryVersion: {
@@ -1619,7 +1646,7 @@ export interface components {
        */
       change_set_id: string | null;
       /** Action */
-      action: ("add_place" | "remove_place" | "add_restaurant") | null;
+      action: ("add_place" | "remove_place" | "add_restaurant" | "edit_stops") | null;
       /** Target Name */
       target_name: string | null;
     };
@@ -2288,6 +2315,17 @@ export interface components {
       city_id: number;
       /** Days */
       days: number;
+    };
+    /**
+     * StopsEdit
+     * @description A multi-city trip's new stops, in order (ADR 024): add, remove, reorder or change days.
+     */
+    StopsEdit: {
+      /**
+       * Stops
+       * @description 2 to 6 cities; their days become the trip's length
+       */
+      stops: components["schemas"]["StopIn"][];
     };
     /** SuggestionReason */
     SuggestionReason: {
@@ -4493,6 +4531,68 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  preview_stops: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StopsEdit"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanningErrorBody"];
         };
       };
     };

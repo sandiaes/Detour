@@ -147,3 +147,122 @@ def test_route_names_follow_the_fixed_table() -> None:
     )
     assert route_name(["A", "B", "C"], ["AT", None, "AT"], names) == "Multi-city trip"
     assert route_name(["A", "B", "C"], ["ZZ"] * 3, names) == "Multi-city trip"
+
+
+# -- adding places and editing the stops of a planned trip (ADR 024, decisions 18 and 19) -------
+
+
+def _planned(env: ApiEnv, stops: list[tuple[int, int]]) -> tuple[dict[str, Any], dict[str, Any]]:
+    insert_synthetic_sights(env.database_url)
+    trip = route(env, stops, start_date="2027-05-01").json()
+    r = env.client.post(f"/v1/trips/{trip['id']}/itineraries/generate", headers=env.headers)
+    assert r.status_code == 201, r.text
+    chosen = r.json()["itineraries"][0]
+    sel = env.client.patch(
+        f"/v1/trips/{trip['id']}",
+        json={"selected_itinerary_id": chosen["id"]},
+        headers=env.headers,
+    )
+    assert sel.status_code == 200, sel.text
+    return trip, chosen
+
+
+def _preview_stops(env: ApiEnv, trip_id: str, stops: list[tuple[int, int]]) -> Any:
+    return env.client.post(
+        f"/v1/trips/{trip_id}/stops/preview",
+        json={"stops": [{"city_id": c, "days": d} for c, d in stops]},
+        headers=env.headers,
+    )
+
+
+def test_a_place_far_from_every_stop_is_refused_not_given_a_new_base(api_env: ApiEnv) -> None:
+    _trip, plan = _planned(api_env, [(TESTBURG, 1), (ALPENAU, 1), (MUEHLBACH, 1)])
+    far = api_env.client.post(
+        "/v1/user-places",
+        json={
+            "name": "Far hut",
+            "kind": "location",
+            "lat": 47.0,
+            "lon": 13.0,
+            "source": "manual_pin",
+        },
+        headers=api_env.headers,
+    )
+    assert far.status_code == 201, far.text
+    r = api_env.client.post(
+        f"/v1/itineraries/{plan['id']}/change-sets",
+        json={"action": "add_place", "user_place_id": far.json()["id"], "duration_minutes": 60},
+        headers=api_env.headers,
+    )
+    assert r.status_code == 422, r.text
+    assert "add its town as a stop first" in r.json()["detail"]
+
+
+def test_editing_stops_previews_then_applies_with_the_trip(api_env: ApiEnv) -> None:
+    trip, plan = _planned(api_env, [(TESTBURG, 1), (ALPENAU, 1), (MUEHLBACH, 1)])
+    other = next(
+        i["id"]
+        for i in api_env.client.get(
+            f"/v1/trips/{trip['id']}/itineraries", headers=api_env.headers
+        ).json()
+        if i["id"] != plan["id"]
+    )
+    # Muehlbach first, Testburg for two days, Alpenau removed.
+    r = _preview_stops(api_env, trip["id"], [(MUEHLBACH, 1), (TESTBURG, 2)])
+    assert r.status_code == 201, r.text
+    change = r.json()
+    assert change["action"] == "edit_stops" and change["status"] == "pending"
+    codes = [n["code"] for n in change["notes"]]
+    assert "STOPS_CHANGED" in codes
+    if any(i["type"] == "visit" for i in plan["days"][1]["items"]):
+        assert "STOP_REMOVED_ITEMS" in codes  # Alpenau's day leaves with its visits
+    # nothing changed yet
+    same = api_env.client.get(f"/v1/trips/{trip['id']}", headers=api_env.headers).json()
+    assert [s["city_id"] for s in same["stops"]] == [TESTBURG, ALPENAU, MUEHLBACH]
+
+    applied = api_env.client.post(f"/v1/change-sets/{change['id']}/apply", headers=api_env.headers)
+    assert applied.status_code == 200, applied.text
+    days = applied.json()["itinerary"]["days"]
+    assert [d["base_city_id"] for d in days] == [MUEHLBACH, TESTBURG, TESTBURG]
+    assert [d["date"] for d in days] == ["2027-05-01", "2027-05-02", "2027-05-03"]
+    assert days[0]["arrival"] is None and days[1]["arrival"] is not None
+    assert days[2]["items"], "the extra Testburg day is filled by the planner"
+    after = api_env.client.get(f"/v1/trips/{trip['id']}", headers=api_env.headers).json()
+    assert [(s["city_id"], s["days"]) for s in after["stops"]] == [(MUEHLBACH, 1), (TESTBURG, 2)]
+    assert after["duration_days"] == 3 and after["stops_version"] == 1
+    assert after["title"] == "Mühlbach to Testburg"
+    # the other proposal was made for the earlier cities and cannot be chosen
+    stale = api_env.client.patch(
+        f"/v1/trips/{trip['id']}", json={"selected_itinerary_id": other}, headers=api_env.headers
+    )
+    assert stale.status_code == 409 and code(stale) == "stops_changed"
+
+
+def test_a_locked_item_on_a_dropped_day_stops_the_edit(api_env: ApiEnv) -> None:
+    trip, plan = _planned(api_env, [(TESTBURG, 2), (ALPENAU, 1)])
+    second_day = plan["days"][1]
+    if not second_day["items"]:
+        pytest.skip("the synthetic plan left the day empty")
+    item = second_day["items"][0]
+    locked = api_env.client.patch(
+        f"/v1/items/{item['id']}", json={"locked": True}, headers=api_env.headers
+    )
+    assert locked.status_code == 200, locked.text
+    r = _preview_stops(api_env, trip["id"], [(TESTBURG, 1), (ALPENAU, 1)])
+    assert r.status_code == 422, r.text
+    assert "unlock them or keep the day" in r.json()["detail"]
+
+
+def test_stops_of_a_city_trip_cannot_be_edited(api_env: ApiEnv) -> None:
+    city = api_env.client.post(
+        "/v1/trips",
+        json={
+            "title": "Testburg",
+            "destination_kind": "city",
+            "destination_ref": str(TESTBURG),
+            "duration_days": 1,
+        },
+        headers=api_env.headers,
+    ).json()
+    r = _preview_stops(api_env, city["id"], [(TESTBURG, 1), (ALPENAU, 1)])
+    assert r.status_code == 409 and code(r) == "not_a_route"
