@@ -1,4 +1,4 @@
-"""Command line: ``python -m detour_api.importer {region,gazetteer} ...``.
+"""Command line: ``python -m detour_api.importer {region,gazetteer,images} ...``.
 
 Environment:
   DETOUR_IMPORT_DATABASE_URL   target database (Supabase session pooler, port 5432)
@@ -155,6 +155,61 @@ def _cmd_gazetteer(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_images(args: argparse.Namespace) -> int:
+    """Resolve photos for a region's attractions and its countries' cities (ADR 022)."""
+    from detour_api.adapters.wikimedia import WikimediaClient
+    from detour_api.db import make_engine
+    from detour_api.images import resolver
+    from detour_api.images.store import MemoryImageStore, make_store
+    from detour_api.settings import Settings, normalize_database_url
+
+    region = REGIONS.get(args.region)
+    if region is None:
+        raise SystemExit(f"unknown region {args.region!r}; known: {', '.join(sorted(REGIONS))}")
+    target = _env("DETOUR_IMPORT_DATABASE_URL", args.target_url)
+    require_session_mode(target)
+    settings = Settings()
+    store = make_store(settings)
+    if store is None:
+        if not args.dry_run_storage:
+            raise SystemExit(
+                "DETOUR_SUPABASE_URL and DETOUR_SUPABASE_SERVICE_KEY are not set (Storage);"
+                " pass --dry-run-storage to resolve without keeping the files"
+            )
+        store = MemoryImageStore()
+    engine = make_engine(normalize_database_url(target))
+    try:
+        client = WikimediaClient(settings, engine)
+        if not client.enabled:
+            raise SystemExit("the Wikimedia adapter is disabled (DETOUR_WIKIMEDIA_ENABLED)")
+        reports: dict[str, object] = {}
+        if args.cities:
+            cands = resolver.city_candidates(engine, region.countries, args.cities)
+            reports["cities"] = resolver.resolve(engine, client, store, settings, cands).as_dict()
+        if args.places:
+            cands = resolver.place_candidates(engine, region.id, args.places)
+            reports["places"] = resolver.resolve(engine, client, store, settings, cands).as_dict()
+        with engine.begin() as conn:
+            from sqlalchemy import text
+
+            reports["stored"] = dict(
+                conn.execute(
+                    text(
+                        "SELECT count(*) AS images, coalesce(sum(bytes), 0) AS bytes FROM geo.image"
+                    )
+                )
+                .mappings()
+                .one()
+            )
+    finally:
+        engine.dispose()
+    out = json.dumps(reports, indent=2, sort_keys=True)
+    if args.out:
+        Path(args.out).write_text(out + "\n", encoding="utf-8")
+    print(out)
+    return 0
+
+
 def _cmd_countries(args: argparse.Namespace) -> int:
     region = REGIONS.get(args.region)
     if region is None:
@@ -188,6 +243,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     gaz.add_argument("--dataset", default=CITIES_DATASET)
     gaz.add_argument("--target-url")
     gaz.set_defaults(func=_cmd_gazetteer)
+
+    images = sub.add_parser("images", help="find, resize and store photos (ADR 022)")
+    images.add_argument("region", help=f"one of: {', '.join(sorted(REGIONS))}")
+    images.add_argument("--places", type=int, default=500, help="attractions to look up (0: none)")
+    images.add_argument("--cities", type=int, default=100, help="cities to look up (0: none)")
+    images.add_argument("--target-url")
+    images.add_argument("--out", help="write the report as JSON to this file")
+    images.add_argument(
+        "--dry-run-storage",
+        action="store_true",
+        help="keep the files in memory only: measures coverage without Supabase Storage",
+    )
+    images.set_defaults(func=_cmd_images)
 
     countries = sub.add_parser("countries", help="print the country codes of a region")
     countries.add_argument("region")

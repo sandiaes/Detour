@@ -1,0 +1,97 @@
+# Reference photos (ADR 022): find, resize and store photos for a region's attractions and its
+# countries' cities, and write the coverage report. Run by hand:
+#   Actions tab -> "Resolve images" -> Run workflow.
+# (GitHub shows the Run workflow button only for workflows on the default branch.)
+#
+# Needs the repository secret DETOUR_IMPORT_DATABASE_URL (the Supabase *session pooler* string,
+# port 5432). Storing the files needs DETOUR_SUPABASE_URL (https://<project>.supabase.co) and
+# DETOUR_SUPABASE_SERVICE_KEY as repository secrets and a public bucket named "photos". Until they
+# exist, leave "dry run" ticked: the run measures coverage and keeps the files in memory only.
+#
+# Wikimedia is called one request at a time with the identifying User-Agent below (ADR 022).
+name: Resolve images
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "Region whose attractions and cities get photos"
+        required: true
+        type: choice
+        options: [austria, czech-republic, hungary, italy, japan]
+      cities:
+        description: "Most populous cities to look up (0: none)"
+        required: true
+        default: "100"
+      places:
+        description: "Attractions to look up, best score first (0: none)"
+        required: true
+        default: "500"
+      dry_run:
+        description: "Dry run: do not use Supabase Storage (files are not kept)"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# One run at a time: Wikimedia asks for gentle, serial access.
+concurrency:
+  group: resolve-images
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve images for ${{ inputs.region }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      DETOUR_IMPORT_DATABASE_URL: ${{ secrets.DETOUR_IMPORT_DATABASE_URL }}
+      DETOUR_DATABASE_URL: ${{ secrets.DETOUR_IMPORT_DATABASE_URL }} # for the migration step
+      DETOUR_SUPABASE_URL: ${{ secrets.DETOUR_SUPABASE_URL }}
+      DETOUR_SUPABASE_SERVICE_KEY: ${{ secrets.DETOUR_SUPABASE_SERVICE_KEY }}
+      DETOUR_WIKIMEDIA_USER_AGENT: "Detour-bot/0.1 (+https://github.com/${{ github.repository }})"
+      REGION: ${{ inputs.region }}
+      CITIES: ${{ inputs.cities }}
+      PLACES: ${{ inputs.places }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - name: Check the secrets
+        run: |
+          if [ -z "$DETOUR_IMPORT_DATABASE_URL" ]; then
+            echo "::error::Repository secret DETOUR_IMPORT_DATABASE_URL is not set (docs/deployment.md)"
+            exit 1
+          fi
+          if [ "$DRY_RUN" != "true" ] && { [ -z "$DETOUR_SUPABASE_URL" ] || [ -z "$DETOUR_SUPABASE_SERVICE_KEY" ]; }; then
+            echo "::error::DETOUR_SUPABASE_URL and DETOUR_SUPABASE_SERVICE_KEY are needed to store files; tick dry run or add them"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: pip install ./services/api
+      - name: Migrate the database
+        working-directory: services/api
+        run: alembic upgrade head
+      - name: Resolve images
+        run: |
+          mkdir -p out
+          extra=""
+          if [ "$DRY_RUN" = "true" ]; then extra="--dry-run-storage"; fi
+          python -m detour_api.importer images "$REGION" --cities "$CITIES" --places "$PLACES" \
+            --out out/images-report.json $extra
+      - name: Report
+        if: ${{ always() }}
+        run: |
+          if [ -f out/images-report.json ]; then
+            { echo '### Image coverage'; echo '```json'; cat out/images-report.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: images-${{ inputs.region }}
+          path: out/
+          if-no-files-found: ignore

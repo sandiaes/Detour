@@ -94,6 +94,29 @@ class Settings(BaseSettings):
     # Ask /route for no turn-by-turn maneuvers (directions_type none; checked by hand, ADR 013).
     routing_slim_route_requests: bool = True
 
+    # Reference photos (ADR 022): Wikidata and the Wikimedia Commons API, backend-side only. Terms
+    # read 2026-11-14 (ADR 022): a descriptive User-Agent with contact information, at most 3
+    # concurrent requests (the adapter makes one at a time), obey Retry-After, batch with "|".
+    # The interval, budget and size limits below are our own, not Wikimedia figures.
+    wikimedia_enabled: bool = True
+    wikimedia_user_agent: str = "Detour-bot/0.1 (+https://github.com/sandiaes/Detour)"
+    wikidata_api_url: str = "https://www.wikidata.org/w/api.php"
+    commons_api_url: str = "https://commons.wikimedia.org/w/api.php"
+    wikimedia_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
+    wikimedia_min_interval_seconds: float = Field(default=1.0, ge=0.5, le=60)
+    wikimedia_daily_budget: int = Field(default=3000, ge=0)
+    wikimedia_max_download_bytes: int = Field(default=12_000_000, ge=100_000)
+    # Thumbnail width asked of Commons; it must be one of Wikimedia's standard thumbnail steps.
+    image_source_width: int = 1280
+    # The stored rendition (ADR 022, decision 5) and the cap on stored images (decision 6).
+    image_max_side: int = Field(default=1080, ge=320, le=2000)
+    image_jpeg_quality: int = Field(default=75, ge=40, le=95)
+    image_max_stored: int = Field(default=4000, ge=1)
+    # Supabase Storage for the stored renditions; both are secrets of the hosting settings.
+    supabase_url: str | None = None
+    supabase_service_key: SecretStr | None = None
+    photos_bucket: str = "photos"
+
     # Plan generation (Phase 4, ADR 014). Whether it may ask the routing provider for the
     # transfers a plan uses (cached times are always read), and the total time it may spend
     # waiting on the provider; transfers not reached are estimated and labelled. Our own limits.
@@ -130,6 +153,20 @@ class Settings(BaseSettings):
         if not value.startswith("https://"):
             raise ValueError("routing base url must use https")
         return value.rstrip("/")
+
+    @field_validator("wikidata_api_url", "commons_api_url")
+    @classmethod
+    def _wikimedia_is_https(cls, value: str) -> str:
+        if not value.startswith("https://"):
+            raise ValueError("wikimedia api urls must use https")
+        return value
+
+    @field_validator("supabase_url")
+    @classmethod
+    def _supabase_is_https(cls, value: str | None) -> str | None:
+        if value is not None and not value.startswith("https://"):
+            raise ValueError("supabase url must use https")
+        return None if value is None else value.rstrip("/")
 
     @field_validator("map_attribution")
     @classmethod

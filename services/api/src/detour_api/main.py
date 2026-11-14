@@ -18,11 +18,13 @@ from detour_api.adapters.photon import PhotonClient
 from detour_api.adapters.valhalla import ValhallaClient
 from detour_api.db import make_engine
 from detour_api.errors import install_handlers
+from detour_api.images.store import ImageStore, make_store
 from detour_api.logging import configure_logging, get_logger
 from detour_api.routers import (
     changes,
     config,
     health,
+    images,
     installations,
     itineraries,
     regions,
@@ -46,6 +48,7 @@ def create_app(
     *,
     photon_transport: httpx.BaseTransport | None = None,
     routing_transport: httpx.BaseTransport | None = None,
+    image_store: ImageStore | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
@@ -56,6 +59,7 @@ def create_app(
         url = settings.sqlalchemy_url
         app.state.engine = make_engine(url) if url else None
         app.state.photon = PhotonClient(settings, app.state.engine, photon_transport)
+        app.state.image_store = image_store or make_store(settings)
         app.state.travel_time = TravelTimeService(
             settings,
             app.state.engine,
@@ -83,6 +87,7 @@ def create_app(
     )
     app.state.settings = settings
     app.state.engine = None
+    app.state.image_store = image_store
     app.state.photon = PhotonClient(settings, None)
     app.state.travel_time = TravelTimeService(settings, None, ValhallaClient(settings, None))
     install_handlers(app)
@@ -123,6 +128,7 @@ def create_app(
     app.include_router(config.router)
     app.include_router(installations.router)
     app.include_router(regions.router)
+    app.include_router(images.router)
     app.include_router(search.router)
     app.include_router(trips.router)
     app.include_router(itineraries.router)

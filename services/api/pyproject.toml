@@ -19,6 +19,7 @@ dependencies = [
   "psycopg[binary]==3.3.9",
   "structlog==26.1.0",
   "httpx==0.28.1",
+  "pillow==12.3.0",
 ]
 
 [project.optional-dependencies]

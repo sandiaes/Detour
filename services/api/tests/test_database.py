@@ -50,6 +50,8 @@ GEO_TABLES = [
     "city",
     "country",
     "currency",
+    "image",
+    "image_lookup",
     "import_run",
     "licence",
     "place",
