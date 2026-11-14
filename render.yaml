@@ -27,3 +27,11 @@ services:
       # The Supabase session-pooler URL; Render asks for it when the Blueprint is created.
       - key: DETOUR_DATABASE_URL
         sync: false
+      # Photos (ADR 022): the backend streams the stored photos from Supabase Storage. The service
+      # key is a secret: Render asks for it when the Blueprint is synced, or set it in the
+      # service's Environment tab. Without them /v1/images answers 503 and the app keeps its
+      # illustrations.
+      - key: DETOUR_SUPABASE_URL
+        sync: false
+      - key: DETOUR_SUPABASE_SERVICE_KEY
+        sync: false
