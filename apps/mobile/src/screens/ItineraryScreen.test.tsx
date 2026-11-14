@@ -96,8 +96,8 @@ test("an area plan names each day's base city and starts a new base with the jou
 test("every transfer says its mode, time, distance and whether it is routed or estimated", async () => {
   await openDays();
   await screen.findByText("Schönbrunn Palace");
-  expect(screen.getByText("Walk 21 min 1.5 km")).toBeOnTheScreen();
-  expect(screen.getByText("Drive 10 min 4.2 km")).toBeOnTheScreen();
+  expect(screen.getByText("Walk · 21 min · 1.5 km")).toBeOnTheScreen();
+  expect(screen.getByText("Drive · 10 min · 4.2 km")).toBeOnTheScreen();
   // The words Routed and Estimated are gone from the list; the spoken label keeps them.
   expect(screen.queryByText("Estimated")).toBeNull();
   expect(screen.queryByText("Routed")).toBeNull();

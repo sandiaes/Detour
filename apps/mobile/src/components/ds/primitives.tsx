@@ -147,7 +147,13 @@ export function Tabs<K extends string>({
 
 // ---- statistics ----------------------------------------------------------------------------------
 
-export type Stat = { key: string; icon: IconName; value: number | string; label: string };
+export type Stat = {
+  key: string;
+  icon: IconName;
+  value: number | string;
+  label: string;
+  spoken?: string;
+};
 
 /** A row of compact figures. Each tile reads as one phrase ("5 cities"). */
 export function StatRow({ stats }: { stats: Stat[] }) {
@@ -158,7 +164,7 @@ export function StatRow({ stats }: { stats: Stat[] }) {
           key={s.key}
           style={[styles.stat, i > 0 && styles.statDivider]}
           accessible
-          accessibilityLabel={`${s.value} ${s.label.toLowerCase()}`}
+          accessibilityLabel={s.spoken ?? `${s.value} ${s.label.toLowerCase()}`}
         >
           <Icon name={s.icon} size={18} color={colors.primary} />
           <Text style={styles.statValue}>{s.value}</Text>
