@@ -38,6 +38,7 @@ from detour_api.models.restaurants import (
     SlotSuggestion,
     SlotSuggestions,
 )
+from detour_api.names.store import PLACE_NAME_COLUMNS, resolve_place_row
 from detour_api.planner import restaurant_slots
 from detour_api.planner.config import PlannerConfig
 from detour_api.planner.diff import PlanDiff
@@ -408,11 +409,14 @@ def load_dining(
     if place_id is not None:
         row = conn.execute(
             text(
-                "SELECT p.kind, p.name, p.is_active, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,"
-                " rp.venue_type, rp.cuisines, rp.meal_types FROM geo.place p"
+                "SELECT p.id, p.kind, p.category, p.name, p.names_i18n, p.is_active,"
+                " ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,"
+                " rp.venue_type, rp.cuisines, rp.meal_types, "
+                + PLACE_NAME_COLUMNS
+                + " FROM geo.place p"
                 " LEFT JOIN geo.restaurant_profile rp ON rp.place_id = p.id WHERE p.id = :i"
             ),
-            {"i": place_id},
+            {"i": place_id, "inst": str(installation_id)},
         ).first()
         if row is None or not row.is_active:
             raise invalid("place_not_found", "place_id is not an active place")
@@ -421,7 +425,7 @@ def load_dining(
         if row.name is None:
             raise invalid("unnamed_place", "this place has no name in the data; add it by hand")
         return Dining(
-            name=row.name,
+            name=resolve_place_row(row).display or row.name,
             lat=row.lat,
             lon=row.lon,
             venue_type=row.venue_type,
@@ -447,7 +451,7 @@ def load_dining(
 
 def _addition(conn: Connection, installation_id: uuid.UUID, body: ChangeSetCreate) -> Addition:
     if body.place_id is not None:
-        found = geo.place_exists(conn, body.place_id)
+        found = geo.place_exists(conn, body.place_id, installation_id)
         if found is None or not found[4]:
             raise invalid("place_not_found", "place_id is not an active place")
         kind, name, lat, lon, _, default_minutes, category = found

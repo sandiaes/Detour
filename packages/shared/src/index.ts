@@ -30,6 +30,7 @@ export type DestinationSearchResponse = components["schemas"]["DestinationSearch
 export type AttributionEntry = components["schemas"]["AttributionEntry"];
 export type PlaceSummary = components["schemas"]["PlaceSummary"];
 export type PlaceDetail = components["schemas"]["PlaceDetail"];
+export type PlaceName = components["schemas"]["PlaceName"];
 export type PlaceSearchResponse = components["schemas"]["PlaceSearchResponse"];
 export type ExternalPlace = components["schemas"]["ExternalPlace"];
 export type UserPlace = components["schemas"]["UserPlace"];

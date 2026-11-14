@@ -6,7 +6,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from detour_api.models.common import Latitude, Longitude, StrictModel
+from detour_api.models.common import Latitude, Longitude, PlaceName, StrictModel
 from detour_api.models.images import Photo
 
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]
@@ -348,6 +348,11 @@ class Item(BaseModel):
     image: Photo | None = Field(
         default=None,
         description="Photo of an imported place, when one was found (restaurants have none yet)",
+    )
+    names: PlaceName | None = Field(
+        default=None,
+        description="Imported places: the resolved English-facing name and the original local "
+        "name (ADR 025), read when the plan is read. display_name stays the stored snapshot",
     )
 
 

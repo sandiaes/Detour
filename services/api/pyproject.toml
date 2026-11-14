@@ -62,6 +62,10 @@ select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "RUF"]
 "src/detour_api/repo/*.py" = ["E501", "S608"]
 "src/detour_api/importer/*.py" = ["E501", "S608"]
 "src/detour_api/images/*.py" = ["S608"]
+# Transliteration tables are made of letters of other scripts on purpose.
+"src/detour_api/names/translit.py" = ["RUF001"]
+"src/detour_api/names/*.py" = ["S608"]
+"tests/test_names*.py" = ["RUF001", "S101", "E501"]
 "src/detour_api/adapters/*.py" = ["E501"]
 "migrations/**" = ["E501"]
 

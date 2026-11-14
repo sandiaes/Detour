@@ -103,6 +103,7 @@ def search_restaurants(
             lon=lon,
             radius_m=radius_m,
             limit=limit,
+            installation_id=session.installation_id,
         )
         meals = {
             str(r.place_id): list(r.meal_types)

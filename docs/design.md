@@ -204,7 +204,10 @@ A past trip's map uses the same markers: cities navy with a city icon, attractio
 ### Place detail (screen 04)
 
 Cover (only the Back button over it), then a white sheet whose top corners curve over its lower edge.
-On it: the name and, when the plan shows an English name, the local name; one line with the kind icon,
+On it: the name the server resolved (ADR 025) and, under it in the muted small style, the original
+local name when it differs; a name Detour romanized itself adds "Automatically romanized" in italics;
+then "Edit display name" (a compact outlined button opening a one-line field with Save and Cancel; an
+edited name offers "Use the usual name"); one line with the kind icon,
 the kind and the town ("Attraction · Vienna"); two flat figures (as on the overview) for the day
 ("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit"); one quiet line with the
 address (no label); for places to eat the meal, venue and cuisine from the data; slim icon pills Show
@@ -299,8 +302,9 @@ the screen reader announcing a screen's title on arrival.
   and a rule in the planner, with an ADR.
 - **Photos are not checked on a device.** The crop rule and the "Change photo" sheet are tested by
   component tests only; a look on a small phone and a tablet is still owed (brief, Part 2a).
-- **English names** exist only where OpenStreetMap has `name:en`; the rest keep their local name.
-  Wikidata labels would fill more gaps but need an ADR for the provider.
+- **English names** (ADR 025) come from the user's own name, Wikidata, English Wikipedia, OpenStreetMap
+  and safe romanization, in that order; the rest keep their local name. Wikidata names arrive in the
+  background, so a place may show its local name on the first look. Not checked on a device.
 - **Notes, reservations, trip summary:** ADR 021, "Not built". Documents are built (ADR 023) and
   are kept on the phone only; backing them up would need accounts or an export.
 - **Dark mode** is not designed.

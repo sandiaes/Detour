@@ -1,5 +1,6 @@
 """Database-level guarantees: constraints, schema separation, and index use."""
 
+import re
 import uuid
 from collections.abc import Iterator
 from typing import Any
@@ -317,7 +318,8 @@ def test_nearby_place_search_uses_the_spatial_index(api_env: ApiEnv) -> None:
     )
     explained = explain_search(api_env, sql, params)  # planner not forced
     assert "place_geom_gix" in explained, explained
-    assert "Seq Scan on place" not in explained
+    # geo.place itself (the per-result name subqueries may scan the tiny place_source table)
+    assert not re.search(r"Seq Scan on place\b(?!_)", explained), explained
 
 
 def test_name_search_uses_the_trigram_index(api_env: ApiEnv) -> None:
@@ -333,7 +335,8 @@ def test_name_search_uses_the_trigram_index(api_env: ApiEnv) -> None:
         force_indexes=True,
     )
     assert "place_name_trgm" in explained, explained
-    assert "Seq Scan on place" not in explained
+    # geo.place itself (the per-result name subqueries may scan the tiny place_source table)
+    assert not re.search(r"Seq Scan on place\b(?!_)", explained), explained
 
 
 def test_destination_search_uses_the_trigram_indexes(api_env: ApiEnv) -> None:

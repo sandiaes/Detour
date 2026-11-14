@@ -225,6 +225,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/places/{place_id}/display-name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Approve a display name for this one place (Edit display name, ADR 025).
+     * @description The name takes precedence over every provider name for this installation, for this place
+     *     only (similarly named places are not affected). The original name is kept and shown beside
+     *     it, and the itinerary items that name the place follow. Undo with DELETE.
+     */
+    put: operations["set_display_name"];
+    post?: never;
+    /** Undo an approved display name: the resolved name comes back. */
+    delete: operations["delete_display_name"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/trips": {
     parameters: {
       query?: never;
@@ -1143,6 +1166,11 @@ export interface components {
        */
       new_start_time: string;
     };
+    /** DisplayNameUpdate */
+    DisplayNameUpdate: {
+      /** Name */
+      name: string;
+    };
     /** ErrorBody */
     ErrorBody: {
       /** Detail */
@@ -1459,6 +1487,8 @@ export interface components {
       restaurant?: components["schemas"]["RestaurantInfo"] | null;
       /** @description Photo of an imported place, when one was found (restaurants have none yet) */
       image?: components["schemas"]["Photo"] | null;
+      /** @description Imported places: the resolved English-facing name and the original local name (ADR 025), read when the plan is read. display_name stays the stored snapshot */
+      names?: components["schemas"]["PlaceName"] | null;
     };
     /** ItemCreate */
     ItemCreate: {
@@ -1759,6 +1789,8 @@ export interface components {
        * @description The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated.
        */
       name_en?: string | null;
+      /** @description The resolved English-facing name with the original local name (ADR 025) */
+      names?: components["schemas"]["PlaceName"] | null;
       /**
        * Kind
        * @enum {string}
@@ -1813,6 +1845,60 @@ export interface components {
       wikidata_id: string | null;
       /** Sources */
       sources: components["schemas"]["PlaceSource"][];
+    };
+    /**
+     * PlaceName
+     * @description How a place is named in an English interface (ADR 025). Show ``display``; show ``local``
+     *     under it when set; say "Automatically romanized" when ``auto_generated``.
+     */
+    PlaceName: {
+      /**
+       * Display
+       * @description The name to show; null only for an unnamed place
+       */
+      display: string | null;
+      /**
+       * Local
+       * @description The original local name, when it differs from the display name
+       */
+      local: string | null;
+      /**
+       * Local Lang
+       * @description BCP 47 tag of the local name; null if unknown
+       */
+      local_lang: string | null;
+      /**
+       * Type
+       * @description What kind of name the display name is
+       * @enum {string}
+       */
+      type:
+        | "original"
+        | "official_english"
+        | "established_english"
+        | "localized_brand"
+        | "official_romanization"
+        | "automatic_transliteration"
+        | "machine_translation"
+        | "search_alias"
+        | "user_override";
+      /**
+       * Source
+       * @description Where it came from: user, provider, wikidata, enwiki, osm, geonames, detour
+       */
+      source: string;
+      /** Confidence */
+      confidence: number;
+      /**
+       * Auto Generated
+       * @description True for a transliteration Detour made; never presented as official
+       */
+      auto_generated: boolean;
+      /**
+       * User Override
+       * @description The user approved this name for this place
+       */
+      user_override: boolean;
     };
     /** PlaceSearchResponse */
     PlaceSearchResponse: {
@@ -1948,6 +2034,8 @@ export interface components {
        * @description The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated.
        */
       name_en?: string | null;
+      /** @description The resolved English-facing name with the original local name (ADR 025) */
+      names?: components["schemas"]["PlaceName"] | null;
       /**
        * Kind
        * @enum {string}
@@ -2121,6 +2209,8 @@ export interface components {
        * @description The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated.
        */
       name_en?: string | null;
+      /** @description The resolved English-facing name with the original local name (ADR 025) */
+      names?: components["schemas"]["PlaceName"] | null;
       /**
        * Kind
        * @enum {string}
@@ -3054,6 +3144,126 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlaceDetail"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  set_display_name: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        place_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DisplayNameUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaceName"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  delete_display_name: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        place_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaceName"];
         };
       };
       /** @description Unauthorized */

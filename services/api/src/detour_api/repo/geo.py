@@ -20,6 +20,8 @@ from detour_api.models.search import (
     PlaceSummary,
     RegionInfo,
 )
+from detour_api.names.api import to_api
+from detour_api.names.store import PLACE_NAME_COLUMNS, resolve_place_row
 from detour_api.planner.config import DEFAULT_CONFIG
 from detour_api.textnorm import normalize_text
 
@@ -276,9 +278,14 @@ def build_place_search(
     lon: float | None,
     radius_m: float | None,
     limit: int,
+    installation_id: uuid.UUID | None = None,
 ) -> tuple[str, dict[str, Any]]:
-    """The place-search SQL and its parameters (exposed so tests can EXPLAIN the real query)."""
-    params: dict[str, Any] = {"limit": limit}
+    """The place-search SQL and its parameters (exposed so tests can EXPLAIN the real query).
+    ``installation_id`` applies that installation's approved display names (ADR 025)."""
+    params: dict[str, Any] = {
+        "limit": limit,
+        "inst": str(installation_id) if installation_id is not None else None,
+    }
     where = ["p.is_active"]
     tier = "NULL::int"
     sim = "0::real"
@@ -286,10 +293,15 @@ def build_place_search(
     if query:
         norm = normalize_text(query)
         params["q"] = norm
-        # The local name or the English one: either may be typed.
+        # The local name, the English one, any alias the source gives (other languages,
+        # romanizations, ASCII spellings) or a name fetched from Wikidata (ADR 025).
         where.append(
             "(p.name_norm LIKE '%' || :q || '%' OR p.name_norm % :q"
-            " OR p.name_en_norm LIKE '%' || :q || '%' OR p.name_en_norm % :q)"
+            " OR p.name_en_norm LIKE '%' || :q || '%' OR p.name_en_norm % :q"
+            " OR p.alias_norm LIKE '%' || :q || '%'"
+            " OR p.id IN (SELECT CAST(n.entity_ref AS uuid) FROM geo.place_name n"
+            "   WHERE n.entity_kind = 'place'"
+            "   AND (n.name_norm LIKE '%' || :q || '%' OR n.name_norm % :q)))"
         )
 
         def tier_of(col: str) -> str:
@@ -299,8 +311,22 @@ def build_place_search(
                 f" WHEN {col} LIKE '%' || :q || '%' THEN 3 ELSE 4 END"
             )
 
-        # LEAST ignores a NULL (no English name), so the better of the two matches counts.
-        tier = f"LEAST({tier_of('p.name_norm')}, {tier_of('p.name_en_norm')})"
+        alias_tier = (
+            "CASE WHEN p.alias_norm IS NULL THEN NULL"
+            " WHEN '|' || p.alias_norm || '|' LIKE '%|' || :q || '|%' THEN 0"
+            " WHEN '|' || p.alias_norm LIKE '%|' || :q || '%' THEN 1"
+            " WHEN p.alias_norm LIKE '% ' || :q || '%' THEN 2"
+            " WHEN p.alias_norm LIKE '%' || :q || '%' THEN 3 ELSE 4 END"
+        )
+        stored_tier = (
+            f"(SELECT min({tier_of('n.name_norm')}) FROM geo.place_name n"
+            " WHERE n.entity_kind = 'place' AND n.entity_ref = p.id::text)"
+        )
+        # LEAST ignores a NULL (no English name, no alias), so the best match counts.
+        tier = (
+            f"LEAST({tier_of('p.name_norm')}, {tier_of('p.name_en_norm')}, {alias_tier},"
+            f" {stored_tier})"
+        )
         sim = "GREATEST(similarity(p.name_norm, :q), COALESCE(similarity(p.name_en_norm, :q), 0))"
         order += ["tier", "sim DESC"]
     dist = "NULL::double precision"
@@ -341,7 +367,8 @@ def build_place_search(
     sql = f"""
         SELECT p.id, p.name, p.kind, p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
                p.region_id, p.city_id, c.name AS city_name, rp.cuisines, rp.venue_type,
-               p.names_i18n->>'en' AS en_name, p.name_en_norm,
+               p.names_i18n->>'en' AS en_name, p.name_en_norm, p.names_i18n,
+               {PLACE_NAME_COLUMNS},
                {tier} AS tier, {sim} AS sim, {dist} AS dist
         FROM geo.place p
         LEFT JOIN geo.city c ON c.id = p.city_id
@@ -361,6 +388,7 @@ def search_places(conn: Connection, **kwargs: Any) -> list[PlaceSummary]:
             id=r.id,
             name=r.name,
             name_en=r.en_name if r.name_en_norm else None,
+            names=to_api(resolve_place_row(r)) if r.name else None,
             kind=r.kind,
             category=r.category,
             lat=r.lat,
@@ -378,24 +406,26 @@ def search_places(conn: Connection, **kwargs: Any) -> list[PlaceSummary]:
 
 
 def place_exists(
-    conn: Connection, place_id: uuid.UUID
+    conn: Connection, place_id: uuid.UUID, installation_id: uuid.UUID | None = None
 ) -> tuple[str, str, float, float, bool, int | None, str] | None:
     """(kind, display name, lat, lon, is_active, default_visit_minutes, category) of a
     geo.place."""
     row = conn.execute(
         text(
-            "SELECT kind, COALESCE(CASE WHEN name_en_norm IS NOT NULL THEN names_i18n->>'en' END,"
-            " name, category) AS name, ST_Y(geom) lat, ST_X(geom) lon,"
-            " is_active, default_visit_minutes, category FROM geo.place WHERE id = :i"
+            "SELECT p.id, p.kind, p.name, p.names_i18n, ST_Y(p.geom) lat, ST_X(p.geom) lon,"
+            " p.is_active, p.default_visit_minutes, p.category, "
+            + PLACE_NAME_COLUMNS
+            + " FROM geo.place p WHERE p.id = :i"
         ),
-        {"i": place_id},
+        {"i": place_id, "inst": str(installation_id) if installation_id is not None else None},
     ).first()
+    # The resolved English-facing name (ADR 025), or the category for an unnamed place.
     return (
         None
         if row is None
         else (
             row.kind,
-            row.name,
+            resolve_place_row(row).display or row.category,
             row.lat,
             row.lon,
             row.is_active,
@@ -405,15 +435,17 @@ def place_exists(
     )
 
 
-def get_place(conn: Connection, place_id: uuid.UUID) -> PlaceDetail | None:
+def get_place(
+    conn: Connection, place_id: uuid.UUID, installation_id: uuid.UUID | None = None
+) -> PlaceDetail | None:
     row = conn.execute(
         text(
-            """
+            f"""
             SELECT p.id, p.name, p.kind, p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
                    p.region_id, p.city_id, c.name AS city_name, rp.cuisines, rp.venue_type,
                    rp.meal_types, rp.diet_flags, p.names_i18n, p.names_i18n->>'en' AS en_name,
                    p.name_en_norm, p.address, p.default_visit_minutes,
-                   p.is_active, s.wikidata_id
+                   p.is_active, s.wikidata_id, {PLACE_NAME_COLUMNS}
             FROM geo.place p
             LEFT JOIN geo.city c ON c.id = p.city_id
             LEFT JOIN geo.restaurant_profile rp ON rp.place_id = p.id
@@ -421,7 +453,7 @@ def get_place(conn: Connection, place_id: uuid.UUID) -> PlaceDetail | None:
             WHERE p.id = :i
             """
         ),
-        {"i": place_id},
+        {"i": place_id, "inst": str(installation_id) if installation_id is not None else None},
     ).first()
     if row is None:
         return None
@@ -437,6 +469,7 @@ def get_place(conn: Connection, place_id: uuid.UUID) -> PlaceDetail | None:
         id=row.id,
         name=row.name,
         name_en=row.en_name if row.name_en_norm else None,
+        names=to_api(resolve_place_row(row)) if row.name else None,
         kind=row.kind,
         category=row.category,
         lat=row.lat,

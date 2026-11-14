@@ -10,6 +10,7 @@ from sqlalchemy import text
 from detour_api.adapters.photon import PhotonOutcome
 from detour_api.deps import SessionDep
 from detour_api.errors import ApiError, invalid, not_found
+from detour_api.models.common import DisplayNameUpdate, PlaceName
 from detour_api.models.search import (
     DestinationSearchResponse,
     ExternalPlace,
@@ -17,6 +18,8 @@ from detour_api.models.search import (
     PlaceDetail,
     PlaceSearchResponse,
 )
+from detour_api.names import store as names_store
+from detour_api.names.api import to_api
 from detour_api.repo import geo
 from detour_api.routers.responses import AUTH, ERRORS
 
@@ -128,6 +131,7 @@ def search_places(
             lon=lon,
             radius_m=radius_m,
             limit=limit,
+            installation_id=session.installation_id,
         )
     external = ExternalStatus(state="not_requested")
     if include_external:
@@ -156,7 +160,44 @@ def search_places(
 )
 def get_place(session: SessionDep, place_id: uuid.UUID) -> PlaceDetail:
     with session.tx() as conn:
-        place = geo.get_place(conn, place_id)
+        place = geo.get_place(conn, place_id, session.installation_id)
     if place is None:
         raise ApiError(404, "not_found", "place not found")
     return place
+
+
+@router.put(
+    "/places/{place_id}/display-name",
+    summary="Approve a display name for this one place (Edit display name, ADR 025).",
+    responses=ERRORS,
+)
+def set_display_name(
+    session: SessionDep, place_id: uuid.UUID, body: DisplayNameUpdate
+) -> PlaceName:
+    """The name takes precedence over every provider name for this installation, for this place
+    only (similarly named places are not affected). The original name is kept and shown beside
+    it, and the itinerary items that name the place follow. Undo with DELETE."""
+    with session.tx() as conn:
+        place = geo.get_place(conn, place_id, session.installation_id)
+        if place is None:
+            raise ApiError(404, "not_found", "place not found")
+        names_store.set_override(
+            conn, session.installation_id, "place", str(place_id), body.name, place.name
+        )
+        resolved = names_store.resolve_places(conn, [place_id], session.installation_id)
+    return to_api(resolved[place_id])
+
+
+@router.delete(
+    "/places/{place_id}/display-name",
+    summary="Undo an approved display name: the resolved name comes back.",
+    responses=ERRORS,
+)
+def delete_display_name(session: SessionDep, place_id: uuid.UUID) -> PlaceName:
+    with session.tx() as conn:
+        if not names_store.delete_override(conn, session.installation_id, "place", str(place_id)):
+            raise not_found("display name")
+        resolved = names_store.resolve_places(conn, [place_id], session.installation_id)
+    if place_id not in resolved:
+        raise ApiError(404, "not_found", "place not found")
+    return to_api(resolved[place_id])

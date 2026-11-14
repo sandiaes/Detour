@@ -1,4 +1,4 @@
-"""Command line: ``python -m detour_api.importer {region,gazetteer,images} ...``.
+"""Command line: ``python -m detour_api.importer {region,gazetteer,images,names} ...``.
 
 Environment:
   DETOUR_IMPORT_DATABASE_URL   target database (Supabase session pooler, port 5432)
@@ -241,6 +241,100 @@ def _cmd_images(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_names(args: argparse.Namespace) -> int:
+    """Backfill English place names (ADR 025): search aliases from the data already imported (no
+    network), then Wikidata names for what trips reference and, with --places, for a region's
+    attractions; then prune expired, unreferenced names. Prints a JSON report."""
+    from sqlalchemy import text
+
+    from detour_api.adapters.wikimedia import WikimediaClient
+    from detour_api.db import make_engine
+    from detour_api.names import enrich
+    from detour_api.names.search import place_alias_norm
+    from detour_api.settings import Settings, normalize_database_url
+
+    target = _env("DETOUR_IMPORT_DATABASE_URL", args.target_url)
+    require_session_mode(target)
+    settings = Settings()
+    engine = make_engine(normalize_database_url(target))
+    reports: dict[str, object] = {}
+    try:
+        if args.region is not None:
+            with engine.begin() as conn:
+                if (
+                    conn.execute(
+                        text("SELECT 1 FROM geo.region WHERE id = :r"), {"r": args.region}
+                    ).first()
+                    is None
+                ):
+                    raise SystemExit(f"unknown region {args.region!r}: not in geo.region")
+        # 1. Search aliases from the names the import already holds (no network).
+        with engine.begin() as conn:
+            rows = conn.execute(
+                text(
+                    "SELECT p.id, p.name, p.names_i18n, p.name_en_norm, p.alias_norm,"
+                    " (SELECT ps.tags FROM geo.place_source ps WHERE ps.place_id = p.id"
+                    "  AND ps.source = 'osm' ORDER BY ps.source_ref LIMIT 1) AS tags"
+                    " FROM geo.place p WHERE (CAST(:r AS text) IS NULL OR p.region_id = :r)"
+                ),
+                {"r": args.region},
+            ).all()
+            changed = [
+                {"i": r.id, "a": a}
+                for r in rows
+                if (a := place_alias_norm(r.name, r.names_i18n, r.tags, r.name_en_norm))
+                != r.alias_norm
+            ]
+            for start in range(0, len(changed), 5000):
+                conn.execute(
+                    text("UPDATE geo.place SET alias_norm = :a WHERE id = :i"),
+                    changed[start : start + 5000],
+                )
+        reports["aliases"] = {"places": len(rows), "updated": len(changed)}
+        # 2. Wikidata names.
+        client = WikimediaClient(settings, engine)
+        if args.no_network or not client.enabled:
+            reports["wikidata"] = "skipped" if args.no_network else "adapter disabled"
+        else:
+            with engine.begin() as conn:
+                trip_ids = [
+                    r[0] for r in conn.execute(text("SELECT id FROM app.trip ORDER BY id")).all()
+                ]
+            entities = enrich.trip_entities(engine, trip_ids, args.trips_limit)
+            reports["referenced"] = enrich.enrich(engine, client, entities).as_dict()
+            if args.region is not None and args.places:
+                region_entities = enrich.region_entities(
+                    engine, args.region, args.places, with_coordinates=args.coordinate_match
+                )
+                reports["region"] = enrich.enrich(
+                    engine, client, region_entities, coordinate_match=args.coordinate_match
+                ).as_dict()
+        # 3. Retention.
+        reports["pruned"] = enrich.run_prune(engine)
+        with engine.begin() as conn:
+            reports["stored"] = dict(
+                conn.execute(
+                    text(
+                        "SELECT (SELECT count(*) FROM geo.place_name) AS names,"
+                        " (SELECT count(*) FROM geo.place_name_lookup) AS lookups,"
+                        " (SELECT count(*) FROM geo.place_name_lookup WHERE status <> 'found')"
+                        "   AS negative_lookups,"
+                        " pg_total_relation_size('geo.place_name')"
+                        "   + pg_total_relation_size('geo.place_name_lookup') AS bytes"
+                    )
+                )
+                .mappings()
+                .one()
+            )
+    finally:
+        engine.dispose()
+    out = json.dumps(reports, indent=2, sort_keys=True, default=str)
+    if args.out:
+        Path(args.out).write_text(out + "\n", encoding="utf-8")
+    print(out)
+    return 0
+
+
 def _cmd_countries(args: argparse.Namespace) -> int:
     region = REGIONS.get(args.region)
     if region is None:
@@ -290,6 +384,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="keep the files in memory only: measures coverage without Supabase Storage",
     )
     images.set_defaults(func=_cmd_images)
+
+    names = sub.add_parser("names", help="backfill English place names (ADR 025)")
+    names.add_argument("region", nargs="?", help="limit aliases and --places to one region")
+    names.add_argument(
+        "--places", type=int, default=0, help="also look up this many of the region's attractions"
+    )
+    names.add_argument(
+        "--trips-limit", type=int, default=500, help="entities referenced by trips to look up"
+    )
+    names.add_argument(
+        "--coordinate-match",
+        action="store_true",
+        help="with --places: match places without a QID by coordinates (controlled rules)",
+    )
+    names.add_argument("--no-network", action="store_true", help="only rebuild search aliases")
+    names.add_argument("--target-url")
+    names.add_argument("--out", help="write the report as JSON to this file")
+    names.set_defaults(func=_cmd_names)
 
     countries = sub.add_parser("countries", help="print the country codes of a region")
     countries.add_argument("region")

@@ -231,3 +231,88 @@ test("a place without a photo shows no photo and no credit", async () => {
   expect(screen.queryByTestId("cover-photo", { includeHiddenElements: true })).toBeNull();
   expect(screen.queryByTestId("photo-credit")).toBeNull();
 });
+
+const NAMES = {
+  display: "Schönbrunn Palace",
+  local: "Schloss Schönbrunn",
+  local_lang: "de",
+  type: "established_english",
+  source: "wikidata",
+  confidence: 0.98,
+  auto_generated: false,
+  user_override: false,
+} as const;
+
+function namedPlan(names: Record<string, unknown>) {
+  return () => {
+    const p = plan();
+    p.days[0]!.items[0]!.names = names as never;
+    return p;
+  };
+}
+
+test("the resolved English name leads and the local name stays under it (ADR 025)", async () => {
+  await open("i1", server({ "GET /v1/itineraries/{itinerary_id}": namedPlan(NAMES) }));
+  expect(await screen.findByRole("header", { name: "Schönbrunn Palace" })).toBeOnTheScreen();
+  expect(screen.getByLabelText("Local name: Schloss Schönbrunn")).toBeOnTheScreen();
+  expect(screen.queryByTestId("name-romanized")).toBeNull();
+});
+
+test("a name Detour romanized itself is labelled as such", async () => {
+  const names = {
+    ...NAMES,
+    display: "Gyeongbokgung",
+    local: "경복궁",
+    local_lang: "ko",
+    type: "automatic_transliteration",
+    source: "detour",
+    confidence: 0.7,
+    auto_generated: true,
+  };
+  await open("i1", server({ "GET /v1/itineraries/{itinerary_id}": namedPlan(names) }));
+  expect(await screen.findByRole("header", { name: "Gyeongbokgung" })).toBeOnTheScreen();
+  expect(screen.getByLabelText("Local name: 경복궁")).toBeOnTheScreen();
+  expect(screen.getByText("Automatically romanized")).toBeOnTheScreen();
+});
+
+test("edit display name saves the user's name for this place and can be undone", async () => {
+  const client = server({
+    "GET /v1/itineraries/{itinerary_id}": namedPlan(NAMES),
+    "PUT /v1/places/{place_id}/display-name": () => ({
+      ...NAMES,
+      display: "The Palace",
+      type: "user_override",
+      source: "user",
+      confidence: 1,
+      user_override: true,
+    }),
+  });
+  await open("i1", client);
+  await fireEvent.press(await screen.findByTestId("edit-display-name"));
+  const field = await screen.findByLabelText("Display name");
+  await fireEvent.changeText(field, "  The Palace ");
+  await fireEvent.press(screen.getByTestId("save-display-name"));
+  expect(await screen.findByTestId("edit-display-name")).toBeOnTheScreen();
+  const put = client.calls.find((c) => c.path === "/v1/places/{place_id}/display-name");
+  expect(put?.method).toBe("PUT");
+  expect(put?.params.place_id).toBe(PLACE_ID);
+  expect(put?.body).toEqual({ name: "The Palace" });
+});
+
+test("an overridden name offers the usual name back", async () => {
+  const client = server({
+    "GET /v1/itineraries/{itinerary_id}": namedPlan({
+      ...NAMES,
+      display: "The Palace",
+      type: "user_override",
+      source: "user",
+      confidence: 1,
+      user_override: true,
+    }),
+    "DELETE /v1/places/{place_id}/display-name": () => NAMES,
+  });
+  await open("i1", client);
+  await fireEvent.press(await screen.findByTestId("reset-display-name"));
+  await screen.findByTestId("edit-display-name");
+  expect(client.count("DELETE /v1/places/{place_id}/display-name")).toBe(1);
+});

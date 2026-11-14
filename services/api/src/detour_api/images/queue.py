@@ -1,4 +1,5 @@
-"""Queueing the background photo resolve from a request (ADR 022 amendment, decision k).
+"""Queueing the background photo resolve (ADR 022 amendment, decision k) and the background name
+enrichment (ADR 025) from a request.
 
 A queued run starts after the response has been sent (FastAPI background tasks run in a worker
 thread). Nothing is queued when storage or the adapter is off, or in tests without a recorded
@@ -12,6 +13,7 @@ from fastapi import BackgroundTasks, Request
 
 from detour_api.images import background as bg
 from detour_api.images import resolver
+from detour_api.names import background as names_bg
 
 
 def queue_resolve(
@@ -22,11 +24,16 @@ def queue_resolve(
     destinations: Iterable[tuple[str, str]] = (),
 ) -> None:
     state = request.app.state
-    if state.image_store is None or state.engine is None:
-        return
-    if not state.settings.wikimedia_enabled:
-        return
     trips = list(trip_ids)
+    if state.engine is None or not state.settings.wikimedia_enabled:
+        return
+    if trips:
+        # English names first: they are a few small requests, independent of photo storage.
+        tasks.add_task(
+            names_bg.enrich_trips, state.engine, state.settings, trips, state.wikimedia_transport
+        )
+    if state.image_store is None:
+        return
     extra = [_destination(kind, ref) for kind, ref in destinations]
     tasks.add_task(
         bg.resolve_trips,

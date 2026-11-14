@@ -36,8 +36,11 @@ local KEYS = {
     ['wikidata'] = true, ['wikipedia'] = true, ['heritage'] = true, ['website'] = true,
     ['contact:website'] = true, ['ISO3166-2'] = true, ['admin_level'] = true,
     ['boundary'] = true,
+    -- Names for the multilingual name resolver (ADR 025).
+    ['official_name'] = true, ['short_name'] = true, ['alt_name'] = true, ['old_name'] = true,
+    ['brand'] = true, ['brand:wikidata'] = true,
 }
-local PREFIXES = { 'name:', 'diet:', 'addr:' }
+local PREFIXES = { 'name:', 'diet:', 'addr:', 'official_name:', 'short_name:', 'brand:' }
 
 local function keep_tags(tags)
     local out = {}

@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from detour_api.models.common import PlaceName
+
 
 class DataVersion(BaseModel):
     import_run_id: uuid.UUID
@@ -111,6 +113,10 @@ class PlaceSummary(BaseModel):
         default=None,
         description="The English name the source gives (OpenStreetMap name:en), only when it "
         "differs from the name; null = none. Never machine-translated.",
+    )
+    names: PlaceName | None = Field(
+        default=None,
+        description="The resolved English-facing name with the original local name (ADR 025)",
     )
     kind: Literal["attraction", "restaurant", "transport_hub", "other"]
     category: str

@@ -9,7 +9,9 @@ name and inter-city leg (ADR 016), and removes the trip's currency, meal budget 
 (Phase 7, ADR 018) adds `app.change_set` and `app.itinerary_version` (section 3.7);
 `0008_add_restaurant_change_sets` (Phase 8, ADR 019) lets a change set add a restaurant to a meal
 slot. The past-trips archive (section 3.5, ADR 006) needs no migration since `0003`; its automatic
-rule and size report are described in section 5.
+rule and size report are described in section 5. Migration `0013_multilingual_place_names`
+(ADR 025) adds `geo.place.alias_norm`, `geo.place_name`, `geo.place_name_lookup` and
+`app.place_name_override` (sections 2.6, 2.11 and 3.8).
 Where the built schema differs from the earlier proposal, the difference is listed in section 9
 and decided in [ADR 012](decisions/012-phase-2-data-and-search-choices.md). Photos (section 8) are
 still reserved, not built.
@@ -130,7 +132,8 @@ about 100 m): areas scope a destination, they are not for drawing borders.
 | `category` | Normalised: the `tourism` value, an allow-listed `historic` value (`historic_building` and the other generic classes carry the `historic_` prefix; `historic=yes` is `historic`), or `restaurant`/`cafe` |
 | `name`, `name_norm` | Null when the source has no name; both null or both set. Attractions without a name are not imported (ADR 011), so a null name occurs only for restaurants and cafes |
 | `names_i18n` | jsonb, language to name (`name:*` tags and `int_name` as `int`); null if none |
-| `name_en_norm` | The normalised English name (`names_i18n.en`), set only when it differs from `name_norm`; search matches it as well (migration `0010`, ADR 021 decision 40). The plan shows the English name when this is set |
+| `name_en_norm` | The normalised English name (`names_i18n.en`), set only when it differs from `name_norm`; search matches it as well (migration `0010`, ADR 021 decision 40) |
+| `alias_norm` | The normalised search aliases the source gives, `\|`-joined: every other `name:*`, `int_name`, romanizations, `official_name`, `short_name`, `alt_name`, `old_name`, `brand` (and their `:en` forms), Detour's transliteration of the name, and German/Scandinavian ASCII spellings (`moenchsberg`); at most 60 forms or 4,000 characters; null if none. Search only, never shown (migration `0013`, ADR 025). Which name is **shown** is decided by the name resolver (section 2.11) |
 | `geom` | Representative point; areas are reduced to a point on their surface |
 | `address` | jsonb from `addr:*` (street, housenumber, postcode, city, country); null if none |
 | `city_id` | The nearest gazetteer city of the region's countries (planar distance picks five candidates, great-circle distance and then id decide); null until the gazetteer is loaded |
@@ -149,7 +152,7 @@ One row per source record that contributed to a place; the primary key is
 | `source` | `osm` today (`wikidata`, `overture`, `fsq_os` are reserved) |
 | `source_ref` | `node/123`, `way/9`, `relation/7` |
 | `licence_code` | `ODbL-1.0` for OSM |
-| `tags` | jsonb: the tags the importer reads, unmodified. Not `name:*` and `addr:*` (own columns) and never `opening_hours` |
+| `tags` | jsonb: the tags the importer reads, unmodified. Not `name:*` and `addr:*` (own columns) and never `opening_hours`. Since ADR 025 the import also keeps `official_name`, `short_name`, `alt_name`, `old_name`, `brand`, `brand:wikidata` and the `official_name:*`, `short_name:*` and `brand:*` tags (places imported earlier have them after a re-import) |
 | `import_run_id` | |
 
 ### 2.8 `geo.restaurant_profile` and `geo.place_signal`
@@ -199,6 +202,36 @@ Key `(from_lat, from_lon, to_lat, to_lon, mode, request_shape)`. Capped at 100,0
 the whole `geo` schema. Estimates made because the provider was unavailable are not stored. It is
 not rebuilt by an import.
 
+
+### 2.11 `geo.place_name` and `geo.place_name_lookup`: names from Wikidata (ADR 025)
+
+The names Wikidata gives for a place, a city or an area, fetched lazily (in the background after a
+trip is created, generated or read, and by `python -m detour_api.importer names`). Names from
+OpenStreetMap and GeoNames are **not** copied here: the resolver reads them from `geo.place` and
+`geo.city`. Full description: [`multilingual-place-names.md`](multilingual-place-names.md).
+
+| `place_name` | Notes |
+|---|---|
+| `entity_kind`, `entity_ref` | `place` (a `geo.place.id`), `city` (a GeoNames id) or `area`, as text; no foreign key (rows of a gone entity are pruned) |
+| `lang`, `script` | BCP 47 tag (`en`, `ja`, `mul`); ISO 15924 script code, null if no letters |
+| `name`, `name_norm` | The name as given; its normalised search form |
+| `name_type` | `original` (a city's native label), `established_english`, `search_alias`, and the other types of section 1 of the names document (`user_override` lives in `app`) |
+| `source`, `source_ref` | `wikidata` (QID) or `enwiki` (the sitelink title, read from Wikidata) |
+| `step`, `confidence`, `official`, `is_preferred` | The hierarchy step it can fill (null for an alias), its configured confidence, whether the source marks it official, and whether it is the best stored display candidate |
+| `licence_code` | `CC0-1.0` |
+| `retrieved_at`, `expires_at` | Expires 90 days after retrieval unless the app still names the entity (section 5) |
+
+Primary key `(entity_kind, entity_ref, lang, source, name_norm)`: the deduplication rule. Trigram
+index on `name_norm` (search). Per entity: the English label, the English Wikipedia title (without a
+trailing qualifier, the full title as an alias), the labels in `mul` and the local language, up to 5
+aliases per language.
+
+| `place_name_lookup` | Notes |
+|---|---|
+| `(entity_kind, entity_ref, source)` | pk; `source` is `wikidata` |
+| `qid` | The item found (by QID, Wikipedia sitelink, GeoNames id or the coordinate fallback); null if none |
+| `status`, `reason` | `found`, `no_english` (the negative cache: an item without an English label or article) or `no_item`, with a reason (`geonames_id`, `wikipedia_sitelink`, `coordinate_match`, `no_item_for_geonames_id`, `ambiguous_coordinate_match` …) |
+| `checked_at`, `retry_after` | Asked again after `retry_after` (90 days). Network failures record nothing |
 
 ## 3. `app` schema: user data
 
@@ -321,6 +354,15 @@ never holds an installation identifier. `provider_usage` is `(provider, usage_da
 
 Every replaced version is kept, up to 30 per itinerary (the oldest are removed first).
 
+### 3.8 `app.place_name_override` (ADR 025)
+
+"Edit display name": `id`, `installation_id` (fk, `ON DELETE CASCADE`), `entity_kind` and
+`entity_ref` (a `geo.place` id as text; no foreign key), `name` (1 to 120 characters) and `name_norm`,
+`original_name` (the local name when it was approved), `approved_at`. Unique per installation and
+entity: it applies to that place only, for that installation only, and is removed by
+`DELETE /v1/places/{id}/display-name`. Setting or removing it rewrites the installation's item
+snapshots (`display_name`) and archived visit names of that place; a later generation applies it too.
+
 ## 4. Restaurant prices
 
 **Removed** (ADR 017, owner decision of 2026-11-13). `app.price_record`, the trip's currency, meal
@@ -342,6 +384,7 @@ carry venue type, cuisines and meal types only. Bringing prices back needs a new
 | **Apply a change** | Keeps the current version in `itinerary_version`, writes the proposal, increments the version, clears the proposal |
 | **Discard a change** | The change set becomes `discarded` and loses its proposal |
 | **Delete a user place** | Refused (409) while an item uses it |
+| **Name lookup** (ADR 025) | Writes the entity's `geo.place_name` rows (replacing its earlier Wikidata rows) and its lookup row. `prune` (the `names` command) deletes expired names of entities nothing in `app` names (items, past-trip visits, overrides, a trip's cities and area), and the names and lookups of entities gone from `geo`; named entities keep theirs and are refreshed when due |
 | **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per base city (once each) and per visit item of the *selected* itinerary (or the destination city if there is none and the destination is a city); then **every** itinerary of the trip is deleted (days, items, transfers, route geometry, versions and change sets go with them; user places stay); the trip becomes `past`. One-way. A past trip is read-only except deletion and clearing visits |
 | **A trip's last day passes** (ADR 006, amendment of 2026-11-13) | Reading the trips (`GET /v1/trips`, `GET /v1/trips/{id}`) first archives the caller's active, non-seed trips that have a start date and whose last day ended two days ago or more (the same archive as above). No scheduled job. A trip without a start date never becomes past by itself |
 | **Delete an installation** (no endpoint; operator action) | Cascades to everything it owns. Tokens are stateless, so the app would register a new installation |
@@ -371,6 +414,8 @@ Not built: a backup of `app` (ADR 005: Supabase Free has none).
 - **No foreign keys cross the schemas.** This keeps the licence boundary in the database as well:
   `geo` can be dropped and rebuilt, or handed over under ODbL, without touching `app`. A test
   fails if a constraint ever crosses.
+- **Names from Wikidata** (CC0) are stored as their own rows in `geo.place_name` with their licence,
+  never merged into the OSM rows; OSM names are read where the import put them (ADR 025).
 - **Photon results** (ODbL OSM data) are not stored in `geo`. They are cached for a week in
   `app.provider_cache` and reach `geo`-independent storage only when the user saves one as a user
   place (`search_provider`, `search_ref`).
