@@ -534,3 +534,39 @@ test("asking again after changing the length does not save the pin twice", async
     { user_place_id: "00000000-0000-4000-8000-00000000cc01", duration_minutes: 120 },
   ]);
 });
+
+const ITEM_PATH = "POST /v1/itineraries/{itinerary_id}/days/{day_index}/items";
+
+test("choose the day and the time directly, without a proposal", async () => {
+  const client = await openPlan(server({ [ITEM_PATH]: () => ({ id: "new" }) }));
+  await search("Prat");
+  await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
+  await fireEvent.press(screen.getByTestId("how-choose"));
+  await fireEvent.press(screen.getByTestId("slot-day-2"));
+  await fireEvent.changeText(screen.getByTestId("slot-time"), "9:30");
+  await fireEvent.press(screen.getByTestId("add-at-time"));
+
+  expect(client.count("POST /v1/itineraries/{itinerary_id}/place-suggestions")).toBe(0);
+  const added = client.calls.find((c) => c.path.endsWith("/days/{day_index}/items"));
+  expect(added?.params).toMatchObject({ day_index: 2 });
+  expect(added?.body).toMatchObject({
+    type: "visit",
+    place_id: SIGHT.id,
+    start_time: "09:30",
+    duration_minutes: 60,
+  });
+});
+
+test("an empty trip has no suggestion button: the day and time are chosen", async () => {
+  const empty = { ...makeItinerary("essentials"), profile: "manual" } as never;
+  const client = await openPlan(
+    server({ "GET /v1/itineraries/{itinerary_id}": () => empty, [ITEM_PATH]: () => ({ id: "n" }) }),
+  );
+  await search("Prat");
+  await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
+  expect(screen.queryByTestId("find-days")).toBeNull();
+  expect(screen.getByTestId("add-at-time")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("add-at-time"));
+  expect(client.count(ITEM_PATH)).toBe(1);
+  expect(client.count("POST /v1/itineraries/{itinerary_id}/place-suggestions")).toBe(0);
+});

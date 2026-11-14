@@ -1,5 +1,6 @@
 import type {
   ExternalRestaurant,
+  Itinerary,
   RestaurantResult,
   RestaurantSearchResponse,
   SlotRequest,
@@ -16,6 +17,7 @@ import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
 import { AttributionBar } from "../components/AttributionBar";
 import { Button } from "../components/Button";
+import { ChooseSlot, type ChosenSlot } from "../components/ChooseSlot";
 import { Chip, Field, Notice, ScreenHeader } from "../components/ui";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
@@ -87,6 +89,18 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   const client = state.phase === "ready" ? state.connection.client : null;
   const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
   const centre = trip?.destination;
+  const itinerary = useResource<Itinerary>(keys.itinerary(route.itineraryId), (c) =>
+    call(
+      c.GET("/v1/itineraries/{itinerary_id}", {
+        params: { path: { itinerary_id: route.itineraryId } },
+      }),
+    ),
+  );
+  // An empty (manual) plan cannot be recalculated, so it has no suggestions: the user picks the
+  // day, meal and time. On a planned one they may still choose.
+  const isManual = itinerary.data?.profile === "manual";
+  const [how, setHow] = useState<"suggest" | "choose">("suggest");
+  const choosing = isManual || how === "choose";
 
   const [mode, setMode] = useState<"search" | "hand">("search");
   const [query, setQuery] = useState(route.preset?.name ?? "");
@@ -269,6 +283,30 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
         itineraryId: route.itineraryId,
         changeSetId: change.id,
       });
+    } catch (e) {
+      setProblem({ message: describeError(e), issues: planningIssues(e) });
+    } finally {
+      setWorking(null);
+    }
+  };
+
+  /** Adds the restaurant at the day, meal and time the user picked, with no proposal. */
+  const addAt = async (slot: ChosenSlot) => {
+    setWorking("preview");
+    setProblem(null);
+    try {
+      const ref = await reference();
+      await changes.addItem(route.tripId, route.itineraryId, slot.day, {
+        type: "meal",
+        meal_type: slot.meal ?? "lunch",
+        place_id: ref.place_id ?? null,
+        user_place_id: ref.user_place_id ?? null,
+        start_time: slot.time,
+        duration_minutes: slot.minutes,
+        position: slot.position,
+        locked: false,
+      });
+      nav.back();
     } catch (e) {
       setProblem({ message: describeError(e), issues: planningIssues(e) });
     } finally {
@@ -509,8 +547,46 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
         </View>
       ) : null}
 
-      {slots === null ? (
+      {choosing && choice ? (
         <View style={styles.section}>
+          {isManual ? (
+            <Text style={styles.muted}>
+              This trip has no proposed plan yet, so pick the day, meal and time yourself.
+            </Text>
+          ) : (
+            <View style={styles.row}>
+              <Chip label="Suggest a slot" selected={false} onPress={() => setHow("suggest")} />
+              <Chip label="Choose day and time" selected testID="how-choose" onPress={() => {}} />
+            </View>
+          )}
+          {itinerary.data ? (
+            <ChooseSlot
+              days={itinerary.data.days}
+              startDate={trip?.start_date ?? null}
+              meal
+              minutes={null}
+              name={choiceName(choice, form)}
+              working={working === "preview"}
+              disabled={!ready}
+              onSubmit={(slot) => void addAt(slot)}
+            />
+          ) : (
+            <Text style={styles.muted}>Reading the plan…</Text>
+          )}
+        </View>
+      ) : slots === null ? (
+        <View style={styles.section}>
+          {!isManual ? (
+            <View style={styles.row}>
+              <Chip label="Suggest a slot" selected testID="how-suggest" onPress={() => {}} />
+              <Chip
+                label="Choose day and time"
+                selected={false}
+                testID="how-choose"
+                onPress={() => setHow("choose")}
+              />
+            </View>
+          ) : null}
           <Button
             label="Find the best day and meal"
             testID="find-slots"
