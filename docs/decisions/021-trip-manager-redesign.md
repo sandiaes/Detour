@@ -107,6 +107,8 @@ not built and are recorded here as references for later (see "Not built" below).
     the user's own photos (step 5). Until then each destination gets an **illustrated landscape**
     whose colours and hills are chosen from the destination identifier, so a trip always looks the
     same. `Cover` already takes a photo `uri` for later; nothing is fetched today.
+    *Update 2026-11-14:* the image source is proposed in
+    [ADR 022](022-destination-and-attraction-photos.md); this decision stands until it is accepted.
 
 ## Owner decisions (2026-11-13)
 

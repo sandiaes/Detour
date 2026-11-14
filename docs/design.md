@@ -22,9 +22,11 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    forms and figures have no cards.
 3. **Near-white page, dark navy text, one calm accent.** Colour carries state and kind (a place to
    eat is orange), never decoration, and never alone: a word or a shape says it too.
-4. **Illustrated covers, no invented photos.** Destinations get a generated illustration until an
-   image source has an ADR (ADR 021, decision 13). The "Change photo" control of screen 13 is not
-   built.
+4. **Illustrated covers, no invented photos.** Destinations get a generated illustration until
+   ADR 022 (proposed) is accepted and built; then a real photo (Wikimedia Commons, with its credit)
+   replaces the illustration wherever the source has one, and the illustration stays as the fallback.
+   The "Change photo" control of screen 13 is not built yet; ADR 022, decision 15, describes it. A
+   photo is never shown without its author and licence, and never as a map marker.
 5. **Honest about what is not built.** A control that does nothing yet says so in words
    ("Not built yet", "saved for later"). Nothing is faked.
 6. **Small type, large targets.** Body text is compact; every control is still at least 48 dp tall
@@ -183,6 +185,7 @@ the screen reader announcing a screen's title on arrival.
   owner's approval and an amendment to ADR 021 before it is built.
 - **Travel style and public transport** are stored nowhere. Using them needs a field on the trip
   and a rule in the planner, with an ADR.
-- **Destination photos and "Change photo"**, documents, notes, reservations, trip summary: ADR 021,
-  "Not built".
+- **Destination and attraction photos and "Change photo"**: ADR 022, proposed, not built. Open until
+  the Wikimedia terms are read and a coverage spike is done.
+- **Documents, notes, reservations, trip summary:** ADR 021, "Not built".
 - **Dark mode** is not designed.
