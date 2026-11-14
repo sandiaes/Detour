@@ -182,6 +182,13 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
           testID="past-trip-documents"
           onPress={() => nav.push({ name: "tripDocuments", tripId })}
         />
+        <ListRow
+          icon="export"
+          title="Export trip"
+          detail="A file with this trip, to keep or share"
+          testID="past-trip-export"
+          onPress={() => nav.push({ name: "exportTrips", tripId })}
+        />
       </RowGroup>
       <ResourceNotices resource={visits} noun="this trip" />
       {problem ? <Notice tone="error">{problem}</Notice> : null}

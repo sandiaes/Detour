@@ -10,7 +10,25 @@
         "foregroundImage": "./assets/adaptive-icon-foreground.png",
         "backgroundImage": "./assets/adaptive-icon-background.png",
         "backgroundColor": "#1b3f36"
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["DEFAULT", "BROWSABLE"],
+          "data": [
+            {
+              "scheme": "content",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.detour"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.detour"
+            }
+          ]
+        }
+      ]
     },
     "plugins": ["@maplibre/maplibre-react-native"],
     "icon": "./assets/icon.png"

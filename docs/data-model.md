@@ -468,6 +468,24 @@ number, a place key with its name and day as linked, or a journey's day and town
 size and the location of the copy in the app's private storage. Deleting a trip deletes its rows and
 files on the phone. The backend stores nothing about documents.
 
+## 8b. The trip file (ADR 028)
+
+Not a table: the format of what leaves the app. A `.detour` file is a zip holding `trip.json` and,
+when documents are included, `documents.json` and `documents/<n>.<ext>` (generated names).
+`trip.json` is `{format: "detour-trip", format_version: 1, exported_at, trips: [...]}`. Each trip
+has `title`, `destination` (`kind`, `ref` only when it is a provider reference such as
+`geonames:123`, `photon:N123`, `area:<uuid>` or `manual`, `name`, `lat`, `lon`, `country_iso2`),
+`duration_days`, `start_date`, `status` and `archived_at`, `stops` (the cities of a multi-city trip,
+for reference), `days` (the chosen plan: day number, base city name and the stops with position,
+kind `sight`, `city`, `place`, `restaurant` or `cafe`, name, point, start time, length, whether the
+user set the length, locked) and, for a past trip, `visits` (the archive rows with their visited
+mark). It holds no installation, trip, plan or place identifier, no `geo` identifier, no travel
+time and no cover photo. `documents.json` lists each document with its trip's position, title,
+kind, a link by name and day, date, note, file name and type. Import (`repo/exchange.py`) writes
+every trip as a new `place` trip, a manual itinerary of the user's own places (`app.user_place`,
+`source = manual_pin`) and, for a past trip, `app.trip_visit` rows with no `geo` reference.
+Version 1 keeps importing in later versions.
+
 ## 9. Differences from the earlier proposal
 
 | Earlier proposal | Built | Why |

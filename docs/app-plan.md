@@ -4,7 +4,7 @@
 > app is a trip manager and history first; generated plans are sights only with a midday gap;
 > restaurants and cafés leave the imported data and are added through Photon or by hand; the Phase 8
 > slot engine is retired; past trips keep their days. Destinations outside the imported regions
-> (ADR 027, built) are the first manager feature, trip export the second. This section and the phases below
+> (ADR 027, built) are the first manager feature, trip export and import (ADR 028, built) the second. This section and the phases below
 > describe what was built; ADR 026's "Build order" is the work from here.
 
 Status: **Phase 0, 1 and 2 are done; Phases 3, 4, 5, 6, 7 and 8 are built and await the owner's acceptance** (the owner reported on 2026-11-13 that the app works on the phone); Phase 8 onward is proposed. Budgets, currencies and prices are removed for now (ADR 017). Each phase is small enough to review on its own
@@ -336,7 +336,7 @@ Not a numbered phase. In the owner's order: (1) sights-only plans with a midday 
 and cafés removed from the data, cuisine and meal types removed, slot engine retired, Add a
 restaurant through Photon and by hand; (3) past trips keep their days (all of (1) to (3) are built); (4) **destinations outside
 the imported regions** (ADR 027, built); (5) **export and import of a trip as a file**
-(ADR 028, to be written); (6) **Optimize a hand-made trip** ([ADR 029](decisions/029-optimize-a-hand-made-trip.md),
+([ADR 028](decisions/028-trip-export-and-import.md), accepted and built: a `.detour` zip, import as a new copy); (6) **Optimize a hand-made trip** ([ADR 029](decisions/029-optimize-a-hand-made-trip.md),
 proposed): the engine reorders the stops for the least travel, within each day or across all days,
 restaurants within 60 minutes of their chosen time and never after 21:00, with a preview; then saved
 ideas, manual reordering, notes, trip summary and photos.
@@ -372,8 +372,8 @@ ideas, manual reordering, notes, trip summary and photos.
 ## 7. Recommended next task
 
 **ADR 026 (2026-11-14, proposed):** all six build steps are **built** (planner, slot-engine removal,
-data change, history record, app); next are destinations (ADR 027), export (ADR 028) and Optimize
-(ADR 029), each needing its ADR accepted first. The text below is older and still stands for the phases it names,
+data change, history record, app); destinations (ADR 027) and export and import (ADR 028) are built; Optimize
+(ADR 029) is next and needs its ADR accepted first. The text below is older and still stands for the phases it names,
 except where ADR 026 retires them (Phase 8's slot costs, the imported restaurants).
 
 **Accept Phases 3 to 8, then Phase 9 (MVP hardening), when the owner asks for it

@@ -19,6 +19,10 @@ export type Route =
   | { name: "more" }
   | { name: "settings" }
   | { name: "imageCredits" }
+  /** Export one trip, or every trip as a backup (ADR 028). */
+  | { name: "exportTrips"; tripId?: string }
+  /** Import a trip file; `uri` when the app was opened with one. */
+  | { name: "importTrips"; uri?: string }
   | { name: "tripOverview"; tripId: string; section?: TripSection }
   | { name: "createTrip" }
   | { name: "trip"; tripId: string }

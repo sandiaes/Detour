@@ -11,7 +11,8 @@ restaurants and cafés are always added by the user. Planning is deterministic: 
 used at runtime.
 
 > **ADR 026 is proposed; all six of its build steps are built** (planner, data, history, app) and
-> await acceptance. Destinations, export and Optimize are next, each with its own ADR.
+> await acceptance. Destinations (ADR 027) and trip export and import (ADR 028) are built;
+> Optimize (ADR 029) is next.
 
 First platform: Android. The architecture must allow an iPhone version without a rewrite.
 
@@ -69,7 +70,12 @@ sightseeing plans are an occasional help, not the main way in.
    order. Choose to reorder within each day or across all days, keep the stops with tickets in place,
    review the diff and the saving, apply or discard. Never longer than the current plan; opening
    hours are not known and the preview says so.
-7. **Look back.** A past trip keeps its days, places, visited marks and documents, and the map of
+7. **Export and import (ADR 028).** A trip menu, a past trip and More offer a `.detour` file with the
+   trip (the chosen plan, or a past trip's record) and, if wanted, its documents; "Back up all
+   trips" puts every trip in one file. The file goes to the system share sheet and Detour uploads
+   nothing. "Import a trip" adds a file's trips as new copies, so a reinstall or a new phone keeps
+   the history. Documents in the file are not encrypted; the app says so.
+8. **Look back.** A past trip keeps its days, places, visited marks and documents, and the map of
    the cities and attractions visited (ADR 006 amended by ADR 026). Built: a past trip's Days tab lists its stops by
    day with their times.
 
@@ -134,7 +140,7 @@ Not in the MVP (see `docs/app-plan.md` for the phase each belongs to):
 - photos (the user's own photos are planned, owner's order, ADR 026 item 26)
 - weather
 - suggestions for destinations outside the imported pilot regions (trips there are empty, ADR 027)
-- user accounts, sharing and multi-device sync (a trip export file comes second, ADR 026 item 25)
+- user accounts, sharing and multi-device sync (a trip can be exported and imported as a file, ADR 028)
 - offline map downloads
 - public-holiday opening rules
 

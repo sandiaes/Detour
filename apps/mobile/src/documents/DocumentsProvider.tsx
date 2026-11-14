@@ -1,5 +1,6 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 
+import type { ExchangeFiles } from "../exchange/files";
 import type { DocumentFiles } from "./files";
 import {
   type DocCategory,
@@ -10,26 +11,40 @@ import {
 } from "./model";
 import type { DocumentStore } from "./store";
 
-type Value = { store: DocumentStore; files: DocumentFiles; version: number; changed: () => void };
+type Value = {
+  store: DocumentStore;
+  files: DocumentFiles;
+  /** Reading and writing the trip file (ADR 028). */
+  exchange: ExchangeFiles;
+  version: number;
+  changed: () => void;
+};
 
 const DocumentsContext = createContext<Value | null>(null);
 
 export function DocumentsProvider({
   store,
   files,
+  exchange,
   children,
 }: {
   store: DocumentStore;
   files: DocumentFiles;
+  exchange: ExchangeFiles;
   children: ReactNode;
 }) {
   const [version, setVersion] = useState(0);
   const changed = useCallback(() => setVersion((v) => v + 1), []);
   return (
-    <DocumentsContext.Provider value={{ store, files, version, changed }}>
+    <DocumentsContext.Provider value={{ store, files, exchange, version, changed }}>
       {children}
     </DocumentsContext.Provider>
   );
+}
+
+/** The store, the device files and the change signal, for code that moves documents in bulk. */
+export function useDocumentsInternals(): Value {
+  return useDocumentsContext();
 }
 
 function useDocumentsContext(): Value {

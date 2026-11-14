@@ -431,6 +431,16 @@ export function TripOverviewScreen({
           />
         )}
         <ListRow
+          icon="export"
+          title="Export trip"
+          detail="A file with this trip, to keep or share"
+          testID="menu-export"
+          onPress={() => {
+            setMenu(false);
+            nav.push({ name: "exportTrips", tripId });
+          }}
+        />
+        <ListRow
           icon="settings"
           title="Trip settings"
           detail={

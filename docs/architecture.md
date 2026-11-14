@@ -82,6 +82,12 @@ All services except the tile host run from one Docker Compose file in developmen
 
 ### 4.1 Mobile app
 
+- **Trip export and import (ADR 028):** `src/exchange/`. The backend assembles the trip as JSON
+  (`GET /v1/trips/{id}/export`) and writes an imported trip as a new place trip with a manual plan
+  (`POST /v1/trips/import`); the phone adds the documents, zips them with `fflate` into a `.detour`
+  file and hands it to the system share sheet (`expo-sharing`). Detour uploads nothing. Opening a
+  `.detour` file with the app (an Android intent filter) goes to the Import screen.
+
 - Expo SDK 58, TypeScript, Continuous Native Generation with config plugins; no hand-edited
   native projects. This keeps the iOS build a configuration task, not a port.
 - **Redesign, steps 1 and 2 (ADR 021, proposed):** design tokens and reusable components
@@ -173,6 +179,7 @@ rows needs the installation token. Errors are `{"detail", "code"}` with a stable
 |---|---|
 | `GET /v1/regions` | Import regions, status (`available` only if every ADR 009 gate passed), data version |
 | `GET /v1/attributions` | Credits to show: OpenStreetMap, GeoNames, map tiles |
+| `GET /v1/trips/{id}/export`, `GET /v1/trips/export`, `POST /v1/trips/import` | The trip file (ADR 028): one trip or every trip as JSON of `format: "detour-trip"`, `format_version: 1`, and the import of such a file as new trips, all or nothing; no identifier of ours is in it |
 | `GET /v1/destinations/search` | Cities (GeoNames) and areas (OSM boundaries) by name; accents, case and alternate names ignored; each result says whether its region can be planned. `include_external=true` asks Photon only if nothing matches locally, or always with `also_if_found=true` (ADR 027: the app's "Search more widely"); a Photon result becomes a `place` trip destination (snapshot, no `geo` row; suggestions are refused with `destination_not_plannable`) |
 | `GET /v1/places/search`, `GET /v1/places/{id}` | Imported places by name and/or around a point; a place with its provenance and licence |
 | `POST/GET/PATCH/DELETE /v1/trips`, `POST/GET /v1/trips/{id}/archive`, `GET/PATCH …/visits` | Trips (city or area destination, days, optional start date; no currency, budget or price bands since ADR 017) and the past-trip archive (ADR 006): marked by the user or made when reading the trips two days after the last day; `GET …/archive` reports its size |

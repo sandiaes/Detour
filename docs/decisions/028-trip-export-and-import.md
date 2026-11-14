@@ -1,9 +1,9 @@
 # ADR 028 — Trip export and import as a file
 
-- **Status:** **Proposed** on 2026-11-14, at the owner's request. Documentation only: nothing is
-  built. It is the **second** manager feature of ADR 026, section 6 (item 25), after destinations
-  outside the imported regions (ADR 027) and before Optimize (ADR 029). The owner confirms or
-  changes the points in "Owner decisions".
+- **Status:** **Accepted** on 2026-11-14: the owner accepted the draft with all seven points of
+  "Owner decisions" as recommended. **Built** the same day (see "As built"), awaiting acceptance of
+  the build. It is the **second** manager feature of ADR 026, section 6 (item 25), after
+  destinations outside the imported regions (ADR 027) and before Optimize (ADR 029).
 - **Date:** 2026-11-14
 - **Related:** [`026-trip-manager-first.md`](026-trip-manager-first.md),
   [`027-destinations-outside-imported-regions.md`](027-destinations-outside-imported-regions.md),
@@ -152,6 +152,43 @@ This is a new feature (CLAUDE.md rule 3). It adds no provider and no language mo
 | 5 | Also "Back up all trips" in one file, not only one trip at a time? | Yes (item 6). |
 | 6 | Add `expo-sharing`, `expo-document-picker` and `fflate` (item 16)? | Yes. |
 | 7 | Leave out proposals other than the chosen plan, travel times and cover photos (item 4)? | Yes: they are rebuilt or not worth carrying. |
+
+## As built (2026-11-14, awaiting acceptance)
+
+No migration. Backend and app tested on synthetic fixtures and fake files; **not tried on a device**
+and not run against the production database.
+
+- **API.** `GET /v1/trips/{id}/export`, `GET /v1/trips/export` (every trip, oldest first) and
+  `POST /v1/trips/import` (`routers/exchange.py`, `repo/exchange.py`, `models/exchange.py`). The
+  file shape is `{format: "detour-trip", format_version: 1, exported_at, trips: [...]}`; a file of
+  one trip is a list of one, so single and backup files read the same. Import is one transaction:
+  a file that fails validation, overlaps stops in a day or hits a limit writes nothing. A
+  `format_version` above 1 answers `422 format_too_new`.
+- **App.** `src/exchange/` (`archive.ts` builds and reads the zip with `fflate`, `files.ts` writes
+  the zip and opens the share sheet, `useExchange.ts` does the work), the Export screen (trip menu,
+  past-trip screen, More's "Back up all trips") and the Import screen (More's "Import a trip", or
+  opening a file). The zip holds `trip.json`, and with documents also `documents.json` and
+  `documents/<n>.<ext>` under generated names. The app refuses a file over 50 MB and does not
+  unpack an entry that claims to expand beyond 8 MB (JSON) or 10 MB (a document).
+- **Deviations from the draft.**
+  (a) **Only two dependencies, not three.** `expo-document-picker` is not added: the app already
+  picks files with `File.pickFileAsync` from `expo-file-system` (ADR 023). `expo-sharing` and
+  `fflate` are added.
+  (b) **An imported trip is always a place trip** (ADR 027), never a city or area trip. Item 9
+  said a trip would stay a city or area trip if its reference still resolved; that check is not
+  built, and since the plan is manual anyway the user loses only the city's own photo lookup by
+  name (a `geonames:` or `area:` reference still borrows the gazetteer photo). A multi-city trip
+  keeps its cities in the file but imports as one place trip named after it.
+  (c) **A backup is built from one export per trip**, not from `GET /v1/trips/export`, so that each
+  trip's documents are paired with it (the file carries no trip identifier). The bulk endpoint
+  stays for other clients.
+  (d) **Free-time items are not exported** (the app derives free time from gaps), and journeys of
+  a multi-city plan do not come back: a document linked to one is linked to its day.
+  (e) **Opening a file with the app** is an Android intent filter for `*.detour` (`content` and
+  `file` links) and a handler that goes to the Import screen. It works only when the sending app
+  puts the file name in the link; otherwise "Import a trip" does the same. Not tried on a device.
+  (f) **A document over 10 MB**, or whose file is no longer on the phone, is left out and named on
+  the screen.
 
 ## Alternatives
 
