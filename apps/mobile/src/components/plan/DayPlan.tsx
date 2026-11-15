@@ -1,4 +1,4 @@
-import type { ClientConfig, Day, Item } from "@detour/shared";
+import type { ClientConfig, Day, Item, Stay } from "@detour/shared";
 import { type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -431,6 +431,7 @@ export function PlanDayView({
   onShowList,
   header,
   embedded = false,
+  stays,
 }: {
   days: Day[];
   dayIndex: number;
@@ -446,6 +447,8 @@ export function PlanDayView({
   /** Shown above the list in list mode (notices, plan notes). */
   header?: ReactNode;
   embedded?: boolean;
+  /** The trip's stays, for the map mark of a day whose plan has no morning leg yet. */
+  stays?: Stay[];
 }) {
   const sorted = useMemo(() => [...days].sort((a, b) => a.day_index - b.day_index), [days]);
   const position = Math.max(
@@ -523,6 +526,7 @@ export function PlanDayView({
             previousDay={previousDay}
             map={map}
             onShowList={onShowList}
+            stays={stays}
             selectedId={selectedId}
             onSelect={(id) => {
               fromMap.current = true;

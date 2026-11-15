@@ -247,23 +247,30 @@ export type StayPoint = {
   id: string;
   name: string;
   lngLat: [number, number];
-  start: NonNullable<Day["start"]>;
+  /** The morning leg; null when only the stay itself is known (the plan was read before it). */
+  start: NonNullable<Day["start"]> | null;
 };
 
 export const stayId = (day: Day) => `stay-${day.id}`;
 
 /** The day's stay, when the plan says where it starts. Not a numbered stop. */
-export function stayPoint(day: Day): StayPoint | null {
+export function stayPoint(
+  day: Day,
+  stays: { name: string; lat: number; lon: number; first_day: number; last_day: number }[] = [],
+): StayPoint | null {
   const start = day.start;
-  if (!start) return null;
-  return { id: stayId(day), name: start.name, lngLat: [start.lon, start.lat], start };
+  if (start) return { id: stayId(day), name: start.name, lngLat: [start.lon, start.lat], start };
+  const own = stays.find((s) => s.first_day <= day.day_index && day.day_index <= s.last_day);
+  return own ? { id: stayId(day), name: own.name, lngLat: [own.lon, own.lat], start: null } : null;
 }
 
 /** The morning leg from the stay to the day's first stop with a place, as a line. */
 export function stayFeature(day: Day): TransferFeature | null {
   const stay = stayPoint(day);
-  const first = stay ? mapPoints(day).find((p) => p.id === stay.start.to_item_id) : undefined;
-  if (!stay || !first) return null;
+  const first = stay?.start
+    ? mapPoints(day).find((p) => p.id === stay.start?.to_item_id)
+    : undefined;
+  if (!stay?.start || !first) return null;
   return {
     type: "Feature",
     id: stay.id,

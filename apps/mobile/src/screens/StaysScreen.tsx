@@ -1,9 +1,11 @@
 import type { ExternalPlace, Stay, Trip } from "@detour/shared";
+import { Camera, Map, Marker } from "@maplibre/maplibre-react-native";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError } from "../api/unwrap";
+import { AttributionBar } from "../components/AttributionBar";
 import {
   Button,
   ChoiceRow,
@@ -18,6 +20,8 @@ import {
   LoadingState,
   Notice,
   SearchField,
+  SegmentedControl,
+  StopMark,
   Stepper,
   TextField,
 } from "../components/ds";
@@ -25,7 +29,7 @@ import { keys } from "../data/actions";
 import { useData, useResource } from "../data/DataProvider";
 import { parseCoordinate } from "../domain/restaurants";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { colors, layout, spacing, type, weight } from "../theme";
+import { colors, layout, radius, spacing, type, weight } from "../theme";
 
 type StaysRoute = Extract<Route, { name: "stays" }>;
 type Form = {
@@ -66,6 +70,8 @@ export function StaysScreen({ route }: { route: StaysRoute }) {
   const [found, setFound] = useState<ExternalPlace[] | "none" | null>(null);
   const [searching, setSearching] = useState(false);
   const [byHand, setByHand] = useState({ lat: "", lon: "" });
+  const [mode, setMode] = useState<"search" | "pin">("search");
+  const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
 
   const q = query.trim();
   useEffect(() => {
@@ -126,6 +132,7 @@ export function StaysScreen({ route }: { route: StaysRoute }) {
     setFound(null);
     setQuery("");
     setByHand({ lat: "", lon: "" });
+    setMode("search");
     if (stay) {
       setForm({
         id: stay.id,
@@ -264,62 +271,121 @@ export function StaysScreen({ route }: { route: StaysRoute }) {
         <View style={styles.pad}>
           {form.id === null && form.lat === null ? (
             <>
-              <SearchField
-                label="Hotel, apartment or address"
-                value={query}
-                onChangeText={(t) => {
-                  setQuery(t);
-                  setFound(null);
-                }}
-                onClear={() => {
-                  setQuery("");
-                  setFound(null);
-                }}
-                hint="At least two letters. Searched on OpenStreetMap through the Detour server."
-                testID="stay-search"
+              <SegmentedControl<"search" | "pin">
+                items={[
+                  { key: "search", label: "Search" },
+                  { key: "pin", label: "Pin on map" },
+                ]}
+                value={mode}
+                onChange={setMode}
+                testID="stay-mode"
               />
-              {searching ? <InlineStatus text="Searching…" busy /> : null}
-              {found === "none" ? (
-                <Text style={styles.small}>Nothing found. Try the address, or enter it below.</Text>
-              ) : null}
-              {Array.isArray(found) ? (
-                <DropdownPanel>
-                  {found.map((p, n) => (
-                    <ChoiceRow
-                      key={`${p.ref ?? n}`}
-                      icon="home"
-                      title={p.name}
-                      meta={[p.street, p.city, p.country].filter(Boolean).join(" · ")}
-                      selected={false}
-                      onPress={() => setForm({ ...form, name: p.name, lat: p.lat, lon: p.lon })}
-                    />
-                  ))}
-                </DropdownPanel>
-              ) : null}
-              <Text style={styles.label}>Or enter it by hand</Text>
-              <TextField
-                label="Name"
-                value={form.name}
-                onChangeText={(t) => setForm({ ...form, name: t })}
-              />
-              <TextField
-                label="Latitude"
-                value={byHand.lat}
-                onChangeText={(t) => setByHand({ ...byHand, lat: t })}
-                keyboardType="numbers-and-punctuation"
-              />
-              <TextField
-                label="Longitude"
-                value={byHand.lon}
-                onChangeText={(t) => setByHand({ ...byHand, lon: t })}
-                keyboardType="numbers-and-punctuation"
-              />
-              <Button
-                label="Use these coordinates"
-                variant="secondary"
-                disabled={lat === null || lon === null || !form.name.trim()}
-                onPress={() => setForm({ ...form, lat, lon })}
-              />
+              {mode === "search" ? (
+                <>
+                  <SearchField
+                    label="Hotel, apartment or address"
+                    value={query}
+                    onChangeText={(t) => {
+                      setQuery(t);
+                      setFound(null);
+                    }}
+                    onClear={() => {
+                      setQuery("");
+                      setFound(null);
+                    }}
+                    hint="At least two letters. Searched on OpenStreetMap through the Detour server."
+                    testID="stay-search"
+                  />
+                  {searching ? <InlineStatus text="Searching…" busy /> : null}
+                  {found === "none" ? (
+                    <Text style={styles.small}>
+                      Nothing found. Try the address, or pin it on the map.
+                    </Text>
+                  ) : null}
+                  {Array.isArray(found) ? (
+                    <DropdownPanel>
+                      {found.map((p, n) => (
+                        <ChoiceRow
+                          key={`${p.ref ?? n}`}
+                          icon="home"
+                          title={p.name}
+                          meta={[p.street, p.city, p.country].filter(Boolean).join(" · ")}
+                          selected={false}
+                          onPress={() => setForm({ ...form, name: p.name, lat: p.lat, lon: p.lon })}
+                        />
+                      ))}
+                    </DropdownPanel>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <InlineStatus text="Tap the map to drop the pin, or type the coordinates." />
+                  {mapConfig ? (
+                    <View style={styles.map}>
+                      <Map
+                        style={styles.fill}
+                        mapStyle={mapConfig.style_url}
+                        logo={false}
+                        attribution={false}
+                        onPress={(e) => {
+                          const [lonTapped, latTapped] = e.nativeEvent.lngLat;
+                          setByHand({ lat: latTapped.toFixed(6), lon: lonTapped.toFixed(6) });
+                        }}
+                      >
+                        <Camera
+                          initialViewState={{
+                            center: [trip.destination.lon, trip.destination.lat],
+                            zoom: 12,
+                          }}
+                        />
+                        {lat !== null && lon !== null ? (
+                          <Marker id="pin" lngLat={[lon, lat]} anchor="bottom">
+                            <View accessible accessibilityLabel="The pin">
+                              <StopMark kind="city" icon="home" size="map" selected />
+                            </View>
+                          </Marker>
+                        ) : null}
+                      </Map>
+                      <AttributionBar lines={mapConfig.attribution} userInteractionCount={0} />
+                    </View>
+                  ) : (
+                    <Notice tone="warning">The map needs a connection to the server.</Notice>
+                  )}
+                  <View style={styles.coords}>
+                    <View style={styles.half}>
+                      <TextField
+                        label="Latitude"
+                        value={byHand.lat}
+                        onChangeText={(t) => setByHand({ ...byHand, lat: t })}
+                        keyboardType="numbers-and-punctuation"
+                        error={byHand.lat && lat === null ? "A number from −90 to 90" : null}
+                      />
+                    </View>
+                    <View style={styles.half}>
+                      <TextField
+                        label="Longitude"
+                        value={byHand.lon}
+                        onChangeText={(t) => setByHand({ ...byHand, lon: t })}
+                        keyboardType="numbers-and-punctuation"
+                        error={byHand.lon && lon === null ? "A number from −180 to 180" : null}
+                      />
+                    </View>
+                  </View>
+                  <TextField
+                    label="Name"
+                    value={form.name}
+                    onChangeText={(t) => setForm({ ...form, name: t })}
+                    hint="What you call it, such as Hotel Seeblick"
+                  />
+                  <Button
+                    label="Use this spot"
+                    variant="secondary"
+                    testID="stay-use-pin"
+                    disabled={lat === null || lon === null || !form.name.trim()}
+                    onPress={() => setForm({ ...form, lat, lon })}
+                  />
+                </>
+              )}
             </>
           ) : (
             <TextField
@@ -408,4 +474,7 @@ const styles = StyleSheet.create({
   small: { ...type.caption, color: colors.muted },
   steppers: { flexDirection: "row", gap: spacing.lg, flexWrap: "wrap" },
   stepper: { gap: spacing.xs },
+  map: { height: 240, borderRadius: radius.lg, overflow: "hidden" },
+  coords: { flexDirection: "row", gap: spacing.sm },
+  half: { flex: 1 },
 });
