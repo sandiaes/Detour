@@ -285,7 +285,7 @@ test("past trip: map with markers", async () => {
       <AppContent />
     </Harness>,
   );
-  await screen.findByText("Tap a marker for details.");
+  await screen.findByLabelText("Day 1");
   expect(screen.getAllByLabelText(/^(City|Attraction), day \d+: /).length).toBe(5);
   checkControls();
 });

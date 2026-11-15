@@ -160,10 +160,9 @@ not asked; it is the destination.
   white ("Austria", "12 – 19 Mar 2026 · 8 days"), over a soft gradient. No destination or status
   line, and no header row above the photo.
 - **A white sheet curves over the cover's lower edge** and holds the tabs: Overview, Map,
-  Photos, Documents, which share the full width equally. The tabs stay at the top when the page scrolls. Only Map gives
+  Photos, Documents, which are spread across the full width with equal gutters at both edges and equal space between the labels; the map header uses the same tab height, so the line sits at the same place on every tab. The tabs stay at the top when the page scrolls. Only Map gives
   up the cover.
-- **Overview tab = the itinerary (screens 02, 12):** three figures in one line each (a middle
-  size: 22 px number, 14 px word), **cities, places, restaurants** (icon, number, word; no number of days: the header says it);
+- **Overview tab = the itinerary (screens 02, 12):** three figures in the original stacked form, tighter (icon and number side by side, the word under them), **cities, places, restaurants** (icon, number, word; no number of days: the header says it);
   **Optimize** when the plan has three stops; then the trip's days as a **timeline**: a dot on a
   thin rail, a small thumbnail (no photo "i" on it; the credit is on the place's own screen), "Day 3 · Wed 14 Mar", the town, "4 activities · 2
   restaurants". A day opens the **Map tab on that day**. There is no "Your itineraries" block and no
@@ -359,3 +358,7 @@ the screen reader announcing a screen's title on arrival.
   are kept on the phone only; a trip file (ADR 028) carries them, unencrypted and only when the user
   chooses, from "Export trip" and "Back up all trips".
 - **Dark mode** is not designed.
+
+**Past trip (2026-11-15):** no storage or "routes are not kept" notes. Each day has a colour (eight, repeating)
+used for its markers on the map, its badge in the Days tab and the icon tile of its rows; the map's legend is
+a row of day chips; a tapped marker opens a panel with a coloured tile, the name, kind and day, and a close button.
