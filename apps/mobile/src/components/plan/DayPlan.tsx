@@ -388,6 +388,7 @@ export function PlanDayView({
   mode,
   map,
   initialSelectedId = null,
+  onSelectionChange,
   onDetails,
   onShowList,
   header,
@@ -400,6 +401,8 @@ export function PlanDayView({
   /** The map style from the server; null without a connection. */
   map: ClientConfig["map"] | null;
   initialSelectedId?: string | null;
+  /** Told when the user selects a stop, so a screen can keep it for when the user comes back. */
+  onSelectionChange?: (id: string) => void;
   onDetails?: (item: Item) => void;
   onShowList: () => void;
   /** Shown above the list in list mode (notices, plan notes). */
@@ -438,7 +441,10 @@ export function PlanDayView({
     return <EmptyState title="No days" text="This plan has no days." />;
   }
 
-  const select = (id: string) => setSelection({ dayId: day.id, id });
+  const select = (id: string) => {
+    setSelection({ dayId: day.id, id });
+    onSelectionChange?.(id);
+  };
   const list = (
     <DayPlanList
       day={day}
@@ -546,13 +552,30 @@ const styles = StyleSheet.create({
   dayPillDate: { ...type.caption, lineHeight: 16, color: colors.muted, textAlign: "center" },
   dayPillTextActive: { color: colors.onPrimary },
 
-  list: { paddingHorizontal: spacing.lg },
-  dayBaseLine: { ...type.caption, color: colors.muted, paddingTop: spacing.sm },
-  empty: { ...type.small, color: colors.muted, paddingVertical: spacing.md },
+  // The list sits 8 dp from the screen edge and every row pads its content by 12 dp, so text is
+  // 20 dp in and a selected row's soft rounded tint has the same room all around it.
+  list: { paddingHorizontal: spacing.sm },
+  dayBaseLine: {
+    ...type.caption,
+    color: colors.muted,
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  empty: {
+    ...type.small,
+    color: colors.muted,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
 
   // A stop is a flat row. Selected: a light tint, announced as selected.
   // No hairline of its own: the travel line between two stops is the divider.
-  row: { flexDirection: "row", gap: spacing.md },
+  row: {
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingLeft: spacing.md,
+    borderRadius: radius.md,
+  },
   rowSelected: { backgroundColor: colors.surfaceMuted },
   timeCol: { width: 40, paddingTop: spacing.md },
   time: { ...type.caption, fontWeight: "700", color: colors.text },
@@ -567,7 +590,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.sm,
   },
-  chevron: { width: TOUCH, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },
+  chevron: { width: 40, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },
   disc: {
     width: 24,
     height: 24,
@@ -594,6 +617,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     minHeight: 28,
+    paddingHorizontal: spacing.md,
   },
   transferLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   transferText: { ...type.caption, color: colors.muted },

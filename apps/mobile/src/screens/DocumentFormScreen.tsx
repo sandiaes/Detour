@@ -6,6 +6,7 @@ import { call } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { CATEGORY_ICON, DEVICE_ONLY_NOTE, KindTile } from "../components/documents/DocumentList";
 import { CalendarSheet } from "../components/ds/Calendar";
+import { ChoiceRow, Dropdown } from "../components/ds/Dropdown";
 import { Icon, type IconName } from "../components/ds/Icon";
 import { Badge, IconButton } from "../components/ds/primitives";
 import { Chip, EmptyState, LoadingState, Notice, ScreenHeader } from "../components/ui";
@@ -586,90 +587,6 @@ function FileRow({
   );
 }
 
-/** A drop-down menu: a boxed field that opens a short scrolling list of choices under it. */
-function Dropdown({
-  label,
-  placeholder,
-  value,
-  open,
-  onToggle,
-  children,
-  testID,
-}: {
-  label: string;
-  placeholder: string;
-  value: string | null;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-  testID?: string;
-}) {
-  return (
-    <View style={styles.dropdown}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${label}, ${value ?? "none chosen"}`}
-        accessibilityHint={open ? "Closes the list" : "Opens a list to choose from"}
-        accessibilityState={{ expanded: open }}
-        onPress={onToggle}
-        hitSlop={{ top: 2, bottom: 2 }}
-        style={[styles.input, styles.dropdownField]}
-        testID={testID}
-      >
-        <Icon name="pin" size={18} color={colors.muted} />
-        <Text
-          style={[styles.inputText, styles.dateText, !value && styles.placeholder]}
-          numberOfLines={1}
-        >
-          {value ?? placeholder}
-        </Text>
-        <View style={open ? styles.chevronUp : styles.chevronDown}>
-          <Icon name="chevronRight" size={16} color={colors.muted} />
-        </View>
-      </Pressable>
-      {open ? (
-        <ScrollView
-          style={styles.dropdownList}
-          nestedScrollEnabled
-          keyboardShouldPersistTaps="handled"
-          testID={testID ? `${testID}-list` : undefined}
-        >
-          {children}
-        </ScrollView>
-      ) : null}
-    </View>
-  );
-}
-
-function ChoiceRow({
-  title,
-  meta,
-  selected,
-  onPress,
-}: {
-  title: string;
-  meta: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}, ${meta}`}
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      hitSlop={{ top: 2, bottom: 2 }}
-      style={[styles.choice, selected && styles.choiceSelected]}
-    >
-      <View style={styles.fileText}>
-        <Text style={styles.fileName}>{title}</Text>
-        <Text style={styles.muted}>{meta}</Text>
-      </View>
-      {selected ? <Icon name="check" size={18} color={colors.primary} /> : null}
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   pressed: { opacity: 0.85 },
@@ -752,25 +669,4 @@ const styles = StyleSheet.create({
   notesBox: { flexDirection: "column", alignItems: "stretch", paddingRight: spacing.md },
   notes: { minHeight: 72, paddingHorizontal: 0 },
   counter: { ...type.caption, color: colors.muted, textAlign: "right", paddingBottom: spacing.sm },
-  dropdown: { gap: spacing.xs },
-  dropdownField: { paddingRight: spacing.md, gap: spacing.sm },
-  dropdownList: {
-    maxHeight: 232,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  chevronDown: { transform: [{ rotate: "90deg" }] },
-  chevronUp: { transform: [{ rotate: "-90deg" }] },
-  choice: {
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: 48,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  choiceSelected: { backgroundColor: colors.primarySoft },
 });

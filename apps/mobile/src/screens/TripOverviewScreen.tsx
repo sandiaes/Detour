@@ -1,4 +1,4 @@
-import type { Day, Itinerary, ItinerarySummary, ItineraryVersion, Trip } from "@detour/shared";
+import type { Day, Itinerary, ItineraryVersion, Trip } from "@detour/shared";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -36,7 +36,6 @@ import { CoverPicker, type CoverSource } from "../components/ds/CoverPicker";
 import { isPlaceTrip, placeCoverSource } from "../domain/destinations";
 import { useResource } from "../data/DataProvider";
 import { useTripCounts } from "../data/tripCounts";
-import { PlanSummaryCard } from "../components/plan/PlanSummaryCard";
 import { dayTotals } from "../domain/itinerary";
 import { canOptimize, canUndoOptimize } from "../domain/optimize";
 import { type TripCounts, localToday, shortSpan } from "../domain/trips";
@@ -48,7 +47,6 @@ import { PlanDayView, dayTitle } from "../components/plan/DayPlan";
 import { useItemActions } from "../data/itemActions";
 import { DocumentList } from "../components/documents/DocumentList";
 import { PastTripScreen } from "./PastTripScreen";
-import { visiblePlans } from "./TripScreen";
 
 // A trip's home (ADR 021): its cover, dates and status, then five tabs. Once a plan is chosen it is
 // the trip's active itinerary and the overview is built around it; the original proposals are in
@@ -56,7 +54,6 @@ import { visiblePlans } from "./TripScreen";
 
 export const TRIP_SECTIONS: TabItem<TripSection>[] = [
   { key: "overview", label: "Overview" },
-  { key: "itinerary", label: "Itinerary" },
   { key: "map", label: "Map" },
   // Named in full: the bottom bar has a Photos tab of its own.
   { key: "photos", label: "Photos", accessibilityLabel: "Trip photos" },
@@ -235,21 +232,19 @@ function PlanLoading({ plan }: { plan: ReturnType<typeof useTripCounts>["plan"] 
 export function TripOverviewScreen({
   tripId,
   section: initialSection = "overview",
+  day: initialDay,
+  itemId: initialItemId,
 }: {
   tripId: string;
   section?: TripSection;
+  day?: number;
+  itemId?: string;
 }) {
   const nav = useNavigation();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
   const { counts, plan } = useTripCounts(trip);
   const insets = useSafeAreaInsets();
-  const proposals = useResource<ItinerarySummary[]>(
-    trip?.selected_itinerary_id ? keys.itineraries(tripId) : null,
-    (c) =>
-      call(c.GET("/v1/trips/{trip_id}/itineraries", { params: { path: { trip_id: tripId } } })),
-    { ttlMs: 10 * 60_000 },
-  );
   const planId0 = trip?.status !== "past" ? (trip?.selected_itinerary_id ?? null) : null;
   const versions = useResource<ItineraryVersion[]>(
     planId0 ? keys.versions(planId0) : null,
@@ -267,14 +262,37 @@ export function TripOverviewScreen({
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
   const actions = useTripActions();
-  const [dayIndex, setDayIndex] = useState<number | null>(null);
+  const [dayState, setDayState] = useState<number | null>(initialDay ?? null);
+  const [selectedStop, setSelectedStop] = useState<string | null>(initialItemId ?? null);
   // The tabs stick to the top of the screen once the cover has scrolled away.
   const [stuck, setStuck] = useState(false);
   // The section is kept in the route, so coming back from a screen opened on top of this one (a
   // document form, a place) lands on the same tab.
+  // The day and the selected stop are kept the same way: Back from a place's details lands on the
+  // day and stop the user left, not on the first day.
+  const remember = (next: {
+    section?: TripSection;
+    day?: number | null;
+    itemId?: string | null;
+  }) => {
+    const nextDay = next.day === undefined ? dayState : next.day;
+    const nextItem = next.itemId === undefined ? selectedStop : next.itemId;
+    nav.replace({
+      name: "tripOverview",
+      tripId,
+      section: next.section ?? section,
+      ...(nextDay !== null ? { day: nextDay } : {}),
+      ...(nextItem !== null ? { itemId: nextItem } : {}),
+    });
+  };
   const setSection = (next: TripSection) => {
     setSectionState(next);
-    nav.replace({ name: "tripOverview", tripId, section: next });
+    remember({ section: next });
+  };
+  const setDayIndex = (d: number) => {
+    setDayState(d);
+    setSelectedStop(null);
+    remember({ day: d, itemId: null });
   };
   const titleRef = useAnnounceOnMount();
   const { state } = useBackend();
@@ -327,10 +345,12 @@ export function TripOverviewScreen({
   const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
   // The day shown in the Itinerary and Map tabs: today's during the trip, else the first.
   const day =
-    dayIndex ?? (plan.data ? (previewDays(trip, plan.data, undefined, 1)[0]?.day_index ?? 1) : 1);
+    dayState ?? (plan.data ? (previewDays(trip, plan.data, undefined, 1)[0]?.day_index ?? 1) : 1);
   const openDay = (d: number, target: TripSection = "map") => {
-    setDayIndex(d);
-    setSection(target);
+    setDayState(d);
+    setSelectedStop(null);
+    setSectionState(target);
+    nav.replace({ name: "tripOverview", tripId, section: target, day: d });
   };
   const planView = (mode: "list" | "map") =>
     plan.data ? (
@@ -341,10 +361,15 @@ export function TripOverviewScreen({
         onDayChange={setDayIndex}
         mode={mode}
         map={mapConfig}
+        initialSelectedId={selectedStop}
+        onSelectionChange={(id) => {
+          setSelectedStop(id);
+          remember({ itemId: id });
+        }}
         onDetails={(item) =>
           nav.push({ name: "placeDetail", tripId, itineraryId: planId, itemId: item.id })
         }
-        onShowList={() => setSection("itinerary")}
+        onShowList={() => setSection("overview")}
       />
     ) : null;
 
@@ -363,62 +388,21 @@ export function TripOverviewScreen({
   } else if (!hasPlan) {
     content = (
       <>
-        {section === "overview" && counts ? <StatRow stats={statsOf(counts)} /> : null}
+        {section === "overview" && counts ? <StatRow stats={statsOf(counts)} compact /> : null}
         <ChoosePlanCard trip={trip} />
       </>
     );
   } else if (!plan.data) {
     content = <PlanLoading plan={plan} />;
   } else if (section === "overview") {
-    const data = plan.data;
-    const others = (proposals.data ? visiblePlans(proposals.data) : []).filter(
-      (p) => p.id !== planId && p.status !== "selected" && p.profile !== "manual",
-    );
-    content = (
-      <>
-        <ResourceNotices resource={plan} noun="this itinerary" />
-        {counts ? <StatRow stats={statsOf(counts)} /> : null}
-        <View style={styles.planBlock}>
-          <Text accessibilityRole="header" style={styles.cardTitle}>
-            Your itineraries
-          </Text>
-          <PlanSummaryCard
-            plan={data}
-            destination={trip.destination.name}
-            coverKey={trip.destination.ref}
-            badge="Active"
-            hint="Opens the itinerary"
-            testID="open-itinerary"
-            onPress={() => setSection("itinerary")}
-          />
-          {others.map((p) => (
-            <PlanSummaryCard
-              key={p.id}
-              plan={p}
-              destination={trip.destination.name}
-              coverKey={trip.destination.ref}
-              hint="Opens this proposal, where you can choose it"
-              testID={`open-proposal-${p.profile}`}
-              onPress={() =>
-                nav.push({
-                  name: "itinerary",
-                  tripId,
-                  itineraryId: p.id,
-                  view: "map",
-                  day: 1,
-                })
-              }
-            />
-          ))}
-        </View>
-      </>
-    );
-  } else if (section === "itinerary") {
+    // The overview is the itinerary itself (owner request, 2026-11-15): compact figures, Optimize
+    // when it applies, then the days. The original proposals are in the trip menu.
     content = (
       <>
         <ResourceNotices resource={plan} noun="this itinerary" />
         {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
         {undoing ? <Notice tone="error">{undoing}</Notice> : null}
+        {counts ? <StatRow stats={statsOf(counts)} compact /> : null}
         {optimizable ? (
           <ListRow
             icon="route"
@@ -684,7 +668,6 @@ const styles = StyleSheet.create({
   },
   sheetBody: { backgroundColor: colors.background },
   body2: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.sm },
-  planBlock: { gap: spacing.xs },
   cardTitle: { ...type.heading, color: colors.text, paddingTop: spacing.xs },
   body: { ...type.body, color: colors.text },
   meta: { ...type.small, color: colors.muted },

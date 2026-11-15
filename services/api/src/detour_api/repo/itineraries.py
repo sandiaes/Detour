@@ -46,11 +46,12 @@ _ITEM_COLUMNS = """
     i.id, i.day_id, i.position, i.type, i.place_id, i.user_place_id, i.display_name,
     ST_Y(i.display_point) AS lat, ST_X(i.display_point) AS lon, i.start_time, i.end_time,
     i.duration_minutes, i.duration_source, i.origin, i.locked, i.reasons,
-    up.kind AS r_venue
+    up.kind AS r_venue, gp.default_visit_minutes AS g_default, gp.category AS g_category
 """
 # The kind of a restaurant or cafe stop is read from the user's place at read time (ADR 026).
 _ITEM_JOINS = """
     LEFT JOIN app.user_place up ON i.type = 'meal' AND up.id = i.user_place_id
+    LEFT JOIN geo.place gp ON gp.id = i.place_id
 """
 
 
@@ -129,6 +130,19 @@ def drop_stale_transfers(conn: Connection, day_ids: list[uuid.UUID]) -> None:
     )
 
 
+def _default_minutes(row: Any) -> int | None:
+    """The length "use the default" gives the item: an imported sight's own or its category's,
+    a restaurant's or cafe's (ADR 026), and none for anything else (a place the user pinned has
+    no known typical length)."""
+    if row.type == "free_time":
+        return None
+    if row.place_id is not None:
+        return row.g_default if row.g_default is not None else visit_minutes(row.g_category)
+    if row.type == "meal":
+        return VENUE_MINUTES.get(row.r_venue)
+    return None
+
+
 def _item(row: Any, transfer: Transfer | None = None) -> Item:
     return Item(
         id=row.id,
@@ -144,6 +158,7 @@ def _item(row: Any, transfer: Transfer | None = None) -> Item:
         end_time=row.end_time,
         duration_minutes=row.duration_minutes,
         duration_source=row.duration_source,
+        default_duration_minutes=_default_minutes(row),
         origin=row.origin,
         locked=row.locked,
         reasons=list(row.reasons),
@@ -510,7 +525,8 @@ def update_item(
     row = conn.execute(
         text(
             "SELECT i.id, i.day_id, i.position, i.type, i.start_time, i.duration_minutes,"
-            " i.duration_source, d.itinerary_id, d.day_index, t.status AS trip_status"
+            " i.duration_source, i.place_id, i.user_place_id, d.itinerary_id, d.day_index,"
+            " t.status AS trip_status"
             " FROM app.itinerary_item i JOIN app.itinerary_day d ON d.id = i.day_id"
             " JOIN app.itinerary it ON it.id = d.itinerary_id JOIN app.trip t ON t.id = it.trip_id"
             " WHERE i.id = :i AND t.installation_id = :n FOR UPDATE OF i"
@@ -526,7 +542,13 @@ def update_item(
 
     minutes = row.duration_minutes
     source = row.duration_source
-    if "duration_minutes" in changed:
+    if body.use_default_duration:
+        # "Stick to the default": the length the item would have had when it was added.
+        current = require_item(conn, installation_id, item_id)
+        if current.default_duration_minutes is None:
+            raise invalid("no_default_duration", "this stop has no default duration")
+        minutes, source = current.default_duration_minutes, "category_default"
+    elif "duration_minutes" in changed:
         if body.duration_minutes is None:
             raise invalid("duration_required", "duration_minutes cannot be cleared")
         minutes, source = body.duration_minutes, "user"

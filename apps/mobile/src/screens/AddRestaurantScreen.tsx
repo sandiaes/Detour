@@ -21,6 +21,7 @@ import { useResource } from "../data/DataProvider";
 import {
   VENUES,
   VENUE_LABEL,
+  VENUE_DEFAULT_MINUTES,
   type Venue,
   parseCoordinate,
   venueLabel,
@@ -427,6 +428,14 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
               startDate={trip?.start_date ?? null}
               defaultTime={EATING_START}
               minutes={null}
+              defaultMinutes={
+                VENUE_DEFAULT_MINUTES[
+                  choice.kind === "saved" &&
+                  (choice.place.kind === "cafe" || choice.place.kind === "restaurant")
+                    ? choice.place.kind
+                    : form.venue
+                ]
+              }
               name={choiceName(choice, form)}
               working={working === "preview"}
               disabled={!ready}

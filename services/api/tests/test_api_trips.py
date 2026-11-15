@@ -596,6 +596,32 @@ def test_timed_items_may_touch_but_not_overlap(api_env: ApiEnv) -> None:
     )
 
 
+def test_a_stop_can_go_back_to_its_default_length(api_env: ApiEnv) -> None:
+    it = make_itinerary(api_env, make_trip(api_env))
+    museum = find_place(api_env, "testburg museum")
+    added = add_item(api_env, it, 1, type="visit", place_id=museum["id"]).json()
+    default = added["default_duration_minutes"]
+    assert default is not None and added["duration_source"] == "category_default"
+    path = f"/v1/items/{added['id']}"
+    own = api_env.client.patch(
+        path, json={"duration_minutes": default + 25}, headers=api_env.headers
+    )
+    assert own.json()["duration_source"] == "user"
+    assert own.json()["default_duration_minutes"] == default
+    back = api_env.client.patch(path, json={"use_default_duration": True}, headers=api_env.headers)
+    assert back.status_code == 200
+    assert back.json()["duration_minutes"] == default
+    assert back.json()["duration_source"] == "category_default"
+    # A place the user pinned has no known default, so there is nothing to go back to.
+    pin = create_place(api_env)["id"]
+    item = add_item(api_env, it, 1, type="visit", user_place_id=pin, duration_minutes=10).json()
+    assert item["default_duration_minutes"] is None
+    refused = api_env.client.patch(
+        f"/v1/items/{item['id']}", json={"use_default_duration": True}, headers=api_env.headers
+    )
+    assert refused.status_code == 422 and code(refused) == "no_default_duration"
+
+
 def test_patching_time_duration_and_lock(api_env: ApiEnv) -> None:
     it = make_itinerary(api_env, make_trip(api_env))
     pins = [create_place(api_env, name=f"P{i}")["id"] for i in range(2)]

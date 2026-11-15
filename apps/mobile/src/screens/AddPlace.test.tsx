@@ -194,7 +194,7 @@ test("drop a pin, name it and choose how long to stay", async () => {
   // A pin needs a name before the days can be found.
   expect(screen.getByTestId("find-days")).toBeDisabled();
   await fireEvent.changeText(screen.getByLabelText("Name of the place"), "Friend's flat");
-  await fireEvent.press(screen.getByLabelText("1 h 30 min"));
+  await fireEvent.changeText(screen.getByTestId("stay-length"), "1h30");
   await previewBest();
   const saved = client.calls.find((c) => c.path === "/v1/user-places");
   expect(saved?.body).toEqual({
@@ -231,7 +231,8 @@ test("a town is saved as a place from the gazetteer and staying two hours is the
   );
   await search("Melk");
   await fireEvent.press(await screen.findByLabelText("Melk, Lower Austria, Austria"));
-  expect(screen.getByLabelText("2 h")).toBeSelected();
+  expect(screen.getByTestId("stay-length-default")).toBeSelected();
+  expect(screen.getByTestId("stay-length")).toHaveProp("value", "120");
   await previewBest();
   expect(client.calls.find((c) => c.path === "/v1/user-places")?.body).toEqual({
     kind: "city",
@@ -516,7 +517,7 @@ test("asking again after changing the length does not save the pin twice", async
   await fireEvent.changeText(screen.getByLabelText("Name of the place"), "Friend's flat");
   await fireEvent.press(screen.getByTestId("find-days"));
   await screen.findByTestId("place-suggestions");
-  await fireEvent.press(screen.getByLabelText("2 h"));
+  await fireEvent.changeText(screen.getByTestId("stay-length"), "2h");
   // A new length asks again, with the same saved place.
   expect(screen.queryByTestId("place-suggestions")).toBeNull();
   await fireEvent.press(screen.getByTestId("find-days"));
@@ -536,6 +537,7 @@ test("choose the day and the time directly, without a proposal", async () => {
   await search("Prat");
   await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
   await fireEvent.press(screen.getByTestId("how-choose"));
+  await fireEvent.press(screen.getByTestId("slot-day"));
   await fireEvent.press(screen.getByTestId("slot-day-2"));
   await fireEvent.changeText(screen.getByTestId("slot-time"), "9:30");
   await fireEvent.press(screen.getByTestId("add-at-time"));
@@ -547,7 +549,8 @@ test("choose the day and the time directly, without a proposal", async () => {
     type: "visit",
     place_id: SIGHT.id,
     start_time: "09:30",
-    duration_minutes: 60,
+    // A sight left on its usual length is sent without one: the server has it.
+    duration_minutes: null,
   });
 });
 

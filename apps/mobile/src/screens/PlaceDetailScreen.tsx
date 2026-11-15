@@ -5,6 +5,10 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
 import { Cover } from "../components/ds/Cover";
+import { DurationField } from "../components/ds/DurationField";
+import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { checkDuration } from "../domain/duration";
 import { KindIcon } from "../components/ds/KindIcon";
 import { Icon, type IconName } from "../components/ds/Icon";
 import {
@@ -171,6 +175,104 @@ function EditDisplayName({
   );
 }
 
+/** Edit length: how long the user stays here. One free field, a pill that goes back to the usual
+ * length, and a live check of what the new length would run into (a stop that follows, the trip
+ * to it, the end of the day). A clash with the next stop cannot be saved. */
+function EditLength({
+  day,
+  item,
+  itineraryId,
+  onSaved,
+}: {
+  day: Day;
+  item: Item;
+  itineraryId: string;
+  onSaved: () => void;
+}) {
+  const changes = useChangeActions();
+  const [open, setOpen] = useState(false);
+  const [minutes, setMinutes] = useState<number | null>(item.duration_minutes);
+  const [valid, setValid] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const hasDefault = item.default_duration_minutes != null;
+  const effective = minutes ?? item.default_duration_minutes ?? item.duration_minutes;
+  const check = valid ? checkDuration(day, item, effective) : null;
+
+  if (!open) {
+    return (
+      <Button
+        label="Edit length"
+        icon="clock"
+        variant="secondary"
+        size="compact"
+        testID="edit-length"
+        onPress={() => {
+          setMinutes(item.duration_minutes);
+          setValid(true);
+          setProblem(null);
+          setOpen(true);
+        }}
+      />
+    );
+  }
+  const unchanged =
+    minutes === null
+      ? item.duration_source === "category_default"
+      : minutes === item.duration_minutes;
+  const save = async () => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      await changes.setDuration(itineraryId, item.id, minutes);
+      setOpen(false);
+      onSaved();
+    } catch (e) {
+      setProblem(describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <View style={styles.lengthEditor} testID="length-editor">
+      <DurationField
+        label="Length of stay"
+        minutes={minutes}
+        onChange={setMinutes}
+        onValidity={setValid}
+        hasDefault={hasDefault}
+        defaultMinutes={item.default_duration_minutes ?? null}
+      />
+      {check ? (
+        <Notice
+          tone={check.level === "error" ? "error" : "warning"}
+          label={check.level === "error" ? "Conflict" : "Check"}
+        >
+          {check.text}
+        </Notice>
+      ) : null}
+      {problem ? <Notice tone="error">{problem}</Notice> : null}
+      <View style={styles.nameActions}>
+        <Button
+          label="Save"
+          size="compact"
+          testID="save-length"
+          disabled={busy || !valid || check?.level === "error" || unchanged}
+          loading={busy}
+          onPress={() => void save()}
+        />
+        <Button
+          label="Cancel"
+          variant="secondary"
+          size="compact"
+          disabled={busy}
+          onPress={() => setOpen(false)}
+        />
+      </View>
+    </View>
+  );
+}
+
 function FactCard({ children }: { children: ReactNode }) {
   return <View style={styles.factCard}>{children}</View>;
 }
@@ -185,6 +287,8 @@ export function PlaceDetailScreen({
   itemId: string;
 }) {
   const nav = useNavigation();
+  const insets = useSafeAreaInsets();
+  const [stuck, setStuck] = useState(false);
   const titleRef = useAnnounceOnMount();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const plan = useResource<Itinerary>(
@@ -261,8 +365,8 @@ export function PlaceDetailScreen({
     key: "length",
     icon: "clock" as const,
     value: formatMinutes(item.duration_minutes),
-    label: "Typical visit",
-    spoken: `Typical visit: ${formatMinutes(item.duration_minutes)}`,
+    label: item.duration_source === "user" ? "Set by you" : "Typical visit",
+    spoken: `${item.duration_source === "user" ? "Set by you" : "Typical visit"}: ${formatMinutes(item.duration_minutes)}`,
   };
   const address = formatAddress(detail?.address);
   const town = detail?.city_name ?? day.base_city_name ?? null;
@@ -271,6 +375,7 @@ export function PlaceDetailScreen({
     (item.lat !== null && item.lon !== null ? formatCoordinates(item.lat, item.lon) : null);
   const venue = item.restaurant?.venue_type ?? null;
   const editable = plan.data.profile !== "manual" && trip?.status !== "past" && items.connected;
+  const lengthEditable = trip?.status !== "past" && items.connected && item.type !== "free_time";
   const tags = [
     item.locked ? "Locked" : null,
     item.origin === "user" ? "Added by you" : null,
@@ -290,15 +395,24 @@ export function PlaceDetailScreen({
     (userPlaceId && userPlace.data === undefined && userPlace.status !== "error");
 
   return (
-    <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+    // The cover reaches the very top of the screen, under the status bar, like a trip's cover.
+    <View style={[styles.fill, { marginTop: -insets.top }]}>
+      <StatusBar style={stuck || !item.image ? "dark" : "light"} />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        scrollEventThrottle={32}
+        onScroll={(e) => {
+          const past = e.nativeEvent.contentOffset.y >= 200 - radius.lg;
+          if (past !== stuck) setStuck(past);
+        }}
+      >
         <Cover
           seedKey={item.place_id ?? item.user_place_id ?? item.id}
           photo={item.image}
-          height={200}
+          height={200 + insets.top}
           creditInset={radius.lg}
         >
-          <View style={styles.heroTop}>
+          <View style={[styles.heroTop, { paddingTop: insets.top + spacing.xs }]}>
             <IconButton icon="back" label="Back" onImage onPress={nav.back} />
           </View>
         </Cover>
@@ -378,6 +492,15 @@ export function PlaceDetailScreen({
                 })
               }
             />
+            {lengthEditable ? (
+              <EditLength
+                key={`${item.id}:${item.duration_minutes}`}
+                day={day}
+                item={item}
+                itineraryId={itineraryId}
+                onSaved={plan.refresh}
+              />
+            ) : null}
             {editable && item.type === "visit" ? (
               <>
                 <Button
@@ -462,6 +585,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   nameEditor: { marginTop: spacing.sm },
+  lengthEditor: { alignSelf: "stretch", width: "100%", gap: spacing.sm },
   // A sheet whose top corners curve over the cover's lower edge, like the trip's tabs.
   body: {
     padding: spacing.lg,

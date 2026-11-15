@@ -4,14 +4,17 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ApiError, call, describeError } from "../api/unwrap";
 import { Button } from "../components/Button";
-import { Card, EmptyState, ErrorState, LoadingState, Notice, ScreenHeader } from "../components/ui";
+import { Icon } from "../components/ds/Icon";
+import { ListRow, Sheet } from "../components/ds/primitives";
+import { CompactHeader, EmptyState, ErrorState, LoadingState, Notice } from "../components/ui";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
 import { MIN_OPTIMIZE_STOPS, optimizeStops, preselected } from "../domain/optimize";
 import { useTripDocuments } from "../documents/DocumentsProvider";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { TOUCH, colors, spacing, type } from "../theme";
+import { pluralise } from "../util/format";
 
 type OptimizeRoute = Extract<Route, { name: "optimize" }>;
 type Scope = "within_days" | "across_days";
@@ -19,14 +22,13 @@ type Scope = "within_days" | "across_days";
 const SCOPES: { key: Scope; title: string; detail: string }[] = [
   {
     key: "within_days",
-    title: "Reorder within each day",
-    detail: "No stop changes day. Each day is put in the shortest order Detour can find.",
+    title: "Within each day",
+    detail: "No stop changes day.",
   },
   {
     key: "across_days",
-    title: "Reorder across all days",
-    detail:
-      "Places to visit may also move to another day. Restaurants and cafés stay on their day.",
+    title: "Across all days",
+    detail: "Places to visit may move to another day. Restaurants and cafés stay on theirs.",
   },
 ];
 
@@ -52,6 +54,7 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
   const documents = useTripDocuments(route.tripId);
   const [scope, setScope] = useState<Scope>("within_days");
   const [kept, setKept] = useState<Set<string> | null>(null);
+  const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -59,7 +62,7 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
   if (plan.data === undefined || documents.documents === undefined) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Optimize" onBack={nav.back} />
+        <CompactHeader title="Optimize" onBack={nav.back} />
         {plan.status === "error" ? (
           <ErrorState text={describeError(plan.error)} onRetry={plan.refresh} />
         ) : (
@@ -72,7 +75,7 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
   if (stops.length < MIN_OPTIMIZE_STOPS) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Optimize" onBack={nav.back} />
+        <CompactHeader title="Optimize" onBack={nav.back} />
         <EmptyState
           title="Add a few more stops first"
           text={`Optimize needs at least ${MIN_OPTIMIZE_STOPS} stops with a place to find a shorter order.`}
@@ -87,6 +90,14 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
     else next.add(id);
     setKept(next);
   };
+  // Locked stops always stay; the rest are the ones the user (or a document) keeps.
+  const lockedCount = stops.filter((s) => s.locked).length;
+  const keptCount = stops.filter((s) => !s.locked && choice.has(s.id)).length + lockedCount;
+  const documented = stops.filter((s) => s.hasDocument && !s.locked && choice.has(s.id)).length;
+  const keepDetail =
+    keptCount === 0
+      ? "Nothing is kept: every stop may move"
+      : `${pluralise(keptCount, "stop")} keep their day and time${documented > 0 ? ` · ${pluralise(documented, "has a document", "have documents")}` : ""}`;
 
   const preview = async () => {
     setBusy(true);
@@ -114,16 +125,16 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <ScreenHeader
-        title="Optimize"
-        subtitle={trip?.title ?? "Find a shorter order"}
-        onBack={nav.back}
-      />
-      <View style={styles.pad}>
+    <View style={styles.fill}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <CompactHeader title="Optimize" subtitle={trip?.title} onBack={nav.back} />
         <Text style={styles.intro}>
-          Detour looks for an order of your stops with less travel. You see the result and the
-          saving first; nothing changes until you accept.
+          Finds an order of your stops with less travel. You see the saving first; nothing changes
+          until you accept.
+        </Text>
+
+        <Text style={styles.label} accessibilityRole="header">
+          How far the order may change
         </Text>
         <View accessibilityRole="radiogroup" style={styles.group}>
           {SCOPES.map((s) => {
@@ -132,109 +143,154 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
               <Pressable
                 key={s.key}
                 accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
+                accessibilityState={{ selected: on, checked: on }}
                 accessibilityLabel={`${s.title}. ${s.detail}`}
                 testID={`scope-${s.key}`}
                 onPress={() => setScope(s.key)}
-                style={[styles.choice, on && styles.choiceOn]}
+                style={styles.choice}
               >
-                <Text style={styles.choiceTitle}>{s.title}</Text>
-                <Text style={styles.small}>{s.detail}</Text>
+                <View style={[styles.radio, on && styles.radioOn]}>
+                  {on ? <View style={styles.radioDot} /> : null}
+                </View>
+                <View style={styles.choiceText}>
+                  <Text style={styles.choiceTitle}>{s.title}</Text>
+                  <Text style={styles.small}>{s.detail}</Text>
+                </View>
               </Pressable>
             );
           })}
         </View>
-        <Text style={styles.heading} accessibilityRole="header">
-          Keep in place
-        </Text>
-        <Text style={styles.small}>
-          These stops keep their day and time. Stops with a document are selected, because a ticket
-          usually fixes the time; locked stops always stay.
-        </Text>
-        <Card>
-          {stops.map((s) => {
-            const on = s.locked || choice.has(s.id);
-            return (
-              <Pressable
-                key={s.id}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: on, disabled: s.locked }}
-                accessibilityLabel={`${s.name}, day ${s.day}${s.locked ? ", locked" : s.hasDocument ? ", has a document" : ""}`}
-                testID={`keep-${s.id}`}
-                disabled={s.locked}
-                onPress={() => toggle(s.id)}
-                style={styles.stop}
-              >
-                <View style={[styles.box, on && styles.boxOn]}>
-                  {on ? <Text style={styles.tick}>✓</Text> : null}
-                </View>
-                <View style={styles.stopBody}>
-                  <Text style={styles.stopName}>{s.name}</Text>
-                  <Text style={styles.small}>
-                    {`Day ${s.day}${s.locked ? " · locked" : s.hasDocument ? " · has a document" : ""}`}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </Card>
-        <Text style={styles.small}>
-          Opening hours are not known, and restaurants and cafés stay on their day within an hour of
-          the time you chose.
-        </Text>
-        {problem ? <Notice tone="error">{problem}</Notice> : null}
-        <Button
-          label="Show a shorter order"
-          testID="optimize-run"
-          fill
-          loading={busy}
-          disabled={busy || !actions.connected}
-          onPress={() => void preview()}
+
+        <ListRow
+          icon="lock"
+          title="Keep in place"
+          detail={keepDetail}
+          testID="keep-summary"
+          onPress={() => setPicking(true)}
         />
-        {!actions.connected ? (
-          <Notice tone="info">Optimize needs a connection to the server.</Notice>
-        ) : null}
-      </View>
-    </ScrollView>
+
+        {problem ? <Notice tone="error">{problem}</Notice> : null}
+        <View style={styles.pad}>
+          <Button
+            label="Show a shorter order"
+            testID="optimize-run"
+            variant="ink"
+            size="compact"
+            fill
+            loading={busy}
+            disabled={busy || !actions.connected}
+            onPress={() => void preview()}
+          />
+          {!actions.connected ? (
+            <Text style={styles.small}>Optimize needs a connection to the server.</Text>
+          ) : null}
+        </View>
+      </ScrollView>
+
+      {picking ? (
+        <Sheet visible title="Keep in place" onClose={() => setPicking(false)}>
+          <Text style={styles.small}>
+            Selected stops keep their day and time. A stop with a document starts selected, because
+            a ticket usually fixes the time; locked stops always stay.
+          </Text>
+          <ScrollView style={styles.stops}>
+            {stops.map((s, i) => {
+              const on = s.locked || choice.has(s.id);
+              const newDay = i === 0 || stops[i - 1]?.day !== s.day;
+              return (
+                <View key={s.id}>
+                  {newDay ? <Text style={styles.dayHead}>Day {s.day}</Text> : null}
+                  <Pressable
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on, disabled: s.locked }}
+                    accessibilityLabel={`${s.name}, day ${s.day}${s.locked ? ", locked" : s.hasDocument ? ", has a document" : ""}`}
+                    testID={`keep-${s.id}`}
+                    disabled={s.locked}
+                    onPress={() => toggle(s.id)}
+                    style={styles.stop}
+                  >
+                    <View style={[styles.box, on && styles.boxOn]}>
+                      {on ? <Icon name="check" size={14} color={colors.onPrimary} /> : null}
+                    </View>
+                    <Text style={styles.stopName} numberOfLines={1}>
+                      {s.name}
+                    </Text>
+                    {s.locked || s.hasDocument ? (
+                      <Text style={styles.tag}>{s.locked ? "Locked" : "Document"}</Text>
+                    ) : null}
+                  </Pressable>
+                </View>
+              );
+            })}
+          </ScrollView>
+          <Button
+            label="Done"
+            variant="ink"
+            size="compact"
+            fill
+            testID="keep-done"
+            onPress={() => setPicking(false)}
+          />
+        </Sheet>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { paddingBottom: spacing.xxl },
-  pad: { paddingHorizontal: spacing.lg, gap: spacing.md },
-  intro: { ...type.body, color: colors.text },
-  group: { gap: spacing.sm },
+  content: { paddingBottom: spacing.xxl, gap: spacing.md },
+  pad: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  intro: { ...type.small, color: colors.muted, paddingHorizontal: spacing.lg },
+  label: { ...type.small, fontWeight: "700", color: colors.text, paddingHorizontal: spacing.lg },
+  group: {
+    marginHorizontal: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
   choice: {
     minHeight: TOUCH,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.outline,
-    gap: spacing.xs,
-  },
-  choiceOn: { borderColor: colors.primary, borderWidth: 2 },
-  choiceTitle: { ...type.body, color: colors.text, fontWeight: "600" },
-  heading: { ...type.heading, color: colors.text },
-  small: { ...type.small, color: colors.muted },
-  stop: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    minHeight: TOUCH,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  stopBody: { flex: 1 },
-  stopName: { ...type.body, color: colors.text },
-  box: {
-    width: 22,
-    height: 22,
-    borderRadius: 4,
+  choiceText: { flex: 1, gap: 1 },
+  choiceTitle: { ...type.small, color: colors.text, fontWeight: "600" },
+  small: { ...type.caption, color: colors.muted },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: colors.outline,
     alignItems: "center",
     justifyContent: "center",
   },
-  boxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tick: { color: colors.surface, fontSize: 14, fontWeight: "700" },
+  radioOn: { borderColor: colors.ink },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.ink },
+  stops: { maxHeight: 340 },
+  dayHead: { ...type.caption, fontWeight: "700", color: colors.muted, paddingTop: spacing.sm },
+  stop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    minHeight: TOUCH,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  stopName: { ...type.small, color: colors.text, flex: 1 },
+  tag: { ...type.caption, color: colors.muted },
+  box: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.outline,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  boxOn: { backgroundColor: colors.ink, borderColor: colors.ink },
 });

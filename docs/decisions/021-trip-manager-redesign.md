@@ -396,3 +396,47 @@ of the first amendment (lunch 13:00, dinner 20:00, the day to 22:00) are superse
 generated plans have no meals and the day returns to sightseeing hours; the cuisine and meal lines
 of the place detail and the add-restaurant screen go; past trips show their days. Decisions on
 photos, documents, multi-city trips and names are unchanged.
+
+## Amendment of 2026-11-15 (sixth): the owner's review of the add, optimize and overview screens
+
+Owner request of 2026-11-15. Mobile app, plus one small API addition (decision 74). Built; awaits
+acceptance; not checked on a device.
+
+68. **The length of a stop can be edited.** The place's details have "Edit length": one field
+    (minutes, or "1h30"), a pill that goes back to the stop's default, a live check, Save and
+    Cancel. A length that runs into the next timed stop is a conflict and cannot be saved (the
+    server refuses an overlap); one that leaves less time than the trip to the next stop, or ends
+    after the usual end of the day (20:00), is a warning that can be saved. Optimize already lays
+    stops out with the lengths the user set (ADR 029 rule 9), so a changed length is used by it.
+69. **How long to stay is one free field, not pills.** Add a place and Add a restaurant or café
+    use the same field with a pill for "stick to the default" ("Typical length" for a sight, whose
+    default the server knows; "Default · 1 h" for others; 75 and 45 minutes for a restaurant and
+    a café, *proposed*, ADR 026). The fixed 30 to 180 minute pills are gone.
+70. **Add a place is a drop-down screen.** A compact header, slim tabs, and a search box whose
+    results open as one rounded list under it with small group headings; choosing one closes the
+    list and the field shows only the choice (press it to search again). The day is a drop-down
+    too, then the start time and the length as slim boxed fields and one dark compact button.
+    The restaurant screen's day and time use the same parts, and so does the attraction picker of
+    Add document (one shared `Dropdown`).
+71. **Back from a place's details returns to the day and stop the user left.** The Map tab's day
+    and selected stop are kept in the route (`tripOverview` gained `day` and `itemId`; the plan
+    screen keeps `itemId`), not reset to the first day.
+72. **New trip.** The travel-style pills are removed (they did nothing). The buttons read "Start a
+    fresh trip" and "Generate itineraries", are the compact size, and the title and subtitle are
+    smaller. Public transport stays, still saved for later.
+73. **Optimize screen.** A compact header; "within each day" and "across all days" as two slim
+    radio rows; "Keep in place" is one row (how many stops are kept) that opens a sheet with the
+    list, grouped by day, instead of listing every stop of every day on the screen; the note about
+    opening hours is removed from this screen (the preview still shows it).
+74. **API.** `Item.default_duration_minutes` (read only: the length "use the default" gives; null
+    for a place the user pinned) and `ItemUpdate.use_default_duration` (back to the default and no
+    longer marked as set by the user). No database change.
+75. **A place's details** run under the status bar like a trip's cover: no fade at the top, and
+    Back sits on the photo.
+76. **Selected stop in a list** is a soft rounded tint with the same room all around the text:
+    the list is 8 dp from the screen edge and each row pads its content by 12 dp.
+77. **The Overview tab is the itinerary.** The "Your itineraries" cards are gone (the original
+    proposals are in the trip menu, new proposals in Trip settings) and the separate Itinerary
+    tab with them; the Overview lists the days as the timeline, under the figures, with Optimize
+    when it applies. The figures (cities, places, restaurants) are one line each and take half
+    the height.

@@ -89,8 +89,7 @@ export function CreateTripScreen() {
   const [days, setDays] = useState(3);
   const [startDate, setStartDate] = useState("");
   const [calendar, setCalendar] = useState(false);
-  // Saved for later (docs/design.md): chosen here, not sent, and the plans do not use them yet.
-  const [style, setStyle] = useState<TravelStyle>("balanced");
+  // Saved for later (docs/design.md): chosen here, not sent, and the plans do not use it yet.
   const [publicTransport, setPublicTransport] = useState(false);
   const [working, setWorking] = useState<"creating" | "planning" | "starting" | null>(null);
   const [mode, setMode] = useState<"generate" | "empty">("generate");
@@ -516,30 +515,6 @@ export function CreateTripScreen() {
           onClose={() => setCalendar(false)}
         />
 
-        <View style={styles.section}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            Travel style
-          </Text>
-          <View style={styles.chips} accessibilityRole="radiogroup">
-            {TRAVEL_STYLES.map((t) => {
-              const on = style === t.key;
-              return (
-                <Pressable
-                  key={t.key}
-                  accessibilityRole="radio"
-                  accessibilityLabel={t.label}
-                  accessibilityState={{ selected: on, checked: on }}
-                  onPress={() => setStyle(t.key)}
-                  style={[styles.chip, on && styles.chipOn]}
-                  testID={`style-${t.key}`}
-                >
-                  <Text style={[styles.chipText, on && styles.chipTextOn]}>{t.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
         <View style={[styles.row, styles.transportRow]}>
           <Icon name="transport" size={22} color={colors.text} />
           <View style={styles.rowBody}>
@@ -555,7 +530,7 @@ export function CreateTripScreen() {
           />
         </View>
         <Text style={styles.later}>
-          Travel style and public transport are saved for later. The plans do not use them yet.
+          Public transport is saved for later. The plans do not use it yet.
         </Text>
 
         {stops && stopsProblem(stops) ? (
@@ -579,9 +554,10 @@ export function CreateTripScreen() {
         <View style={styles.actions}>
           <Button
             testID="empty-trip"
-            label="Start with an empty trip"
+            label="Start a fresh trip"
             icon="add"
             variant="ink"
+            size="compact"
             fill
             loading={working !== null && mode === "empty"}
             disabled={
@@ -601,10 +577,11 @@ export function CreateTripScreen() {
             label={
               created && problem && mode === "generate"
                 ? "Try planning again"
-                : "Suggest itineraries"
+                : "Generate itineraries"
             }
             icon="route"
             variant="secondary"
+            size="compact"
             fill
             loading={working !== null && mode === "generate"}
             disabled={
@@ -627,6 +604,7 @@ export function CreateTripScreen() {
             <Button
               label="Open the trip without a plan"
               variant="quiet"
+              size="compact"
               onPress={() => nav.replace({ name: "tripOverview", tripId: created.id })}
             />
           ) : null}
@@ -635,13 +613,6 @@ export function CreateTripScreen() {
     </View>
   );
 }
-
-type TravelStyle = "relaxed" | "balanced" | "active";
-const TRAVEL_STYLES: { key: TravelStyle; label: string }[] = [
-  { key: "relaxed", label: "Relaxed" },
-  { key: "balanced", label: "Balanced" },
-  { key: "active", label: "Active" },
-];
 
 function TitleText() {
   const ref = useAnnounceOnMount();
@@ -807,10 +778,9 @@ const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xxl },
   top: { paddingHorizontal: spacing.sm, paddingTop: spacing.sm },
   head: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.xs },
-  title: { ...type.display, color: colors.text },
-  subtitle: { ...type.body, color: colors.muted },
+  title: { ...type.title, color: colors.text },
+  subtitle: { ...type.small, color: colors.muted },
   section: { paddingHorizontal: spacing.lg, gap: spacing.md, marginBottom: spacing.lg },
-  sectionTitle: { ...type.heading, color: colors.text },
   // A field is an icon, a small label and a value over a hairline: no boxes.
   row: {
     flexDirection: "row",
@@ -861,19 +831,6 @@ const styles = StyleSheet.create({
   resultMeta: { ...type.small, color: colors.muted },
   reason: { ...type.small, color: colors.errorText, fontWeight: "600" },
 
-  chips: { flexDirection: "row", gap: spacing.sm },
-  chip: {
-    flex: 1,
-    minHeight: TOUCH,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.outline,
-  },
-  chipOn: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
-  chipText: { ...type.small, color: colors.text },
-  chipTextOn: { fontWeight: "700", color: colors.primary },
   transportRow: {
     marginHorizontal: spacing.lg,
     borderTopWidth: RULE,
@@ -887,7 +844,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
   },
-  actions: { paddingHorizontal: spacing.lg, gap: spacing.md },
+  actions: { paddingHorizontal: spacing.lg, gap: spacing.sm },
 
   stepper: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   stepButton: { width: 36, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },

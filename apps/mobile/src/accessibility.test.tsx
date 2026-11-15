@@ -106,9 +106,9 @@ test("trip overview, each of its tabs, its menu and the Add sheet", async () => 
       <AppContent />
     </Harness>,
   );
-  await screen.findByRole("header", { name: "Your itineraries" });
+  await screen.findByTestId("day-row-1");
   checkControls();
-  for (const tab of ["Itinerary", "Map", "Trip photos", "Trip documents"]) {
+  for (const tab of ["Map", "Trip photos", "Trip documents"]) {
     await fireEvent.press(screen.getByRole("tab", { name: tab }));
     expect(screen.getByRole("tab", { name: tab }).props.accessibilityState).toMatchObject({
       selected: true,
@@ -219,7 +219,7 @@ test("trip overview: a day on the map with a stop chosen", async () => {
         "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
         "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
       })}
-      initial={{ name: "tripOverview", tripId: TRIP_ID, section: "itinerary" }}
+      initial={{ name: "tripOverview", tripId: TRIP_ID, section: "overview" }}
     >
       <AppContent />
     </Harness>,
@@ -240,7 +240,7 @@ test.each([
 });
 
 test("create trip form with search results", async () => {
-  await show({ name: "createTrip" }, "Travel style");
+  await show({ name: "createTrip" }, "Public transport");
   await fireEvent.changeText(screen.getByLabelText("Destination"), "Vie");
   await screen.findByText("Area", {}, { timeout: 3000 });
   checkControls();

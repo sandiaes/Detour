@@ -1693,6 +1693,11 @@ export interface components {
        */
       duration_source: "category_default" | "user";
       /**
+       * Default Duration Minutes
+       * @description The length 'use the default' would give this stop; null when none is known
+       */
+      default_duration_minutes?: number | null;
+      /**
        * Origin
        * @enum {string}
        */
@@ -1762,6 +1767,11 @@ export interface components {
       start_time?: string | null;
       /** Duration Minutes */
       duration_minutes?: number | null;
+      /**
+       * Use Default Duration
+       * @description true: go back to the stop's default length (it is no longer marked as set by the user); wins over duration_minutes
+       */
+      use_default_duration?: boolean | null;
       /** Locked */
       locked?: boolean | null;
       /** Position */

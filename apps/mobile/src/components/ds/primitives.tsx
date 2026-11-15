@@ -156,18 +156,18 @@ export type Stat = {
 };
 
 /** A row of compact figures. Each tile reads as one phrase ("5 cities"). */
-export function StatRow({ stats }: { stats: Stat[] }) {
+export function StatRow({ stats, compact = false }: { stats: Stat[]; compact?: boolean }) {
   return (
     <View style={styles.statRow}>
       {stats.map((s, i) => (
         <View
           key={s.key}
-          style={[styles.stat, i > 0 && styles.statDivider]}
+          style={[styles.stat, compact && styles.statCompact, i > 0 && styles.statDivider]}
           accessible
           accessibilityLabel={s.spoken ?? `${s.value} ${s.label.toLowerCase()}`}
         >
-          <Icon name={s.icon} size={18} color={colors.primary} />
-          <Text style={styles.statValue}>{s.value}</Text>
+          <Icon name={s.icon} size={compact ? 16 : 18} color={colors.primary} />
+          <Text style={[styles.statValue, compact && styles.statValueCompact]}>{s.value}</Text>
           <Text style={styles.statLabel} numberOfLines={1}>
             {s.label}
           </Text>
@@ -370,6 +370,14 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
     paddingVertical: spacing.md,
   },
+  // One line per figure: icon, number, word. Half the height of the stacked figure.
+  statCompact: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  statValueCompact: { ...type.heading },
   statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.border },
   statValue: { ...type.title, color: colors.text },
   statLabel: { ...type.caption, color: colors.muted },

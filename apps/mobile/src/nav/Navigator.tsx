@@ -8,7 +8,7 @@ import { BackHandler } from "react-native";
 // the stack, then returns from another root tab to Trips, then leaves the app.
 
 /** The tabs of one trip (ADR 021). */
-export type TripSection = "overview" | "itinerary" | "map" | "photos" | "documents";
+export type TripSection = "overview" | "map" | "photos" | "documents";
 
 export type RootName = "trips" | "explore" | "photos" | "more";
 
@@ -23,7 +23,15 @@ export type Route =
   | { name: "exportTrips"; tripId?: string }
   /** Import a trip file; `uri` when the app was opened with one. */
   | { name: "importTrips"; uri?: string }
-  | { name: "tripOverview"; tripId: string; section?: TripSection }
+  | {
+      name: "tripOverview";
+      tripId: string;
+      section?: TripSection;
+      /** The day and stop last looked at on the Map tab, kept so Back from a place's details
+       * returns to them instead of the first day. */
+      day?: number;
+      itemId?: string;
+    }
   | { name: "createTrip" }
   | { name: "trip"; tripId: string }
   | { name: "tripSettings"; tripId: string }

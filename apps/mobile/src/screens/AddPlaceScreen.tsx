@@ -9,18 +9,21 @@ import type {
   Trip,
 } from "@detour/shared";
 import { Camera, Map, Marker } from "@maplibre/maplibre-react-native";
-import { type ReactNode, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
 import { AttributionBar } from "../components/AttributionBar";
 import { Button } from "../components/Button";
 import { ChooseSlot, type ChosenSlot } from "../components/ChooseSlot";
-import { Icon, type IconName } from "../components/ds/Icon";
+import { BoxField } from "../components/ds/BoxField";
+import { ChoiceGroupTitle, ChoiceRow, Dropdown, DropdownPanel } from "../components/ds/Dropdown";
+import { DurationField } from "../components/ds/DurationField";
+import type { IconName } from "../components/ds/Icon";
 import { Tabs } from "../components/ds/primitives";
 import { SuggestionCard } from "../components/ds/SuggestionCard";
-import { Chip, Field, Notice, ScreenHeader } from "../components/ui";
+import { Chip, CompactHeader, Notice } from "../components/ui";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
@@ -32,7 +35,7 @@ import {
   travelImpact,
 } from "../domain/placeSuggestions";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { colors, radius, spacing, type } from "../theme";
 import { formatMeters, formatMinutes } from "../util/format";
 
 // Adding a place (Phase 7, ADR 018; redesigned in ADR 021, step 4). Find it (sights, towns and
@@ -46,7 +49,11 @@ export const SEARCH_DEBOUNCE_MS = 350;
 const MIN_QUERY = 2;
 /** Sights are searched within this distance of the trip's destination. */
 export const SIGHT_RADIUS_M = 50_000;
-export const DURATIONS = [30, 60, 90, 120, 180] as const;
+/** What "default" means for a choice that is not an imported sight (a sight has its own typical
+ * length, known to the server). */
+export function defaultMinutesFor(c: Choice): number | null {
+  return c.kind === "sight" ? null : c.kind === "town" ? 120 : 60;
+}
 
 /** What the user picked: an imported sight, a town, an external result (a search or an address)
  * or a pin. */
@@ -127,7 +134,7 @@ export async function placeFor(
             source: "manual_pin" as const,
           };
   const place = await savePlace(base);
-  return { user_place_id: place.id, duration_minutes: minutes ?? 60 };
+  return { user_place_id: place.id, duration_minutes: minutes ?? defaultMinutesFor(choice) ?? 60 };
 }
 
 /** The change-set body for a choice (kept for the callers of Phase 7). */
@@ -170,7 +177,9 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
   const [customName, setCustomName] = useState("");
+  // null: the usual length for the choice (see defaultMinutesFor).
   const [minutes, setMinutes] = useState<number | null>(null);
+  const [lengthValid, setLengthValid] = useState(true);
   const [request, setRequest] = useState<PlaceSuggestionRequest | null>(null);
   // The user place saved for a town, address or pin, so asking again does not save it twice.
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -265,8 +274,10 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
     setSavedId(null);
     clearSuggestions();
     setCustomName(c.kind === "external" && mode === "address" ? c.place.name : "");
-    // A sight has a typical length; anything else needs one from the user.
-    setMinutes(c.kind === "sight" ? null : c.kind === "town" ? 120 : 60);
+    // The usual length until the user types one: a sight's own, two hours for a town, an hour
+    // for anything else.
+    setMinutes(null);
+    setLengthValid(true);
   };
 
   const switchMode = (m: Mode) => {
@@ -276,7 +287,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   };
 
   const named = choice !== null && (choice.kind !== "pin" || customName.trim().length > 0);
-  const ready = named && working === null && changes.connected;
+  const ready = named && lengthValid && working === null && changes.connected;
 
   const find = async () => {
     if (!choice) return;
@@ -285,7 +296,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
     try {
       const body =
         choice.kind !== "sight" && savedId
-          ? { user_place_id: savedId, duration_minutes: minutes ?? 60 }
+          ? { user_place_id: savedId, duration_minutes: minutes ?? defaultMinutesFor(choice) ?? 60 }
           : await placeFor(choice, minutes, customName, changes.savePlace);
       if (body.user_place_id) setSavedId(body.user_place_id);
       setRequest(body);
@@ -335,7 +346,8 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
         place_id: ref.place_id ?? null,
         user_place_id: ref.user_place_id ?? null,
         start_time: slot.time,
-        duration_minutes: slot.minutes,
+        // A sight left on its usual length is sent without one: the server knows it.
+        duration_minutes: minutes === null && choice.kind === "sight" ? null : slot.minutes,
         position: slot.position,
         locked: false,
       });
@@ -350,20 +362,53 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   const found = results[key];
   const wider = wide[key];
   const nothingFound = found !== undefined && found.sights.length === 0 && found.towns.length === 0;
+  const clearChoice = () => {
+    setChoice(null);
+    clearSuggestions();
+  };
+  const choiceTitle = (c: Choice): string =>
+    c.kind === "sight"
+      ? (c.place.names?.display ?? c.place.name_en ?? c.place.name ?? c.place.category)
+      : c.kind === "town"
+        ? c.town.name
+        : c.kind === "external"
+          ? c.place.name
+          : "A pin on the map";
+  const choiceMeta = (c: Choice): string =>
+    c.kind === "sight"
+      ? [c.place.category.replace(/_/g, " "), c.place.city_name].filter(Boolean).join(" · ")
+      : c.kind === "town"
+        ? [c.town.admin1_name, c.town.country_name].filter(Boolean).join(", ")
+        : c.kind === "external"
+          ? externalAddress(c.place) ||
+            [c.place.city, c.place.state, c.place.country].filter(Boolean).join(", ")
+          : `${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}`;
+  const choiceIcon = (c: Choice): IconName =>
+    c.kind === "sight" ? "sight" : c.kind === "town" ? "city" : "pin";
+  // The chosen place: the list has closed and the field shows only it. Pressing it opens the
+  // search again.
+  const selected = choice ? (
+    <Dropdown
+      label={mode === "search" ? "Sight or town" : mode === "address" ? "Address" : "Place"}
+      placeholder=""
+      icon={choiceIcon(choice)}
+      value={choiceTitle(choice)}
+      detail={choiceMeta(choice)}
+      open={false}
+      onToggle={clearChoice}
+      testID="chosen-place"
+    >
+      {null}
+    </Dropdown>
+  ) : null;
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <ScreenHeader
+      <CompactHeader
         title="Add a place"
         subtitle={trip ? `${trip.title} · ${trip.destination.name}` : undefined}
         onBack={nav.back}
       />
-      <View style={styles.section}>
-        <Text style={styles.lead}>
-          Find a sight or a town, or add your own by address or pin. Detour suggests the best days
-          for it and shows what would change before anything changes.
-        </Text>
-      </View>
       <Tabs<Mode>
         items={[
           { key: "search", label: "Search" },
@@ -372,143 +417,156 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
         ]}
         value={mode}
         onChange={switchMode}
+        compact
         testID="add-mode"
       />
 
       <View style={styles.body}>
         {mode === "search" ? (
           <View style={styles.gap}>
-            <Field
-              label="Sight or town"
-              value={query}
-              onChangeText={(t) => {
-                setQuery(t);
-                setChoice(null);
-                clearSuggestions();
-              }}
-              autoCorrect={false}
-              hint="At least two letters. Places near the trip and towns are searched first."
-            />
-            {searchError ? <Notice tone="error">{searchError}</Notice> : null}
-            {q.length >= MIN_QUERY && found === undefined && !searchError ? (
-              <Text style={styles.muted}>Searching…</Text>
-            ) : null}
-            {found?.sights.length ? (
-              <ResultGroup title="Sights">
-                {found.sights.map((p) => (
-                  <ResultRow
-                    key={p.id}
-                    icon="sight"
-                    title={p.names?.display ?? p.name_en ?? p.name ?? p.category}
-                    meta={[
-                      // The English name leads; the name used locally stays visible beside it
-                      // (ADR 025), and a name Detour romanized itself says so.
-                      p.names ? p.names.local : p.name_en ? p.name : null,
-                      p.names?.auto_generated ? "automatically romanized" : null,
-                      p.category.replace(/_/g, " "),
-                      p.city_name,
-                      p.distance_m != null
-                        ? `${formatMeters(p.distance_m)} from ${centre?.name ?? "the centre"}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                    selected={choice?.kind === "sight" && choice.place.id === p.id}
-                    onPress={() => pick({ kind: "sight", place: p })}
-                  />
-                ))}
-              </ResultGroup>
-            ) : null}
-            {found?.towns.length ? (
-              <ResultGroup title="Towns and cities">
-                {found.towns.map((t) => (
-                  <ResultRow
-                    key={t.ref}
-                    icon="city"
-                    title={t.name}
-                    meta={[t.admin1_name, t.country_name].filter(Boolean).join(", ")}
-                    selected={choice?.kind === "town" && choice.town.ref === t.ref}
-                    onPress={() => pick({ kind: "town", town: t })}
-                  />
-                ))}
-              </ResultGroup>
-            ) : null}
-            {nothingFound ? (
-              <View style={styles.gap}>
-                <Text style={styles.muted}>Nothing in the imported data matches “{q}”.</Text>
-                {wider === undefined ? (
-                  <Button
-                    label="Search more widely"
-                    variant="secondary"
-                    icon="search"
-                    hint="Asks an OpenStreetMap search service through the Detour server"
-                    onPress={() => void searchWider()}
-                  />
-                ) : wider === "none" ? (
-                  <Text style={styles.muted}>
-                    The wider search found nothing either. Try the address, or drop a pin.
-                  </Text>
-                ) : (
-                  <ResultGroup title="Other places (OpenStreetMap, via Photon)">
-                    {wider.map((p, n) => (
-                      <ResultRow
-                        key={`${p.ref ?? n}`}
-                        icon="pin"
-                        title={p.name}
-                        meta={[p.city, p.state, p.country].filter(Boolean).join(", ")}
-                        selected={choice?.kind === "external" && choice.place === p}
-                        onPress={() => pick({ kind: "external", place: p })}
+            {selected ?? (
+              <>
+                <BoxField
+                  label="Sight or town"
+                  icon="search"
+                  placeholder="Search a sight or a town"
+                  value={query}
+                  onChangeText={(t) => {
+                    setQuery(t);
+                    clearChoice();
+                  }}
+                  autoCorrect={false}
+                  hint={q.length < MIN_QUERY ? "At least two letters." : undefined}
+                />
+                {searchError ? <Notice tone="error">{searchError}</Notice> : null}
+                {q.length >= MIN_QUERY && found === undefined && !searchError ? (
+                  <Text style={styles.muted}>Searching…</Text>
+                ) : null}
+                {found && !nothingFound ? (
+                  <DropdownPanel testID="search-results">
+                    {found.sights.length ? <ChoiceGroupTitle title="Sights" /> : null}
+                    {found.sights.map((p) => (
+                      <ChoiceRow
+                        key={p.id}
+                        icon="sight"
+                        title={p.names?.display ?? p.name_en ?? p.name ?? p.category}
+                        meta={[
+                          // The English name leads; the name used locally stays visible beside it
+                          // (ADR 025), and a name Detour romanized itself says so.
+                          p.names ? p.names.local : p.name_en ? p.name : null,
+                          p.names?.auto_generated ? "automatically romanized" : null,
+                          p.category.replace(/_/g, " "),
+                          p.city_name,
+                          p.distance_m != null
+                            ? `${formatMeters(p.distance_m)} from ${centre?.name ?? "the centre"}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                        selected={false}
+                        onPress={() => pick({ kind: "sight", place: p })}
                       />
                     ))}
-                  </ResultGroup>
-                )}
-              </View>
-            ) : null}
+                    {found.towns.length ? <ChoiceGroupTitle title="Towns and cities" /> : null}
+                    {found.towns.map((t) => (
+                      <ChoiceRow
+                        key={t.ref}
+                        icon="city"
+                        title={t.name}
+                        meta={[t.admin1_name, t.country_name].filter(Boolean).join(", ")}
+                        selected={false}
+                        onPress={() => pick({ kind: "town", town: t })}
+                      />
+                    ))}
+                  </DropdownPanel>
+                ) : null}
+                {nothingFound ? (
+                  <View style={styles.gap}>
+                    <Text style={styles.muted}>Nothing in the imported data matches “{q}”.</Text>
+                    {wider === undefined ? (
+                      <Button
+                        label="Search more widely"
+                        variant="secondary"
+                        size="compact"
+                        icon="search"
+                        hint="Asks an OpenStreetMap search service through the Detour server"
+                        onPress={() => void searchWider()}
+                      />
+                    ) : wider === "none" ? (
+                      <Text style={styles.muted}>
+                        The wider search found nothing either. Try the address, or drop a pin.
+                      </Text>
+                    ) : (
+                      <DropdownPanel>
+                        <ChoiceGroupTitle title="Other places (OpenStreetMap, via Photon)" />
+                        {wider.map((p, n) => (
+                          <ChoiceRow
+                            key={`${p.ref ?? n}`}
+                            icon="pin"
+                            title={p.name}
+                            meta={[p.city, p.state, p.country].filter(Boolean).join(", ")}
+                            selected={false}
+                            onPress={() => pick({ kind: "external", place: p })}
+                          />
+                        ))}
+                      </DropdownPanel>
+                    )}
+                  </View>
+                ) : null}
+              </>
+            )}
           </View>
         ) : mode === "address" ? (
           <View style={styles.gap}>
-            <Field
-              label="Street address"
-              value={address}
-              onChangeText={(t) => {
-                setAddress(t);
-                setAddressResults(null);
-                setChoice(null);
-                clearSuggestions();
-              }}
-              autoCorrect={false}
-              hint="A street and number, a postcode or a known place. Found through an OpenStreetMap search service, via the Detour server."
-            />
-            <Button
-              label="Find the address"
-              icon="search"
-              variant="secondary"
-              testID="find-address"
-              disabled={address.trim().length < MIN_QUERY || working !== null}
-              loading={working === "address"}
-              onPress={() => void findAddress()}
-            />
-            {searchError ? <Notice tone="error">{searchError}</Notice> : null}
-            {addressResults === "none" ? (
-              <Text style={styles.muted}>
-                No address matches “{address.trim()}”. Check the spelling, or drop a pin.
-              </Text>
-            ) : addressResults ? (
-              <ResultGroup title="Addresses (OpenStreetMap, via Photon)">
-                {addressResults.map((p, n) => (
-                  <ResultRow
-                    key={`${p.ref ?? n}`}
-                    icon="pin"
-                    title={p.name}
-                    meta={externalAddress(p)}
-                    selected={choice?.kind === "external" && choice.place === p}
-                    onPress={() => pick({ kind: "external", place: p })}
-                  />
-                ))}
-              </ResultGroup>
-            ) : null}
+            {selected ?? (
+              <>
+                <BoxField
+                  label="Street address"
+                  icon="search"
+                  placeholder="A street and number, a postcode or a known place"
+                  value={address}
+                  onChangeText={(t) => {
+                    setAddress(t);
+                    setAddressResults(null);
+                    clearChoice();
+                  }}
+                  autoCorrect={false}
+                  hint="Found through an OpenStreetMap search service, via the Detour server."
+                />
+                <Button
+                  label="Find the address"
+                  icon="search"
+                  variant="secondary"
+                  size="compact"
+                  testID="find-address"
+                  disabled={address.trim().length < MIN_QUERY || working !== null}
+                  loading={working === "address"}
+                  onPress={() => void findAddress()}
+                />
+                {searchError ? <Notice tone="error">{searchError}</Notice> : null}
+                {addressResults === "none" ? (
+                  <Text style={styles.muted}>
+                    No address matches “{address.trim()}”. Check the spelling, or drop a pin.
+                  </Text>
+                ) : addressResults ? (
+                  <DropdownPanel>
+                    <ChoiceGroupTitle title="Addresses (OpenStreetMap, via Photon)" />
+                    {addressResults.map((p, n) => (
+                      <ChoiceRow
+                        key={`${p.ref ?? n}`}
+                        icon="pin"
+                        title={p.name}
+                        meta={externalAddress(p)}
+                        selected={false}
+                        onPress={() => pick({ kind: "external", place: p })}
+                      />
+                    ))}
+                  </DropdownPanel>
+                ) : null}
+              </>
+            )}
             {choice?.kind === "external" ? (
-              <Field
+              <BoxField
                 label="Name of the place"
                 value={customName}
                 onChangeText={(t) => {
@@ -558,7 +616,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 Pin at {choice.lat.toFixed(5)}, {choice.lon.toFixed(5)}
               </Text>
             ) : null}
-            <Field
+            <BoxField
               label="Name of the place"
               value={customName}
               onChangeText={(t) => {
@@ -572,33 +630,24 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
         )}
 
         {choice ? (
-          <View style={styles.gap}>
-            <Text style={styles.label}>
-              How long to stay at {choiceName(choice, customName) || "it"}
-            </Text>
-            <View style={styles.row}>
-              {choice.kind === "sight" ? (
-                <Chip
-                  label="Typical length"
-                  selected={minutes === null}
-                  onPress={() => {
-                    setMinutes(null);
-                    clearSuggestions();
-                  }}
-                />
-              ) : null}
-              {DURATIONS.map((m) => (
-                <Chip
-                  key={m}
-                  label={formatMinutes(m)}
-                  selected={minutes === m}
-                  onPress={() => {
-                    setMinutes(m);
-                    clearSuggestions();
-                  }}
-                />
-              ))}
-            </View>
+          <View style={styles.details}>
+            <DurationField
+              label={`How long at ${choiceName(choice, customName) || "it"}`}
+              minutes={minutes}
+              onChange={(m) => {
+                setMinutes(m);
+                clearSuggestions();
+              }}
+              onValidity={setLengthValid}
+              hasDefault
+              defaultMinutes={defaultMinutesFor(choice)}
+              defaultLabel={
+                choice.kind === "sight"
+                  ? "Typical length"
+                  : `Default · ${formatMinutes(defaultMinutesFor(choice) ?? 60)}`
+              }
+              testID="stay-length"
+            />
             {!isManual ? (
               <View style={styles.row}>
                 <Chip
@@ -624,7 +673,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 <ChooseSlot
                   days={itinerary.data.days}
                   startDate={trip?.start_date ?? null}
-                  minutes={minutes ?? 60}
+                  minutes={minutes ?? defaultMinutesFor(choice) ?? 60}
                   name={choiceName(choice, customName)}
                   working={working === "preview"}
                   disabled={!ready}
@@ -638,6 +687,8 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 label="Find the best day"
                 icon="calendar"
                 testID="find-days"
+                variant="ink"
+                size="compact"
                 fill
                 disabled={!ready}
                 loading={working === "find"}
@@ -730,6 +781,8 @@ function Suggestions({
       <Button
         label="Preview this change"
         testID="preview-change"
+        variant="ink"
+        size="compact"
         fill
         disabled={picked === null}
         loading={working}
@@ -740,87 +793,16 @@ function Suggestions({
   );
 }
 
-function ResultGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <View style={styles.gap}>
-      <Text style={styles.label} accessibilityRole="header">
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function ResultRow({
-  icon,
-  title,
-  meta,
-  selected,
-  onPress,
-  hint,
-}: {
-  icon: IconName;
-  title: string;
-  meta: string;
-  selected: boolean;
-  onPress: () => void;
-  hint?: string;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}${meta ? `, ${meta}` : ""}`}
-      accessibilityHint={hint}
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[styles.result, selected && styles.resultSelected]}
-    >
-      <View style={styles.resultIcon}>
-        <Icon name={icon} size={18} color={colors.primary} />
-      </View>
-      <View style={styles.resultText}>
-        <Text style={styles.resultTitle}>
-          {selected ? "✓ " : ""}
-          {title}
-        </Text>
-        {meta ? <Text style={styles.muted}>{meta}</Text> : null}
-      </View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xxl },
+  details: { gap: spacing.md },
   fill: { flex: 1 },
-  section: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  body: { padding: spacing.lg, gap: spacing.lg },
-  lead: { ...type.body, color: colors.text },
+  body: { padding: spacing.lg, gap: spacing.md },
   row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   gap: { gap: spacing.sm },
-  heading: { ...type.heading, color: colors.text },
-  label: { ...type.small, fontWeight: "700", color: colors.text },
+  heading: { ...type.small, fontWeight: "700", color: colors.text },
   muted: { ...type.small, color: colors.muted },
   issue: { ...type.small, color: colors.text },
-  result: {
-    minHeight: TOUCH + 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  resultSelected: { backgroundColor: colors.surfaceMuted },
-  resultIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primarySoft,
-  },
-  resultText: { flex: 1, gap: spacing.xxs },
-  resultTitle: { ...type.body, fontWeight: "700", color: colors.text },
   map: {
     height: 280,
     borderRadius: radius.md,

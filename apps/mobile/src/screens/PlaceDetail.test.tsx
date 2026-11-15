@@ -180,6 +180,60 @@ test("lock and remove work from the details too", async () => {
   expect(await screen.findByText("Remove Schönbrunn Palace?")).toBeOnTheScreen();
 });
 
+describe("edit length", () => {
+  const patch = () => ({
+    "PATCH /v1/items/{item_id}": (c: { params: { item_id: string }; body: unknown }) => ({
+      id: c.params.item_id,
+      ...(c.body as object),
+    }),
+  });
+
+  test("a clash with the next stop blocks Save, tight travel only warns, and a length saves", async () => {
+    const client = await open("i1", server(patch()));
+    await fireEvent.press(await screen.findByTestId("edit-length"));
+    // Schönbrunn 09:00, then Belvedere at 11:21 with 21 minutes of walking between them.
+    await fireEvent.changeText(screen.getByTestId("duration"), "150");
+    expect(await screen.findByText(/after Belvedere starts at 11:21/)).toBeOnTheScreen();
+    expect(screen.getByTestId("save-length")).toBeDisabled();
+    await fireEvent.changeText(screen.getByTestId("duration"), "125");
+    expect(await screen.findByText(/the trip there takes 21 min/)).toBeOnTheScreen();
+    expect(screen.getByTestId("save-length")).toBeEnabled();
+    await fireEvent.changeText(screen.getByTestId("duration"), "1h30");
+    expect(screen.queryByText(/Belvedere starts/)).toBeNull();
+    await fireEvent.press(screen.getByTestId("save-length"));
+    expect(client.calls.find((c) => c.method === "PATCH")?.body).toEqual({
+      duration_minutes: 90,
+    });
+  });
+
+  test("text that is not a length cannot be saved", async () => {
+    await open("i1", server(patch()));
+    await fireEvent.press(await screen.findByTestId("edit-length"));
+    await fireEvent.changeText(screen.getByTestId("duration"), "soon");
+    expect(await screen.findByText(/enter minutes/)).toBeOnTheScreen();
+    expect(screen.getByTestId("save-length")).toBeDisabled();
+  });
+
+  test("a stop can go back to its default length", async () => {
+    const p = plan();
+    p.days[0]!.items[0]!.duration_source = "user";
+    p.days[0]!.items[0]!.duration_minutes = 100;
+    p.days[0]!.items[0]!.default_duration_minutes = 90;
+    const client = await open(
+      "i1",
+      server({ ...patch(), "GET /v1/itineraries/{itinerary_id}": () => p }),
+    );
+    expect(await screen.findByText("Set by you")).toBeOnTheScreen();
+    await fireEvent.press(await screen.findByTestId("edit-length"));
+    await fireEvent.press(screen.getByTestId("duration-default"));
+    expect(screen.getByTestId("duration")).toHaveProp("value", "90");
+    await fireEvent.press(screen.getByTestId("save-length"));
+    expect(client.calls.find((c) => c.method === "PATCH")?.body).toEqual({
+      use_default_duration: true,
+    });
+  });
+});
+
 test("a stop that is no longer in the plan says so", async () => {
   await open("gone");
   expect(await screen.findByText("Not in the plan any more")).toBeOnTheScreen();

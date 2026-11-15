@@ -1,16 +1,17 @@
 import type { Day } from "@detour/shared";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { colors, spacing, type } from "../theme";
+import { spacing } from "../theme";
 import { formatClock, formatDayLabel, formatMinutes } from "../util/format";
 import { Button } from "./Button";
-import { Chip, Field } from "./ui";
+import { BoxField } from "./ds/BoxField";
+import { ChoiceRow, Dropdown } from "./ds/Dropdown";
+import { DurationField } from "./ds/DurationField";
 
 // Putting a place on a day at a time the user picks, with no proposal. It is the only way to fill
 // an empty trip (nothing to recalculate), and an option on a planned one.
 
-export const SLOT_DURATIONS = [30, 60, 90, 120, 180] as const;
 /** Where a day's start time suggestion comes from for a restaurant or café: the midday gap. */
 export const EATING_START = "13:00";
 
@@ -45,6 +46,7 @@ export function ChooseSlot({
   startDate,
   defaultTime = "10:00",
   minutes: fixedMinutes,
+  defaultMinutes = null,
   name,
   working,
   disabled,
@@ -56,61 +58,76 @@ export function ChooseSlot({
   defaultTime?: string;
   /** How long the place gets, when the screen already asked; otherwise it is asked here. */
   minutes: number | null;
+  /** The usual length offered by the pill when it is asked here (a restaurant's or cafe's). */
+  defaultMinutes?: number | null;
   name: string;
   working: boolean;
   disabled: boolean;
   onSubmit: (slot: ChosenSlot) => void;
 }) {
   const [day, setDay] = useState(days[0]?.day_index ?? 1);
+  const [picking, setPicking] = useState(false);
   const [timeText, setTimeText] = useState(defaultTime);
-  const [ownMinutes, setOwnMinutes] = useState(60);
+  // null: the usual length. Typed lengths replace it.
+  const [ownMinutes, setOwnMinutes] = useState<number | null>(null);
+  const [ownValid, setOwnValid] = useState(true);
   const time = parseClock(timeText);
-  const minutes = fixedMinutes ?? ownMinutes;
+  const minutes = fixedMinutes ?? ownMinutes ?? defaultMinutes ?? 60;
+  const canSubmit = time !== null && (fixedMinutes !== null || ownValid);
 
   return (
     <View style={styles.gap} testID="choose-slot">
-      <Text style={styles.label}>Day</Text>
-      <View style={styles.row}>
+      <Dropdown
+        label="Day"
+        placeholder="Choose a day"
+        icon="calendar"
+        value={formatDayLabel(startDate, day)}
+        open={picking}
+        onToggle={() => setPicking((o) => !o)}
+        testID="slot-day"
+      >
         {days.map((d) => (
-          <Chip
+          <ChoiceRow
             key={d.day_index}
-            label={formatDayLabel(startDate, d.day_index)}
+            title={formatDayLabel(startDate, d.day_index)}
+            meta={d.items.length === 0 ? "Nothing planned yet" : `${d.items.length} planned`}
             selected={day === d.day_index}
-            onPress={() => setDay(d.day_index)}
             testID={`slot-day-${d.day_index}`}
+            onPress={() => {
+              setDay(d.day_index);
+              setPicking(false);
+            }}
           />
         ))}
-      </View>
-      <Field
+      </Dropdown>
+      <BoxField
         label="Start time"
         value={timeText}
         onChangeText={setTimeText}
         keyboardType="numbers-and-punctuation"
         autoCorrect={false}
         testID="slot-time"
-        hint="Local time at the destination, 24-hour, for example 14:30."
-        error={timeText.trim() && time === null ? "Use hours and minutes, like 09:30" : null}
+        hint="24-hour, like 14:30"
+        error={timeText.trim() && time === null ? "use hours and minutes, like 09:30" : null}
       />
       {fixedMinutes === null ? (
-        <>
-          <Text style={styles.label}>How long</Text>
-          <View style={styles.row}>
-            {SLOT_DURATIONS.map((m) => (
-              <Chip
-                key={m}
-                label={formatMinutes(m)}
-                selected={ownMinutes === m}
-                onPress={() => setOwnMinutes(m)}
-              />
-            ))}
-          </View>
-        </>
+        <DurationField
+          minutes={ownMinutes}
+          onChange={setOwnMinutes}
+          onValidity={setOwnValid}
+          hasDefault={defaultMinutes !== null}
+          defaultMinutes={defaultMinutes}
+          defaultLabel="Default"
+          testID="slot-length"
+        />
       ) : null}
       <Button
         label={time ? `Add to day ${day} at ${time}` : "Add to the plan"}
         testID="add-at-time"
+        variant="ink"
+        size="compact"
         fill
-        disabled={disabled || time === null}
+        disabled={disabled || !canSubmit}
         loading={working}
         hint={`Puts ${name || "it"} on day ${day} for ${formatMinutes(minutes)}. It is not moved by anything else.`}
         onPress={() =>
@@ -131,7 +148,5 @@ export function ChooseSlot({
 }
 
 const styles = StyleSheet.create({
-  gap: { gap: spacing.sm },
-  row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  label: { ...type.small, fontWeight: "700", color: colors.text },
+  gap: { gap: spacing.md },
 });
