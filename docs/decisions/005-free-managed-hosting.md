@@ -146,8 +146,10 @@ explicitly not for a GitHub Actions workflow (one was built first and removed th
   owner checks it in the monitor form (see `../deployment.md`).
 
 **Decision.** One UptimeRobot monitor on the Free plan calls `GET /v1/health/ready` every 5 minutes.
-That reaches the API (Render's idle timer) and runs a query on the database (Supabase activity). No
-code changes: the endpoint exists and the request limiter already exempts `/v1/health*`. UptimeRobot
+That reaches the API (Render's idle timer) and runs a query on the database (Supabase activity). The
+API answers HEAD on `/v1/health` and `/v1/health/ready` (hidden from the OpenAPI schema; same status
+as GET, `/ready` still runs the database check) because the owner's monitor form offers only HEAD; the
+request limiter already exempts `/v1/health*`. UptimeRobot
 is a monitoring service that only requests a public URL: it receives no user data and the app does
 not call it (the architecture rule about the app calling only the backend is unaffected). It is a
 new external service under hard constraint 4, recorded here; the API sends nothing to it.

@@ -286,9 +286,9 @@ or the API changes.
 1. Create a free account at <https://uptimerobot.com> (no card needed). Use **Add new monitor**.
 2. Type **HTTP(s)** (or **Keyword**). **URL:** `https://<your-service>.onrender.com/v1/health/ready`.
    **Interval:** 5 minutes (the Free plan's shortest).
-3. **Request method: GET** if the form offers a choice. The routes answer GET only, so a HEAD request
-   would show as an error. If only HEAD is offered, use a **Keyword** monitor for the word `ok`, which
-   reads the page. (The method was not confirmed from UptimeRobot's pages: check the form.)
+3. **HEAD is fine.** UptimeRobot's HTTP(s) monitor may only offer HEAD: the API answers HEAD on
+   `/v1/health` and `/v1/health/ready` exactly like GET (same status, no body), and HEAD on `/ready` runs
+   the same database check. (Which method the monitor sends was not confirmed from UptimeRobot's pages.)
 4. Add your e-mail as the alert contact. A "down" alert with HTTP 503 means the database is paused or
    unreachable: restore it in the Supabase dashboard.
 5. The service now runs all month (744 of Render's 750 free hours per workspace): do not add a second
