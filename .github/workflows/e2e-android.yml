@@ -6,7 +6,8 @@
 #    called (CLAUDE.md): every transfer is a labelled estimate.
 # 3. A release-variant x86_64 APK is built with DETOUR_E2E=1, which only allows plain HTTP to
 #    http://10.0.2.2:8000 (the runner as seen from the emulator).
-# 4. Maestro (a test tool, not an app dependency) runs apps/mobile/e2e/trip-flow.yaml.
+# 4. Maestro (a test tool, not an app dependency) runs apps/mobile/e2e/trip-flow.yaml, or, when
+#    the "flow" input is screenshot-tour, apps/mobile/e2e/screenshot-tour.yaml.
 #
 # Expensive (APK build about 14 minutes plus the emulator), so it runs only by hand (Actions,
 # "E2E Android", "Run workflow"): the owner confirmed the app works on the phone (2026-11-13) and
@@ -15,6 +16,14 @@ name: E2E Android
 
 on:
   workflow_dispatch:
+    inputs:
+      flow:
+        description: "trip-flow: the end-to-end check. screenshot-tour: one screenshot of every reachable screen (docs/design.md)."
+        type: choice
+        options:
+          - trip-flow
+          - screenshot-tour
+        default: trip-flow
 
 permissions:
   contents: read
@@ -141,6 +150,8 @@ jobs:
           heap-size: 512M
           disable-animations: true
           script: bash apps/mobile/e2e/run-e2e.sh
+        env:
+          FLOW: ${{ inputs.flow }}
 
       - name: Upload the report and the API log
         if: always()
@@ -150,6 +161,7 @@ jobs:
           path: |
             ${{ runner.temp }}/maestro-report.xml
             ${{ runner.temp }}/maestro-debug
+            ${{ runner.temp }}/screenshots
             ${{ runner.temp }}/screen.png
             ${{ runner.temp }}/logcat.txt
             ${{ runner.temp }}/api.log

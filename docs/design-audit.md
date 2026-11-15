@@ -641,62 +641,50 @@ No backend, API, planner, routing or data change is part of any phase.
 
 ---
 
-## 15. Progress and handoff (2026-11-15, end of session 1)
+## 15. Progress (2026-11-15)
 
 The owner accepted the recommendations for D1 to D6 (green main actions and selection; buttons and
 fields at radius 12, pills only for chips, badges and filters; page `#fcfcfb`; confirmations in a
-sheet; 48 dp touch targets with 36–44 dp drawn controls; a Maestro screenshot tour). The owner
-asked to stop after phase 3 and continue in a new session. **This commit is work in progress and
-the app does not build yet** (see "Not done" below); it was committed as is at the owner's request.
+sheet; 48 dp touch targets with 36–44 dp drawn controls; a Maestro screenshot tour). They are
+recorded as ADR 021, decisions 78 to 90, and the result is described in `docs/design.md`.
 
-### Done
+### Session 1 (phases 2 and 3, committed as work in progress)
 
-- **Phase 2, tokens and shared components.** `theme.ts`: colours (`selected`, `danger`,
-  `primaryPressed`, overlays, `dayTones`), the type scale (hero 26, title 24, headline 18, cardTitle
-  16, body 15, label 14, caption 13, micro 12; the old `display`, `heading` and `small` names were
-  renamed everywhere), `weight`, `layout`, `radius` (6, 8, 12, 16, 24, pill), `border`, `size`,
-  `touchSlop`, `icon` (14, 16, 20, 24), `opacity`, `textOnImage`. `components/ds/`: `Button`
-  (primary, secondary, ghost, destructive; `tone="danger"`; md 44 / sm 36; focus ring), `fields.tsx`
-  (`FieldShell`, `TextField`, `SearchField`, `SelectField`, `DropdownPanel`, `ChoiceRow`,
-  `ChoiceGroupTitle`, `Stepper`), `primitives.tsx` (`IconButton` plain / onImage / onMap, `Badge`,
-  `Tabs`, `SegmentedControl`, `Chip`, `Radio`, `Checkbox`, `StatRow`, `SectionHeader`, `ListRow`,
-  `RowGroup`, `InfoRow`, `MetaLine`, `Bullets`, `Card`, `Section`, `Tile`, `StopMark`), `Sheet.tsx`
-  (`Sheet`, `ConfirmSheet`), `states.tsx` (`StateView`, `LoadingState`, `EmptyState`, `ErrorState`,
-  `WakingServer`, `PlannedFeature`, `InlineStatus`, `Notice` without an outer margin, `inset` opt-in),
-  `headers.tsx` (`ScreenHeader`, `CompactHeader`, `CoverBar`, `useAnnounceOnMount`), `map.tsx`
-  (`MapChip`), and the barrel `ds/index.ts`. Icons `minus`, `import`, `external`, `alert` added; the
-  `strokeWidth` override removed. `PlanNotes` moved to `components/plan/PlanNotes.tsx`. Removed:
-  `components/ui.tsx`, `components/Button.tsx`, `ds/BoxField.tsx`, `ds/Dropdown.tsx`,
-  `plan/PlanSummaryCard.tsx` (unused). Past-trip day colours moved to `theme.ts`, three darkened to
-  reach 4.5:1 with white (A3).
-- **Phase 3, navigation, headers, layout.** Bottom bar, server banner (now a `Notice`), resource
-  notices (`inset`), Trips, More (no double inset), Explore, Photos.
-- **Ahead of plan, before the owner's message** (to be reviewed in the next session, not
-  re-done): phase 4 — Create trip, Add a city sheet, stop list, Add a place, Add a restaurant (now
-  the compact header and a segmented control), Choose slot, Add / edit document, Edit cities,
-  Optimize; phase 5 — trip overview, proposals, plan screen, day plan, both maps, map attribution,
-  place detail, change preview, past trip, documents list, calendar, Change photo, suggestion card,
-  length field.
-- **Tests:** `components/ds/components.test.tsx` (new, 15 tests) and `theme.test.ts` (new contrast
-  checks for `danger`, `selected`, the day colours, `touchSlop`) pass: 28 and 68 tests. Test edits
-  that follow the design, not behaviour: the Trips touch-size test counts hit slop; "✓ Selected"
-  is now a badge "Selected"; bullet lines are matched without the "• " character; Add a
-  restaurant's mode switch has the test ID `restaurant-mode-hand`.
+Tokens and the shared components (`components/ds/`), navigation, headers and layout; much of phases 4
+and 5 ahead of plan. The app did not build at the end of it.
 
-### Not done (start here in the next session)
+### Session 2 (phases 2, 6 and 7 finished)
 
-1. **The build is broken in seven screens** that still import the removed `components/ui` and
-   `components/Button` and use `Card` as the old flat block (13 type errors):
-   `TripSettingsScreen`, `DocumentScreen`, `TripDocumentsScreen`, `ExportScreen`, `ImportScreen`,
-   `SettingsScreen`, `ImageCreditsScreen`. For each: import from `../components/ds`; old `Card` →
-   `Section`; `variant="ink"` → default; `variant="quiet"` → `ghost`; `size="compact"` → `sm`;
-   `KindTile size={32}` → `size="sm"`; top-level notices `inset`. Then phase 6 proper: confirmations
-   through `ConfirmSheet` with `destructive` buttons and `tone="danger"` entry points (A1), facts as
-   `InfoRow`, Settings and Image credits as `ListRow`s.
-2. `components/ds/ds.test.tsx` still passes `compact` to `StatRow` (prop removed).
-3. The full jest suite, `npm run lint`, `npm run format:check` and `npm run typecheck` have **not**
-   been run on this state; only the two suites above. Prettier was run on most changed files, not all.
-4. Phase 7: the style lint test, the Maestro screenshot tour (D6), `docs/design.md` rewritten to the
-   new tokens and components, an ADR 021 amendment (decisions 78 onward recording D1–D6), the
-   exceptions of section 13 confirmed.
-5. Nothing has been checked on a device or in screenshots.
+- **The build is repaired.** The seven screens that still imported the deleted modules (Trip
+  settings, Document, Trip documents, Export, Import, Settings, Image credits) use `components/ds`:
+  flat `Section`s, `InfoRow`s, `ListRow`s, `InlineStatus`, a switch row in Export.
+- **Phase 6, confirmations.** Mark as past, Delete trip and Delete document ask in a `ConfirmSheet`
+  with a `destructive` confirm; their entry points are `tone="danger"` buttons. No inline
+  confirmation block is left. The sheet closes when the action fails, so the problem is in view.
+- **Regressions found by the first full test run, and fixed in the components:** a disabled `ListRow`
+  had lost its button role (it is announced as a dimmed button with its reason again); "Compare
+  itineraries" had lost its expanded state (`ListRow` gained `expanded`); the server banner and the
+  waking view said the same sentence twice (the banner is shorter). Test edits that follow the
+  design: "Status: connected" is an `InfoRow` (matched by its spoken label), the notes counter is the
+  field's hint ("11/500 characters"), a place's "Type: Restaurant" fact has no full stop, Add a
+  restaurant's header is announced with its trip subtitle, "Saved for later" starts with a capital.
+- **Phase 7.** `styleTokens.test.ts` (the style lint, zero violations; the only exception is the
+  cover illustration palette), `e2e/screenshot-tour.yaml` and a `flow` input on the "E2E Android"
+  workflow, `docs/design.md` rewritten (principles, tokens, components, states, rules the tests
+  enforce, approved exceptions, how to check), ADR 021 amended (decisions 78 to 90), CLAUDE.md and
+  `docs/development.md` updated.
+- **Checks run:** `npm run format:check`, `npm run lint`, `npm run typecheck` and `npm test` (43
+  suites, 458 tests) pass.
+
+### Still open
+
+1. **The screenshot tour has never been run** (no emulator in the development container). It was
+   written from the app's test IDs and may need an id or a wait adjusted on its first run.
+2. **`e2e/trip-flow.yaml` is out of date with the screens** (it waits for "Your itinerary" and taps
+   `open-itinerary`, neither of which exists since ADR 021; the comparison also opens from the
+   "Compare itineraries" row now). It was already stale before this redesign and is not fixed here
+   because it cannot be run to check a fix.
+3. **Nothing has been checked on a device or in screenshots.** The owner's look on a phone is the
+   real acceptance; text at 200 % font size and a 360 dp screen with long names need a device.
+4. **Section 13's exceptions** are confirmed in `docs/design.md` ("Approved exceptions") but the
+   owner has not yet signed them off.
