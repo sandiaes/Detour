@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import structlog
-from sqlalchemy import Connection, text
+from sqlalchemy import Connection, Engine, text
 
 from detour_api.errors import conflict, invalid, not_found
 from detour_api.models.images import Photo
@@ -32,15 +32,29 @@ _TRIP_COLUMNS = """
 
 
 def ensure_installation(conn: Connection, installation_id: uuid.UUID) -> None:
-    """Create the installation row on first use and note when it was last seen (hourly)."""
+    """Create the installation row on first use.
+
+    DO NOTHING, never DO UPDATE: an upsert that updates, even one whose WHERE is false, locks the
+    existing row until the transaction ends, so every request of one phone waited for the one before
+    it, and with a small connection pool that stalled for the pool timeout (2026-11-15).
+    """
     conn.execute(
-        text(
-            "INSERT INTO app.installation (id) VALUES (:i)"
-            " ON CONFLICT (id) DO UPDATE SET last_seen_at = now()"
-            " WHERE app.installation.last_seen_at < now() - interval '1 hour'"
-        ),
+        text("INSERT INTO app.installation (id) VALUES (:i) ON CONFLICT (id) DO NOTHING"),
         {"i": installation_id},
     )
+
+
+def touch_installation(engine: Engine, installation_id: uuid.UUID) -> None:
+    """Note that the installation was seen (at most hourly), in a transaction of its own that ends
+    at once, so the row is never locked while a request does its work."""
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE app.installation SET last_seen_at = now()"
+                " WHERE id = :i AND last_seen_at < now() - interval '1 hour'"
+            ),
+            {"i": installation_id},
+        )
 
 
 def trip_stops(conn: Connection, trip_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[TripStop]]:

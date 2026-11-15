@@ -302,6 +302,7 @@ or the API changes.
 |---|---|---|
 | Render deploy fails during build | Python version or package error | Open the deploy log. `PYTHON_VERSION` is set in `render.yaml` to `3.13.5` |
 | Log shows `ERROR migrations failed` | Wrong or unreachable `DETOUR_DATABASE_URL` | Re-copy the Session pooler string (step 4). The API keeps running so `/v1/health` still answers |
+| Slow requests; log shows `TimeoutError`, `travel_cache_unavailable` or `background_names_failed`; Supabase log "still waiting for ShareLock" | Fixed 2026-11-15: every request locked its installation row and the pool held only 2 connections, so overlapping requests stalled for the 30 s pool timeout | The API now never locks that row on ordinary requests and uses up to 10 connections with a 10 s pool timeout (`db.py`). If it returns, look in Supabase Logs for lock waits and in Render for `TimeoutError` |
 | `/v1/health/ready` says `unavailable` | Database unreachable, paused or wrong password | Supabase dashboard: unpause the project if paused; fix the variable in Render, Environment tab, then **Manual deploy** |
 | `password authentication failed` in logs | Password mismatch or unencoded special character | Reset the database password in Supabase (Database settings), rebuild the string, update Render |
 | App says "This build has no backend URL" | APK built without `DETOUR_API_URL` or `api_url` | Do steps 7 and 8 again |
