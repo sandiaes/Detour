@@ -320,7 +320,7 @@ test("an empty trip is created without proposals and opens on its own plan", asy
 test("public transport is shown but marked as not used yet, and there is no travel style", async () => {
   const client = await openForm();
   expect(screen.queryByRole("radio", { name: "Balanced" })).toBeNull();
-  expect(screen.getByText(/saved for later/)).toBeOnTheScreen();
+  expect(screen.getByText(/Saved for later/)).toBeOnTheScreen();
   // Not part of the trip sent to the server.
   expect(client.count("POST /v1/trips")).toBe(0);
 });

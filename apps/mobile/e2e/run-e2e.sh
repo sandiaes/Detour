@@ -12,8 +12,13 @@ adb shell settings put global hide_error_dialogs 1
 adb shell settings put secure anr_show_background 0
 # Let the freshly booted system settle before the first screen is driven.
 sleep 30
-maestro test --format junit --output "$TMP/maestro-report.xml" \
-  --debug-output "$TMP/maestro-debug" apps/mobile/e2e/trip-flow.yaml
+# FLOW is "trip-flow" (the end-to-end check) or "screenshot-tour" (every reachable screen, one
+# screenshot each, written to $TMP/screenshots).
+FLOW="${FLOW:-trip-flow}"
+mkdir -p "$TMP/screenshots"
+FLOW_FILE="$PWD/apps/mobile/e2e/$FLOW.yaml"
+(cd "$TMP/screenshots" && maestro test --format junit --output "$TMP/maestro-report.xml" \
+  --debug-output "$TMP/maestro-debug" "$FLOW_FILE")
 status=$?
 
 if [ "$status" -ne 0 ]; then

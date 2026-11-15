@@ -3,13 +3,20 @@ import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
-import { Card, ErrorState, LoadingState, Notice, ScreenHeader } from "../components/ui";
+import {
+  Button,
+  ErrorState,
+  ListRow,
+  LoadingState,
+  Notice,
+  ScreenHeader,
+  Section,
+} from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { type DocumentSummary, type ExportOutcome, useExchange } from "../exchange/useExchange";
 import { useNavigation } from "../nav/Navigator";
-import { colors, spacing, type } from "../theme";
+import { colors, layout, spacing, type } from "../theme";
 import { formatBytes } from "../util/format";
 
 /**
@@ -92,32 +99,31 @@ export function ExportScreen({ tripId }: { tripId?: string }) {
                 Detour sends it nowhere. Import it on any phone to bring the trip back as a copy.
               </Text>
               {summary.count > 0 ? (
-                <Card>
-                  <View style={styles.row}>
-                    <View style={styles.rowBody}>
-                      <Text style={styles.rowTitle}>
-                        {`Include documents (${formatBytes(summary.bytes)})`}
-                      </Text>
-                      <Text style={styles.small}>
-                        {`${summary.count} ${summary.count === 1 ? "document" : "documents"} on this phone: tickets, bookings and similar papers.`}
-                      </Text>
-                    </View>
-                    <Switch
-                      accessibilityLabel={`Include documents (${formatBytes(summary.bytes)})`}
-                      testID="include-documents"
-                      value={include}
-                      onValueChange={setInclude}
-                      trackColor={{ true: colors.primary, false: colors.outline }}
-                      thumbColor={colors.surface}
-                    />
-                  </View>
+                <Section title="Documents">
+                  <ListRow
+                    icon="document"
+                    title={`Include documents (${formatBytes(summary.bytes)})`}
+                    detail={`${summary.count} ${summary.count === 1 ? "document" : "documents"} on this phone: tickets, bookings and similar papers.`}
+                    inset="none"
+                    divider={false}
+                    trailing={
+                      <Switch
+                        accessibilityLabel={`Include documents (${formatBytes(summary.bytes)})`}
+                        testID="include-documents"
+                        value={include}
+                        onValueChange={setInclude}
+                        trackColor={{ true: colors.primary, false: colors.outline }}
+                        thumbColor={colors.surface}
+                      />
+                    }
+                  />
                   {include ? (
-                    <Text style={styles.warning}>
+                    <Notice tone="warning" label="Not encrypted">
                       The file is not encrypted. Whoever receives it can read these documents, so
                       send it only to yourself or to people you trust.
-                    </Text>
+                    </Notice>
                   ) : null}
-                </Card>
+                </Section>
               ) : null}
             </>
           )}
@@ -156,12 +162,7 @@ export function ExportScreen({ tripId }: { tripId?: string }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { paddingBottom: spacing.xl },
-  pad: { paddingHorizontal: spacing.lg, gap: spacing.lg },
-  body: { ...type.body, color: colors.text },
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  rowBody: { flex: 1, gap: spacing.xxs },
-  rowTitle: { ...type.body, color: colors.text },
-  small: { ...type.label, color: colors.muted },
-  warning: { ...type.label, color: colors.text, marginTop: spacing.sm },
+  content: { paddingBottom: spacing.xxl },
+  pad: { paddingHorizontal: layout.gutter, gap: layout.section },
+  body: { ...type.label, color: colors.text },
 });

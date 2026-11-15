@@ -63,7 +63,10 @@ export function AttributionBar({ lines, userInteractionCount = 0, bottomOffset =
   }
 
   return (
-    <View style={[styles.bar, { bottom: spacing.sm + bottomOffset }]} accessibilityLabel="Map attribution">
+    <View
+      style={[styles.bar, { bottom: spacing.sm + bottomOffset }]}
+      accessibilityLabel="Map attribution"
+    >
       {lines.map((line) => (
         <Pressable
           key={line.url}

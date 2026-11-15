@@ -1,11 +1,10 @@
 import type { Photo } from "@detour/shared";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Icon } from "../components/ds/Icon";
-import { ScreenHeader } from "../components/ui";
+import { Icon, ListRow, RowGroup, ScreenHeader } from "../components/ds";
 import { useData } from "../data/DataProvider";
 import { useNavigation } from "../nav/Navigator";
-import { colors, spacing, type } from "../theme";
+import { colors, layout, spacing, type } from "../theme";
 
 /** Every photo inside a value the backend sent (a trip list, an itinerary…), each once, by id. */
 export function collectPhotos(values: Iterable<unknown>): Photo[] {
@@ -48,32 +47,30 @@ export function ImageCreditsScreen() {
     <View style={styles.fill}>
       <ScreenHeader title="Image credits" onBack={nav.back} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.intro}>
-          Photos come from Wikimedia Commons and are shown resized. These are the photos of the
-          trips and plans open in the app.
-        </Text>
-        {photos.length === 0 ? (
-          <Text style={styles.intro}>No photo has been shown yet.</Text>
-        ) : (
-          photos.map((p) => (
-            <Pressable
-              key={p.id}
-              accessibilityRole="link"
-              accessibilityLabel={`${p.credit.text}. Opens the photo's page on Wikimedia Commons.`}
-              onPress={() => void Linking.openURL(p.credit.source_url)}
-              style={styles.row}
-              testID={`credit-${p.id}`}
-            >
-              <View style={styles.rowText}>
-                <Text style={styles.author}>{p.credit.author}</Text>
-                <Text style={styles.meta}>
-                  {p.credit.licence} · {decodeName(p.credit.source_url)}
-                </Text>
-              </View>
-              <Icon name="export" size={16} color={colors.muted} />
-            </Pressable>
-          ))
-        )}
+        <View style={styles.intro}>
+          <Text style={styles.text}>
+            Photos come from Wikimedia Commons and are shown resized. These are the photos of the
+            trips and plans open in the app.
+          </Text>
+          {photos.length === 0 ? (
+            <Text style={styles.text}>No photo has been shown yet.</Text>
+          ) : null}
+        </View>
+        {photos.length > 0 ? (
+          <RowGroup>
+            {photos.map((p) => (
+              <ListRow
+                key={p.id}
+                title={p.credit.author}
+                detail={`${p.credit.licence} · ${decodeName(p.credit.source_url)}`}
+                accessibilityLabel={`${p.credit.text}. Opens the photo's page on Wikimedia Commons.`}
+                trailing={<Icon name="external" size="sm" color={colors.muted} />}
+                onPress={() => void Linking.openURL(p.credit.source_url)}
+                testID={`credit-${p.id}`}
+              />
+            ))}
+          </RowGroup>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -90,18 +87,7 @@ function decodeName(url: string): string {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: spacing.lg, gap: spacing.sm },
-  intro: { ...type.label, color: colors.muted },
-  row: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  rowText: { flex: 1, gap: 2 },
-  author: { ...type.label, color: colors.text, fontWeight: "600" },
-  meta: { ...type.caption, color: colors.muted },
+  content: { gap: layout.section, paddingBottom: spacing.xxl },
+  intro: { paddingHorizontal: layout.gutter, gap: spacing.sm },
+  text: { ...type.label, color: colors.muted },
 });

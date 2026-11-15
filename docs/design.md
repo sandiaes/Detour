@@ -8,9 +8,13 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
   something Detour does not do (prices, ratings, photos, reviews), the screens win only on layout:
   the content rules of CLAUDE.md still apply (never invent data, no budgets, no LLM text).
 - **Code:** tokens in `apps/mobile/src/theme.ts`, components in `apps/mobile/src/components/ds/`
-  and `components/ui.tsx`. No screen defines a colour or a font size of its own.
-- **Not verified on a device:** the owner has seen the app on a phone, but this document and the
-  2026-11-14 restyle have been checked by tests and typechecking only, not by screenshot.
+  (imported from `components/ds`). No screen or component defines a colour, a font size, a weight, a
+  radius or a border width of its own; `styleTokens.test.ts` fails when one does.
+- **History:** the design-consistency audit of 2026-11-15 is `design-audit.md`; its answers are
+  recorded as ADR 021, decisions 78 to 90. This document describes the app as built after it.
+- **Not verified on a device:** the owner has seen the app on a phone, but the 2026-11-15 design
+  system has been checked by tests and typechecking only, not by screenshot. The screenshot tour
+  (see "Checking the design") has not been run yet.
 
 ## 1. Principles
 
@@ -21,8 +25,9 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    that is picked up and opened: a trip's cover, a proposal, a plan on the overview, a way to add a
    document and the file being added, and a sheet that slides over the page. Details screens, lists
    and figures have no cards.
-3. **Near-white page, dark navy text, one calm accent.** Colour carries state and kind (a place to
-   eat is orange), never decoration, and never alone: a word or a shape says it too.
+3. **Near-white page, dark navy text, one calm green.** Deep green is the main action and every
+   selected state; sights are green, places to eat are orange, transport markers are navy. Colour
+   carries state and kind, never decoration, and never alone: a word or a shape says it too.
 4. **Photos where the source has one, illustrations everywhere else, nothing invented.** A trip's
    cover on the Trips card and the trip header, and the photo of a place on its detail screen, are
    Wikimedia Commons photos the backend sends (ADR 022, step 3); a trip or place with none keeps the
@@ -52,6 +57,9 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    ("Not built yet", "saved for later"). Nothing is faked.
 6. **Small type, large targets.** Body text is compact; every control is still at least 48 dp tall
    (the accessibility test enforces it, using height plus hit slop).
+7. **One of each.** One button, one field shell, one chip, one sheet, one confirmation, one set of
+   loading, empty and error views. A screen picks a component and a variant; it does not restyle it.
+   What differs between screens is content, never the look of a control.
 
 ### Brand
 
@@ -64,40 +72,147 @@ wordmark alone, "Detour" and its orange dot, on a transparent ground (`assets/de
 
 ## 2. Tokens
 
+All in `apps/mobile/src/theme.ts`. Contrast of every text and background pair, of the day colours and
+of the borders that identify a control is asserted in `theme.test.ts`.
+
+**Colour**
+
 | Token | Value | Use |
 |---|---|---|
-| `background` | `#fcfcfb` | The page. Near white; the earlier warm beige `#f7f4ee` was too yellow |
-| `surface` | `#ffffff` | Sheets, map controls, badges on images |
-| `surfaceMuted` | `#f2f2f0` | A selected row, quiet chips and badges |
+| `background` | `#fcfcfb` | The page (owner, 2026-11-15: keep the near white of ADR 021, decision 25) |
+| `surface` | `#ffffff` | Sheets, cards, fields, map controls |
+| `surfaceMuted` | `#f2f2f0` | A pressed row, a default value, quiet badges, info notices |
 | `border` | `#e4e4e1` | Hairlines only; never the sole mark of a control |
-| `outline` | `#7a858c` | Borders that identify a control (inputs, chips, map lines): at least 3:1 |
+| `outline` | `#7a858c` | Borders that identify a control (inputs, chips, outlined buttons, map lines): at least 3:1 |
 | `text` / `muted` | `#14243a` / `#56616c` | Text; both at least 4.5:1 on the page |
-| `primary` | `#2b6b64` | Sights, selected tab and chip, links to the next step |
-| `eat` | `#b5511c` | Places to eat, on the map and in lists (`accentText` `#8a3b12` for text) |
-| `ink` | `#14243a` | The one dark filled button of a screen, transport markers, the selected marker |
+| `primary` / `primaryPressed` | `#2b6b64` / `#225650` | The main action, links to the next step, sights |
+| `selected` / `selectedSoft` | `primary` / `#e2eeeb` | **Every** selected state: tabs, chips, segments, day pills, radios, check boxes, calendar, bottom bar |
+| `eat` / `eatSoft` / `accentText` | `#b5511c` / `#f9e8dc` / `#8a3b12` | Places to eat on the map and in lists; `accentText` for text on the soft ground |
+| `ink` | `#14243a` | Transport markers and the selected map marker (not a button colour any more) |
+| `danger` / `dangerSoft` | `#b42318` / `#fbe6e3` | The confirming button of a destructive action, a danger row; white on `danger` is 6.5:1 |
+| `warning*`, `error*`, `link` | see `theme.ts` | Notices and links |
+| `imageButton`, `imageOverlay`, `scrim`, `textShadow`, `onImage` | overlays | Controls, credits and text on a photo |
+| `mapOverlay`, `backdrop` | `rgba` | Tags and buttons on a map; behind a sheet |
+| `dayTones` | eight `{ fg, bg }` pairs | Past-trip days; white on each `fg` is at least 4.5:1 (three were darkened for it) |
+| `docTones` | four pairs | The tile of a document's kind |
 
-Type (`type` in `theme.ts`): display 30 (screen titles), title 22, heading 18, body 16, small 14,
-caption 13. Lists of stops use small and caption; only the screen title is large. Spacing steps
-2, 4, 8, 12, 16, 24, 32. Radii: 8, 14, 20, pill; sheets curve their top corners by 28.
+**Type** (`type` in `theme.ts`; weights from `weight`)
 
-Contrast of every text and background pair is asserted in `theme.test.ts`.
+| Token | Size / line | Weight | Role |
+|---|---|---|---|
+| `hero` | 26 / 32 | 700 | The name on a trip or place cover |
+| `title` | 24 / 30 | 700 | A screen's title (`ScreenHeader`) |
+| `headline` | 18 / 24 | 600 | Section title, compact header and sheet titles, state titles |
+| `cardTitle` | 16 / 22 | 600 | A card's or main row's title |
+| `body` | 15 / 21 | 400 | Paragraphs, input text, regular button labels (600) |
+| `label` | 14 / 20 | 400 to 600 | List titles (stops, choices, documents), compact button labels, field values |
+| `caption` | 13 / 18 | 400 to 500 | Metadata, field labels, hints, chips |
+| `micro` | 12 / 16 | 500 to 600 | Bottom-bar labels, badges, the map attribution |
 
-## 3. Patterns
+**Space, shape and size**
+
+- **Spacing** (`spacing`): 2, 4, 8, 12, 16, 24, 32. **Rules:** the screen gutter is 16 (`layout.gutter`)
+  for every screen and sheet; 24 between sections (`layout.section`); 12 inside a section; 8 between a
+  label and its field. **A component sets no outer margin**: the screen's gutter does (`Notice` has
+  none; `inset` is the opt-in where its parent has no gutter).
+- **Radii** (`radius`): `xs` 6 (check boxes, small tiles), `sm` 8 (thumbnails, notices, map tags),
+  `md` 12 (buttons, inputs, selects, drop-down lists, segmented control, day pills, tiles),
+  `lg` 16 (cards, the map legend), `xl` 24 (sheets and the sheets that curve over a cover or a map),
+  `pill` (chips, badges, discs, switches).
+- **Borders** (`border`): `hairline` (dividers), `thin` 1 (control outlines in `outline`), `thick` 2
+  (focus ring, tab underline, selected outline). Nothing at 1.5, 2.5 or 3.
+- **Shadows** (`shadow`): none by default; `card` for cards and floating map controls; `raised` for sheets.
+- **Heights** (`size`): `control` 44 (buttons, inputs, selects, segmented control), `controlSm` 36
+  (small buttons, chips, header icon buttons), `row` 56 (a row with a detail line), `rowCompact` 48,
+  `tab` 44, `tabCompact` 40. A drawn height is a **minimum**, so text can scale.
+- **Touch:** every control reaches 48 dp (`TOUCH`) with hit slop; `touchSlop(height)` is the one helper.
+- **Icons** (`icon`): 14 in metadata, 16 in rows and small controls, 20 in regular controls, 24 in the
+  bottom bar and on covers; one stroke width, 1.8. Icons are drawn shapes, never characters.
+
+## 3. Components
+
+Everything below is exported from `components/ds`. A screen uses these and nothing of its own.
+
+| Component | Variants and rules |
+|---|---|
+| **`Button`** | `primary` (filled green): the screen's main action, **at most one per screen or sheet**. `secondary` (outlined): a second action. `ghost` (text): a third, quiet action. `destructive` (filled red): only the button that confirms something that cannot be undone. `tone="danger"` makes a secondary or ghost button the red entry point ("Delete trip"). Sizes `md` (44) and `sm` (36); radius 12; optional icon; `fill` stretches it. States: default, pressed, disabled, loading (spinner, announced as busy) and focused (2 dp ring) |
+| **`IconButton`** | `plain`, `onImage` (translucent disc over a photo), `onMap`; sizes `md` and `sm`; always has a spoken label |
+| **Fields** | `TextField`, `SearchField`, `SelectField` (opens a `DropdownPanel` of `ChoiceRow`s), the calendar field, all in one `FieldShell`: a caption label, a 44 dp box, radius 12, a 1 dp `outline` border, 15 pt text, optional leading icon, suffix, clear button, hint (a counter such as "11/500 characters" is a hint) and error. `multiline` grows from three lines |
+| **`Stepper`** | A number with minus and plus, sizes `md` and `sm` (days, a city's days, a length) |
+| **`Chip`** | The one filter or choice look: a 36 dp pill with an `outline`; selected is a soft green fill, a green border and a check; announced as selected |
+| **`SegmentedControl`** | Two or three exclusive options in one 44 dp control of radius 12 (Search / Address / Pin on map; Suggest a day / Choose day and time; Within each day / Across all days); a form switch, not navigation |
+| **`Tabs`** | Underlined text tabs, `regular` (44) and `compact` (40); the selected tab is green with a 2 dp line |
+| **`Radio`, `Checkbox`** | The marks of a one-of and a many-of list; used inside `ListRow` |
+| **`ListRow`** | The one row: a leading icon, tile, thumbnail, number, radio or check; a title; up to two detail lines; a trailing chevron, badge, switch or action; `regular` 56 or `compact` 48; `selected`, `checked`, `expanded`, `danger`. **A disabled row stays announced as a button, dimmed, with its reason in words ("Coming later", "Choose a plan first")** |
+| **`RowGroup`, `InfoRow`, `MetaLine`, `Bullets`** | Rows divided by hairlines; a fact (a small label over its value, over a hairline); an icon and a quiet line; short lines with bullets |
+| **`Badge`** | A small pill with a word: `neutral`, `primary`, `accent`, `onImage`, `danger`; the word carries the meaning |
+| **`Card`** | White, radius 16, a hairline, the `card` shadow, padding 12. Only for a thing picked up and opened (a proposal, a plan on the overview, a way to add a document, the file being added). **`Section`** is the flat block of a settings-like page: a hairline, a headline and its content, no box |
+| **`Tile`, `StopMark`** | An icon on a soft tone (32, 40, 56). The mark of a stop, shared by the day list, the map and its key: round and green for a sight, a rounded square and orange for a place to eat, a navy rounded square for travel, a city or a day colour |
+| **`Sheet`** | A white surface with 24 dp top corners, a grabber, a headline title and a Close button, over a `backdrop`; Android Back and a tap outside close it |
+| **`ConfirmSheet`** | **The one confirmation** (decision 81): a sheet with the title as a question, one sentence on what will happen, a **`destructive` confirm** and a `secondary` way back. Used to delete a trip, mark it as past and delete a document. The entry point is a `secondary` or `ghost` button with `tone="danger"`. When the action fails the sheet closes so the problem notice is in view |
+| **`StateView`** | The loading, empty, error, waking, offline and planned views (`LoadingState`, `EmptyState`, `ErrorState`, `WakingServer`, `PlannedFeature`): an icon in a 48 dp soft circle, a headline, a label-size text and an optional secondary action; `fill` centres it, `inline` sits in the page. **`InlineStatus`** is a spinner and a caption ("Searching…") |
+| **`Notice`** | `info`, `warning`, `error`, `success`: an icon, a word (Note, Offline, Problem, Done) and the text, radius 8, no outer margin, an optional action |
+| **Headers** | `ScreenHeader` (Back, a 24 pt title, a subtitle, right actions: Trips, More and pushed screens), `CompactHeader` (Back, a one-line 18 pt title, a subtitle, an action: screens inside a trip), `CoverBar` (Back and menu over a cover). A header is announced when its screen opens |
+| **Other** | `StatRow` (flat figures), `SectionHeader` (a title and an action), `Cover`, `CoverPicker`, `Calendar`, `KindIcon`, `SuggestionCard`, `MapChip`, `EdgeFade` |
+
+### Interaction states
+
+Every control has, and the tests check, these states: **default**, **pressed** (a tint, never only
+a colour change that is the sole cue), **disabled** (dimmed, announced as disabled, the reason in
+words where a row is disabled), **loading** (a spinner in the button, announced as busy, pressing
+does nothing), **focused** (a 2 dp green ring for keyboards and switch access), **selected** (green,
+announced as selected) and **error** (a red border and a message under a field).
+
+### Patterns
 
 | Pattern | What it is |
 |---|---|
-| **Hairline row** | Icon or number, text, chevron, a 1 px line under it. Lists, menus, stops, search results |
-| **Flat figures** | Numbers with a small label in a row, separated by hairlines, a hairline above and below (`StatRow`) |
-| **Underlined tabs** | Text tabs with a 2 px line under the selected one (`Tabs`); a day strip uses the same look |
-| **Sheet** | A white surface whose top corners curve over what is behind it: the trip's tabs over its cover, the stops over the map, the Add menu |
-| **Field** | A small label over the value, over a hairline, with a leading line icon. No box |
-| **Chip** | A slim pill (36 dp, 13 dp text, optional icon) with an outline, filled soft green when selected, announced as selected; hit slop keeps the touch at 48 dp |
-| **Compact header** | Back, a one-line title and an icon button (`CompactHeader`), for screens inside a trip; pushed screens use `ScreenHeader` with a title-size heading |
+| **Hairline row** | Icon or number, text, chevron, a hairline under it (`ListRow`). Lists, menus, stops, search results |
+| **Flat figures** | Numbers with a small label in a row, separated by hairlines (`StatRow`) |
+| **Sheet over a cover** | A white surface whose top corners curve over what is behind it: the trip's tabs over its cover, the stops over the map, the Add menu |
 | **Soft edge** | A 10 dp fade at the top and a 14 dp fade above the bottom bar (`EdgeFade`); no hard line or shadow between the page and the bars |
-| **Drop-down** | A boxed field that opens a short scrolling list under it (Add document, Attraction) |
-| **Button** | `ink` filled for the screen's main action, thin-outlined for the second, plain text for the third; `size="compact"` is the slim pill (36 dp, 13 dp text, icon) used for card actions and place actions |
-| **Badge** | A small pill with a word ("Upcoming"); the word carries the meaning |
+| **Drop-down** | A boxed field that opens a short scrolling list under it (Add document, Attraction, Day) |
 | **Planned feature** | Says what a part will do and "Not built yet" (`PlannedFeature`) |
+
+## Rules the tests enforce
+
+- `styleTokens.test.ts`: no file under `src` (apart from `theme.ts`, tests and the exceptions below)
+  contains a hex or `rgba` colour, a `fontSize`, `lineHeight`, `fontFamily` or numeric `fontWeight`,
+  a non-zero `borderRadius` or border width as a number, or `StyleSheet.hairlineWidth`. It also
+  fails if a removed module (`ui.tsx`, the old `Button`, `BoxField`, `Dropdown`) comes back.
+- `theme.test.ts`: contrast of every text pair, the border colours, the day colours and `danger`;
+  `touchSlop`.
+- `accessibility.test.tsx` and the screen tests: a spoken name for every control, 48 dp touch targets,
+  states told in words, announced headers.
+- `components/ds/components.test.tsx`: the variants and states of `Button`, the fields, `Stepper`,
+  `SegmentedControl`, `ConfirmSheet`, `StateView`.
+
+## Approved exceptions
+
+Values that are not in `theme.ts` on purpose (decision 90). A new one needs the owner's approval.
+
+| Exception | Where | Reason |
+|---|---|---|
+| The cover illustration palette (25 colours) | `components/ds/Cover.tsx` | An illustration, not UI colour. Allowed in `styleTokens.test.ts`; the contrast of its hills against white is tested |
+| Marker sizes 26 and 34, white edge 2 | `StopMark`, the maps | Must read on any map tile; the sizes are tokens (`size.marker`, `size.markerSelected`) shared by the list, the map and the key |
+| Map attribution text at 12 | `AttributionBar` | OSMF attribution layout; it uses the `micro` token |
+| Calendar grid cells | `Calendar` | A seven-column grid: a cell is a seventh of the row; its text and colours are tokens |
+| Wordmark width on Trips | `TripsScreen` | An image, set by ADR 021, decision 68 (c) |
+| Geometry of drawn shapes (a radio's 20 dp circle, a 4 dp grabber, a 10 dp timeline dot, a 3 dp tab marker) | `ds/`, `nav/` | Shapes, not text or colour; plain width and height numbers are not linted |
+
+## Checking the design
+
+- **After every change:** `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`.
+- **The screenshot tour** (`apps/mobile/e2e/screenshot-tour.yaml`, decision 83): Actions, "E2E Android",
+  Run workflow, flow `screenshot-tour`. It drives the seeded fixture backend on an emulator, visits
+  about thirty screens (Trips, Explore, Photos, More, Settings, Image credits, Import, Export, Create
+  trip, the calendar, the proposals and their comparison, the overview, the map, a place, Edit
+  length, Documents, Add document, the trip menu, Optimize, Trip settings and its confirmation, Add a
+  place) and uploads the screenshots as an artifact. Run it before and after a design change. It
+  cannot reach offline, waking, error states, a past trip or photos; component tests cover those.
+  **It has not been run yet** (no emulator in the development container).
+- **A phone:** the owner's look on a real device after the "Android APK" workflow. A check at 200 %
+  font size and on a 360 dp screen with long names needs a device or the tour with the font scale raised.
 
 ## 4. Screens
 
@@ -138,10 +253,10 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
    is chosen, never typed.
 3. **Public transport:** a switch (there is no travel style: it did nothing).
 4. A line: public transport is saved for later; the plans do not use it yet.
-5. Two compact buttons, full width, small text:
-   - **Start a fresh trip** (dark, the main action): creates the trip and an empty plan, one empty day
+5. Two buttons, full width:
+   - **Start a fresh trip** (`primary`, the main action): creates the trip and an empty plan, one empty day
      per trip day, chosen as its itinerary at once. No proposals. The trip opens on its overview.
-   - **Generate itineraries** (outlined): creates the trip and the two proposals to compare. Sights
+   - **Generate itineraries** (`secondary`): creates the trip and the two proposals to compare. Sights
      only, with a midday gap, no restaurants.
 
    The fresh trip comes first (ADR 026, built). A trip whose dates are all in the past is created
@@ -149,7 +264,7 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
    it is not archived by itself (the two-day rule applies only to trips made before their last day).
 
 Removed from the screen of the reference image: interests, budget and "Include popular
-highlights" and the personalised-itineraries note. "Change photo" is a slim outlined pill under
+highlights" and the personalised-itineraries note. "Change photo" is a small outlined button under
 the destination's cover; the photo chosen there becomes the trip's cover as soon as it is created. The trip name is
 not asked; it is the destination.
 
@@ -176,8 +291,8 @@ not asked; it is the destination.
 
 - **The stops get most of the height.** The map is the smaller part (about a third of the space
   between the tabs and the bottom bar), the stops the larger. The map's camera fits the day's stops.
-- **Day pills sit under the map, above the stops** (screen 14): rounded pills, 44 dp tall, that share the width
-  (and scroll sideways when there are many days), the chosen one dark with white text, in the stops' own type size. "Day 1" over
+- **Day pills sit under the map, above the stops** (screen 14): rounded pills (radius 12), 44 dp tall, that share the width
+  (and scroll sideways when there are many days), the chosen one green with white text, in the stops' own type size. "Day 1" over
   "Thu, 12 Mar", or just "Day 1" when the trip has no dates; the text is **centred** in every pill.
 - **Coming back keeps your place.** Back from a stop's details returns to the same day and the
   same selected stop (kept in the route), never to the first day.
@@ -225,12 +340,12 @@ Cover (only the Back button over it) that runs under the status bar to the top o
 trip's cover, with no fade over it; then a white sheet whose top corners curve over its lower edge.
 On it: the name the server resolved (ADR 025) and, under it in the muted small style, the original
 local name when it differs; a name Detour romanized itself adds "Automatically romanized" in italics;
-then "Edit display name" (a compact outlined button opening a one-line field with Save and Cancel; an
+then "Edit display name" (a small outlined button opening a one-line field with Save and Cancel; an
 edited name offers "Use the usual name"); one line with the kind icon,
 the kind and the town ("Attraction · Vienna"); two flat figures for the day
 ("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit" or "Set by you"); one quiet line with the
-address (no label); for places to eat the kind and, when Photon gave one, the address (*ADR 026: the meal, venue and cuisine lines go*); slim icon pills Show
-on map, **Edit length**, Lock, Remove and Add a document. Edit length opens one field (minutes or
+address (no label); for places to eat the kind and, when Photon gave one, the address (*ADR 026: the meal, venue and cuisine lines go*); small buttons Show
+on map, **Edit length**, Lock, Remove (red outline) and Add a document. Edit length opens one field (minutes or
 "1h30"), a "Default" pill that goes back to the usual length, Save and Cancel, and a live check: a
 length that runs into the next timed stop is a conflict and cannot be saved; too little time for
 the trip to the next stop, or an end after 20:00, is a warning that can be saved; the place's documents; the data source. No opening hours, no
@@ -242,8 +357,8 @@ the trip to the next stop, or an end after 20:00, is a warning that can be saved
 the dates and length, then **the two plans as cards** (white, hairline, soft shadow): the cover, a badge ("Best-known sights",
 "More variety"), the name ("Classic Salzburg", "Salzburg & beyond", from fixed templates),
 "The essentials" / "A wider experience", the profile's sentence, then places, restaurants and
-travel time from the plan's own numbers, and two slim buttons (compact size): **View details** (outlined) and **Choose
-this itinerary** (dark). A **Compare itineraries** row opens the comparison table; "You can always
+travel time from the plan's own numbers, and two small buttons: **View details** (`secondary`) and **Choose
+this itinerary** (`primary`). A **Compare itineraries** row opens the comparison table; "You can always
 adjust your itinerary later" ends the page. After new proposals were asked for, the plan chosen
 earlier is kept apart with a note. **View details** opens that plan's map with the day pills under
 it and the stops below, and "Choose this itinerary" under them. Not built from the mock: a
@@ -262,7 +377,7 @@ under it, grouped under small headings ("Sights", "Towns and cities"). Choosing 
 list and the field shows only the choice, with its kind and town; pressing it searches again. Then
 **How long**: one boxed field (minutes, or "1h30") and a pill for the default ("Typical length" for
 a sight; "Default · 2 h" for a town, 1 h for any other place); typing replaces the default. Then
-either "Find the best day" (dark, compact) with up to three suggested days, or, for "Choose day and
+either "Find the best day" (`primary`) with up to three suggested days, or, for "Choose day and
 time" and for an empty trip, a **Day drop-down**, a start time field and "Add to day N at HH:MM".
 Add a restaurant or café uses the same day drop-down and fields; its default pill is 1 h 15 min
 for a restaurant and 45 min for a café (*proposed*).
@@ -271,7 +386,7 @@ for a restaurant and 45 min for a café (*proposed*).
 
 - **The tab, empty:** a small illustration, "No documents yet", a sentence, **one row of four
   small tiles** (Tickets, Bookings, Transport, Other; icon over name) that start adding that kind,
-  "Add a document" (dark) and the line that documents stay on this phone. There is no Insurance kind;
+  "Add a document" (`primary`) and the line that documents stay on this phone. There is no Insurance kind;
   a document saved as one reads as Other.
 - **The tab, with documents:** filter chips (All and the four kinds), "All documents" with **Sort**
   (newest, oldest, title), then rows: a tinted tile for the kind (`docTones`), the title, "Ticket ·
@@ -289,8 +404,8 @@ for a restaurant and 45 min for a café (*proposed*).
   disabled until a file, a title, a type and a complete link are chosen. Back from the form (or
   from a saved document) returns to the Documents tab.
 - **A document:** its title, its kind as a tile and badge, a picture in place for images, then
-  hairline facts (About, File, Type and size, Date and Notes when set, Added). Open (dark, the
-  phone's viewer), Edit (outlined), Delete (plain text, asks first).
+  hairline facts (About, File, Type and size, Date and Notes when set, Added). Open (`primary`, the
+  phone's viewer), Edit (`secondary`), Delete (red text, asks first in a confirmation sheet).
 - **A place's details** list that place's documents under "Tickets and documents" (sights) or
   "Bookings and documents" (places to eat), with "Attach a document".
 - **A past trip** is a flat page: a compact header with the settings icon, a summary, a Documents
@@ -303,10 +418,24 @@ for a restaurant and 45 min for a café (*proposed*).
 ### Edit cities (multi-city trips, ADR 024)
 
 Trip settings shows "Your cities" with the list in words and **Edit cities**: the same rows as the
-new-trip screen. With a chosen plan the dark button is "Preview the change", which opens the change
+new-trip screen. With a chosen plan the main button is "Preview the change", which opens the change
 preview ("Change your cities?", the diff, and a note naming what leaves with a removed day, marked
 "added by you" or "locked"); without one it is "Save cities". Proposals made for the earlier cities
 say "Made for the trip's earlier cities" and their "Choose this itinerary" is disabled.
+
+### Trip settings, Export, Import, Settings, Image credits
+
+Pushed screens with a `ScreenHeader` and the 16 dp gutter. **Trip settings** is flat `Section`s
+(Your cities, Proposals, Mark as a past trip, Delete this trip): a headline, a label-size
+explanation and one small button. **Mark as past trip** and **Delete trip** are `secondary` buttons
+with `tone="danger"`; each opens a `ConfirmSheet` ("Mark as a past trip?", "Delete this trip?")
+whose red button says what will happen ("Yes, mark as past", "Yes, delete the trip") and whose way
+back is "Keep planning" or "Keep the trip". **Export** has one `ListRow` with a switch for the
+documents and, when they are included, a warning `Notice` that the file is not encrypted; **Import**
+lists the trips in the file as `ListRow`s; **Settings** shows the connection as `InfoRow`s and the
+credits as link rows with an external-link icon; **Image credits** lists the photos the same way.
+A document's own screen has facts as `InfoRow`s, Open (`primary`), Edit (`secondary`) and Delete
+(red text), which asks in a `ConfirmSheet`.
 
 ### Photos, Explore, More (screens 07, 10, 11)
 
@@ -358,6 +487,9 @@ the screen reader announcing a screen's title on arrival.
   are kept on the phone only; a trip file (ADR 028) carries them, unencrypted and only when the user
   chooses, from "Export trip" and "Back up all trips".
 - **Dark mode** is not designed.
+- **The screenshot tour has not been run** and the existing `trip-flow.yaml` is out of date with the
+  screens (it looks for "Your itinerary" and `open-itinerary`, which no longer exist). Both need a
+  first run on the emulator; see "Checking the design".
 
 **Past trip (2026-11-15):** no storage or "routes are not kept" notes. Each day has a colour (eight, repeating)
 used for its markers on the map, its badge in the Days tab and the icon tile of its rows; the map's legend is

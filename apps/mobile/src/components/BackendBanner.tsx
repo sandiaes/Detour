@@ -13,7 +13,7 @@ export function BackendBanner() {
       {state.phase === "connecting" ? (
         <Notice tone="warning" label={state.waking ? "Waking the server" : "Connecting"}>
           {state.waking
-            ? "The free host was asleep. This can take about a minute."
+            ? "The free host was asleep and is starting up."
             : "Connecting to the server…"}
         </Notice>
       ) : (

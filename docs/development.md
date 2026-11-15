@@ -121,6 +121,19 @@ hand only** (Actions → "E2E Android" → "Run workflow"): the owner confirmed 
 phone on 2026-11-13 and asked for it not to run on every pull request or push. Reports are
 uploaded as an artifact. Component tests (`npm test`) cover the same flow with a fake server.
 
+The same workflow has a `flow` input: `screenshot-tour` runs `apps/mobile/e2e/screenshot-tour.yaml`
+instead, which takes one screenshot of each screen the fixture backend can reach and uploads them in
+the artifact `e2e-android-report` (folder `screenshots`). It is how the design is looked at without a
+phone (`docs/design.md`, "Checking the design"). It has not been run yet.
+
+## The style lint
+
+`apps/mobile/src/styleTokens.test.ts` (part of `npm test`) fails when a screen or component writes a
+colour, font size, line height, font weight, corner radius or border width instead of using
+`theme.ts`. Fix the file; do not widen the test. A real exception goes in the test's list and in
+`docs/design.md`, "Approved exceptions", with the owner's approval.
+
+
 ## Running an import locally
 
 Needs a PostGIS for the target (migrated: `alembic upgrade head` with `DETOUR_DATABASE_URL`), a

@@ -452,3 +452,53 @@ the four trip tabs fill the full width equally at the same text size.
 Further corrections the same day: tabs balanced at both edges, the map's tab line at the same height as the others,
 the Overview figures stacked and tighter, and the past trip without its two notes, with a colour per day on the map
 and in the Days and List tabs, and a cleaner marker panel.
+
+## Amendment of 2026-11-15 (eighth): the design system (decisions 78 to 90)
+
+A design-consistency audit of every screen (`docs/design-audit.md`) found one app drawn with several
+sets of buttons, fields, chips, radii and type sizes. The owner accepted the audit's recommendations
+for decisions D1 to D6 on 2026-11-15. The redesign changes how things look and are built, not what the
+app does: no screen, route, API or data changed. Status: **built, awaiting acceptance; not checked on a
+device or in screenshots**.
+
+78. **Green is the main action and every selected state (D1).** `primary` fills the main button;
+    `selected` (the same green) marks tabs, chips, segments, day pills, radios, check boxes, the
+    calendar and the bottom bar. Navy (`ink`) stays for text, transport markers and the selected map
+    marker. This replaces decision 49's navy main button and the navy day pills, tabs and calendar.
+79. **Buttons and fields have radius 12; pills are for chips, badges and filters (D2).** This replaces
+    decision 49's pill buttons: an action and a choice now look different. One `Button` has four
+    variants (primary, secondary, ghost, destructive) and two sizes (44 and 36 dp).
+80. **The page stays `#fcfcfb` (D3).** Decision 25 stands.
+81. **Confirmations are a sheet (D4).** Deleting a trip, marking it as past and deleting a document
+    ask in a `ConfirmSheet`: a question, one sentence, a red confirming button and a way back. The
+    entry buttons are red-outlined. The three inline confirmation blocks are gone.
+82. **Touch targets are 48 dp with hit slop (D5).** Drawn controls are 36 to 44 dp; `touchSlop` lifts
+    them. A drawn height is a minimum so text can scale.
+83. **A screenshot tour (D6).** `apps/mobile/e2e/screenshot-tour.yaml`, started from the "E2E Android"
+    workflow with the flow `screenshot-tour`, takes one screenshot of each screen the fixture backend
+    can reach and uploads them. Not yet run.
+84. **One type scale:** hero 26, title 24, headline 18, cardTitle 16, body 15, label 14, caption 13,
+    micro 12. The earlier names (display, heading, small) are gone.
+85. **One scale of shape:** radii 6, 8, 12, 16, 24 and pill; borders hairline, 1 and 2; four icon
+    sizes (14, 16, 20, 24) with one stroke; control heights 44 and 36, rows 56 and 48; a 16 dp screen
+    gutter, 24 between sections.
+86. **One set of components** in `components/ds`; the old `ui.tsx`, `Button`, `BoxField`, `Dropdown`
+    and the unused `PlanSummaryCard` are deleted. No component has an outer margin; the screen's
+    gutter does.
+87. **Quiet actions.** "Skip" and "Restore" on a past trip are ghost buttons; "Remove" on a place is
+    a red-outlined small button.
+88. **Past-trip day colours** moved into `theme.ts` (`dayTones`); three were darkened so white text on
+    each reaches 4.5:1.
+89. **Behaviour kept.** A disabled row is still announced as a dimmed button with its reason in words;
+    "Compare itineraries" is announced as expanded or collapsed; the notes counter is the field's hint
+    ("11/500 characters"); the server banner no longer repeats the waking text the Trips screen shows.
+    Tests that matched old wording or structure follow the design, not the other way round.
+90. **A style lint and approved exceptions.** `styleTokens.test.ts` fails on a colour, font size,
+    weight, radius or border width written in a screen or component. The exceptions (the cover
+    illustration palette, marker sizes, the attribution text, calendar cells, the wordmark, shapes)
+    are listed in `docs/design.md`, "Approved exceptions".
+
+**Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
+Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
+documents) now look like the rest. The tour and the owner's look on a phone are still owed; until
+then the design is checked by tests and typechecking only.

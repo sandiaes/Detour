@@ -331,6 +331,7 @@ export function TripScreen({ tripId }: { tripId: string }) {
               inset="none"
               accessibilityLabel="Compare itineraries"
               accessibilityHint="Shows how the two plans differ"
+              expanded={comparing}
               trailing={<Icon name={comparing ? "up" : "down"} size="sm" color={colors.muted} />}
               onPress={() => setComparing((v) => !v)}
               testID="compare-toggle"

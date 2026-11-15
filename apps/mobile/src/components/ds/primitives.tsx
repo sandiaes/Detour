@@ -370,6 +370,7 @@ export function ListRow({
   danger = false,
   role = "button",
   checked,
+  expanded,
   accessibilityLabel,
   accessibilityHint,
   divider = true,
@@ -396,6 +397,8 @@ export function ListRow({
   danger?: boolean;
   role?: "button" | "radio" | "checkbox";
   checked?: boolean;
+  /** For a row that opens or closes something in place (a comparison): announced as expanded. */
+  expanded?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
   divider?: boolean;
@@ -419,13 +422,15 @@ export function ListRow({
   const minHeight = compact ? sizes.rowCompact : sizes.row;
   return (
     <Pressable
-      accessibilityRole={onPress ? role : undefined}
+      // A disabled row is still announced as a (dimmed) button, with the reason in its label.
+      accessibilityRole={onPress || disabled ? role : undefined}
       accessibilityLabel={spoken}
       accessibilityHint={accessibilityHint}
       accessibilityState={{
         disabled: disabled || !onPress,
         ...(selected !== undefined ? { selected } : {}),
         ...(checked !== undefined ? { checked } : {}),
+        ...(expanded !== undefined ? { expanded } : {}),
       }}
       accessible
       disabled={disabled || !onPress}

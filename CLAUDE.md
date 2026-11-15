@@ -34,6 +34,15 @@ tab; "Start a fresh trip" and "Generate itineraries" on the new-trip screen, no 
 paragraphs below were written before this decision, so where they describe meals, meal windows,
 cuisines, imported restaurants or the slot engine they are out of date.
 
+**A design system is built** (2026-11-15, ADR 021 amendment, decisions 78 to 90; `docs/design-audit.md`,
+`docs/design.md`; built and awaiting acceptance, **checked by tests only, not on a device**): one set of
+tokens in `theme.ts` and one set of components in `components/ds` that every screen uses (green main
+action and selected state, buttons and fields at radius 12, a ConfirmSheet for deleting a trip, marking
+it as past and deleting a document, a type scale of 26 to 12, 48 dp touch targets). `styleTokens.test.ts`
+fails when a screen writes its own colour, font size, radius or border; `e2e/screenshot-tour.yaml` (the
+"E2E Android" workflow, flow `screenshot-tour`) is written but **not yet run**; `e2e/trip-flow.yaml` is
+out of date with the screens. No behaviour, API or data changed.
+
 **Phases 1 to 8 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
 service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment
 configuration (ADR 010). Phase 2 (ADR 011, ADR 012; `docs/data-model.md`): the `geo` and `app`

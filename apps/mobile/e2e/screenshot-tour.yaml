@@ -1,0 +1,182 @@
+# The screenshot tour (docs/design-audit.md section 12, decision D6; docs/design.md, "Checking the
+# design"). It visits the screens that the seeded fixture backend can reach and takes one screenshot
+# of each, so the owner can compare the look before and after a design change without a phone.
+# Run it by hand: Actions, "E2E Android", Run workflow, flow "screenshot-tour". The screenshots are
+# uploaded as the artifact "e2e-android-report", folder "screenshots".
+#
+# Not reached by this tour (the seed cannot show them; they are checked by component tests only):
+# offline, waking the server, a failed request, a past trip (needs a trip marked past), Change
+# photo (no photos in the fixture), the calendar sheet's month for another year.
+#
+# It was written from the app's test IDs on 2026-11-15 and has NOT been run yet: the first run may
+# need an id or a wait adjusted. Controls are found by testID, which React Native exposes as the
+# resource id, or by their visible text.
+appId: io.github.sandiaes.detour
+---
+- launchApp:
+    clearState: true
+- repeat:
+    while:
+      notVisible: "No trips yet"
+    times: 30
+    commands:
+      - runFlow: dismiss-system-dialogs.yaml
+      - waitForAnimationToEnd:
+          timeout: 3000
+- takeScreenshot: 01-trips-empty
+
+# ---- root tabs and More ----
+- tapOn:
+    id: "nav-explore"
+- takeScreenshot: 02-explore
+- tapOn:
+    id: "nav-photos"
+- takeScreenshot: 03-photos
+- tapOn:
+    id: "nav-more"
+- takeScreenshot: 04-more
+- tapOn:
+    id: "more-settings"
+- extendedWaitUntil:
+    visible: "Connection"
+    timeout: 20000
+- takeScreenshot: 05-settings
+- back
+- tapOn:
+    id: "more-image-credits"
+- takeScreenshot: 06-image-credits
+- back
+- tapOn:
+    id: "more-import"
+- takeScreenshot: 07-import
+- back
+- tapOn:
+    id: "more-backup"
+- takeScreenshot: 08-export-all
+- back
+
+# ---- Add menu outside a trip, then create a trip ----
+- tapOn:
+    id: "nav-trips"
+- tapOn:
+    id: "nav-add"
+- takeScreenshot: 09-add-menu
+- back
+- tapOn: "Plan a trip"
+- takeScreenshot: 10-create-trip
+- tapOn:
+    id: "destination-input"
+- inputText: "Testburg"
+- runFlow: dismiss-system-dialogs.yaml
+- extendedWaitUntil:
+    visible:
+      id: "destination-result-900101"
+    timeout: 30000
+- takeScreenshot: 11-destination-results
+- tapOn:
+    id: "destination-result-900101"
+- hideKeyboard
+- tapOn:
+    id: "start-date"
+- takeScreenshot: 12-calendar
+- back
+- scrollUntilVisible:
+    element:
+      id: "plan-trip"
+- takeScreenshot: 13-create-trip-ready
+- tapOn:
+    id: "plan-trip"
+- runFlow: dismiss-system-dialogs.yaml
+
+# ---- the proposals ----
+- extendedWaitUntil:
+    visible: "Choose your itinerary"
+    timeout: 60000
+- takeScreenshot: 14-proposals
+- tapOn:
+    id: "compare-toggle"
+- takeScreenshot: 15-compare
+- tapOn:
+    id: "view-details-essentials"
+- takeScreenshot: 16-proposal-map
+- back
+- scrollUntilVisible:
+    element:
+      id: "select-essentials"
+- tapOn:
+    id: "select-essentials"
+- runFlow: dismiss-system-dialogs.yaml
+
+# ---- the trip ----
+- extendedWaitUntil:
+    visible:
+      id: "trip-cover"
+    timeout: 30000
+- takeScreenshot: 17-trip-overview
+- tapOn:
+    id: "day-row-1"
+- extendedWaitUntil:
+    visible:
+      id: "map-key"
+    timeout: 30000
+- takeScreenshot: 18-trip-map
+- tapOn:
+    id: "map-key"
+- takeScreenshot: 19-map-key
+- back
+- tapOn:
+    id: "details-.*"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: "edit-length"
+    timeout: 20000
+- takeScreenshot: 20-place-detail
+- tapOn:
+    id: "edit-length"
+- takeScreenshot: 21-edit-length
+- back
+- back
+- tapOn:
+    id: "trip-tabs-documents"
+- takeScreenshot: 22-documents-empty
+- tapOn:
+    id: "add-document"
+- takeScreenshot: 23-add-document
+- back
+- tapOn:
+    id: "trip-tabs-overview"
+
+# ---- the trip menu, settings, Optimize, export, add a place ----
+- tapOn:
+    id: "trip-menu"
+- takeScreenshot: 24-trip-menu
+- tapOn:
+    id: "menu-optimize"
+- takeScreenshot: 25-optimize
+- back
+- tapOn:
+    id: "trip-menu"
+- tapOn:
+    id: "menu-export"
+- takeScreenshot: 26-export-trip
+- back
+- tapOn:
+    id: "trip-menu"
+- tapOn:
+    id: "menu-settings"
+- takeScreenshot: 27-trip-settings
+- tapOn:
+    id: "delete-trip"
+- takeScreenshot: 28-confirm-delete
+- tapOn: "Keep the trip"
+- back
+- tapOn:
+    id: "nav-add"
+- takeScreenshot: 29-add-menu-in-trip
+- tapOn:
+    id: "add-sheet-place"
+- takeScreenshot: 30-add-place
+- back
+- back
+- takeScreenshot: 31-trips-list

@@ -571,7 +571,11 @@ export function TripOverviewScreen({
     return (
       <View style={styles.fill}>
         {compactHead}
-        {items.problem ? <Notice inset tone="error">{items.problem}</Notice> : null}
+        {items.problem ? (
+          <Notice inset tone="error">
+            {items.problem}
+          </Notice>
+        ) : null}
         {planView("map")}
         {menuSheet}
         {pickerSheet}

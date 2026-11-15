@@ -303,7 +303,7 @@ test("past trip: list by city, every skip control named for its place", async ()
 });
 
 test("settings", async () => {
-  await show({ name: "settings" }, /Status: connected/);
+  await show({ name: "settings" }, /detour-api 0\.1\.0/);
   checkControls();
 });
 
