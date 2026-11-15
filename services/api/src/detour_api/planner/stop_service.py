@@ -74,17 +74,12 @@ def preview_stops(
         countries = changes.countries(conn, sorted(cities))
         radius = max(p.radius_m for p in config.profiles)
         cands: dict[str, Any] = {}
-        rests: dict[str, Any] = {}
         for city in cities.values():
             dest_region = changes.region_of(conn, countries.get(city.city_id))
             if dest_region is None:
                 continue
             for c in planning.load_candidates(conn, dest_region, city.lat, city.lon, radius):
                 cands.setdefault(c.place_id, c)
-            for r in planning.load_restaurants(
-                conn, dest_region, city.lat, city.lon, radius + config.meal_search_m[-1]
-            ):
-                rests.setdefault(r.place_id, r)
         rplan = to_rplan(state, row.profile)
     loaded = time.perf_counter()
 
@@ -109,7 +104,6 @@ def preview_stops(
         notes=(),
         bases=cities,
         candidates=tuple(cands[k] for k in sorted(cands)),
-        restaurants=tuple(rests[k] for k in sorted(rests)),
         route=True,
         rail_bases=frozenset(b for b, c in countries.items() if c in config.single_city_countries),
     )
@@ -125,7 +119,6 @@ def preview_stops(
                 len(day_indices),
                 row.profile,
                 inp.candidates,
-                inp.restaurants,
                 planned_keys
                 | frozenset(
                     e.place_id or "" for es in fills.values() for e in es if e.kind == "visit"
@@ -158,7 +151,6 @@ def preview_stops(
                 added=None,
                 removed=None,
                 candidates={c.place_id: c for c in inp.candidates},
-                restaurants={r.place_id: r for r in inp.restaurants},
                 config=config,
             )
             if problems:

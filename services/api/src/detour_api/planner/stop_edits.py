@@ -45,7 +45,6 @@ from detour_api.planner.types import (
     Note,
     PlanningImpossible,
     PlanRequest,
-    Restaurant,
 )
 
 
@@ -180,14 +179,13 @@ def fill_days(
     count: int,
     profile: str,
     candidates: Sequence[Candidate],
-    restaurants: Sequence[Restaurant],
     exclude: frozenset[str],
     source: TravelSource,
     *,
     config: PlannerConfig = DEFAULT_CONFIG,
     sequencer: Sequencer | None = None,
 ) -> list[tuple[Entry, ...]]:
-    """Visits and meals for ``count`` new days at a stop: the planner's own plan of the stop as a
+    """Visits for ``count`` new days at a stop: the planner's own plan of the stop as a
     city, with the plan's profile, leaving out places the trip already has. Days it cannot fill
     stay empty (nothing is invented)."""
     pool = [c for c in candidates if c.place_id not in exclude]
@@ -202,9 +200,7 @@ def fill_days(
         base_cities=(stop.city,),
     )
     try:
-        generation = engine.generate(
-            request, pool, source, restaurants=restaurants, config=config, sequencer=sequencer
-        )
+        generation = engine.generate(request, pool, source, config=config, sequencer=sequencer)
     except PlanningImpossible:
         return [() for _ in range(count)]
     plan = next((p for p in generation.plans if p.profile == profile), generation.plans[0])
@@ -228,11 +224,9 @@ def fill_days(
                     transfer=i.transfer,
                     place_id=i.place_id,
                     category=i.category,
-                    meal_type=i.meal_type,
-                    cuisines=i.cuisines,
                 )
                 for i in day.items
-                if i.place_id not in exclude or i.kind == "meal"
+                if i.place_id not in exclude
             )
         )
     return out

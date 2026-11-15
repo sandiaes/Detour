@@ -110,13 +110,10 @@ def test_archiving_deletes_exactly_the_listed_data_and_keeps_the_rest(api_env: A
     for d in plan["days"]:
         day_of_city.setdefault(d["base_city_name"], d["day_index"])
     expected = {("city", name, day) for name, day in day_of_city.items()}
-    meal_names = set()
     for d in plan["days"]:
         for item in d["items"]:
             if item["type"] == "visit":
                 expected.add(("attraction", item["display_name"], d["day_index"]))
-            elif item["type"] == "meal":
-                meal_names.add(item["display_name"])
     assert any(k == "attraction" for k, _, _ in expected)
 
     past = _archive(api_env, trip)
@@ -140,7 +137,6 @@ def test_archiving_deletes_exactly_the_listed_data_and_keeps_the_rest(api_env: A
     visits = _visits(api_env, trip)
     assert {(v["kind"], v["name"], v["day_number"]) for v in visits} == expected
     assert len(visits) == len(expected)  # no row twice
-    assert not meal_names & {v["name"] for v in visits}  # meals and restaurants are not archived
     assert _count(api_env, "trip_visit") == len(expected)
     assert all(v["confirmed"] for v in visits)
 
@@ -162,7 +158,7 @@ def test_a_past_trip_renders_without_any_routing_data(api_env: ApiEnv) -> None:
     assert c.get(f"/v1/trips/{trip['id']}", headers=h).status_code == 200
     visits = _visits(api_env, trip)
     assert visits
-    # Exactly the snapshot fields: no route, travel time, mode, time of day or duration.
+    # Exactly the snapshot fields: no route, travel time or mode.
     assert all(set(v) == set(TripVisit.model_fields) for v in visits)
     assert c.get(f"/v1/trips/{trip['id']}/archive", headers=h).status_code == 200
     assert c.get(f"/v1/trips/{trip['id']}/itineraries", headers=h).json() == []
@@ -216,7 +212,7 @@ def test_the_size_of_an_archived_trip_is_reported(api_env: ApiEnv) -> None:
     assert info["trip_id"] == trip["id"]
     assert info["cities"] == sum(v["kind"] == "city" for v in visits)
     assert info["attractions"] == sum(v["kind"] == "attraction" for v in visits)
-    assert info["skipped"] == 0
+    assert info["places_to_eat"] == 0 and info["skipped"] == 0
 
     # The reported size is the stored row data of the trip and its visits.
     measured = sql(
@@ -358,3 +354,99 @@ def test_a_trip_opened_by_id_after_its_last_day_is_past(
     got = api_env.client.get(f"/v1/trips/{trip['id']}", headers=api_env.headers).json()
     assert got["status"] == "past" and got["selected_itinerary_id"] is None
     assert [(v["kind"], v["name"]) for v in _visits(api_env, trip)] == [("city", "Testburg")]
+
+
+# -- the day record (ADR 026) ------------------------------------------------------------------
+
+
+def test_a_past_trip_keeps_every_stop_with_its_day_order_and_times(api_env: ApiEnv) -> None:
+    c, h = api_env.client, api_env.headers
+    trip = make_trip(api_env, title="Record", duration_days=2, start_date="2027-05-01")
+    plan = make_itinerary(api_env, trip)
+    museum = c.get("/v1/places/search", params={"q": "testburg museum"}, headers=h).json()[
+        "results"
+    ][0]
+    cafe = c.post(
+        "/v1/user-places",
+        json={
+            "kind": "cafe",
+            "name": "Kaffeehaus",
+            "lat": 48.21,
+            "lon": 16.37,
+            "source": "manual_pin",
+        },
+        headers=h,
+    ).json()
+    diner = c.post(
+        "/v1/user-places",
+        json={
+            "kind": "restaurant",
+            "name": "Gasthaus",
+            "lat": 48.2,
+            "lon": 16.4,
+            "source": "manual_pin",
+        },
+        headers=h,
+    ).json()
+    add_item(
+        api_env,
+        plan,
+        1,
+        type="visit",
+        place_id=museum["id"],
+        start_time="09:30",
+        duration_minutes=60,
+    )
+    add_item(api_env, plan, 1, type="meal", user_place_id=cafe["id"], start_time="11:00")
+    add_item(api_env, plan, 2, type="meal", user_place_id=diner["id"], start_time="19:00")
+    c.patch(f"/v1/trips/{trip['id']}", json={"selected_itinerary_id": plan["id"]}, headers=h)
+
+    _archive(api_env, trip)
+    rows = [
+        (
+            v["day_number"],
+            v["position"],
+            v["kind"],
+            v["name"],
+            v["start_time"],
+            v["duration_minutes"],
+        )
+        for v in _visits(api_env, trip)
+    ]
+    assert rows == [
+        (1, None, "city", "Testburg", None, None),
+        (1, 1, "attraction", "Testburg Museum", "09:30", 60),
+        (1, 2, "cafe", "Kaffeehaus", "11:00", 45),
+        (2, 1, "restaurant", "Gasthaus", "19:00", 75),
+    ]
+    info = c.get(f"/v1/trips/{trip['id']}/archive", headers=h).json()
+    assert (info["cities"], info["attractions"], info["places_to_eat"]) == (1, 1, 2)
+
+    # A restaurant is a visit like any other: the user can clear it.
+    cafe_row = next(v for v in _visits(api_env, trip) if v["kind"] == "cafe")
+    cleared = c.patch(
+        f"/v1/trips/{trip['id']}/visits/{cafe_row['id']}", json={"confirmed": False}, headers=h
+    )
+    assert cleared.status_code == 200 and cleared.json()["confirmed"] is False
+
+
+def test_a_trip_made_after_its_last_day_is_not_archived_by_itself(
+    api_env: ApiEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR 026 decision 23: a journey already taken is created, filled, then marked past."""
+    c, h = api_env.client, api_env.headers
+    taken = make_trip(api_env, title="Taken", duration_days=2, start_date="2020-05-01")
+    assert taken["status"] == "active"
+    plan = make_itinerary(api_env, taken)
+    museum = c.get("/v1/places/search", params={"q": "testburg museum"}, headers=h).json()[
+        "results"
+    ][0]
+    add_item(api_env, plan, 1, type="visit", place_id=museum["id"], duration_minutes=60)
+    c.patch(f"/v1/trips/{taken['id']}", json={"selected_itinerary_id": plan["id"]}, headers=h)
+    assert {t["status"] for t in c.get("/v1/trips", headers=h).json()} == {"active"}
+    past = _archive(api_env, taken)
+    assert past["status"] == "past"
+    assert [(v["kind"], v["name"]) for v in _visits(api_env, taken)] == [
+        ("city", "Testburg"),
+        ("attraction", "Testburg Museum"),
+    ]

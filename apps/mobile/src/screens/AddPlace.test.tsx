@@ -82,7 +82,7 @@ function server(over: Record<string, (c: never) => unknown> = {}) {
     "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
     "GET /v1/places/search": (c: { params: Record<string, unknown> }) => ({
       query: "Prat",
-      results: c.params.kind === "restaurant" ? [] : [SIGHT],
+      results: [SIGHT],
       external: { state: "not_requested", provider: null, results: [] },
     }),
     "POST /v1/itineraries/{itinerary_id}/place-suggestions": () => makePlaceSuggestions(),
@@ -125,7 +125,7 @@ async function previewBest() {
 }
 
 async function search(text: string) {
-  await fireEvent.changeText(screen.getByLabelText("Sight, town or restaurant"), text);
+  await fireEvent.changeText(screen.getByLabelText("Sight or town"), text);
   await act(async () => {
     jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS + 10);
   });
@@ -157,7 +157,7 @@ test("search a sight, preview the change, accept it, and see the new plan", asyn
   expect(screen.getByText("• Day 1, 14:03: St. Stephen's Cathedral")).toBeOnTheScreen();
   expect(screen.getByText("• Day 1, 15:10: Prater (your addition)")).toBeOnTheScreen();
   expect(screen.getByText("• Belvedere: day 1 11:21 → day 2 10:05")).toBeOnTheScreen();
-  expect(screen.getByText("• Day 1: Lunch at Gasthaus Zum Test 13:01 → 12:30")).toBeOnTheScreen();
+  expect(screen.getByText("• Day 1: Gasthaus Zum Test 13:01 → 12:30")).toBeOnTheScreen();
   expect(
     screen.getByText("• Day 1: drive Schönbrunn Palace → Prater, about 22 min"),
   ).toBeOnTheScreen();
@@ -383,7 +383,7 @@ test("up to three suggested days show the time, travel and what else changes", a
     screen.getByText("Between St. Stephen's Cathedral and Café Ohne Angabe"),
   ).toBeOnTheScreen();
   expect(screen.getByText("+12 min travel (estimated)")).toBeOnTheScreen();
-  expect(screen.getByText("Dinner at Café Ohne Angabe: 18:30 → 19:00")).toBeOnTheScreen();
+  expect(screen.getByText("Café Ohne Angabe: 18:30 → 19:00")).toBeOnTheScreen();
   expect(
     screen.getByText("• Adds the least travel of the days that can take it."),
   ).toBeOnTheScreen();
@@ -487,30 +487,24 @@ test("a custom place by address: found through the server, renamed, then placed"
   });
 });
 
-test("a place to eat found in the search opens the restaurant flow, already chosen", async () => {
-  const EAT = {
-    ...SIGHT,
-    id: "00000000-0000-4000-8000-00000000ab09",
-    name: "Schweizerhaus",
-    kind: "restaurant",
-    category: "restaurant",
-    cuisines: ["austrian"],
-    venue_type: "restaurant",
-  };
+test("the add-place search asks for sights only: restaurants have their own flow", async () => {
+  const kinds: unknown[] = [];
   await openPlan(
     server({
-      "GET /v1/places/search": (c: { params: Record<string, unknown> }) => ({
-        query: "Sch",
-        results: c.params.kind === "restaurant" ? [EAT] : [],
-        external: { state: "not_requested", provider: null, results: [] },
-      }),
+      "GET /v1/places/search": (c: { params: Record<string, unknown> }) => {
+        kinds.push(c.params.kind);
+        return {
+          query: "Sch",
+          results: [SIGHT],
+          external: { state: "not_requested", provider: null, results: [] },
+        };
+      },
     }),
   );
   await search("Sch");
-  expect(await screen.findByText("Places to eat")).toBeOnTheScreen();
-  await fireEvent.press(screen.getByLabelText(/^Schweizerhaus, Austrian/));
-  expect(await screen.findByRole("header", { name: "Add a restaurant" })).toBeOnTheScreen();
-  expect(screen.getByTestId("find-slots")).toBeEnabled();
+  expect(await screen.findByText("Sights")).toBeOnTheScreen();
+  expect(kinds).toEqual(["attraction"]);
+  expect(screen.queryByText("Places to eat")).toBeNull();
 });
 
 test("asking again after changing the length does not save the pin twice", async () => {

@@ -407,6 +407,18 @@
             "description": "If nothing is found locally, ask Photon (through the backend, cached)"
           },
           {
+            "name": "also_if_found",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "With include_external: ask Photon even when the imported data has answers (ADR 027: a place outside it, or one with the same name)",
+              "default": false,
+              "title": "Also If Found"
+            },
+            "description": "With include_external: ask Photon even when the imported data has answers (ADR 027: a place outside it, or one with the same name)"
+          },
+          {
             "name": "lang",
             "in": "query",
             "required": false,
@@ -516,7 +528,7 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^(attraction|restaurant|transport_hub|other)$"
+                  "pattern": "^(attraction|transport_hub|other)$"
                 },
                 {
                   "type": "null"
@@ -933,6 +945,196 @@
             "description": "Unprocessable Content"
           }
         }
+      }
+    },
+    "/v1/trips/export": {
+      "get": {
+        "tags": [
+          "exchange"
+        ],
+        "summary": "Every trip of the caller in the trip-file shape (ADR 028): a backup.",
+        "operationId": "export_all",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripFile"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/trips/{trip_id}/export": {
+      "get": {
+        "tags": [
+          "exchange"
+        ],
+        "summary": "One trip in the trip-file shape (ADR 028): the chosen plan, or a past trip's record.",
+        "operationId": "export_one",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripFile"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/trips/import": {
+      "post": {
+        "tags": [
+          "exchange"
+        ],
+        "summary": "Add the trips of a trip file as new trips (ADR 028). Never merges or overwrites; all or nothing.",
+        "operationId": "import_trips",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripFile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/trips": {
@@ -2625,6 +2827,172 @@
         }
       }
     },
+    "/v1/itineraries/{itinerary_id}/optimize": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Preview a shorter order of the stops of a plan of any kind (ADR 029): within each day or across all days. Locked stops and the ones named in fixed_item_ids stay; restaurants and cafés keep their day. Returns the diff and the saving; nothing changes until it is applied. 409 no_better_order when the plan is already as short as the search can make it.",
+        "operationId": "preview_optimize",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itinerary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Itinerary Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSet"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/itineraries/{itinerary_id}/optimize/undo": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Preview restoring the plan as it was before the latest applied Optimize, while nothing else changed it. 409 nothing_to_undo otherwise.",
+        "operationId": "preview_optimize_undo",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itinerary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Itinerary Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSet"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/itineraries/{itinerary_id}/place-suggestions": {
       "post": {
         "tags": [
@@ -3122,7 +3490,7 @@
         "tags": [
           "restaurants"
         ],
-        "summary": "Search restaurants: imported places first, then your saved restaurants and, when nothing matches and asked for, Photon through the backend (cached, budgeted).",
+        "summary": "Search restaurants and cafes: your saved places first and, when nothing matches and asked for, Photon through the backend (cached, budgeted).",
         "operationId": "search_restaurants",
         "security": [
           {
@@ -3192,24 +3560,6 @@
                 }
               ],
               "title": "Lon"
-            }
-          },
-          {
-            "name": "radius_m",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "number",
-                  "maximum": 50000,
-                  "exclusiveMinimum": 0
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Radius M"
             }
           },
           {
@@ -3298,94 +3648,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        }
-      }
-    },
-    "/v1/itineraries/{itinerary_id}/restaurant-suggestions": {
-      "post": {
-        "tags": [
-          "restaurants"
-        ],
-        "summary": "Where a restaurant fits in a planned itinerary: up to three day and meal slots, scored by location, neighbouring stops, meal type, meal window and travel, each with its reasons, the estimated detour and which items move. Nothing is stored.",
-        "operationId": "restaurant_suggestions",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "itinerary_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Itinerary Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SlotRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SlotSuggestions"
-                }
-              }
-            }
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlanningErrorBody"
                 }
               }
             },
@@ -3491,7 +3753,8 @@
                   "enum": [
                     "city",
                     "location",
-                    "restaurant"
+                    "restaurant",
+                    "cafe"
                   ],
                   "type": "string"
                 },
@@ -3793,6 +4056,11 @@
             "type": "integer",
             "title": "Attractions"
           },
+          "places_to_eat": {
+            "type": "integer",
+            "title": "Places To Eat",
+            "description": "Restaurants and cafes the user added"
+          },
           "skipped": {
             "type": "integer",
             "title": "Skipped",
@@ -3809,6 +4077,7 @@
           "trip_id",
           "cities",
           "attractions",
+          "places_to_eat",
           "skipped",
           "size_bytes"
         ],
@@ -4055,7 +4324,8 @@
               "add_place",
               "remove_place",
               "add_restaurant",
-              "edit_stops"
+              "edit_stops",
+              "optimize"
             ],
             "title": "Action"
           },
@@ -4170,8 +4440,7 @@
             "type": "string",
             "enum": [
               "add_place",
-              "remove_place",
-              "add_restaurant"
+              "remove_place"
             ],
             "title": "Action"
           },
@@ -4186,7 +4455,7 @@
               }
             ],
             "title": "Place Id",
-            "description": "add_place: an imported attraction. add_restaurant: an imported place to eat"
+            "description": "add_place: an imported attraction"
           },
           "user_place_id": {
             "anyOf": [
@@ -4199,7 +4468,7 @@
               }
             ],
             "title": "User Place Id",
-            "description": "add_place: one of your places (kind city or location). add_restaurant: one of your restaurants (kind restaurant)"
+            "description": "add_place: one of your places (kind city or location)"
           },
           "duration_minutes": {
             "anyOf": [
@@ -4240,38 +4509,7 @@
               }
             ],
             "title": "Day",
-            "description": "add_restaurant: the day (a suggestion's day). add_place: optional, only this day is tried (a place suggestion's day); without it the day that costs the plan least"
-          },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type",
-            "description": "add_restaurant: the meal (a suggestion's meal_type)"
-          },
-          "after_item_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "After Item Id",
-            "description": "add_restaurant: the visit (or meal you fixed) the meal follows, as a suggestion gives it; null puts the meal first in the day"
+            "description": "add_place: optional, only this day is tried (a place suggestion's day); without it the day that costs the plan least"
           }
         },
         "additionalProperties": false,
@@ -4280,7 +4518,7 @@
           "action"
         ],
         "title": "ChangeSetCreate",
-        "description": "Preview adding a place (an imported attraction, or one of your own places of kind city or\nlocation), adding a restaurant to a meal slot, or removing a visit. Nothing changes until the\nchange set is applied."
+        "description": "Preview adding a place (an imported attraction, or one of your own places of kind city or\nlocation) or removing a visit. Nothing changes until the change set is applied. A restaurant\nor café is not added this way: its day and time are chosen by the user (ADR 026)."
       },
       "ClientConfig": {
         "properties": {
@@ -4544,7 +4782,8 @@
             "enum": [
               "city",
               "area",
-              "route"
+              "route",
+              "place"
             ],
             "title": "Kind"
           },
@@ -4563,6 +4802,18 @@
           "lon": {
             "type": "number",
             "title": "Lon"
+          },
+          "country_iso2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Iso2",
+            "description": "Known for a place trip (ADR 027)"
           }
         },
         "type": "object",
@@ -4804,23 +5055,6 @@
             "type": "string",
             "title": "Name"
           },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
-          },
           "start_time": {
             "type": "string",
             "format": "time",
@@ -4842,7 +5076,6 @@
           "day",
           "kind",
           "name",
-          "meal_type",
           "start_time",
           "end_time",
           "added_by_you"
@@ -4948,23 +5181,6 @@
             "type": "integer",
             "title": "Day"
           },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
-          },
           "old_start_time": {
             "type": "string",
             "format": "time",
@@ -4981,7 +5197,6 @@
           "kind",
           "name",
           "day",
-          "meal_type",
           "old_start_time",
           "new_start_time"
         ],
@@ -5341,42 +5556,8 @@
               "restaurant",
               "cafe"
             ],
-            "title": "Venue Type"
-          },
-          "meal_types": {
-            "items": {
-              "type": "string",
-              "enum": [
-                "breakfast",
-                "lunch",
-                "dinner",
-                "snack"
-              ]
-            },
-            "type": "array",
-            "title": "Meal Types",
-            "description": "From the venue type by the same fixed rule as imported places: a restaurant serves lunch and dinner, a café breakfast and a snack. You can change them."
-          },
-          "meal_types_basis": {
-            "type": "string",
-            "const": "venue_type",
-            "title": "Meal Types Basis",
-            "default": "venue_type"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Always null: the provider's answer carries none"
+            "title": "Venue Type",
+            "description": "From the OpenStreetMap amenity value; also the kind to save it as"
           }
         },
         "type": "object",
@@ -5394,11 +5575,10 @@
           "street",
           "housenumber",
           "postcode",
-          "venue_type",
-          "meal_types"
+          "venue_type"
         ],
         "title": "ExternalRestaurant",
-        "description": "A restaurant or café from the external provider (Photon). Not part of our data: save it as\na user place (kind restaurant, source search_result) to add it to a plan. The provider gives\nno cuisine, so it is not specified unless you give one."
+        "description": "A restaurant or cafe from the external provider (Photon). Not part of our data: save it as\na user place (kind restaurant or cafe, source search_result) to add it to a plan."
       },
       "ExternalRestaurantStatus": {
         "properties": {
@@ -5414,7 +5594,7 @@
               "disabled"
             ],
             "title": "State",
-            "description": "not_requested: include_external was false. not_needed: there are local or own results. unavailable, budget_exhausted and disabled: no external results; you can always enter the restaurant by hand (a name and a map pin)."
+            "description": "not_requested: include_external was false. not_needed: your saved places match. unavailable, budget_exhausted and disabled: no external results; you can always enter the place by hand (a name, a kind and a map pin)."
           },
           "provider": {
             "anyOf": [
@@ -5483,6 +5663,421 @@
           "state"
         ],
         "title": "ExternalStatus"
+      },
+      "FileDay": {
+        "properties": {
+          "day_index": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Day Index"
+          },
+          "base_city_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base City Name"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FileItem"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "day_index"
+        ],
+        "title": "FileDay"
+      },
+      "FileDestination": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "city",
+              "area",
+              "route",
+              "place"
+            ],
+            "title": "Kind",
+            "description": "What it was in the app; it imports as a place"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref",
+            "description": "A provider reference (photon:N123, geonames:123, area:<uuid>) when known"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "description": "WGS 84 latitude"
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "description": "WGS 84 longitude"
+          },
+          "country_iso2": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Iso2"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "lat",
+          "lon"
+        ],
+        "title": "FileDestination"
+      },
+      "FileItem": {
+        "properties": {
+          "position": {
+            "type": "integer",
+            "maximum": 40.0,
+            "minimum": 1.0,
+            "title": "Position"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "sight",
+              "city",
+              "place",
+              "restaurant",
+              "cafe"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "description": "WGS 84 latitude"
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "description": "WGS 84 longitude"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes"
+          },
+          "duration_is_user": {
+            "type": "boolean",
+            "title": "Duration Is User",
+            "default": false
+          },
+          "locked": {
+            "type": "boolean",
+            "title": "Locked",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "position",
+          "kind",
+          "name",
+          "lat",
+          "lon",
+          "duration_minutes"
+        ],
+        "title": "FileItem"
+      },
+      "FileStop": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "description": "WGS 84 latitude"
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "description": "WGS 84 longitude"
+          },
+          "days": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Days"
+          },
+          "country_iso2": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Iso2"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "lat",
+          "lon",
+          "days"
+        ],
+        "title": "FileStop",
+        "description": "A city of a multi-city trip, kept for reference (it imports as a single place trip)."
+      },
+      "FileTrip": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/FileDestination"
+          },
+          "duration_days": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Duration Days"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "past"
+            ],
+            "title": "Status",
+            "default": "active"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/FileStop"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Stops"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/FileDay"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Days",
+            "description": "The chosen plan; empty if none"
+          },
+          "visits": {
+            "items": {
+              "$ref": "#/components/schemas/FileVisit"
+            },
+            "type": "array",
+            "maxItems": 1500,
+            "title": "Visits"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "destination",
+          "duration_days"
+        ],
+        "title": "FileTrip"
+      },
+      "FileVisit": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "city",
+              "attraction",
+              "restaurant",
+              "cafe"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "description": "WGS 84 latitude"
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "description": "WGS 84 longitude"
+          },
+          "day_number": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Day Number"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1440.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "lat",
+          "lon",
+          "day_number"
+        ],
+        "title": "FileVisit",
+        "description": "One row of a past trip's day record."
       },
       "GenerationResult": {
         "properties": {
@@ -5588,6 +6183,59 @@
         ],
         "title": "HealthResponse"
       },
+      "ImportResult": {
+        "properties": {
+          "trips": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedTrip"
+            },
+            "type": "array",
+            "title": "Trips"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "trips"
+        ],
+        "title": "ImportResult"
+      },
+      "ImportedTrip": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "description": "Position of the trip in the file, from 0"
+          },
+          "trip_id": {
+            "type": "string",
+            "title": "Trip Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days",
+            "description": "Days with at least one stop"
+          },
+          "stops": {
+            "type": "integer",
+            "title": "Stops"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "index",
+          "trip_id",
+          "title",
+          "days",
+          "stops"
+        ],
+        "title": "ImportedTrip"
+      },
       "InstallationInfo": {
         "properties": {
           "installation_id": {
@@ -5664,23 +6312,6 @@
               "free_time"
             ],
             "title": "Type"
-          },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
           },
           "place_id": {
             "anyOf": [
@@ -5816,7 +6447,7 @@
                 "type": "null"
               }
             ],
-            "description": "Meals only: the place to eat as the open data describes it"
+            "description": "Restaurant and cafe stops only: its kind"
           },
           "image": {
             "anyOf": [
@@ -5847,7 +6478,6 @@
           "day_id",
           "position",
           "type",
-          "meal_type",
           "place_id",
           "user_place_id",
           "display_name",
@@ -5874,23 +6504,6 @@
               "free_time"
             ],
             "title": "Type"
-          },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
           },
           "place_id": {
             "anyOf": [
@@ -6032,23 +6645,6 @@
             ],
             "title": "Day Index",
             "description": "Move to another day"
-          },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type"
           }
         },
         "additionalProperties": false,
@@ -6376,7 +6972,8 @@
                   "add_place",
                   "remove_place",
                   "add_restaurant",
-                  "edit_stops"
+                  "edit_stops",
+                  "optimize"
                 ]
               },
               {
@@ -6395,6 +6992,18 @@
               }
             ],
             "title": "Target Name"
+          },
+          "restores_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restores Version",
+            "description": "Set when applying that change set restored an earlier version"
           }
         },
         "type": "object",
@@ -6428,39 +7037,35 @@
         ],
         "title": "MapConfig"
       },
-      "MovedItem": {
+      "OptimizeRequest": {
         "properties": {
-          "kind": {
+          "scope": {
             "type": "string",
             "enum": [
-              "visit",
-              "meal"
+              "within_days",
+              "across_days"
             ],
-            "title": "Kind"
+            "title": "Scope",
+            "description": "within_days: no stop changes day; across_days: visits may also change day"
           },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "old_start_time": {
-            "type": "string",
-            "format": "time",
-            "title": "Old Start Time"
-          },
-          "new_start_time": {
-            "type": "string",
-            "format": "time",
-            "title": "New Start Time"
+          "fixed_item_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 400,
+            "title": "Fixed Item Ids",
+            "description": "Stops to keep exactly where they are for this change only, such as the ones with a ticket (documents are on the phone, so the app names them)"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "kind",
-          "name",
-          "old_start_time",
-          "new_start_time"
+          "scope"
         ],
-        "title": "MovedItem"
+        "title": "OptimizeRequest",
+        "description": "Preview a shorter order for the stops of a plan (ADR 029). Nothing changes until the change\nset is applied."
       },
       "Photo": {
         "properties": {
@@ -6592,7 +7197,6 @@
             "type": "string",
             "enum": [
               "attraction",
-              "restaurant",
               "transport_hub",
               "other"
             ],
@@ -6635,32 +7239,6 @@
               }
             ],
             "title": "City Name"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Restaurants; null = unknown"
-          },
-          "venue_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type"
           },
           "distance_m": {
             "anyOf": [
@@ -6720,34 +7298,6 @@
             ],
             "title": "Address"
           },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types"
-          },
-          "diet_flags": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Diet Flags"
-          },
           "default_visit_minutes": {
             "anyOf": [
               {
@@ -6796,8 +7346,6 @@
           "city_name",
           "names_i18n",
           "address",
-          "meal_types",
-          "diet_flags",
           "default_visit_minutes",
           "is_active",
           "wikidata_id",
@@ -7195,7 +7743,6 @@
             "type": "string",
             "enum": [
               "attraction",
-              "restaurant",
               "transport_hub",
               "other"
             ],
@@ -7238,32 +7785,6 @@
               }
             ],
             "title": "City Name"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Restaurants; null = unknown"
-          },
-          "venue_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type"
           },
           "distance_m": {
             "anyOf": [
@@ -7517,221 +8038,26 @@
           "venue_type": {
             "anyOf": [
               {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type",
-            "description": "restaurant or cafe (from the OpenStreetMap amenity tag); null when unknown"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "From the OpenStreetMap cuisine tag; null when the data states no cuisine (shown as 'Cuisine not specified')"
-          }
-        },
-        "type": "object",
-        "required": [
-          "venue_type",
-          "cuisines"
-        ],
-        "title": "RestaurantInfo",
-        "description": "What the open data says about a meal's place to eat. There is no price, rating or opening\nhours."
-      },
-      "RestaurantResult": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name",
-            "description": "Null when the source has no name"
-          },
-          "name_en": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name En",
-            "description": "The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated."
-          },
-          "names": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PlaceName"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The resolved English-facing name with the original local name (ADR 025)"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "attraction",
-              "restaurant",
-              "transport_hub",
-              "other"
-            ],
-            "title": "Kind"
-          },
-          "category": {
-            "type": "string",
-            "title": "Category"
-          },
-          "lat": {
-            "type": "number",
-            "title": "Lat"
-          },
-          "lon": {
-            "type": "number",
-            "title": "Lon"
-          },
-          "region_id": {
-            "type": "string",
-            "title": "Region Id"
-          },
-          "city_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City Id"
-          },
-          "city_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City Name"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Restaurants; null = unknown"
-          },
-          "venue_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type"
-          },
-          "distance_m": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Distance M",
-            "description": "From the search point, if given"
-          },
-          "match": {
-            "anyOf": [
-              {
                 "type": "string",
                 "enum": [
-                  "exact",
-                  "prefix",
-                  "word_prefix",
-                  "contains",
-                  "similar"
+                  "restaurant",
+                  "cafe"
                 ]
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Match"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "breakfast",
-                    "lunch",
-                    "dinner",
-                    "snack"
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types",
-            "description": "Derived from the venue type by the import's fixed rule"
+            "title": "Venue Type",
+            "description": "The kind of the user's place; null when unknown"
           }
         },
         "type": "object",
         "required": [
-          "id",
-          "name",
-          "kind",
-          "category",
-          "lat",
-          "lon",
-          "region_id",
-          "city_id",
-          "city_name"
+          "venue_type"
         ],
-        "title": "RestaurantResult",
-        "description": "An imported place to eat. ``cuisines`` null means the data states none: shown as\n\"Cuisine not specified\"."
+        "title": "RestaurantInfo",
+        "description": "What is known about a restaurant or cafe stop: only its kind. There is no cuisine, meal\ntype, price, rating or opening hours (ADR 026)."
       },
       "RestaurantSearchResponse": {
         "properties": {
@@ -7739,21 +8065,13 @@
             "type": "string",
             "title": "Query"
           },
-          "results": {
-            "items": {
-              "$ref": "#/components/schemas/RestaurantResult"
-            },
-            "type": "array",
-            "title": "Results",
-            "description": "Imported places to eat, searched first"
-          },
           "your_places": {
             "items": {
               "$ref": "#/components/schemas/UserPlace"
             },
             "type": "array",
             "title": "Your Places",
-            "description": "Restaurants you saved before (kind restaurant) whose name matches"
+            "description": "Restaurants and cafes you saved before whose name matches"
           },
           "external": {
             "$ref": "#/components/schemas/ExternalRestaurantStatus"
@@ -7762,343 +8080,10 @@
         "type": "object",
         "required": [
           "query",
-          "results",
           "your_places",
           "external"
         ],
         "title": "RestaurantSearchResponse"
-      },
-      "SlotReason": {
-        "properties": {
-          "code": {
-            "type": "string",
-            "title": "Code"
-          },
-          "text": {
-            "type": "string",
-            "title": "Text"
-          }
-        },
-        "type": "object",
-        "required": [
-          "code",
-          "text"
-        ],
-        "title": "SlotReason"
-      },
-      "SlotRequest": {
-        "properties": {
-          "place_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Place Id",
-            "description": "An imported place to eat"
-          },
-          "user_place_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Place Id",
-            "description": "One of your restaurants (kind restaurant)"
-          },
-          "day": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 60.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Day",
-            "description": "Only this day"
-          },
-          "meal_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Type",
-            "description": "Only this meal"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "SlotRequest",
-        "description": "Suggest where a restaurant fits in a planned itinerary."
-      },
-      "SlotRestaurant": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "venue_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Venue Type"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Null: Cuisine not specified"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "breakfast",
-                    "lunch",
-                    "dinner",
-                    "snack"
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types",
-            "description": "Null: not known"
-          },
-          "meal_types_basis": {
-            "type": "string",
-            "enum": [
-              "venue_type",
-              "you",
-              "unknown"
-            ],
-            "title": "Meal Types Basis"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "venue_type",
-          "cuisines",
-          "meal_types",
-          "meal_types_basis"
-        ],
-        "title": "SlotRestaurant"
-      },
-      "SlotSuggestion": {
-        "properties": {
-          "rank": {
-            "type": "integer",
-            "title": "Rank",
-            "description": "1 is the best slot"
-          },
-          "day": {
-            "type": "integer",
-            "title": "Day"
-          },
-          "meal_type": {
-            "type": "string",
-            "enum": [
-              "breakfast",
-              "lunch",
-              "dinner",
-              "snack"
-            ],
-            "title": "Meal Type"
-          },
-          "start_time": {
-            "type": "string",
-            "format": "time",
-            "title": "Start Time"
-          },
-          "end_time": {
-            "type": "string",
-            "format": "time",
-            "title": "End Time"
-          },
-          "after_item_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "After Item Id",
-            "description": "Pass this, with day and meal_type, to the change-set preview to place the meal here. Null: first in the day"
-          },
-          "after_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "After Name",
-            "description": "The stop before the meal; null: first of the day"
-          },
-          "before_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Before Name",
-            "description": "The stop after the meal; null: last of the day"
-          },
-          "travel_minutes_added": {
-            "type": "integer",
-            "title": "Travel Minutes Added",
-            "description": "Travel the day gains (negative: less). Estimated from the cache and straight-line distance, not routed, unless travel_label says routed"
-          },
-          "travel_label": {
-            "type": "string",
-            "enum": [
-              "routed",
-              "estimated"
-            ],
-            "title": "Travel Label"
-          },
-          "detour_metres": {
-            "type": "integer",
-            "title": "Detour Metres",
-            "description": "Straight-line detour from the stops before and after the meal"
-          },
-          "replaces": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Replaces",
-            "description": "The meal of this type the plan has now, replaced"
-          },
-          "items_moved": {
-            "items": {
-              "$ref": "#/components/schemas/MovedItem"
-            },
-            "type": "array",
-            "title": "Items Moved",
-            "description": "Other items that start at another time"
-          },
-          "reasons": {
-            "items": {
-              "$ref": "#/components/schemas/SlotReason"
-            },
-            "type": "array",
-            "title": "Reasons"
-          },
-          "score": {
-            "type": "integer",
-            "title": "Score",
-            "description": "Lower is better; ties go to the earlier day, then the start"
-          }
-        },
-        "type": "object",
-        "required": [
-          "rank",
-          "day",
-          "meal_type",
-          "start_time",
-          "end_time",
-          "after_item_id",
-          "after_name",
-          "before_name",
-          "travel_minutes_added",
-          "travel_label",
-          "detour_metres",
-          "replaces",
-          "items_moved",
-          "reasons",
-          "score"
-        ],
-        "title": "SlotSuggestion"
-      },
-      "SlotSuggestions": {
-        "properties": {
-          "restaurant": {
-            "$ref": "#/components/schemas/SlotRestaurant"
-          },
-          "suggestions": {
-            "items": {
-              "$ref": "#/components/schemas/SlotSuggestion"
-            },
-            "type": "array",
-            "title": "Suggestions",
-            "description": "At most three, best first"
-          },
-          "slots_considered": {
-            "type": "integer",
-            "title": "Slots Considered",
-            "description": "Day and meal combinations that could be tried"
-          },
-          "issues": {
-            "items": {
-              "$ref": "#/components/schemas/SlotReason"
-            },
-            "type": "array",
-            "title": "Issues",
-            "description": "Why there is nothing to suggest, when empty"
-          }
-        },
-        "type": "object",
-        "required": [
-          "restaurant",
-          "suggestions",
-          "slots_considered",
-          "issues"
-        ],
-        "title": "SlotSuggestions"
       },
       "StopIn": {
         "properties": {
@@ -8352,7 +8337,8 @@
             "enum": [
               "city",
               "area",
-              "route"
+              "route",
+              "place"
             ],
             "title": "Destination Kind"
           },
@@ -8368,7 +8354,64 @@
               }
             ],
             "title": "Destination Ref",
-            "description": "The city or area; not sent for a multi-city trip (route)"
+            "description": "The city or area; not sent for a multi-city trip (route). For a place (ADR 027): photon:N123, geonames:2761369, area:<uuid> or manual"
+          },
+          "destination_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Name",
+            "description": "Only for a place: the name the user chose, stored as a snapshot"
+          },
+          "destination_lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "description": "WGS 84 latitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Lat",
+            "description": "Only for a place"
+          },
+          "destination_lon": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "description": "WGS 84 longitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Lon",
+            "description": "Only for a place"
+          },
+          "destination_country": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Country",
+            "description": "Only for a place: the ISO 3166-1 alpha-2 country code, if known"
           },
           "stops": {
             "anyOf": [
@@ -8412,6 +8455,50 @@
           "duration_days"
         ],
         "title": "TripCreate"
+      },
+      "TripFile": {
+        "properties": {
+          "format": {
+            "type": "string",
+            "const": "detour-trip",
+            "title": "Format",
+            "default": "detour-trip"
+          },
+          "format_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Format Version",
+            "description": "Refused when higher than the server knows"
+          },
+          "exported_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exported At"
+          },
+          "trips": {
+            "items": {
+              "$ref": "#/components/schemas/FileTrip"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Trips"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "format_version",
+          "trips"
+        ],
+        "title": "TripFile",
+        "description": "The contents of ``trip.json`` inside a ``.detour`` file."
       },
       "TripStop": {
         "properties": {
@@ -8533,7 +8620,9 @@
             "type": "string",
             "enum": [
               "city",
-              "attraction"
+              "attraction",
+              "restaurant",
+              "cafe"
             ],
             "title": "Kind"
           },
@@ -8564,9 +8653,45 @@
             "type": "integer",
             "title": "Day Number"
           },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position",
+            "description": "Order within the day; null for a base city row and for rows archived before the day record existed"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time",
+            "description": "HH:MM; null when the stop had no time"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
           "confirmed": {
             "type": "boolean",
-            "title": "Confirmed"
+            "title": "Confirmed",
+            "description": "Visited. Set when archived; the user can clear it"
           }
         },
         "type": "object",
@@ -8578,9 +8703,13 @@
           "lon",
           "geo_place_ref",
           "day_number",
+          "position",
+          "start_time",
+          "duration_minutes",
           "confirmed"
         ],
-        "title": "TripVisit"
+        "title": "TripVisit",
+        "description": "One stop of a past trip's day record, or one of its base cities (ADR 006, ADR 026)."
       },
       "TripVisitUpdate": {
         "properties": {
@@ -8608,7 +8737,8 @@
             "enum": [
               "city",
               "location",
-              "restaurant"
+              "restaurant",
+              "cafe"
             ],
             "title": "Kind"
           },
@@ -8623,34 +8753,6 @@
           "lon": {
             "type": "number",
             "title": "Lon"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types"
           },
           "source": {
             "type": "string",
@@ -8700,8 +8802,6 @@
           "name",
           "lat",
           "lon",
-          "cuisines",
-          "meal_types",
           "source",
           "search_provider",
           "search_ref",
@@ -8717,7 +8817,8 @@
             "enum": [
               "city",
               "location",
-              "restaurant"
+              "restaurant",
+              "cafe"
             ],
             "title": "Kind"
           },
@@ -8740,38 +8841,6 @@
             "minimum": -180.0,
             "title": "Lon",
             "description": "WGS 84 longitude"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array",
-                "maxItems": 10
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines",
-            "description": "Restaurants only"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array",
-                "maxItems": 4
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types",
-            "description": "Restaurants only"
           },
           "source": {
             "type": "string",
@@ -8864,34 +8933,6 @@
               }
             ],
             "title": "Lon"
-          },
-          "cuisines": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cuisines"
-          },
-          "meal_types": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meal Types"
           }
         },
         "additionalProperties": false,

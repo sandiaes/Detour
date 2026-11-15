@@ -70,7 +70,7 @@ PostgreSQL + PostGIS   Valhalla (FOSSGIS     External, backend-only, cached:
  app schema: user data
 
 Offline pipeline (CLI, not request path):
- Geofabrik .osm.pbf ─┬─► POI/restaurant import ─► geo schema
+ Geofabrik .osm.pbf ─┬─► attraction import ─► geo schema
                      └─► Valhalla tile build
  GeoNames dump ─► gazetteer      Wikidata ─► notability, English names (ADR 025, lazy)
 ```
@@ -81,6 +81,12 @@ All services except the tile host run from one Docker Compose file in developmen
 ## 4. Components
 
 ### 4.1 Mobile app
+
+- **Trip export and import (ADR 028):** `src/exchange/`. The backend assembles the trip as JSON
+  (`GET /v1/trips/{id}/export`) and writes an imported trip as a new place trip with a manual plan
+  (`POST /v1/trips/import`); the phone adds the documents, zips them with `fflate` into a `.detour`
+  file and hands it to the system share sheet (`expo-sharing`). Detour uploads nothing. Opening a
+  `.detour` file with the app (an Android intent filter) goes to the Import screen.
 
 - Expo SDK 58, TypeScript, Continuous Native Generation with config plugins; no hand-edited
   native projects. This keeps the iOS build a configuration task, not a port.
@@ -173,7 +179,8 @@ rows needs the installation token. Errors are `{"detail", "code"}` with a stable
 |---|---|
 | `GET /v1/regions` | Import regions, status (`available` only if every ADR 009 gate passed), data version |
 | `GET /v1/attributions` | Credits to show: OpenStreetMap, GeoNames, map tiles |
-| `GET /v1/destinations/search` | Cities (GeoNames) and areas (OSM boundaries) by name; accents, case and alternate names ignored; each result says whether its region can be planned. `include_external=true` asks Photon only if nothing matches locally |
+| `GET /v1/trips/{id}/export`, `GET /v1/trips/export`, `POST /v1/trips/import` | The trip file (ADR 028): one trip or every trip as JSON of `format: "detour-trip"`, `format_version: 1`, and the import of such a file as new trips, all or nothing; no identifier of ours is in it |
+| `GET /v1/destinations/search` | Cities (GeoNames) and areas (OSM boundaries) by name; accents, case and alternate names ignored; each result says whether its region can be planned. `include_external=true` asks Photon only if nothing matches locally, or always with `also_if_found=true` (ADR 027: the app's "Search more widely"); a Photon result becomes a `place` trip destination (snapshot, no `geo` row; suggestions are refused with `destination_not_plannable`) |
 | `GET /v1/places/search`, `GET /v1/places/{id}` | Imported places by name and/or around a point; a place with its provenance and licence |
 | `POST/GET/PATCH/DELETE /v1/trips`, `POST/GET /v1/trips/{id}/archive`, `GET/PATCH …/visits` | Trips (city or area destination, days, optional start date; no currency, budget or price bands since ADR 017) and the past-trip archive (ADR 006): marked by the user or made when reading the trips two days after the last day; `GET …/archive` reports its size |
 | `POST/GET /v1/trips/{id}/itineraries`, `GET/DELETE /v1/itineraries/{id}` | Manual (empty) itineraries and their days; engine itineraries arrive in Phase 4 |
@@ -198,11 +205,11 @@ The engine is `detour_api/planner/` (section 5); its reads and writes are `repo/
 edits of items delete transfers that no longer join neighbours (they are not recomputed; adding or
 removing a place through a change set, section 4.2.5, recalculates the days it changes).
 
-#### 4.2.4 Phase 6 API (ADR 016)
+#### 4.2.4 Phase 6 API (ADR 016; meals removed by ADR 026)
 
-- Generated itineraries contain **meals** (`type = meal`, `meal_type` breakfast, lunch, snack or
-  dinner) at imported places to eat; each meal item carries `restaurant: {venue_type, cuisines}`,
-  read from `geo` by identifier (cuisines null when the data states none).
+- Generated itineraries contain **sights only**. A restaurant or café stop (`type = meal`) is one the
+  user added; it carries `restaurant: {venue_type}` (restaurant or cafe, from the user's place) and no
+  meal type or cuisine.
 - Days carry `base_city_name` and, on the first day at a new base city of an area, `arrival`: the
   drive from the previous base (mode, seconds, metres, `routed` or `estimated`). For a multi-city
   trip (ADR 024) a leg into or out of a country travelled by rail is `mode` and `confidence`
@@ -246,9 +253,10 @@ timings), `repo/changes.py` and `repo/plan_state.py`. User places may now carry 
 2. `osmium tags-filter` keeps the candidate objects;
 3. `osm2pgsql` (flex output, `importer/osm.lua`) loads them into a temporary PostGIS;
 4. Python applies the selection rule (`importer/selection.py`, ADR 003 and ADR 011), derives
-   places, restaurant profiles and signals, and counts every exclusion by class and reason;
+   places and signals, and counts every exclusion by class and reason (restaurants and cafes are
+   not candidates, ADR 026);
 5. the rows are loaded into Supabase through the session-mode pooler in one transaction, the
-   report is checked against the database, the six ADR 009 gates are evaluated, and the region
+   report is checked against the database, gates 4 to 6 of ADR 009 are evaluated, and the region
    becomes `available` or `disabled`.
 
 Run twice on the same extract, it leaves identical data (tested). The original design follows.
@@ -256,7 +264,7 @@ Run twice on the same extract, it leaves identical data (tested). The original d
 A command-line job, run by the operator, that makes a region usable:
 
 1. Download the region's OSM extract.
-2. Filter and load attractions, restaurants and other relevant features into `geo.place` with
+2. Filter and load attractions and other relevant features into `geo.place` with
    their source tags preserved.
 3. Apply the attraction selection rule (ADR 003): wayside shrines and crosses, boundary stones,
    bomb craters and memorials without a `wikidata` tag are not imported. Count what was excluded.
@@ -264,7 +272,7 @@ A command-line job, run by the operator, that makes a region usable:
 5. Fetch Wikidata signals for places that carry a `wikidata` tag.
 6. Build Valhalla tiles from the same extract.
 7. Record an `import_run` with source dates and counts, and publish a **data quality report**
-   (how many places, share with cuisine, share with Wikidata link, objects excluded per class).
+   (how many places, share with Wikidata link, objects excluded per class).
 
 The MVP supports operator-imported **pilot regions**: Japan, Italy, Austria, Czechia and
 Hungary (D2). A
@@ -303,18 +311,15 @@ Any failure (adapter off, provider down, budget used, rate limit, time limit, un
 gives the labelled estimate, so planning stays available. Details and unverified assumptions:
 ADR 013.
 
-#### 4.2.6 Phase 8 API (ADR 019)
+#### 4.2.6 Phase 8 API (ADR 019; **reduced by ADR 026**)
+
+`POST /v1/itineraries/{id}/restaurant-suggestions` and the change-set action `add_restaurant` are
+**removed**, and so are `planner/restaurant_slots.py` and the imported restaurants. What remains:
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /v1/restaurants/search` | Restaurants: imported places first (cuisines null when the data states none), then the user's saved restaurants, then, with `include_external` and only when both are empty, Photon through the backend (restaurants and cafés only, with venue type and meal types by the import's fixed rule, no cuisine). Manual entry is `POST /v1/user-places` with kind `restaurant` |
-| `POST /v1/itineraries/{id}/restaurant-suggestions` | Up to three day and meal slots for a restaurant (`place_id` or `user_place_id`, optionally limited to a `day` or `meal_type`): each with its times, the stops around it, the estimated detour and its label, the items that start at another time, the meal it replaces, a score and reasons rendered through fixed templates. Nothing is stored. `422 recalculation_impossible` with `issues` |
-| `POST /v1/itineraries/{id}/change-sets` | Action `add_restaurant` (`place_id` or `user_place_id`, `day`, `meal_type`, `after_item_id`) previews the chosen slot like any change set (ADR 018) |
-
-Code: `planner/restaurant_slots.py` (scoring, suggestions, placing), `Entry.floating` in
-`planner/recalc.py` (a meal whose time the layout finds inside its window),
-`revision_validator.py` (`added_meal`), `routers/restaurants.py`, `repo/changes.py`
-(`load_restaurant_context`, `load_dining`).
+| `GET /v1/restaurants/search` | Restaurants and cafés: the user's saved ones first, then, with `include_external` and only when none matches, Photon through the backend (restaurants and cafés only, each with its `venue_type`; no cuisine, no meal types). Manual entry is `POST /v1/user-places` with kind `restaurant` or `cafe` |
+| `POST /v1/itineraries/{id}/days/{n}/items` | Places the stop (`type = meal`, `user_place_id`) on the day and time the user chose, with a default length of 75 minutes (restaurant) or 45 (café); no preview |
 
 ### 4.6 Other services
 
@@ -322,8 +327,8 @@ Code: `planner/restaurant_slots.py` (scoring, suggestions, placing), `Entry.floa
   the region's places; if nothing suitable is found and the caller asked for it, a Photon query
   through the backend (`adapters/photon.py`: User-Agent, timeout, cache, daily budget, pause on
   failure); finally a manual entry (name plus map pin) saved as a user place. Restaurant search
-  (Phase 8) follows the same order with its own endpoint and a tag filter that is checked again on
-  the way back (ADR 019).
+  (Phase 8) searches the user's saved places, then Photon, with its own endpoint and a tag filter that
+  is checked again on the way back (ADR 019, ADR 026).
 - **FX service:** removed (ADR 017): the app has no currencies or prices.
 
 ### 4.7 Place names (ADR 025)
@@ -382,6 +387,14 @@ Destination (a city or an area), trip length in days, optional start date, and i
 has added or locked. Defaults that the user does not see as features: day window (for example
 09:00–22:00), meal windows, and walking threshold. These live in a versioned configuration file.
 
+> **ADR 026 (proposed, 2026-11-14; planner step built):** the engine (`planner-3.0.0`) produces
+> **sights only**: no meals, no restaurant lookup, one unplanned 90-minute midday gap per day
+> (`planner/daylayout.py`, idle time, not an item), a 09:00–20:00 window, and recalculation that
+> keeps that gap and treats a restaurant or café stop as fixed. The Phase 8 slot engine (section
+> 4.2.6, section 5.4 "Add a restaurant") is **removed**: a restaurant is a stop the user adds with a
+> chosen day and time. Restaurants, cafés and cuisines have left `geo` and the API (migration `0014`). Sections
+> below that mention meals describe the engine before this change.
+
 ### 5.2 Pipeline
 
 1. **Scope.** Resolve the destination to a geometry. For an area, select candidate base cities
@@ -432,6 +445,26 @@ makes them distinct even when their visits overlap more than 60 %.
 
 ### 5.4 Edits and recalculation
 
+> **As built, [ADR 029](decisions/029-optimize-a-hand-made-trip.md):** **Optimize** is a change-set
+> action (`optimize`, migration `0017`) for a plan of any profile and any destination kind, through
+> `POST /v1/itineraries/{id}/optimize` (`scope` `within_days` or `across_days`, optional
+> `fixed_item_ids`) and `.../optimize/undo`. `planner/optimize.py` searches from the current order
+> and accepts only strictly improving moves (2-opt, relocate, swap; first improvement in index
+> order), so the proposal is never longer. Travel minutes are summed over the legs between
+> consecutive stops with a place (none across a free-time block). Every stop is kept. A restaurant
+> or café keeps its day and starts at its chosen time or up to 60 minutes later, never after 21:00;
+> locked and kept (`fixed_item_ids`) stops and free-time blocks keep day, start and end; a day may
+> not end later than the later of the day window end, its own current end and a restaurant's end at
+> its latest start. Empty days stay empty and a day with stops keeps at least one (a day boundary
+> has no travel, so otherwise the search would spread stops over empty days). A multi-city trip's
+> visit stays in the days of its nearest stop's city; on a place trip a visit further than 25 km
+> from the trip's point keeps its day. The search uses cached times and labelled estimates, then
+> the provider is asked for the legs of the changed days (current and proposed order, so the saving
+> compares like with like) and the search runs again, at most twice. `planner/optimize_validator.py`
+> checks every proposal independently. Applying makes a new version; undo restores the version
+> before it while nothing changed the plan since. It is deterministic and a heuristic: "a shorter
+> order, not necessarily the shortest".
+
 - **Add a city or location.** The new place becomes a mandatory visit. The engine re-solves with
   a **stability cost** that penalises moving existing items to another day or reordering them,
   and never moves locked items. If the place is another city, day allocation is recomputed. The
@@ -448,7 +481,8 @@ makes them distinct even when their visits overlap more than 60 %.
   out again in their windows at imported places to eat. Unchanged days are copied exactly. An
   independent validator checks every proposal. Removing the place the latest accepted change added
   restores the stored previous version exactly (undo through versioning).
-- **Add a restaurant.** For each day and each meal slot, the engine computes: the extra travel
+- **Add a restaurant.** *(Removed by ADR 026: the user chooses the day and time; the text below
+  describes the removed slot engine.)* For each day and each meal slot, the engine computes: the extra travel
   caused by inserting it between the
   neighbouring items; the shift imposed on later items; whether the slot already has a meal; and
   how well the venue type suits the meal (opening hours are out of scope, ADR 003). The lowest-cost slot wins,

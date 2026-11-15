@@ -22,7 +22,9 @@ import { useResource } from "../data/DataProvider";
 import {
   type VisitGroup,
   VISIT_KIND_LABEL,
+  dayRecord,
   groupVisitsByCity,
+  stopRecordLine,
   visitCounts,
   visitedPoints,
 } from "../domain/pastTrip";
@@ -32,7 +34,8 @@ import { formatBytes, formatDayLabel, formatTripSpan, pluralise } from "../util/
 
 type Row =
   | { type: "city"; key: string; group: VisitGroup }
-  | { type: "visit"; key: string; visit: TripVisit; startDate: string | null };
+  | { type: "day"; key: string; day: number; startDate: string | null }
+  | { type: "visit"; key: string; visit: TripVisit; startDate: string | null; withDay: boolean };
 
 function rowsOf(groups: VisitGroup[], startDate: string | null): Row[] {
   return groups.flatMap((group) => [
@@ -42,12 +45,28 @@ function rowsOf(groups: VisitGroup[], startDate: string | null): Row[] {
       key: visit.id,
       visit,
       startDate,
+      withDay: true,
     })),
   ]);
 }
 
-/** A past trip (ADR 006): the cities and attractions that were visited, on a map and as a list
- * grouped by city. There are no routes or travel times: the archive does not keep them. */
+/** The day record as rows: a heading for each day, then its stops with their times. */
+function daysOf(visits: TripVisit[], startDate: string | null): Row[] {
+  return dayRecord(visits).flatMap(({ day, stops }) => [
+    { type: "day" as const, key: `d:${day}`, day, startDate },
+    ...stops.map((visit) => ({
+      type: "visit" as const,
+      key: visit.id,
+      visit,
+      startDate,
+      withDay: false,
+    })),
+  ]);
+}
+
+/** A past trip (ADR 006, ADR 026): the stops that were visited, on a map, as the day-by-day record
+ * and as a list grouped by city. There are no routes or travel times: the archive does not keep
+ * them. */
 export function PastTripScreen({ tripId }: { tripId: string }) {
   const nav = useNavigation();
   const { state } = useBackend();
@@ -59,7 +78,7 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
   const archive = useResource<ArchiveInfo>(keys.archive(tripId), (c) =>
     call(c.GET("/v1/trips/{trip_id}/archive", { params: { path: { trip_id: tripId } } })),
   );
-  const [view, setView] = useState<"map" | "list">("map");
+  const [view, setView] = useState<"map" | "days" | "list">("map");
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -70,6 +89,7 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
     [all, trip],
   );
   const rows = useMemo(() => rowsOf(groups, trip?.start_date ?? null), [groups, trip?.start_date]);
+  const days = useMemo(() => daysOf(all ?? [], trip?.start_date ?? null), [all, trip?.start_date]);
   const points = useMemo(() => (all ? visitedPoints(all) : []), [all]);
 
   if (trips.data === undefined || all === undefined) {
@@ -121,9 +141,11 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
     }
   };
 
-  const summary =
-    `${pluralise(counts.cities, "city", "cities")} and ` +
-    `${pluralise(counts.attractions, "attraction")} visited`;
+  const summary = counts.placesToEat
+    ? `${pluralise(counts.cities, "city", "cities")}, ${pluralise(counts.attractions, "attraction")} ` +
+      `and ${pluralise(counts.placesToEat, "place")} to eat visited`
+    : `${pluralise(counts.cities, "city", "cities")} and ` +
+      `${pluralise(counts.attractions, "attraction")} visited`;
 
   const header = (
     <View>
@@ -160,12 +182,20 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
           testID="past-trip-documents"
           onPress={() => nav.push({ name: "tripDocuments", tripId })}
         />
+        <ListRow
+          icon="export"
+          title="Export trip"
+          detail="A file with this trip, to keep or share"
+          testID="past-trip-export"
+          onPress={() => nav.push({ name: "exportTrips", tripId })}
+        />
       </RowGroup>
       <ResourceNotices resource={visits} noun="this trip" />
       {problem ? <Notice tone="error">{problem}</Notice> : null}
-      <Tabs<"map" | "list">
+      <Tabs<"map" | "days" | "list">
         items={[
           { key: "map", label: "Map", accessibilityLabel: "Show the map" },
+          { key: "days", label: "Days", accessibilityLabel: "Show the days" },
           { key: "list", label: "List", accessibilityLabel: "Show the list by city" },
         ]}
         value={view}
@@ -210,18 +240,30 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
     );
   }
 
+  const shown = view === "days" ? days : rows;
   return (
     <View style={styles.fill}>
       <FlatList
-        data={rows}
+        data={shown}
         keyExtractor={(r) => r.key}
         ListHeaderComponent={header}
         contentContainerStyle={styles.list}
         initialNumToRender={14}
         maxToRenderPerBatch={14}
         windowSize={7}
+        ListEmptyComponent={
+          <EmptyState
+            title="No stops were kept by day"
+            text="This trip was archived before days were kept. Its places are in the list and on the map."
+            action={{ label: "Show the list", onPress: () => setView("list") }}
+          />
+        }
         renderItem={({ item }) =>
-          item.type === "city" ? (
+          item.type === "day" ? (
+            <Text accessibilityRole="header" style={styles.dayHeading}>
+              {formatDayLabel(item.startDate, item.day)}
+            </Text>
+          ) : item.type === "city" ? (
             <CityHeader
               group={item.group}
               busy={busy === item.group.city?.id}
@@ -232,6 +274,7 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
             <VisitRow
               visit={item.visit}
               startDate={item.startDate}
+              withDay={item.withDay}
               busy={busy === item.visit.id}
               disabled={busy !== null || !actions.connected}
               onToggle={toggle}
@@ -302,7 +345,11 @@ function CityHeader({
         </Text>
         <Text style={styles.meta}>
           {city ? `${VISIT_KIND_LABEL.city} · ${skipped ? "skipped" : "visited"}` : "Destination"}
-          {` · ${pluralise(group.visits.length, "attraction")}`}
+          {` · ${
+            group.visits.every((v) => v.kind === "attraction")
+              ? pluralise(group.visits.length, "attraction")
+              : pluralise(group.visits.length, "stop")
+          }`}
         </Text>
       </View>
       {city ? (
@@ -315,23 +362,32 @@ function CityHeader({
 function VisitRow({
   visit,
   startDate,
+  withDay,
   busy,
   disabled,
   onToggle,
 }: {
   visit: TripVisit;
   startDate: string | null;
+  /** The list by city says the day; the day record is already under a day heading. */
+  withDay: boolean;
   busy: boolean;
   disabled: boolean;
   onToggle: (v: TripVisit) => Promise<void>;
 }) {
   return (
     <View style={styles.visitRow}>
-      <KindIcon kind="attraction" size={16} color={visit.confirmed ? undefined : colors.muted} />
+      <KindIcon
+        kind={visit.kind === "city" ? "other" : visit.kind}
+        size={16}
+        color={visit.confirmed ? undefined : colors.muted}
+      />
       <View style={styles.rowText}>
         <Text style={[styles.visitName, !visit.confirmed && styles.skipped]}>{visit.name}</Text>
         <Text style={styles.meta}>
-          {formatDayLabel(startDate, visit.day_number)}
+          {withDay
+            ? `${formatDayLabel(startDate, visit.day_number)}${visit.kind === "attraction" ? "" : ` · ${VISIT_KIND_LABEL[visit.kind]}`}`
+            : stopRecordLine(visit)}
           {visit.confirmed ? "" : " · skipped"}
         </Text>
       </View>
@@ -364,6 +420,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginLeft: spacing.lg + 2,
     paddingRight: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  dayHeading: {
+    ...type.body,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,

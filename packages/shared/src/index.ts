@@ -14,6 +14,9 @@ export type InstallationInfo = components["schemas"]["InstallationInfo"];
 
 // Trips, itineraries and search (Phases 2 and 4).
 export type Trip = components["schemas"]["Trip"];
+export type TripFile = components["schemas"]["TripFile"];
+export type FileTrip = components["schemas"]["FileTrip"];
+export type ImportResult = components["schemas"]["ImportResult"];
 export type TripCreate = components["schemas"]["TripCreate"];
 export type Itinerary = components["schemas"]["Itinerary"];
 export type ItinerarySummary = components["schemas"]["ItinerarySummary"];
@@ -40,17 +43,15 @@ export type UserPlaceUpdate = components["schemas"]["UserPlaceUpdate"];
 // Adding and removing places (Phase 7, ADR 018).
 export type ChangeSet = components["schemas"]["ChangeSet"];
 export type ChangeSetCreate = components["schemas"]["ChangeSetCreate"];
+export type OptimizeRequest = components["schemas"]["OptimizeRequest"];
+export type ItineraryVersion = components["schemas"]["ItineraryVersion"];
 export type ItemCreate = components["schemas"]["ItemCreate"];
 export type PlaceSuggestionRequest = components["schemas"]["PlaceSuggestionRequest"];
 export type PlaceSuggestion = components["schemas"]["PlaceSuggestion"];
 export type PlaceSuggestions = components["schemas"]["PlaceSuggestions"];
 export type ChangeDiff = components["schemas"]["ChangeDiff"];
-export type RestaurantResult = components["schemas"]["RestaurantResult"];
 export type ExternalRestaurant = components["schemas"]["ExternalRestaurant"];
 export type RestaurantSearchResponse = components["schemas"]["RestaurantSearchResponse"];
-export type SlotRequest = components["schemas"]["SlotRequest"];
-export type SlotSuggestion = components["schemas"]["SlotSuggestion"];
-export type SlotSuggestions = components["schemas"]["SlotSuggestions"];
 export type ChangeSetApplied = components["schemas"]["ChangeSetApplied"];
 
 // The past-trips archive (ADR 006).

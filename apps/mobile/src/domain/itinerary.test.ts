@@ -6,6 +6,7 @@ import {
   boundsOf,
   buildDayRows,
   dayTotals,
+  freeStretch,
   mapPoints,
   transferFeatures,
   transportFeature,
@@ -25,6 +26,7 @@ test("rows alternate items and the transfer that follows them", () => {
     "transfer",
     "item",
     "transfer",
+    "free", // the fixture day leaves an idle stretch before its last stop
     "item",
   ]);
   expect(
@@ -125,8 +127,38 @@ test("stopSummary says what a stop is and how long it lasts", () => {
   expect(d1.items.map(stopSummary)).toEqual([
     "Attraction · 2 h",
     "Attraction · 1 h 30 min",
-    "Lunch · Restaurant · 1 h",
+    "Restaurant · 1 h",
     "Attraction · 1 h",
-    "Dinner · Restaurant · 1 h 30 min",
+    "Café · 1 h 30 min",
   ]);
+});
+
+describe("free time (ADR 026): an idle stretch read from the times, never stored", () => {
+  const stop = (end: string, next: string, travelSeconds = 0) => {
+    const day = structuredClone(day1);
+    const [a, b] = day.items as [(typeof day.items)[0], (typeof day.items)[0]];
+    a.end_time = end;
+    a.transfer = travelSeconds
+      ? { ...(a.transfer ?? ({} as never)), to_item_id: b.id, seconds: travelSeconds }
+      : null;
+    b.start_time = next;
+    return freeStretch(a, b);
+  };
+
+  test("the stretch starts after the travel and ends when the next stop starts", () => {
+    expect(stop("12:00", "14:00", 15 * 60)).toEqual({ start: "12:15", end: "14:00", minutes: 105 });
+  });
+
+  test("less than 30 minutes is slack, not free time", () => {
+    expect(stop("12:00", "12:29")).toBeNull();
+    expect(stop("12:00", "12:30")).toEqual({ start: "12:00", end: "12:30", minutes: 30 });
+    expect(stop("12:00", "12:45", 20 * 60)).toBeNull(); // travel uses it up
+  });
+
+  test("a stop without times gives no free time", () => {
+    const day = structuredClone(day1);
+    const [a, b] = day.items as [(typeof day.items)[0], (typeof day.items)[0]];
+    a.end_time = null;
+    expect(freeStretch(a, b)).toBeNull();
+  });
 });

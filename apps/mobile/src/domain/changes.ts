@@ -13,17 +13,6 @@ export type DiffSection = {
   lines: string[];
 };
 
-const MEAL: Record<string, string> = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  snack: "Afternoon snack",
-  dinner: "Dinner",
-};
-
-function what(kind: string, name: string, meal: string | null | undefined): string {
-  return kind === "meal" && meal ? `${MEAL[meal] ?? "Meal"} at ${name}` : name;
-}
-
 const clock = (t: string) => formatClock(t) ?? t;
 
 /** "+25 min travel", "−10 min travel" or "No change in travel time". */
@@ -41,7 +30,7 @@ export function diffSections(diff: ChangeDiff): DiffSection[] {
       title: "Added",
       lines: diff.added.map(
         (a) =>
-          `Day ${a.day}, ${clock(a.start_time)}: ${what(a.kind, a.name, a.meal_type)}` +
+          `Day ${a.day}, ${clock(a.start_time)}: ${a.name}` +
           (a.added_by_you ? " (your addition)" : ""),
       ),
     });
@@ -51,9 +40,7 @@ export function diffSections(diff: ChangeDiff): DiffSection[] {
       key: "removed",
       title: "Left out of the plan",
       warn: true,
-      lines: diff.removed.map(
-        (r) => `Day ${r.day}, ${clock(r.start_time)}: ${what(r.kind, r.name, r.meal_type)}`,
-      ),
+      lines: diff.removed.map((r) => `Day ${r.day}, ${clock(r.start_time)}: ${r.name}`),
     });
   }
   if (diff.moved.length) {
@@ -80,8 +67,7 @@ export function diffSections(diff: ChangeDiff): DiffSection[] {
       key: "retimed",
       title: `New times (${pluralise(diff.retimed.length, "item")})`,
       lines: diff.retimed.map(
-        (r) =>
-          `Day ${r.day}: ${what(r.kind, r.name, r.meal_type)} ${clock(r.old_start_time)} → ${clock(r.new_start_time)}`,
+        (r) => `Day ${r.day}: ${r.name} ${clock(r.old_start_time)} → ${clock(r.new_start_time)}`,
       ),
     });
   }

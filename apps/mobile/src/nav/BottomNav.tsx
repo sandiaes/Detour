@@ -30,7 +30,7 @@ export function showsBottomNav(route: Route, depth: number): boolean {
 
 /** The trip the current screen belongs to, if any. */
 export function tripContext(route: Route): string | null {
-  return TRIP_SCREENS.has(route.name) && "tripId" in route ? route.tripId : null;
+  return TRIP_SCREENS.has(route.name) && "tripId" in route ? (route.tripId ?? null) : null;
 }
 
 function rootOf(route: Route): RootName {

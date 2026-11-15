@@ -2,3 +2,4 @@ jest.mock("@maplibre/maplibre-react-native", () => require("./src/testing/maplib
 jest.mock("expo-sqlite", () => ({ openDatabaseAsync: jest.fn() }));
 // The native file module is never reached in tests: screens get testing/fakeFiles.ts.
 jest.mock("expo-file-system", () => ({ Directory: class {}, File: class {}, Paths: {} }));
+jest.mock("expo-sharing", () => ({ isAvailableAsync: jest.fn(), shareAsync: jest.fn() }));

@@ -12,7 +12,7 @@ All integers; ties go to the earlier day, then the earlier position. No randomne
 
 **Items that never move.** A ``locked`` item keeps its day, its start and its end (a fixed block
 that the day is laid out around), and is never removed. Items the user added (``origin = user``)
-are mandatory: a recalculation never leaves one out. A meal the user added stays where it is.
+are mandatory: a recalculation never leaves one out. A restaurant or café stays where it is.
 
 **Adding a place** (it becomes a mandatory visit, reason ``ADDED_BY_YOU``):
 
@@ -28,12 +28,13 @@ are mandatory: a recalculation never leaves one out. A meal the user added stays
   they fit, else they are left out. Days with locked items or items the user added are not
   re-allocated.
 
-**Removing a place** takes the visit out of its day and lays the day out again (its meals follow).
+**Removing a place** takes the visit out of its day and lays the day out again.
 Undoing an addition exactly is the job of versioning (``repo/changes.py``), not of this module.
 
-**Meals move with the day** and stay at imported places to eat (ADR 016): a changed day's meals
-are laid out again in their windows, keeping the place to eat the day had for that meal when it is
-still within reach, else choosing one as the engine does.
+**Restaurants and cafes are fixed stops** (ADR 026): a recalculation never adds, moves or removes
+one. A restaurant or café stop (one the user added, or one a plan made before ADR 026 holds) keeps
+its day and its times and the sights are laid out around it. A changed day keeps the engine's
+unplanned midday gap (``daylayout.gap_start``) unless it holds such a stop around midday.
 
 **Travel times:** cached times and labelled estimates while choosing; then the changed days' legs
 are asked of the travel source with the provider allowed (if ``use_provider``), the days are laid
@@ -51,9 +52,9 @@ from datetime import date
 from typing import Literal
 
 from detour_api.planner import scoring
-from detour_api.planner.config import DEFAULT_CONFIG, MealType, PlannerConfig, Profile
+from detour_api.planner.config import DEFAULT_CONFIG, PlannerConfig, Profile
+from detour_api.planner.daylayout import gap_start
 from detour_api.planner.durations import visit_minutes
-from detour_api.planner.meals import Choice, RestaurantIndex, choose, detour_m
 from detour_api.planner.reasons import ITEM_TEMPLATES
 from detour_api.planner.sequencer import HeuristicSequencer, Sequencer, SequencingProblem
 from detour_api.planner.travel import Cell, TravelLookup, TravelSource, minutes
@@ -66,22 +67,15 @@ from detour_api.planner.types import (
     NoteParams,
     PlanningImpossible,
     PlanStats,
-    Restaurant,
 )
 from detour_api.travel.types import Coord, TravelTime, distance_m
 
-RECALC_VERSION = "recalc-1.1.0"
+RECALC_VERSION = "recalc-2.0.0"
 FOLLOW_UP_FETCHES = 2
 # How many of the cheapest insertion positions (by added travel) are laid out in full.
 POSITIONS_TRIED = 4
 
 _REASON_ORDER = {code: i for i, code in enumerate(ITEM_TEMPLATES)}
-_WINDOW_REASON = {
-    "breakfast": "BREAKFAST_WINDOW",
-    "lunch": "LUNCH_WINDOW",
-    "snack": "SNACK_WINDOW",
-    "dinner": "DINNER_WINDOW",
-}
 # Notes a recalculation replaces (they describe the plan's current shape or the last change).
 REPLACED_NOTES = frozenset(
     {
@@ -106,7 +100,7 @@ class RecalcConfig:
     """Recalculation settings (planning choices, not facts). Part of the configuration version
     stored on a recalculated itinerary."""
 
-    version: str = "2026-11-13.2"
+    version: str = "2026-11-14.1"
     # An addition farther than this (straight line) from every base city of the plan gets a day
     # at a new base. The same distance ADR 016 keeps between bases.
     new_base_min_m: int = 20_000
@@ -119,23 +113,6 @@ class RecalcConfig:
     retime_cost: int = 5
     # The sequencer value given to the added place on a new base day, so it is always planned.
     pinned_value: int = 1_000_000_000
-
-    # -- adding a restaurant (Phase 8, ADR 019; restaurant_slots.py) -----------------------------
-    # How many slots are suggested.
-    slot_suggestions: int = 3
-    # Location: the straight-line detour from the neighbouring items costs one unit per this many
-    # metres (so 400 m costs 20, two minutes of Essentials travel).
-    slot_detour_m_per_unit: int = 20
-    # Other items that start at another time: retime_cost each, plus this per minute of shift.
-    slot_shift_minute_cost: int = 1
-    # Waiting at the restaurant for the meal window to open, per minute.
-    slot_wait_minute_cost: int = 2
-    # The new meal replaces a meal the plan has (the engine's meal of that type is lost).
-    slot_replace_meal_cost: int = 200
-    # Its cuisine is already in a meal of this day or the days either side.
-    slot_cuisine_repeat_cost: int = 150
-    # The meals the place serves are unknown (it is judged by place and timing alone).
-    slot_meal_unknown_cost: int = 100
 
 
 DEFAULT_RECALC = RecalcConfig()
@@ -157,7 +134,8 @@ def entry_key(kind: str, place_id: str | None, user_place_id: str | None) -> str
 
 @dataclass(frozen=True)
 class Entry:
-    """A timed visit or meal of a plan."""
+    """A timed visit or meal of a plan. Since ADR 026 a meal is a restaurant or café stop the user
+    added, or one a plan made before ADR 026 holds: it keeps its day and times."""
 
     key: str
     kind: Literal["visit", "meal"]
@@ -176,13 +154,7 @@ class Entry:
     user_place_id: str | None = None
     # Visits: the attraction's category (None for a user place or when unknown). Meals: venue.
     category: str | None = None
-    meal_type: MealType | None = None
-    cuisines: tuple[str, ...] | None = None
     item_id: str | None = None  # the stored item it continues; None for a new one
-    # A meal the user is adding (Phase 8, ADR 019) whose time the layout still has to find: it
-    # starts when its window opens or when the traveller arrives, whichever is later. Never stored:
-    # the layout's result is a fixed meal.
-    floating: bool = False
 
     @property
     def coord(self) -> Coord:
@@ -190,8 +162,9 @@ class Entry:
 
     @property
     def fixed(self) -> bool:
-        """Keeps its day and its times: a locked item, or a meal the user added."""
-        return self.locked or (self.kind == "meal" and self.origin == "user" and not self.floating)
+        """Keeps its day and its times: a locked item, or any restaurant or café stop (ADR 026:
+        the user chooses when to eat; a recalculation lays the sights out around it)."""
+        return self.locked or self.kind == "meal"
 
     @property
     def mandatory(self) -> bool:
@@ -271,7 +244,6 @@ class RecalcInput:
     notes: tuple[Note, ...]  # the plan's current notes
     bases: Mapping[int, BaseCity]  # every base city of the plan, by id
     candidates: Sequence[Candidate]  # sights around the bases (and the addition)
-    restaurants: Sequence[Restaurant]
     towns: Sequence[BaseCity] = ()  # possible new bases near the addition
     # A country planned as single-city trips (Japan, app plan D4): no new base cities.
     single_city: bool = False
@@ -300,15 +272,14 @@ class Revision:
 
 @dataclass(frozen=True)
 class _Spec:
-    """A day to lay out: its visits and fixed items in order (engine meals are placed by the
-    layout), its base, the inter-city leg that starts it, and the places to eat it had."""
+    """A day to lay out: its visits and fixed items in order, its base, and the inter-city leg
+    that starts it."""
 
     index: int
     base_id: int | None
     base_name: str | None
     arrival_cell: Cell | None
     seq: tuple[Entry, ...]
-    preferred: Mapping[str, str]
 
 
 @dataclass(frozen=True)
@@ -335,8 +306,6 @@ class _Work:
         self.profile: Profile = config.profile(inp.plan.profile)  # type: ignore[arg-type]
         self.lookup = TravelLookup(source, config.walk_max_m)
         self.cands = {c.place_id: c for c in inp.candidates}
-        plan_restaurants = {r.place_id: r for r in inp.restaurants}
-        self.index = RestaurantIndex(plan_restaurants.values())
         self.bases: dict[int, BaseCity] = dict(inp.bases)
         self.days: dict[int, RDay] = {d.day_index: d for d in inp.plan.days}
         self.old = {d.day_index: d for d in inp.plan.days}
@@ -396,22 +365,6 @@ class _Work:
     def removable(self, e: Entry) -> bool:
         return e.kind == "visit" and not e.mandatory
 
-    # -- meal context ------------------------------------------------------------------------
-
-    def _meal_places(self, days: Iterable[RDay]) -> set[str]:
-        return {e.place_id for d in days for e in d.items if e.kind == "meal" and e.place_id}
-
-    def context(self, index: int) -> tuple[frozenset[str], frozenset[str], frozenset[str]]:
-        """(places to eat on earlier days, on any other day, cuisines of earlier days)."""
-        before = [d for i, d in sorted(self.days.items()) if i < index]
-        others = [d for i, d in self.days.items() if i != index]
-        seen = {c for d in before for e in d.items if e.kind == "meal" for c in (e.cuisines or ())}
-        return (
-            frozenset(self._meal_places(before)),
-            frozenset(self._meal_places(others)),
-            frozenset(seen),
-        )
-
     def spec_of(self, day: RDay) -> _Spec:
         prev = self.days.get(day.day_index - 1)
         return _Spec(
@@ -421,196 +374,53 @@ class _Work:
             arrival_cell=self.arrival_cell(
                 None if prev is None else prev.base_city_id, day.base_city_id
             ),
-            seq=tuple(e for e in day.items if e.kind == "visit" or e.fixed),
-            preferred={
-                e.meal_type: e.place_id
-                for e in day.items
-                if e.kind == "meal" and not e.fixed and e.meal_type and e.place_id
-            },
+            seq=tuple(day.items),
         )
 
     # -- laying out a day --------------------------------------------------------------------
 
-    def _choose(
-        self,
-        meal: MealType,
-        prev: Coord | None,
-        nxt: Coord | None,
-        preferred: str | None,
-        used_other: frozenset[str],
-        today: set[str],
-        seen: set[str],
-    ) -> Choice | None:
-        anchors = [c for c in (prev, nxt) if c is not None]
-        if not anchors:
-            return None
-        r = self.index.by_id.get(preferred or "")
-        if r is not None and r.place_id not in today and meal in r.meal_types:
-            near = min(distance_m(a, r.coord) for a in anchors)
-            for ring, radius in enumerate(self.config.meal_search_m):
-                if near <= radius:
-                    return Choice(r, detour_m(prev, r.coord, nxt), ring)
-        return choose(self.index, meal, prev, nxt, used_other, seen, self.config, today)
-
-    def _end_after(self, e: Entry, arrive: int) -> int:
-        """When ``e`` would end if the traveller reaches it at ``arrive``."""
-        if e.fixed:
-            return e.end_minute
-        if e.floating:
-            return max(arrive, self.config.meal_window(e.meal_type or "").start_minute) + (
-                e.duration_minutes
-            )
-        return arrive + e.duration_minutes
-
     def lay_out(self, spec: _Spec) -> RDay | None:
-        """The day with its meals in their windows and its transfers, or None if it does not fit
-        (a fixed item that cannot be reached in time, a meal outside its window, a visit past the
-        day's end)."""
+        """The day with its transfers and the midday gap, or None if it does not fit (a fixed item
+        that cannot be reached in time, a visit past the day's end). The gap is the one the engine
+        lays out (``daylayout.gap_start``); it is skipped when the day holds a restaurant or café
+        stop of the user's around midday, or when it would not fit before a fixed item."""
         config, profile = self.config, self.profile
-        used_before, used_other, seen_before = self.context(spec.index)
         arrival = None if spec.arrival_cell is None else self.leg(*spec.arrival_cell)
         day_start = config.day_start_minute + (arrival.minutes if arrival else 0)
         day_end = min(profile.day_end_minute, config.day_window_end_minute)
+        gap = config.midday_gap
         seq = spec.seq
-        has_visits = any(e.kind == "visit" for e in seq)
-        fixed_meals = {e.meal_type for e in seq if e.kind == "meal"}
-        pending: list[MealType] = []
-        if has_visits:
-            for meal in profile.meals:
-                w = config.meal_window(meal)
-                latest = min(w.end_minute, day_end)
-                if meal in fixed_meals:
-                    continue
-                if max(day_start, w.start_minute) + config.meal_minutes(meal, None) <= latest:
-                    pending.append(meal)
-
+        pending = any(e.kind == "visit" for e in seq) and not any(
+            e.kind == "meal" and gap.earliest_start - 60 <= e.start_minute <= gap.latest_start + 60
+            for e in seq
+        )
         slots: list[Entry] = []
-        today = {e.place_id for e in seq if e.kind == "meal" and e.place_id}
-        seen = set(seen_before)
         clock = day_start
         prev: Coord | None = None
-        i = 0
-        deferred: MealType | None = None
-        while i < len(seq) or pending:
-            if pending and pending[0] != deferred:
-                meal = pending[0]
-                w = config.meal_window(meal)
-                latest = min(w.end_minute, day_end)
-                e = seq[i] if i < len(seq) else None
-                now = e is None
-                if e is not None:
-                    arrive = clock if prev is None else clock + self.mins(prev, e.coord)
-                    if e.fixed:
-                        arrive = max(arrive, e.start_minute)
-                    if arrive >= w.start_minute:
-                        now = True
-                    else:
-                        end_e = self._end_after(e, arrive)
-                        after = seq[i + 1].coord if i + 1 < len(seq) else None
-                        probe = self._choose(
-                            meal, e.coord, after, spec.preferred.get(meal), used_other, today, seen
-                        )
-                        if probe is None:
-                            reach = config.meal_allowance_minutes
-                            length = config.meal_minutes(meal, None)
-                        else:
-                            reach = self.mins(e.coord, probe.restaurant.coord)
-                            length = config.meal_minutes(meal, probe.restaurant.venue_type)
-                        if max(end_e + reach, w.start_minute) + length > latest:
-                            now = True
-                if now:
-                    choice = self._choose(
-                        meal,
-                        prev,
-                        None if e is None else e.coord,
-                        spec.preferred.get(meal),
-                        used_other,
-                        today,
-                        seen,
-                    )
-                    if choice is None:
-                        pending.pop(0)
-                        continue
-                    r = choice.restaurant
-                    reach_r = clock if prev is None else clock + self.mins(prev, r.coord)
-                    start = max(reach_r, w.start_minute)
-                    length = config.meal_minutes(meal, r.venue_type)
-                    end = start + length
-                    if end > latest:
-                        return None
-                    if (
-                        e is not None
-                        and e.fixed
-                        and end + self.mins(r.coord, e.coord) > (e.start_minute)
-                    ):
-                        # No time to eat before the fixed item: eat after it if the window allows.
-                        if max(e.end_minute, w.start_minute) + length <= latest:
-                            deferred = meal
-                            continue
-                        return None
-                    pending.pop(0)
-                    deferred = None
-                    reasons = [_WINDOW_REASON[meal], "VENUE_SUITS_MEAL"]
-                    reasons.append("ON_THE_WAY" if choice.ring == 0 else "NEAREST_SUITABLE")
-                    if r.place_id in used_before:
-                        reasons.append("PLACE_REPEATED")
-                    if r.cuisines is None:
-                        reasons.append("CUISINE_NOT_SPECIFIED")
-                    elif not seen.issuperset(r.cuisines):
-                        reasons.append("NEW_CUISINE")
-                    slots.append(
-                        Entry(
-                            key=entry_key("meal", r.place_id, None),
-                            kind="meal",
-                            name=r.name,
-                            lat=r.lat,
-                            lon=r.lon,
-                            start_minute=start,
-                            end_minute=end,
-                            duration_minutes=length,
-                            duration_source="category_default",
-                            origin="engine",
-                            locked=False,
-                            reasons=_ordered(reasons),
-                            place_id=r.place_id,
-                            category=r.venue_type,
-                            meal_type=meal,
-                            cuisines=r.cuisines,
-                            item_id=_old_meal_id(self.old.get(spec.index), meal, r.place_id),
-                        )
-                    )
-                    today.add(r.place_id)
-                    seen.update(r.cuisines or ())
-                    clock, prev = end, r.coord
-                    continue
-            if i >= len(seq):
-                # Only a deferred meal is left and nothing follows to defer it past.
-                deferred = None
-                continue
-            e = seq[i]
+        for e in seq:
             arrive = clock if prev is None else clock + self.mins(prev, e.coord)
+            begun = None
+            if pending and prev is not None:
+                if arrive > gap.latest_start:
+                    pending = False
+                else:
+                    begun = gap_start(gap, arrive, e.duration_minutes)
             if e.fixed:
                 if prev is not None and arrive > e.start_minute:
                     return None
+                if begun is not None and begun + gap.minutes <= e.start_minute:
+                    pending = False
                 start, end = e.start_minute, e.end_minute
-            elif e.floating:
-                # A meal being added: in its window, and inside the day.
-                fw = config.meal_window(e.meal_type or "")
-                start = max(arrive, fw.start_minute)
-                end = start + e.duration_minutes
-                if end > min(fw.end_minute, day_end):
-                    return None
             else:
                 start = arrive
+                if begun is not None:
+                    pending = False
+                    start = begun + gap.minutes
                 end = start + e.duration_minutes
                 if end > day_end:
                     return None
-            if e.kind == "meal":
-                seen.update(e.cuisines or ())
             slots.append(replace(e, start_minute=start, end_minute=end))
             clock, prev = end, e.coord
-            i += 1
-            deferred = None
 
         # Transfers between consecutive items, and the reasons that depend on them.
         out: list[Entry] = []
@@ -766,15 +576,6 @@ def _time_of(leg: Leg) -> TravelTime:
     )
 
 
-def _old_meal_id(day: RDay | None, meal: str, place_id: str) -> str | None:
-    if day is None:
-        return None
-    for e in day.items:
-        if e.kind == "meal" and e.meal_type == meal and e.place_id == place_id and not e.fixed:
-            return e.item_id
-    return None
-
-
 def _ordered(reasons: Iterable[str]) -> tuple[str, ...]:
     return tuple(sorted(set(reasons), key=lambda c: _REASON_ORDER.get(c, len(_REASON_ORDER))))
 
@@ -816,7 +617,7 @@ def add_place(
         )
     work = _Work(inp, source, config, rconfig)
     x = addition.entry()
-    longest = config.day_minutes(work.profile) - config.meal_reserve(work.profile)
+    longest = config.day_minutes(work.profile) - config.midday_gap.minutes
     if x.duration_minutes > longest:
         raise PlanningImpossible(
             [
@@ -1082,7 +883,7 @@ def _try_new_base_day(
     )
     route = sequencer.solve(problem)[0]
     seq = tuple(nodes[i][1] for i in route)
-    spec = _Spec(k, town.city_id, town.name, arrival_cell, seq, {})
+    spec = _Spec(k, town.city_id, town.name, arrival_cell, seq)
     fitted = work.fit(spec, keep=frozenset({x.key}))
     if fitted is None:
         return Issue(

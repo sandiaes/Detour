@@ -2,7 +2,6 @@ import type { Day } from "@detour/shared";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { MEAL_LABEL, MEALS, type Meal } from "../domain/restaurants";
 import { colors, spacing, type } from "../theme";
 import { formatClock, formatDayLabel, formatMinutes } from "../util/format";
 import { Button } from "./Button";
@@ -12,19 +11,14 @@ import { Chip, Field } from "./ui";
 // an empty trip (nothing to recalculate), and an option on a planned one.
 
 export const SLOT_DURATIONS = [30, 60, 90, 120, 180] as const;
-const MEAL_START: Record<Meal, string> = {
-  breakfast: "09:00",
-  lunch: "13:00",
-  snack: "16:00",
-  dinner: "20:00",
-};
+/** Where a day's start time suggestion comes from for a restaurant or café: the midday gap. */
+export const EATING_START = "13:00";
 
 export type ChosenSlot = {
   day: number;
   /** "HH:MM" */
   time: string;
   minutes: number;
-  meal: Meal | null;
   /** Where in the day, so the day stays in time order. */
   position: number;
 };
@@ -49,7 +43,7 @@ export function positionFor(day: Day | undefined, time: string): number {
 export function ChooseSlot({
   days,
   startDate,
-  meal,
+  defaultTime = "10:00",
   minutes: fixedMinutes,
   name,
   working,
@@ -58,8 +52,8 @@ export function ChooseSlot({
 }: {
   days: Day[];
   startDate: string | null;
-  /** Ask which meal (a restaurant) */
-  meal: boolean;
+  /** The start time suggested first (the user can change it). */
+  defaultTime?: string;
   /** How long the place gets, when the screen already asked; otherwise it is asked here. */
   minutes: number | null;
   name: string;
@@ -68,8 +62,7 @@ export function ChooseSlot({
   onSubmit: (slot: ChosenSlot) => void;
 }) {
   const [day, setDay] = useState(days[0]?.day_index ?? 1);
-  const [mealType, setMealType] = useState<Meal>("lunch");
-  const [timeText, setTimeText] = useState(meal ? MEAL_START.lunch : "10:00");
+  const [timeText, setTimeText] = useState(defaultTime);
   const [ownMinutes, setOwnMinutes] = useState(60);
   const time = parseClock(timeText);
   const minutes = fixedMinutes ?? ownMinutes;
@@ -88,24 +81,6 @@ export function ChooseSlot({
           />
         ))}
       </View>
-      {meal ? (
-        <>
-          <Text style={styles.label}>Meal</Text>
-          <View style={styles.row}>
-            {MEALS.map((m) => (
-              <Chip
-                key={m}
-                label={MEAL_LABEL[m]}
-                selected={mealType === m}
-                onPress={() => {
-                  setMealType(m);
-                  setTimeText(MEAL_START[m]);
-                }}
-              />
-            ))}
-          </View>
-        </>
-      ) : null}
       <Field
         label="Start time"
         value={timeText}
@@ -144,7 +119,6 @@ export function ChooseSlot({
             day,
             time,
             minutes,
-            meal: meal ? mealType : null,
             position: positionFor(
               days.find((d) => d.day_index === day),
               time,

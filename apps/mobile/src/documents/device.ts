@@ -1,6 +1,7 @@
 import { openDatabaseAsync } from "expo-sqlite";
 
 import { DATABASE_NAME } from "../cache/store";
+import { createDeviceExchangeFiles } from "../exchange/files";
 import { createDeviceFiles } from "./files";
 import { createSqliteDocumentStore } from "./store";
 
@@ -9,3 +10,5 @@ export const deviceDocumentStore = createSqliteDocumentStore(() =>
   openDatabaseAsync(DATABASE_NAME),
 );
 export const deviceDocumentFiles = createDeviceFiles();
+/** The trip file's reading, writing and sharing (ADR 028). */
+export const deviceExchangeFiles = createDeviceExchangeFiles();

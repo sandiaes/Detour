@@ -14,14 +14,12 @@ from detour_api.planner.config import DEFAULT_CONFIG
 from detour_api.planner.recalc import Addition, Revision, entry_key
 from detour_api.planner.revision_validator import validate_revision
 from detour_api.planner.travel import FixedTravelSource
-from detour_api.planner.types import BaseCity, Candidate, PlanningImpossible, Restaurant
+from detour_api.planner.types import BaseCity, Candidate, PlanningImpossible
 from tests import planner_helpers as ph
 from tests.recalc_helpers import generated, lock, recalc_input
 
 CANDS = ph.candidates("city-large")
-RESTS = ph.restaurants("city-large")
 BY_ID = {c.place_id: c for c in CANDS}
-R_BY_ID = {r.place_id: r for r in RESTS}
 
 
 def _addition(c: Candidate, minutes: int | None = None) -> Addition:
@@ -56,7 +54,6 @@ def _check(
     added: str | None = None,
     removed: str | None = None,
     cands: list[Candidate] = CANDS,
-    rests: list[Restaurant] = RESTS,
 ) -> None:
     problems = validate_revision(
         old,
@@ -64,7 +61,6 @@ def _check(
         added=added,
         removed=removed,
         candidates={c.place_id: c for c in cands},
-        restaurants={r.place_id: r for r in rests},
         config=DEFAULT_CONFIG,
     )
     assert problems == []
@@ -78,10 +74,10 @@ def _unplanned(rplan: recalc.RPlan) -> list[Candidate]:
 @pytest.mark.parametrize("profile", ["essentials", "wider"])
 def test_an_addition_changes_few_days_and_keeps_every_rule(profile: str) -> None:
     req = ph.request("city-large", 3, date(2027, 5, 1))
-    plan, rp = generated(req, CANDS, RESTS, profile)
+    plan, rp = generated(req, CANDS, profile)
     extra = _unplanned(rp)[0]
     add = _addition(extra)
-    rev = recalc.add_place(recalc_input(plan, rp, req, CANDS, RESTS), add, FixedTravelSource())
+    rev = recalc.add_place(recalc_input(plan, rp, req, CANDS), add, FixedTravelSource())
     _check(rp, rev, added=add.key)
     d = diff.compare(rp, rev.plan)
     assert [a.key for a in d.added if a.kind == "visit"] == [add.key]
@@ -94,7 +90,7 @@ def test_an_addition_changes_few_days_and_keeps_every_rule(profile: str) -> None
 
 def test_locked_items_never_move() -> None:
     req = ph.request("city-large", 3)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     # Lock every other item of every day, meals included, then add three places in turn.
     keys = {e.key for d in rp.days for n, e in enumerate(d.items) if n % 2 == 0}
     current = lock(rp, keys)
@@ -105,7 +101,7 @@ def test_locked_items_never_move() -> None:
         if e.locked
     }
     for extra in _unplanned(rp)[:3]:
-        inp = recalc_input(plan, current, req, CANDS, RESTS)
+        inp = recalc_input(plan, current, req, CANDS)
         try:
             rev = recalc.add_place(inp, _addition(extra), FixedTravelSource())
         except PlanningImpossible as exc:
@@ -124,15 +120,13 @@ def test_locked_items_never_move() -> None:
 
 def test_items_the_user_added_are_never_left_out() -> None:
     req = ph.request("city-large", 2)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     current = rp
     added: list[str] = []
     for extra in _unplanned(rp)[:6]:
         a = _addition(extra, minutes=60)
         try:
-            rev = recalc.add_place(
-                recalc_input(plan, current, req, CANDS, RESTS), a, FixedTravelSource()
-            )
+            rev = recalc.add_place(recalc_input(plan, current, req, CANDS), a, FixedTravelSource())
         except PlanningImpossible:
             break
         current = rev.plan
@@ -143,11 +137,9 @@ def test_items_the_user_added_are_never_left_out() -> None:
 
 def test_removing_a_place_lays_its_day_out_again() -> None:
     req = ph.request("city-large", 3)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     victim = rp.days[1].visits[2]
-    rev = recalc.remove_place(
-        recalc_input(plan, rp, req, CANDS, RESTS), victim.key, FixedTravelSource()
-    )
+    rev = recalc.remove_place(recalc_input(plan, rp, req, CANDS), victim.key, FixedTravelSource())
     _check(rp, rev, removed=victim.key)
     d = diff.compare(rp, rev.plan)
     assert [r.key for r in d.removed if r.kind == "visit"] == [victim.key]
@@ -157,21 +149,19 @@ def test_removing_a_place_lays_its_day_out_again() -> None:
 
 def test_a_locked_item_cannot_be_removed() -> None:
     req = ph.request("city-large", 2)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     victim = rp.days[0].visits[0]
     locked = lock(rp, {victim.key})
     with pytest.raises(PlanningImpossible) as info:
-        recalc.remove_place(
-            recalc_input(plan, locked, req, CANDS, RESTS), victim.key, FixedTravelSource()
-        )
+        recalc.remove_place(recalc_input(plan, locked, req, CANDS), victim.key, FixedTravelSource())
     assert [i.code for i in info.value.issues] == ["ITEM_LOCKED"]
 
 
 # -- a distant addition ----------------------------------------------------------------------
 
 
-def _far_world() -> tuple[BaseCity, list[Candidate], list[Restaurant]]:
-    """A town 60 km east of the synthetic city, with five invented sights and two places to eat."""
+def _far_world() -> tuple[BaseCity, list[Candidate]]:
+    """A town 60 km east of the synthetic city, with five invented sights."""
     lat, lon = ph.request("city-large", 1).lat, ph.request("city-large", 1).lon
     east = lon + 60_000 / (111_320 * math.cos(math.radians(lat)))
     town = BaseCity(900202, "Farburg", lat, east, 30_000)
@@ -186,30 +176,18 @@ def _far_world() -> tuple[BaseCity, list[Candidate], list[Restaurant]]:
         )
         for i in range(1, 6)
     ]
-    eat = [
-        Restaurant(
-            f"f0000000-0000-4000-8000-0000000000a{i}",
-            f"Far place to eat {i}",
-            "restaurant",
-            lat + 0.003 * i,
-            east + 0.002,
-            ("lunch", "dinner"),
-            ("regional",),
-        )
-        for i in range(1, 3)
-    ]
-    return town, sights, eat
+    return town, sights
 
 
 def test_a_distant_addition_reallocates_a_day_to_a_new_base() -> None:
-    town, far_sights, far_eat = _far_world()
-    cands, rests = CANDS + far_sights, RESTS + far_eat
+    town, far_sights = _far_world()
+    cands = CANDS + far_sights
     req = ph.request("city-large", 3, date(2027, 5, 1))
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     add = _addition(far_sights[0])
-    inp = recalc_input(plan, rp, req, cands, rests, towns=[town])
+    inp = recalc_input(plan, rp, req, cands, towns=[town])
     rev = recalc.add_place(inp, add, FixedTravelSource())
-    _check(rp, rev, added=add.key, cands=cands, rests=rests)
+    _check(rp, rev, added=add.key, cands=cands)
     bases = [d.base_city_id for d in rev.plan.days]
     # The fullest day stays; the last day of the city's run becomes the new base.
     assert bases == [ph.SYNTHETIC_CITY_ID, ph.SYNTHETIC_CITY_ID, town.city_id]
@@ -227,10 +205,10 @@ def test_a_distant_addition_reallocates_a_day_to_a_new_base() -> None:
 
 
 def test_a_distant_addition_on_a_one_day_trip_is_explained() -> None:
-    town, far_sights, far_eat = _far_world()
+    town, far_sights = _far_world()
     req = ph.request("city-large", 1)
-    plan, rp = generated(req, CANDS, RESTS)
-    inp = recalc_input(plan, rp, req, CANDS + far_sights, RESTS + far_eat, towns=[town])
+    plan, rp = generated(req, CANDS)
+    inp = recalc_input(plan, rp, req, CANDS + far_sights, towns=[town])
     with pytest.raises(PlanningImpossible) as info:
         recalc.add_place(inp, _addition(far_sights[0]), FixedTravelSource())
     assert [i.code for i in info.value.issues] == ["NO_DAY_FOR_NEW_BASE"]
@@ -238,21 +216,21 @@ def test_a_distant_addition_on_a_one_day_trip_is_explained() -> None:
 
 
 def test_a_distant_addition_without_a_town_is_explained() -> None:
-    _, far_sights, _ = _far_world()
+    _, far_sights = _far_world()
     req = ph.request("city-large", 3)
-    plan, rp = generated(req, CANDS, RESTS)
-    inp = recalc_input(plan, rp, req, CANDS, RESTS, towns=[])
+    plan, rp = generated(req, CANDS)
+    inp = recalc_input(plan, rp, req, CANDS, towns=[])
     with pytest.raises(PlanningImpossible) as info:
         recalc.add_place(inp, _addition(far_sights[0]), FixedTravelSource())
     assert [i.code for i in info.value.issues] == ["NO_TOWN_NEAR_ADDITION"]
 
 
 def test_days_with_locked_items_are_not_reallocated() -> None:
-    town, far_sights, far_eat = _far_world()
+    town, far_sights = _far_world()
     req = ph.request("city-large", 2)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     locked = lock(rp, {d.visits[0].key for d in rp.days})
-    inp = recalc_input(plan, locked, req, CANDS + far_sights, RESTS + far_eat, towns=[town])
+    inp = recalc_input(plan, locked, req, CANDS + far_sights, towns=[town])
     with pytest.raises(PlanningImpossible) as info:
         recalc.add_place(inp, _addition(far_sights[0]), FixedTravelSource())
     assert [i.code for i in info.value.issues] == ["DAY_HAS_FIXED_ITEMS", "DAY_HAS_FIXED_ITEMS"]
@@ -264,11 +242,11 @@ def test_days_with_locked_items_are_not_reallocated() -> None:
 
 def test_an_addition_longer_than_any_day_is_explained() -> None:
     req = ph.request("city-large", 2)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     lat, lon = req.lat, req.lon
     with pytest.raises(PlanningImpossible) as info:
         recalc.add_place(
-            recalc_input(plan, rp, req, CANDS, RESTS),
+            recalc_input(plan, rp, req, CANDS),
             _pin("Long walk", lat + 0.001, lon, minutes=900),
             FixedTravelSource(),
         )
@@ -278,11 +256,11 @@ def test_an_addition_longer_than_any_day_is_explained() -> None:
 
 def test_days_full_of_locked_items_name_the_items_that_cannot_move() -> None:
     req = ph.request("city-large", 2)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     every = lock(rp, {e.key for d in rp.days for e in d.items})
     with pytest.raises(PlanningImpossible) as info:
         recalc.add_place(
-            recalc_input(plan, every, req, CANDS, RESTS),
+            recalc_input(plan, every, req, CANDS),
             _pin("Market", req.lat + 0.001, req.lon, minutes=240),
             FixedTravelSource(),
         )
@@ -293,12 +271,10 @@ def test_days_full_of_locked_items_name_the_items_that_cannot_move() -> None:
 
 def test_a_place_already_in_the_plan_is_explained() -> None:
     req = ph.request("city-large", 2)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     there = BY_ID[rp.days[1].visits[0].place_id or ""]
     with pytest.raises(PlanningImpossible) as info:
-        recalc.add_place(
-            recalc_input(plan, rp, req, CANDS, RESTS), _addition(there), FixedTravelSource()
-        )
+        recalc.add_place(recalc_input(plan, rp, req, CANDS), _addition(there), FixedTravelSource())
     assert [(i.code, i.params["day"]) for i in info.value.issues] == [("ALREADY_IN_PLAN", 2)]
 
 
@@ -307,11 +283,11 @@ def test_a_place_already_in_the_plan_is_explained() -> None:
 
 def test_recalculation_is_deterministic() -> None:
     req = ph.request("city-large", 3)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     add = _addition(_unplanned(rp)[5])
-    a = recalc.add_place(recalc_input(plan, rp, req, CANDS, RESTS), add, FixedTravelSource())
+    a = recalc.add_place(recalc_input(plan, rp, req, CANDS), add, FixedTravelSource())
     b = recalc.add_place(
-        recalc_input(plan, rp, req, list(reversed(CANDS)), list(reversed(RESTS))),
+        recalc_input(plan, rp, req, list(reversed(CANDS))),
         add,
         FixedTravelSource(),
     )
@@ -320,11 +296,11 @@ def test_recalculation_is_deterministic() -> None:
 
 def test_the_validator_catches_a_moved_locked_item() -> None:
     req = ph.request("city-large", 2)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     first = rp.days[0].visits[0]
     locked = lock(rp, {first.key})
     add = _addition(_unplanned(rp)[0])
-    rev = recalc.add_place(recalc_input(plan, locked, req, CANDS, RESTS), add, FixedTravelSource())
+    rev = recalc.add_place(recalc_input(plan, locked, req, CANDS), add, FixedTravelSource())
     day = rev.plan.days[0]
     shifted = tuple(
         replace(e, start_minute=e.start_minute + 1, end_minute=e.end_minute + 1)
@@ -343,7 +319,6 @@ def test_the_validator_catches_a_moved_locked_item() -> None:
         added=add.key,
         removed=None,
         candidates=BY_ID,
-        restaurants=R_BY_ID,
         config=DEFAULT_CONFIG,
     )
     assert "LOCKED_ITEM_MOVED" in {p.code for p in problems}
@@ -351,9 +326,9 @@ def test_the_validator_catches_a_moved_locked_item() -> None:
 
 def test_the_validator_catches_a_dropped_addition_and_a_changed_unchanged_day() -> None:
     req = ph.request("city-large", 2)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     add = _addition(_unplanned(rp)[0])
-    rev = recalc.add_place(recalc_input(plan, rp, req, CANDS, RESTS), add, FixedTravelSource())
+    rev = recalc.add_place(recalc_input(plan, rp, req, CANDS), add, FixedTravelSource())
     unchanged = next(d for d in rev.plan.days if d.day_index not in rev.changed_days)
     tampered = replace(unchanged, items=unchanged.items[:-1])
     days = tuple(tampered if d is unchanged else d for d in rev.plan.days)
@@ -363,7 +338,6 @@ def test_the_validator_catches_a_dropped_addition_and_a_changed_unchanged_day() 
         added="user:missing",
         removed=None,
         candidates=BY_ID,
-        restaurants=R_BY_ID,
         config=DEFAULT_CONFIG,
     )
     codes = {p.code for p in problems}
@@ -374,19 +348,19 @@ def test_recalculation_latency_is_within_the_kpi() -> None:
     import time
 
     req = ph.request("city-large", 7)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     add = _addition(_unplanned(rp)[0])
     start = time.perf_counter()
-    recalc.add_place(recalc_input(plan, rp, req, CANDS, RESTS), add, FixedTravelSource())
+    recalc.add_place(recalc_input(plan, rp, req, CANDS), add, FixedTravelSource())
     assert time.perf_counter() - start < 1.0  # the KPI is 3 s for the whole request
 
 
 def test_a_single_city_country_gets_no_new_base() -> None:
-    town, far_sights, far_eat = _far_world()
+    town, far_sights = _far_world()
     req = ph.request("city-large", 3)
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     inp = replace(
-        recalc_input(plan, rp, req, CANDS + far_sights, RESTS + far_eat, towns=[town]),
+        recalc_input(plan, rp, req, CANDS + far_sights, towns=[town]),
         single_city=True,
     )
     with pytest.raises(PlanningImpossible) as info:
@@ -399,9 +373,9 @@ def test_a_single_city_country_gets_no_new_base() -> None:
 
 def test_only_day_places_the_addition_on_that_day_and_the_best_matches_the_default() -> None:
     req = ph.request("city-large", 3, date(2027, 5, 1))
-    plan, rp = generated(req, CANDS, RESTS)
+    plan, rp = generated(req, CANDS)
     add = _addition(_unplanned(rp)[0])
-    inp = recalc_input(plan, rp, req, CANDS, RESTS)
+    inp = recalc_input(plan, rp, req, CANDS)
     default = recalc.add_place(inp, add, FixedTravelSource())
     per_day = {k: recalc.add_place(inp, add, FixedTravelSource(), only_day=k) for k in (1, 2, 3)}
     for k, rev in per_day.items():
@@ -418,11 +392,11 @@ def test_only_day_places_the_addition_on_that_day_and_the_best_matches_the_defau
 
 
 def test_only_day_far_from_the_addition_is_explained() -> None:
-    town, far_sights, far_eat = _far_world()
-    cands, rests = CANDS + far_sights, RESTS + far_eat
+    town, far_sights = _far_world()
+    cands = CANDS + far_sights
     req = ph.request("city-large", 3, date(2027, 5, 1))
-    plan, rp = generated(req, CANDS, RESTS)
-    inp = recalc_input(plan, rp, req, cands, rests, towns=[town])
+    plan, rp = generated(req, CANDS)
+    inp = recalc_input(plan, rp, req, cands, towns=[town])
     add = _addition(far_sights[0])
     # Only the ends of the city's run can become a new base; day 2 is in the middle.
     with pytest.raises(PlanningImpossible) as exc:

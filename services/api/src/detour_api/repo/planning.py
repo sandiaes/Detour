@@ -30,7 +30,6 @@ from detour_api.planner.types import (
     Generation,
     Plan,
     PlanRequest,
-    Restaurant,
     RouteStop,
 )
 from detour_api.repo import geo, itineraries, trips
@@ -44,7 +43,6 @@ class PlanningContext:
     region_id: str
     request: PlanRequest
     candidates: list[Candidate] = field(default_factory=list)
-    restaurants: list[Restaurant] = field(default_factory=list)
     # A multi-city trip's stop version, stored on its itineraries (ADR 024, decision 20).
     stops_version: int | None = None
 
@@ -62,6 +60,12 @@ def load_context(
     trip = trips.require_trip(conn, installation_id, trip_id)
     if trip.status == "past":
         raise conflict("trip_archived", "a past trip cannot get new itineraries")
+    if trip.destination.kind == "place":
+        raise ApiError(
+            409,
+            "destination_not_plannable",
+            "a trip to a place outside the imported regions has no suggestions; add places by hand",
+        )
     if trip.destination.kind == "route":
         return _route_context(conn, trip, config)
     kind = trip.destination.kind
@@ -106,9 +110,6 @@ def load_context(
             region_id=dest.region_id,
             request=request,
             candidates=load_candidates(conn, dest.region_id, request.lat, request.lon, radius),
-            restaurants=load_restaurants(
-                conn, dest.region_id, request.lat, request.lon, radius + config.meal_search_m[-1]
-            ),
         )
     area_id = uuid.UUID(trip.destination.ref)
     request = PlanRequest(
@@ -126,18 +127,16 @@ def load_context(
         region_id=dest.region_id,
         request=request,
         candidates=load_area_candidates(conn, dest.region_id, area_id),
-        restaurants=load_area_restaurants(conn, dest.region_id, area_id),
     )
 
 
 def _route_context(conn: Connection, trip: Trip, config: PlannerConfig) -> PlanningContext:
     """A multi-city trip (ADR 024): every stop must still be a city in an available region; the
-    candidates and places to eat are those around each stop (each place once)."""
+    candidates are those around each stop (each place once)."""
     if not trip.stops:
         raise invalid("route_needs_two_stops", "this multi-city trip has no stops")
     radius = max(p.radius_m for p in config.profiles)
     candidates: dict[str, Candidate] = {}
-    restaurants: dict[str, Restaurant] = {}
     runs: list[str] = []
     regions: list[str] = []
     stops: list[RouteStop] = []
@@ -164,10 +163,6 @@ def _route_context(conn: Connection, trip: Trip, config: PlannerConfig) -> Plann
                 runs.append(str(run))
         for c in load_candidates(conn, dest.region_id, stop.lat, stop.lon, radius):
             candidates.setdefault(c.place_id, c)
-        for r in load_restaurants(
-            conn, dest.region_id, stop.lat, stop.lon, radius + config.meal_search_m[-1]
-        ):
-            restaurants.setdefault(r.place_id, r)
         stops.append(
             RouteStop(
                 BaseCity(stop.city_id, stop.name, stop.lat, stop.lon),
@@ -192,7 +187,6 @@ def _route_context(conn: Connection, trip: Trip, config: PlannerConfig) -> Plann
         region_id=regions[0],
         request=request,
         candidates=collapse_duplicates(candidates[k] for k in sorted(candidates)),
-        restaurants=[restaurants[k] for k in sorted(restaurants)],
         stops_version=trip.stops_version,
     )
 
@@ -213,18 +207,6 @@ _CANDIDATE_SQL = """
     FROM geo.place p LEFT JOIN geo.place_signal s ON s.place_id = p.id
     WHERE p.is_active AND p.kind = 'attraction' AND p.name IS NOT NULL
       AND p.region_id = :r AND {where}
-    ORDER BY p.id
-"""
-
-# Named places to eat with the meal types the import derived from their venue type. Unnamed ones
-# are not planned: the traveller could not find them.
-_RESTAURANT_SQL = """
-    SELECT p.id, p.kind, p.category, p.name, p.names_i18n, {names},
-           ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
-           rp.venue_type, rp.meal_types, rp.cuisines
-    FROM geo.place p JOIN geo.restaurant_profile rp ON rp.place_id = p.id
-    WHERE p.is_active AND p.kind = 'restaurant' AND p.name IS NOT NULL
-      AND rp.meal_types IS NOT NULL AND p.region_id = :r AND {where}
     ORDER BY p.id
 """
 
@@ -254,44 +236,11 @@ def _candidates(rows: Any) -> list[Candidate]:
     )
 
 
-def _restaurants(rows: Any) -> list[Restaurant]:
-    return [
-        Restaurant(
-            place_id=str(r.id),
-            name=_display(r),
-            venue_type=r.venue_type,
-            lat=r.lat,
-            lon=r.lon,
-            meal_types=tuple(r.meal_types),
-            cuisines=None if r.cuisines is None else tuple(r.cuisines),
-        )
-        for r in rows
-    ]
-
-
-def load_restaurants(
-    conn: Connection, region_id: str, lat: float, lon: float, radius_m: int
-) -> list[Restaurant]:
-    rows = conn.execute(
-        text(_RESTAURANT_SQL.format(names=_NAMES, where=_IN_BOX)),
-        {"r": region_id, **_box(lat, lon, radius_m)},
-    ).all()
-    return _restaurants(rows)
-
-
 def load_area_candidates(conn: Connection, region_id: str, area_id: uuid.UUID) -> list[Candidate]:
     rows = conn.execute(
         text(_CANDIDATE_SQL.format(names=_NAMES, where=_IN_AREA)), {"r": region_id, "area": area_id}
     ).all()
     return _candidates(rows)
-
-
-def load_area_restaurants(conn: Connection, region_id: str, area_id: uuid.UUID) -> list[Restaurant]:
-    rows = conn.execute(
-        text(_RESTAURANT_SQL.format(names=_NAMES, where=_IN_AREA)),
-        {"r": region_id, "area": area_id},
-    ).all()
-    return _restaurants(rows)
 
 
 def load_area_towns(conn: Connection, area_id: uuid.UUID) -> list[BaseCity]:
@@ -478,10 +427,10 @@ def _write_days(conn: Connection, itinerary_id: uuid.UUID, plan: Plan) -> None:
             conn.execute(
                 text(
                     """
-                    INSERT INTO app.itinerary_item (id, day_id, position, type, meal_type,
+                    INSERT INTO app.itinerary_item (id, day_id, position, type,
                         place_id, display_name, display_point, start_time, end_time,
                         duration_minutes, duration_source, origin, locked, reasons)
-                    VALUES (:id, :d, :pos, :type, :meal, :place, :name,
+                    VALUES (:id, :d, :pos, :type, :place, :name,
                         ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :start, :end, :minutes,
                         'category_default', 'engine', false, :reasons)
                     """
@@ -491,7 +440,6 @@ def _write_days(conn: Connection, itinerary_id: uuid.UUID, plan: Plan) -> None:
                     "d": day_id,
                     "pos": position,
                     "type": item.kind,
-                    "meal": item.meal_type,
                     "place": uuid.UUID(item.place_id),
                     "name": item.name,
                     "lat": item.lat,

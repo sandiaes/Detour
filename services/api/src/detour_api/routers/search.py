@@ -71,13 +71,20 @@ def search_destinations(
         bool,
         Query(description="If nothing is found locally, ask Photon (through the backend, cached)"),
     ] = False,
+    also_if_found: Annotated[
+        bool,
+        Query(
+            description="With include_external: ask Photon even when the imported data has "
+            "answers (ADR 027: a place outside it, or one with the same name)"
+        ),
+    ] = False,
     lang: Lang = None,
 ) -> DestinationSearchResponse:
     with session.tx() as conn:
         results = geo.search_destinations(conn, q, limit)
     external = ExternalStatus(state="not_requested")
     if include_external:
-        if results:
+        if results and not also_if_found:
             external = ExternalStatus(state="not_needed")
         else:
             external = _external(
@@ -95,9 +102,7 @@ def search_places(
     session: SessionDep,
     q: Annotated[str | None, Query(min_length=2, max_length=100)] = None,
     region: Annotated[str | None, Query(max_length=60)] = None,
-    kind: Annotated[
-        str | None, Query(pattern="^(attraction|restaurant|transport_hub|other)$")
-    ] = None,
+    kind: Annotated[str | None, Query(pattern="^(attraction|transport_hub|other)$")] = None,
     category: Annotated[str | None, Query(max_length=60)] = None,
     lat: Annotated[float | None, Query(ge=-90, le=90)] = None,
     lon: Annotated[float | None, Query(ge=-180, le=180)] = None,

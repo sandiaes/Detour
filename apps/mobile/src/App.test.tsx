@@ -156,7 +156,7 @@ test("create a trip, compare the proposals, select one, read its days, see it on
     await fireEvent.changeText(screen.getByLabelText("Destination"), "Vie");
     await act(async () => void jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS + 10));
     await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
-    await fireEvent.press(screen.getByRole("button", { name: "Generate itineraries" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Suggest itineraries" }));
 
     expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Select the Essentials plan" }));

@@ -104,7 +104,7 @@ def test_the_applied_result_matches_the_previewed_diff(api_env: ApiEnv) -> None:
     assert body["change_set"]["status"] == "applied" and body["change_set"]["result_version"] == 2
     itinerary = body["itinerary"]
     assert itinerary["version"] == 2
-    assert itinerary["engine_version"].endswith("+recalc-1.1.0")
+    assert itinerary["engine_version"].endswith("+recalc-2.0.0")
     new = _state(api_env, plan["id"])
     applied = changes.diff_model(
         diff.compare(to_rplan(old, "essentials"), to_rplan(new, "essentials"))
@@ -291,8 +291,20 @@ def test_infeasible_additions_say_which_constraint_conflicts(api_env: ApiEnv) ->
 
 def test_what_cannot_be_added_or_recalculated(api_env: ApiEnv) -> None:
     plan = _plan(api_env)
-    restaurant = sql(api_env, "SELECT id FROM geo.place WHERE kind = 'restaurant' LIMIT 1")[0][0]
-    r = _preview(api_env, plan["id"], action="add_place", place_id=str(restaurant))
+    restaurant = api_env.client.post(
+        "/v1/user-places",
+        json={
+            "kind": "restaurant",
+            "name": "Mein Lokal",
+            "lat": 48.21,
+            "lon": 16.37,
+            "source": "manual_pin",
+        },
+        headers=api_env.headers,
+    ).json()["id"]
+    r = _preview(
+        api_env, plan["id"], action="add_place", user_place_id=restaurant, duration_minutes=60
+    )
     assert r.status_code == 422 and r.json()["code"] == "wrong_place_kind"
     sight_in_plan = plan["days"][0]["items"][0]["place_id"]
     r = _preview(api_env, plan["id"], action="add_place", place_id=sight_in_plan)
@@ -397,6 +409,9 @@ def test_a_place_already_in_the_plan_gets_no_suggestion_and_says_why(api_env: Ap
 def test_the_suggestion_request_needs_exactly_one_place(api_env: ApiEnv) -> None:
     plan = _plan(api_env)
     assert _suggest(api_env, plan["id"]).status_code == 422
+    # ADR 026: a restaurant is not added through a recalculation, and the meal fields are gone.
+    r = _preview(api_env, plan["id"], action="add_restaurant", place_id=str(uuid.uuid4()))
+    assert r.status_code == 422
     r = _preview(
         api_env, plan["id"], action="add_place", place_id=str(uuid.uuid4()), meal_type="lunch"
     )

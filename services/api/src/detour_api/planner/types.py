@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal
 
-from detour_api.planner.config import MealType, ProfileName
+from detour_api.planner.config import ProfileName
 from detour_api.travel.types import Confidence, Coord, EstimateReason, Mode
 
 # Parameters of a note: only what a fixed template needs, all JSON-safe.
@@ -25,26 +25,6 @@ class Candidate:
     # when the place has no signal row.
     signals: dict[str, Any] = field(default_factory=dict)
     sitelink_count: int | None = None
-
-    @property
-    def coord(self) -> Coord:
-        return Coord.from_degrees(self.lat, self.lon)
-
-
-@dataclass(frozen=True)
-class Restaurant:
-    """An imported place to eat (``geo.place`` of kind ``restaurant`` with its
-    ``geo.restaurant_profile``). Venue type, cuisines and meal types are what the open data says;
-    ``cuisines`` is ``None`` when the data states no cuisine. There is no price, rating or opening
-    hours."""
-
-    place_id: str
-    name: str
-    venue_type: str
-    lat: float
-    lon: float
-    meal_types: tuple[str, ...]
-    cuisines: tuple[str, ...] | None = None
 
     @property
     def coord(self) -> Coord:
@@ -134,8 +114,6 @@ class PlannedItem:
     duration_minutes: int
     reasons: tuple[str, ...]
     transfer: Leg | None  # to the next item of the day; None for the last one
-    meal_type: MealType | None = None  # meals only
-    cuisines: tuple[str, ...] | None = None  # meals only; None: not stated in the data
 
 
 @dataclass(frozen=True)

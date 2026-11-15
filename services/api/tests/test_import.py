@@ -65,21 +65,25 @@ def test_report_counts_match_the_database(pipeline_dbs: tuple[str, str], tmp_pat
         ).fetchone()
         sources = conn.execute("SELECT count(*) FROM geo.place_source").fetchone()
         signals = conn.execute("SELECT count(*) FROM geo.place_signal").fetchone()
-        profiles = conn.execute("SELECT count(*) FROM geo.restaurant_profile").fetchone()
+        restaurant_tables = conn.execute(
+            "SELECT count(*) FROM information_schema.tables"
+            " WHERE table_schema = 'geo' AND table_name = 'restaurant_profile'"
+        ).fetchone()
 
-    assert rows == {"attraction": 11, "restaurant": 4}
+    # ADR 026: restaurants and cafes in the extract are not candidates at all
+    assert rows == {"attraction": 11}
     assert {k: v["total"] for k, v in report["kinds"].items()} == rows
     assert {k: v["named"] for k, v in report["kinds"].items()} == dict(named)
     assert areas is not None and areas[0] == report["admin_areas"] == 2
     assert area_items == [("Bezirk Testburg", None), ("Testland", "Q4061")]
     assert sources is not None and sources[0] == sum(rows.values())
     assert signals is not None and signals[0] == sum(rows.values())
-    assert profiles is not None and profiles[0] == rows["restaurant"]
+    assert restaurant_tables == (0,)
     assert run is not None
     status, counts, stored_report = run
     assert status == "succeeded"
-    assert counts["places_total"] == 15
-    assert stored_report["excluded"]["total"] == report["excluded"]["total"] == 22
+    assert counts["places_total"] == 11
+    assert stored_report["excluded"]["total"] == report["excluded"]["total"] == 19
     # Excluded objects are counted per class, with a reason.
     by_class = {(r["class"], r["reason"]): r["count"] for r in report["excluded"]["by_class"]}
     assert by_class[("historic=wayside_shrine", "adr003_excluded_class")] == 1
@@ -95,10 +99,8 @@ def test_report_counts_match_the_database(pipeline_dbs: tuple[str, str], tmp_pat
     assert by_class[("historic=tree_shrine", "adr003_excluded_class")] == 1
     assert by_class[("historic=heritage", "adr003_excluded_class")] == 1
     assert by_class[("historic=citywalls", "generic_class_without_name_and_notability")] == 1
-    # no gazetteer in this test: the town-only restaurant is dropped with the remote ones
-    assert by_class[("amenity=restaurant", "restaurant_not_near_attraction_or_town")] == 2
-    assert by_class[("amenity=cafe", "restaurant_not_near_attraction_or_town")] == 1
-    assert sum(by_class.values()) == 22
+    assert not any(cls.startswith("amenity=") for cls, _ in by_class)
+    assert sum(by_class.values()) == 19
 
 
 def test_importing_twice_gives_identical_results(
@@ -140,7 +142,7 @@ def test_place_ids_are_stable_and_derived_from_the_source_reference(
     assert str(place_id) == str(stable_uuid("place", "test-region/osm/node/1"))
 
 
-def smaller_extract(tmp_path: Path, drop_node: str = "12") -> Path:
+def smaller_extract(tmp_path: Path, drop_node: str = "56") -> Path:
     original = (FIXTURES / "region-sample.osm").read_text(encoding="utf-8")
     lines = [line for line in original.splitlines() if f'id="{drop_node}"' not in line]
     assert len(lines) == len(original.splitlines()) - 1
@@ -159,19 +161,19 @@ def test_a_place_missing_from_a_later_extract_is_deleted_with_its_rows(
 
     with psycopg.connect(target) as conn:
         gone = conn.execute(
-            "SELECT count(*) FROM geo.place WHERE name = 'Zur Alten Post'"
+            "SELECT count(*) FROM geo.place WHERE name = 'Östertal Heimatmuseum'"
         ).fetchone()
         totals = conn.execute(
             "SELECT (SELECT count(*) FROM geo.place), (SELECT count(*) FROM geo.place_source),"
-            " (SELECT count(*) FROM geo.place_signal), (SELECT count(*) FROM geo.restaurant_profile),"
+            " (SELECT count(*) FROM geo.place_signal),"
             " (SELECT count(*) FROM geo.place WHERE NOT is_active)"
         ).fetchone()
         counts = conn.execute(
             "SELECT counts FROM geo.import_run ORDER BY started_at DESC LIMIT 1"
         ).fetchone()
     assert gone == (0,)
-    assert totals == (14, 14, 14, 3, 0)  # nothing of it is left, in any table
-    assert second["kinds"]["restaurant"]["total"] == 3
+    assert totals == (10, 10, 10, 0)  # nothing of it is left, in any table
+    assert second["kinds"]["attraction"]["total"] == 10
     assert counts is not None
     assert (counts[0]["places_purged"], counts[0]["places_deactivated"]) == (1, 0)
     assert second["retention"] == {
@@ -200,9 +202,9 @@ def _itinerary_item_naming(conn: psycopg.Connection[Any], place_id: object) -> s
         (day, itinerary),
     )
     conn.execute(
-        "INSERT INTO app.itinerary_item (id, day_id, position, type, meal_type, place_id,"
+        "INSERT INTO app.itinerary_item (id, day_id, position, type, place_id,"
         " display_name, duration_minutes, duration_source, origin)"
-        " VALUES (%s, %s, 1, 'meal', 'lunch', %s, 'Zur Alten Post', 60, 'user', 'user')",
+        " VALUES (%s, %s, 1, 'visit', %s, 'Östertal Heimatmuseum', 60, 'user', 'user')",
         (item, day, place_id),
     )
     return str(item)
@@ -214,7 +216,9 @@ def test_a_missing_place_that_an_itinerary_still_names_is_kept_inactive_until_it
     target, staging = pipeline_dbs
     import_fixture_region(target, staging, tmp_path / "a")
     with psycopg.connect(target, autocommit=True) as conn:
-        row = conn.execute("SELECT id FROM geo.place WHERE name = 'Zur Alten Post'").fetchone()
+        row = conn.execute(
+            "SELECT id FROM geo.place WHERE name = 'Östertal Heimatmuseum'"
+        ).fetchone()
         assert row is not None
         item_id = _itinerary_item_naming(conn, row[0])
 
@@ -223,7 +227,7 @@ def test_a_missing_place_that_an_itinerary_still_names_is_kept_inactive_until_it
     with psycopg.connect(target) as conn:
         kept = conn.execute(
             "SELECT is_active, (SELECT count(*) FROM geo.place_source WHERE place_id = p.id)"
-            " FROM geo.place p WHERE name = 'Zur Alten Post'"
+            " FROM geo.place p WHERE name = 'Östertal Heimatmuseum'"
         ).fetchone()
     assert kept == (False, 1)  # still there, marked inactive, provenance intact
     assert report["retention"]["places_deactivated"] == 1
@@ -236,7 +240,7 @@ def test_a_missing_place_that_an_itinerary_still_names_is_kept_inactive_until_it
     assert report["retention"]["places_purged"] == 1
     with psycopg.connect(target) as conn:
         assert conn.execute(
-            "SELECT count(*) FROM geo.place WHERE name = 'Zur Alten Post'"
+            "SELECT count(*) FROM geo.place WHERE name = 'Östertal Heimatmuseum'"
         ).fetchone() == (0,)
 
 
@@ -246,7 +250,6 @@ def _row_versions(url: str) -> dict[str, dict[str, str]]:
         "place": "SELECT id::text, xmin::text FROM geo.place",
         "place_source": "SELECT place_id::text, xmin::text FROM geo.place_source",
         "place_signal": "SELECT place_id::text, xmin::text FROM geo.place_signal",
-        "restaurant_profile": "SELECT place_id::text, xmin::text FROM geo.restaurant_profile",
         "admin_area": "SELECT id::text, xmin::text FROM geo.admin_area",
     }
     with psycopg.connect(url) as conn:
@@ -268,7 +271,9 @@ def test_rows_that_did_not_change_are_not_rewritten_by_a_re_import(
     # One object changes its name: exactly its own rows are rewritten.
     original = (FIXTURES / "region-sample.osm").read_text(encoding="utf-8")
     changed = tmp_path / "changed.osm"
-    changed.write_text(original.replace("Zur Alten Post", "Zur Neuen Post"), encoding="utf-8")
+    changed.write_text(
+        original.replace("Östertal Heimatmuseum", "Östertal Stadtmuseum"), encoding="utf-8"
+    )
     import_fixture_region(target, staging, tmp_path / "c", pbf=changed)
     third = _row_versions(target)
     for table, versions in third.items():
@@ -293,7 +298,7 @@ def test_the_vacuum_after_an_import_is_reported_and_full_vacuum_works(
     with psycopg.connect(target) as conn:
         size = loader.vacuum_and_analyze(conn, full=True)
         assert isinstance(size, int) and size > 0
-        assert conn.execute("SELECT count(*) FROM geo.place").fetchone() == (15,)
+        assert conn.execute("SELECT count(*) FROM geo.place").fetchone() == (11,)
 
 
 def test_unknown_values_stay_unknown_and_opening_hours_are_never_stored(
@@ -302,15 +307,6 @@ def test_unknown_values_stay_unknown_and_opening_hours_are_never_stored(
     target, staging = pipeline_dbs
     import_fixture_region(target, staging, tmp_path)
     with psycopg.connect(target) as conn:
-        unnamed_cafe = conn.execute(
-            "SELECT p.name, p.name_norm, rp.cuisines, rp.diet_flags, rp.provider_price_level,"
-            " p.default_visit_minutes FROM geo.place p JOIN geo.restaurant_profile rp"
-            " ON rp.place_id = p.id WHERE p.category = 'cafe' AND p.name IS NULL"
-        ).fetchone()
-        post = conn.execute(
-            "SELECT rp.cuisines, rp.diet_flags, rp.meal_types FROM geo.place p"
-            " JOIN geo.restaurant_profile rp ON rp.place_id = p.id WHERE p.name = 'Zur Alten Post'"
-        ).fetchone()
         museum = conn.execute(
             "SELECT p.names_i18n, p.address, s.wikidata_id, s.sitelink_count, s.score"
             " FROM geo.place p JOIN geo.place_signal s ON s.place_id = p.id"
@@ -319,8 +315,6 @@ def test_unknown_values_stay_unknown_and_opening_hours_are_never_stored(
         hours = conn.execute(
             "SELECT count(*) FROM geo.place_source WHERE tags ? 'opening_hours'"
         ).fetchone()
-    assert unnamed_cafe == (None, None, None, None, None, None)
-    assert post == (["austrian", "regional"], ["vegan_only", "vegetarian"], ["dinner", "lunch"])
     assert museum is not None
     names, address, wikidata, sitelinks, score = museum
     assert names == {"de": "Testburger Museum", "en": "Testburg Museum"}
@@ -354,7 +348,7 @@ def test_a_small_region_fails_the_gates_and_stays_disabled(
     assert report["all_gates_passed"] is False
     assert report["region_status"] == "disabled"
     failing = {g["gate"] for g in report["gates"] if not g["passed"]}
-    assert failing == {1, 3, 4, 5}  # 3 of 4 restaurants named, 4 restaurants, 9 attractions...
+    assert failing == {4}  # too few named attractions; gates 1 to 3 are retired (ADR 026)
     with psycopg.connect(target) as conn:
         row = conn.execute(
             "SELECT status, current_import_run_id IS NOT NULL FROM geo.region WHERE id = %s",
@@ -449,14 +443,14 @@ def test_places_get_their_nearest_city_in_either_import_order(
             conn.execute(
                 "SELECT COALESCE(p.name, p.category), c.name FROM geo.place p"
                 " LEFT JOIN geo.city c ON c.id = p.city_id"
-                " WHERE p.name IN ('Testburg Museum', 'Mühlbach Aussicht', 'Café Östertal')"
+                " WHERE p.name IN ('Testburg Museum', 'Mühlbach Aussicht', 'Östertal Heimatmuseum')"
             ).fetchall()
         )
         areas = conn.execute("SELECT DISTINCT country_iso2 FROM geo.admin_area").fetchall()
     assert rows == {
         "Testburg Museum": "Testburg",
         "Mühlbach Aussicht": "Mühlbach",
-        "Café Östertal": "Östertal",
+        "Östertal Heimatmuseum": "Östertal",
     }
     assert areas == [("AT",)]  # single-country region: areas belong to that country
 
@@ -487,75 +481,30 @@ def test_review_sample_is_deterministic_and_limited(
     assert "historic=memorial / excluded:memorial_without_wikidata" in sample_a
 
 
-def test_restaurants_and_cafes_are_kept_only_near_attractions_or_towns(
+def test_restaurants_and_cafes_are_not_imported(
     pipeline_dbs: tuple[str, str], tmp_path: Path
 ) -> None:
-    from detour_api.importer.selection import (
-        RESTAURANT_RADIUS_M,
-        TOWN_MIN_POPULATION,
-        TOWN_RADIUS_M,
-    )
-
+    """ADR 026: the extract has restaurants and cafes; none reaches geo, and they are not even
+    counted as excluded objects. The restaurant tag is not copied out of the extract either."""
     target, staging = pipeline_dbs
     import_fixture_gazetteer(target, ["AT"])
     report = import_fixture_region(target, staging, tmp_path)
-
     with psycopg.connect(target) as conn:
-        food: dict[str, str] = dict(
-            conn.execute(
-                "SELECT COALESCE(name, '(unnamed)'), category FROM geo.place WHERE kind = 'restaurant'"
-            ).fetchall()
-        )
-    assert food == {
-        "東京ラーメン": "restaurant",  # about 345 m from the museum
-        "(unnamed)": "cafe",  # 200 m from Östertal Heimatmuseum
-        "Zur Alten Post": "restaurant",
-        "Café Östertal": "cafe",
-        "Neustadt Gasthaus": "restaurant",  # no attraction near, but 60 m from a town of 8,000
-    }
-    assert "Remote Gasthaus" not in food and "Remote Cafe" not in food
-
-    by_class = {(r["class"], r["reason"]): r["count"] for r in report["excluded"]["by_class"]}
-    assert by_class[("amenity=restaurant", "restaurant_not_near_attraction_or_town")] == 1
-    assert by_class[("amenity=cafe", "restaurant_not_near_attraction_or_town")] == 1
-    assert report["excluded"]["total"] == 21
-    rule = report["proximity_rule"]
-    assert rule == {
-        "radius_m": RESTAURANT_RADIUS_M,
-        "town_min_population": TOWN_MIN_POPULATION,
-        "town_radius_m": TOWN_RADIUS_M,
-        "attraction_anchors": 11,
-        "town_anchors": 2,  # Testburg (120,000) and Testburg-Neustadt (8,000); the rest are smaller
-    }
-    assert not any("No gazetteer" in w for w in report["warnings"])
-    from detour_api.importer.report import render_markdown
-
-    assert "kept within 500 m of one of 11 attractions" in render_markdown(report)
-
-
-def test_without_a_gazetteer_the_rule_uses_attractions_only_and_says_so(
-    pipeline_dbs: tuple[str, str], tmp_path: Path
-) -> None:
-    target, staging = pipeline_dbs
-    report = import_fixture_region(target, staging, tmp_path)
-    assert report["proximity_rule"]["town_anchors"] == 0
-    assert any("only near attractions" in w for w in report["warnings"])
-    with psycopg.connect(target) as conn:
-        assert conn.execute(
-            "SELECT count(*) FROM geo.place WHERE name = 'Neustadt Gasthaus'"
-        ).fetchone() == (0,)
-
-
-def test_the_proximity_rule_leaves_the_import_repeatable(
-    pipeline_dbs: tuple[str, str], tmp_path: Path
-) -> None:
-    target, staging = pipeline_dbs
-    import_fixture_gazetteer(target, ["AT"])
-    import_fixture_region(target, staging, tmp_path / "a")
-    first = canonical_geo_dump(target, TEST_REGION.id)
-    second_report = import_fixture_region(target, staging, tmp_path / "b")
-    assert canonical_geo_dump(target, TEST_REGION.id) == first
-    assert second_report["excluded"]["total"] == 21
+        kinds = conn.execute("SELECT DISTINCT kind FROM geo.place").fetchall()
+        named = conn.execute(
+            "SELECT count(*) FROM geo.place WHERE name IN ('Zur Alten Post', 'Remote Cafe',"
+            " 'Neustadt Gasthaus', 'Café Östertal')"
+        ).fetchone()
+        food_tags = conn.execute(
+            "SELECT count(*) FROM geo.place_source WHERE tags ? 'amenity' OR tags ? 'cuisine'"
+            " OR tags::text LIKE '%diet:%'"
+        ).fetchone()
+    assert kinds == [("attraction",)]
+    assert named == (0,)
+    assert food_tags == (0,)
+    assert "proximity_rule" not in report
+    assert not any("No gazetteer towns" in w for w in report["warnings"])
+    assert report["excluded"]["total"] == 19
 
 
 def test_gate_6_is_judged_on_the_size_after_the_vacuum(

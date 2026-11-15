@@ -1,0 +1,557 @@
+"""Optimize a hand-made trip (ADR 029): a new order of the stops for the least travel.
+
+The user's plan is searched, not planned again: the search starts from the current order and
+accepts only **strictly improving** moves, so the proposal's travel is never higher than the
+plan's. No randomness and no clock: the same plan and the same travel times give the same answer.
+
+**Objective.** Total travel minutes (walking and driving, each leg rounded up to whole minutes) over
+the whole plan. A leg joins two consecutive stops that both have a point; a free-time block has no
+point, so no leg is counted across it.
+
+**Empty days stay empty, and a day with stops keeps at least one:** a day boundary has no travel, so
+without this the search would spread a day's stops over the empty days of the trip.
+
+**Moves** (first improvement, in index order): reverse a run of movable visits within a day (2-opt),
+relocate a visit within its day or to another day, swap two visits. A move that changes a day is
+kept only if the day can be laid out again (below).
+
+**Who moves.** A *visit* the user has not fixed. A restaurant or café never changes day and keeps
+its chosen start time or starts later, at most 60 minutes later and never after 21:00 (the stops
+before it are laid out around it). A **locked** stop, a stop the user keeps in place and a
+free-time block keep their day, start and end. A visit on a place trip that lies far from the
+trip's point keeps its day. On a multi-city trip a visit stays in the days of its own city. In the
+first scope (``within_days``) nothing changes day.
+
+**Laying a day out.** The day starts at its current first item's start (09:00 when the first item
+is a restaurant, a block or the day is empty, or earlier); visits follow one another with their
+travel time between them and keep their own lengths. A day may not end later than the later of the
+planner's day window end, the day's own current end and the end of a restaurant at its latest
+allowed start.
+
+**Travel times.** The search uses what the source answers without calling out (cached times and
+labelled estimates). Then the legs of the changed days are asked of the provider (if allowed), and
+the search runs again with those times, at most ``FOLLOW_UP_FETCHES`` times; legs that stay
+estimated are labelled. Nothing is invented.
+"""
+
+import itertools
+from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass, field
+from typing import Literal
+
+from detour_api.planner.config import DEFAULT_CONFIG, PlannerConfig
+from detour_api.planner.travel import Cell, TravelLookup, minutes
+from detour_api.planner.types import Leg
+from detour_api.travel.types import Coord, distance_m
+
+OPTIMIZE_VERSION = "optimize-1.0.0"
+
+# A restaurant or café starts at most this long after the time the user chose, and never later than
+# 21:00 (owner decisions of 2026-11-14).
+MEAL_WINDOW_MIN = 60
+MEAL_LATEST_START = 21 * 60
+# On a place trip a visit further than this from the trip's point keeps its day (ADR 029).
+FAR_STOP_M = 25_000
+# More stops than this are refused: the search is quadratic in them.
+MAX_STOPS = 200
+MAX_ROUNDS = 500
+FOLLOW_UP_FETCHES = 2
+
+Scope = Literal["within_days", "across_days"]
+
+
+@dataclass(frozen=True)
+class Stop:
+    """One item of the plan, as the search sees it."""
+
+    id: str
+    kind: Literal["visit", "meal", "free_time"]
+    name: str
+    lat: float | None
+    lon: float | None
+    day: int  # the day it is on now
+    start: int | None  # minute of the day; None only for an item the user left without a time
+    end: int | None
+    duration: int
+    fixed: bool  # locked, or kept in place by the user: day, start and end stay
+    allowed_days: frozenset[int]  # the days a visit may be on; only its own day otherwise
+
+    @property
+    def located(self) -> bool:
+        return self.lat is not None and self.lon is not None
+
+    @property
+    def coord(self) -> Coord:
+        assert self.lat is not None and self.lon is not None  # noqa: S101 - callers check located
+        return Coord.from_degrees(self.lat, self.lon)
+
+    @property
+    def movable(self) -> bool:
+        return self.kind == "visit" and not self.fixed
+
+
+@dataclass(frozen=True)
+class Laid:
+    """A stop in its place in the proposal, with the leg to the next stop of its day."""
+
+    id: str
+    day: int
+    start: int
+    end: int
+    leg: Leg | None
+
+
+@dataclass(frozen=True)
+class Outcome:
+    days: dict[int, tuple[Laid, ...]]  # every day, in the proposal
+    before: dict[int, tuple[Laid, ...]]  # every day as it is now, with the same travel source
+    changed_days: tuple[int, ...]
+    travel_before: int  # minutes
+    travel_after: int
+    meters_before: int
+    meters_after: int
+    estimated_before: int  # legs that are estimates
+    estimated_after: int
+
+
+@dataclass(frozen=True)
+class Rules:
+    """What the planner's configuration contributes to the search."""
+
+    day_start: int = DEFAULT_CONFIG.day_start_minute
+    window_end: int = DEFAULT_CONFIG.day_window_end_minute
+
+
+def rules_of(config: PlannerConfig) -> Rules:
+    return Rules(config.day_start_minute, config.day_window_end_minute)
+
+
+# -- building the stops --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CityPoint:
+    city_id: int
+    lat: float
+    lon: float
+
+
+@dataclass(frozen=True)
+class DayInfo:
+    index: int
+    base_city_id: int | None
+
+
+def build_stops(
+    items: Sequence[dict[str, object]],
+    days: Sequence[DayInfo],
+    *,
+    scope: Scope,
+    fixed_ids: Iterable[str],
+    cities: Sequence[CityPoint] = (),
+    place_point: tuple[float, float] | None = None,
+) -> tuple[list[Stop], int]:
+    """Stops from stored items (``plan_state`` rows), in plan order, and how many visits keep their
+    day because they are far from a place trip's point. Items are ``plan_state`` item dicts with a
+    ``day`` index added by the caller."""
+    keep = set(fixed_ids)
+    # A day with an item that has no time is left exactly as it is.
+    frozen = {int(str(i["day"])) for i in items if i["start_minute"] is None}
+    stops: list[Stop] = []
+    far = 0
+    for r in items:
+        day = int(str(r["day"]))
+        lat = r["lat"]
+        lon = r["lon"]
+        kind = str(r["type"])
+        start = r["start_minute"]
+        end = r["end_minute"]
+        assert kind in ("visit", "meal", "free_time")  # noqa: S101
+        fixed = bool(r["locked"]) or str(r["id"]) in keep or kind == "free_time" or day in frozen
+        allowed = frozenset({day})
+        if kind == "visit" and not fixed and scope == "across_days" and lat is not None:
+            point = Coord.from_degrees(float(str(lat)), float(str(lon)))
+            allowed = _allowed_days(point, day, days, cities, place_point) - (frozen - {day})
+            if (
+                place_point is not None
+                and not cities
+                and distance_m(point, Coord.from_degrees(*place_point)) > FAR_STOP_M
+            ):
+                far += 1
+        minutes_ = r["duration_minutes"]
+        stops.append(
+            Stop(
+                id=str(r["id"]),
+                kind=kind,  # type: ignore[arg-type]
+                name=str(r["display_name"]),
+                lat=None if lat is None else float(str(lat)),
+                lon=None if lon is None else float(str(lon)),
+                day=day,
+                start=None if start is None else int(str(start)),
+                end=None if end is None else int(str(end)),
+                duration=int(str(minutes_)) if minutes_ is not None else 0,
+                fixed=fixed,
+                allowed_days=allowed,
+            )
+        )
+    return stops, far
+
+
+def _allowed_days(
+    here: Coord,
+    day: int,
+    days: Sequence[DayInfo],
+    cities: Sequence[CityPoint],
+    place_point: tuple[float, float] | None,
+) -> frozenset[int]:
+    if cities:  # a multi-city trip: the days of the stop's own city, its nearest stop (ADR 024)
+        own = min(
+            cities, key=lambda c: (distance_m(here, Coord.from_degrees(c.lat, c.lon)), c.city_id)
+        )
+        return frozenset(d.index for d in days if d.base_city_id == own.city_id) | {day}
+    if place_point is not None and distance_m(here, Coord.from_degrees(*place_point)) > FAR_STOP_M:
+        return frozenset({day})  # a place trip: far from the point, it keeps its day (ADR 029)
+    return frozenset(d.index for d in days)
+
+
+# -- the search ---------------------------------------------------------------------------------
+
+
+class _Search:
+    def __init__(
+        self,
+        stops: Sequence[Stop],
+        days: Sequence[int],
+        scope: Scope,
+        lookup: TravelLookup,
+        rules: Rules,
+    ) -> None:
+        self.stops = stops
+        self.days = tuple(days)
+        self.scope = scope
+        self.lookup = lookup
+        self.rules = rules
+        self.orders: dict[int, list[int]] = {d: [] for d in self.days}
+        for i, s in enumerate(stops):
+            self.orders[s.day].append(i)
+        self.original = {d: tuple(v) for d, v in self.orders.items()}
+        self._leg_memo: dict[tuple[int, int], int] = {}
+        self._fit_memo: dict[tuple[int, tuple[int, ...]], bool] = {}
+        # A day's own limit: the later of the window end, its current end and a restaurant's end at
+        # its latest start.
+        self.limit = {d: self._limit(d) for d in self.days}
+        self.start = {d: self._day_start(d) for d in self.days}
+
+    # -- numbers
+
+    def _limit(self, day: int) -> int:
+        ends = [self.rules.window_end]
+        for i in self.original[day]:
+            s = self.stops[i]
+            if s.end is not None:
+                ends.append(s.end)
+            if s.kind == "meal" and s.start is not None:
+                ends.append(min(s.start + MEAL_WINDOW_MIN, MEAL_LATEST_START) + s.duration)
+        return max(ends)
+
+    def _day_start(self, day: int) -> int:
+        order = self.original[day]
+        if not order:
+            return self.rules.day_start
+        first = self.stops[order[0]]
+        if first.start is None:
+            return self.rules.day_start
+        if first.kind == "visit" and not first.fixed:
+            return first.start
+        return min(first.start, self.rules.day_start)
+
+    def leg(self, a: int, b: int) -> int:
+        """Minutes from stop ``a`` to stop ``b``; 0 when either has no point."""
+        key = (a, b)
+        found = self._leg_memo.get(key)
+        if found is None:
+            sa, sb = self.stops[a], self.stops[b]
+            if not (sa.located and sb.located):
+                found = 0
+            else:
+                found = minutes(self.lookup.get(sa.coord, sb.coord).seconds)
+            self._leg_memo[key] = found
+        return found
+
+    def travel(self, order: Sequence[int]) -> int:
+        return sum(self.leg(a, b) for a, b in itertools.pairwise(order))
+
+    def total(self) -> int:
+        return sum(self.travel(o) for o in self.orders.values())
+
+    def fits(self, day: int, order: Sequence[int]) -> bool:
+        key = (day, tuple(order))
+        found = self._fit_memo.get(key)
+        if found is None:
+            found = (
+                lay_out(self.stops, order, self.start[day], self.limit[day], self.leg) is not None
+            )
+            self._fit_memo[key] = found
+        return found
+
+    # -- moves
+
+    def run(self) -> None:
+        for _ in range(MAX_ROUNDS):
+            if not (self._two_opt() or self._relocate() or self._swap()):
+                return
+
+    def _commit(self, new: dict[int, list[int]]) -> None:
+        self.orders.update(new)
+
+    def _two_opt(self) -> bool:
+        for d in self.days:
+            order = self.orders[d]
+            for i in range(len(order)):
+                if not self.stops[order[i]].movable:
+                    continue
+                for j in range(i + 1, len(order)):
+                    if not self.stops[order[j]].movable:
+                        break
+                    cand = order[:i] + order[i : j + 1][::-1] + order[j + 1 :]
+                    if self.travel(cand) < self.travel(order) and self.fits(d, cand):
+                        self._commit({d: cand})
+                        return True
+        return False
+
+    def _relocate(self) -> bool:
+        for d in self.days:
+            order = self.orders[d]
+            for pos, v in enumerate(order):
+                s = self.stops[v]
+                if not s.movable:
+                    continue
+                rest = order[:pos] + order[pos + 1 :]
+                for dd in self.days:
+                    if dd not in s.allowed_days:
+                        continue
+                    if dd != d and (
+                        self.scope == "within_days"
+                        or not self.original[dd]  # an empty day stays empty
+                        or not rest  # a day with stops never becomes empty
+                    ):
+                        continue
+                    target = rest if dd == d else self.orders[dd]
+                    for p in range(len(target) + 1):
+                        if dd == d and p == pos:
+                            continue
+                        cand = [*target[:p], v, *target[p:]]
+                        if dd == d:
+                            before = self.travel(order)
+                            after = self.travel(cand)
+                            if after < before and self.fits(d, cand):
+                                self._commit({d: cand})
+                                return True
+                        else:
+                            before = self.travel(order) + self.travel(self.orders[dd])
+                            after = self.travel(rest) + self.travel(cand)
+                            if after < before and self.fits(d, rest) and self.fits(dd, cand):
+                                self._commit({d: rest, dd: cand})
+                                return True
+        return False
+
+    def _swap(self) -> bool:
+        flat = [(d, p, v) for d in self.days for p, v in enumerate(self.orders[d])]
+        for (d1, p1, v1), (d2, p2, v2) in itertools.combinations(flat, 2):
+            s1, s2 = self.stops[v1], self.stops[v2]
+            if not (s1.movable and s2.movable):
+                continue
+            if d1 == d2:
+                order = self.orders[d1]
+                cand = list(order)
+                cand[p1], cand[p2] = v2, v1
+                if self.travel(cand) < self.travel(order) and self.fits(d1, cand):
+                    self._commit({d1: cand})
+                    return True
+                continue
+            if self.scope == "within_days":
+                continue
+            if d2 not in s1.allowed_days or d1 not in s2.allowed_days:
+                continue
+            a, b = list(self.orders[d1]), list(self.orders[d2])
+            a[p1], b[p2] = v2, v1
+            before = self.travel(self.orders[d1]) + self.travel(self.orders[d2])
+            if self.travel(a) + self.travel(b) < before and self.fits(d1, a) and self.fits(d2, b):
+                self._commit({d1: a, d2: b})
+                return True
+        return False
+
+
+def lay_out(
+    stops: Sequence[Stop],
+    order: Sequence[int],
+    day_start: int,
+    limit: int,
+    leg: Callable[[int, int], int],
+) -> list[tuple[int, int]] | None:
+    """Start and end of every stop of a day in the given order, or None if the day cannot be laid
+    out: a block or a locked stop would start too early, a restaurant would start later than 60
+    minutes after its chosen time or after 21:00, or the day ends after ``limit``."""
+    out: list[tuple[int, int]] = []
+    cursor = day_start
+    prev: int | None = None
+    for i in order:
+        s = stops[i]
+        earliest = cursor + (leg(prev, i) if prev is not None else 0)
+        if s.fixed or s.kind == "free_time":
+            assert s.start is not None and s.end is not None  # noqa: S101
+            if s.start < earliest:
+                return None
+            start, end = s.start, s.end
+        elif s.kind == "meal":
+            assert s.start is not None  # noqa: S101
+            start = max(s.start, earliest)
+            if start > min(s.start + MEAL_WINDOW_MIN, MEAL_LATEST_START):
+                return None
+            end = start + s.duration
+        else:
+            start = earliest
+            end = start + s.duration
+        out.append((start, end))
+        cursor = end
+        prev = i
+    if out and out[-1][1] > limit:
+        return None
+    return out
+
+
+# -- the whole run -------------------------------------------------------------------------------
+
+
+def _cells(stops: Sequence[Stop], orders: dict[int, Sequence[int]]) -> list[Cell]:
+    return [
+        (stops[a].coord, stops[b].coord)
+        for order in orders.values()
+        for a, b in itertools.pairwise(order)
+        if stops[a].located and stops[b].located
+    ]
+
+
+def _all_cells(stops: Sequence[Stop], scope: Scope) -> list[Cell]:
+    located = [s for s in stops if s.located]
+    return [
+        (a.coord, b.coord)
+        for a, b in itertools.permutations(located, 2)
+        if scope == "across_days" or a.day == b.day
+    ]
+
+
+@dataclass
+class _Totals:
+    minutes: int = 0
+    meters: int = 0
+    estimated: int = 0
+    legs: dict[int, tuple[Laid, ...]] = field(default_factory=dict)
+
+
+def optimize(
+    stops: Sequence[Stop],
+    days: Sequence[int],
+    *,
+    scope: Scope,
+    lookup: TravelLookup,
+    use_provider: bool,
+    rules: Rules | None = None,
+) -> Outcome:
+    """Search for a shorter order. ``changed_days`` is empty when nothing improves."""
+    rules = rules or Rules()
+    if len([s for s in stops if s.kind != "free_time"]) > MAX_STOPS:
+        raise ValueError("too many stops")
+    lookup.fetch(_all_cells(stops, scope), use_provider=False)
+    search = _Search(stops, days, scope, lookup, rules)
+    for round_ in range(FOLLOW_UP_FETCHES + 1):
+        search.run()
+        changed = [d for d in search.days if tuple(search.orders[d]) != search.original[d]]
+        if not changed or not use_provider or round_ == FOLLOW_UP_FETCHES:
+            break
+        # Both the proposed order and the current one of the changed days, so the saving compares
+        # routed times with routed times.
+        cells = _cells(stops, {d: search.orders[d] for d in changed}) + _cells(
+            stops, {d: search.original[d] for d in changed}
+        )
+        missing = [c for c in sorted(set(cells)) if not lookup.answered(*c)]
+        if not missing:
+            break
+        lookup.fetch(missing, use_provider=True)
+        search = _Search(stops, days, scope, lookup, rules)  # the original order, new times
+    return _outcome(stops, search)
+
+
+def _outcome(stops: Sequence[Stop], search: _Search) -> Outcome:
+    changed = tuple(d for d in search.days if tuple(search.orders[d]) != search.original[d])
+    before = _lay_all(stops, search, {d: list(v) for d, v in search.original.items()}, set())
+    after = _lay_all(stops, search, search.orders, set(changed))
+    return Outcome(
+        days=after.legs,
+        before=before.legs,
+        changed_days=changed,
+        travel_before=before.minutes,
+        travel_after=after.minutes,
+        meters_before=before.meters,
+        meters_after=after.meters,
+        estimated_before=before.estimated,
+        estimated_after=after.estimated,
+    )
+
+
+def _lay_all(
+    stops: Sequence[Stop], search: _Search, orders: dict[int, list[int]], relay: set[int]
+) -> _Totals:
+    """Every day with its legs. Days in ``relay`` get new times; the others keep the stored ones."""
+    totals = _Totals()
+    for d in search.days:
+        order = orders[d]
+        if d in relay:
+            times = lay_out(stops, order, search.start[d], search.limit[d], search.leg)
+            assert times is not None  # noqa: S101 - the search only keeps days that fit
+        else:
+            times = [(stops[i].start or 0, stops[i].end or 0) for i in order]
+        laid: list[Laid] = []
+        for n, i in enumerate(order):
+            leg: Leg | None = None
+            if n + 1 < len(order) and stops[i].located and stops[order[n + 1]].located:
+                a, b = stops[i], stops[order[n + 1]]
+                t = search.lookup.get(a.coord, b.coord)
+                mins = minutes(t.seconds)
+                leg = Leg(
+                    mode=search.lookup.mode(a.coord, b.coord),
+                    seconds=t.seconds,
+                    meters=t.meters,
+                    minutes=mins,
+                    confidence=t.confidence,
+                    estimate_reason=t.reason,
+                )
+                totals.minutes += mins
+                totals.meters += t.meters
+                totals.estimated += 0 if t.confidence == "routed" else 1
+            laid.append(Laid(stops[i].id, d, times[n][0], times[n][1], leg))
+        totals.legs[d] = tuple(laid)
+    return totals
+
+
+def steps_exceed(stops: Sequence[Stop]) -> bool:
+    return len([s for s in stops if s.kind != "free_time"]) > MAX_STOPS
+
+
+__all__ = [
+    "FAR_STOP_M",
+    "MAX_STOPS",
+    "OPTIMIZE_VERSION",
+    "CityPoint",
+    "DayInfo",
+    "Laid",
+    "Outcome",
+    "Rules",
+    "Scope",
+    "Stop",
+    "build_stops",
+    "lay_out",
+    "optimize",
+    "rules_of",
+    "steps_exceed",
+]

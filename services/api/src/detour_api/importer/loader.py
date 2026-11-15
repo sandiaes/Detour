@@ -31,7 +31,6 @@ from detour_api.db import SEARCH_PATH
 from detour_api.importer import IMPORTER_VERSION
 from detour_api.importer.derive import OSM_LICENCE, PlaceRow, build_place, source_ref
 from detour_api.importer.pipeline import Candidate, iter_boundaries, iter_candidates, libpq_url
-from detour_api.importer.proximity import ProximityIndex
 from detour_api.importer.regions import RegionDef
 from detour_api.importer.report import (
     Counters,
@@ -41,11 +40,7 @@ from detour_api.importer.report import (
 )
 from detour_api.importer.selection import (
     REASON_NO_GEOMETRY,
-    REASON_NOT_NEAR,
-    RESTAURANT_RADIUS_M,
     RULES_VERSION,
-    TOWN_MIN_POPULATION,
-    TOWN_RADIUS_M,
     decide,
 )
 from detour_api.textnorm import normalize_text, stable_uuid
@@ -145,7 +140,6 @@ _STAGE_PLACE = """
 CREATE TEMP TABLE stage_place (
     id uuid, kind text, category text, name text, name_norm text, names_i18n jsonb,
     name_en_norm text, alias_norm text, lon float8, lat float8, address jsonb, source_ref text, tags jsonb,
-    cuisines text[], venue_type text, meal_types text[], diet_flags text[],
     wikidata_id text, osm_signals jsonb, score numeric
 ) ON COMMIT DROP
 """
@@ -158,7 +152,6 @@ CREATE TEMP TABLE stage_area (
 
 
 def _place_values(place: PlaceRow) -> tuple[object, ...]:
-    profile = place.profile
     return (
         place.id,
         place.kind,
@@ -173,59 +166,9 @@ def _place_values(place: PlaceRow) -> tuple[object, ...]:
         Jsonb(place.address) if place.address else None,
         place.source_ref,
         Jsonb(place.source_tags),
-        profile.cuisines if profile else None,
-        profile.venue_type if profile else None,
-        profile.meal_types if profile else None,
-        profile.diet_flags if profile else None,
         place.signal.wikidata_id,
         Jsonb(place.signal.osm_signals),
         place.signal.score,
-    )
-
-
-@dataclass(frozen=True)
-class Proximity:
-    """What the "restaurants near attractions or towns" rule used (also written to the report)."""
-
-    attractions: ProximityIndex
-    towns: ProximityIndex
-
-    def near(self, lat: float, lon: float) -> bool:
-        return self.attractions.near(lat, lon) or self.towns.near(lat, lon)
-
-    def describe(self) -> dict[str, int]:
-        return {
-            "radius_m": RESTAURANT_RADIUS_M,
-            "town_min_population": TOWN_MIN_POPULATION,
-            "town_radius_m": TOWN_RADIUS_M,
-            "attraction_anchors": self.attractions.count,
-            "town_anchors": self.towns.count,
-        }
-
-
-def build_proximity(
-    conn: psycopg.Connection[Any], staging: psycopg.Connection[Any], region: RegionDef
-) -> Proximity:
-    """First pass: the points of every attraction the rules keep, and the gazetteer's towns."""
-    anchors: list[tuple[float, float]] = []
-    for cand in iter_candidates(staging):
-        decision = decide(cand.tags)
-        if (
-            decision is not None
-            and decision.kept
-            and decision.kind == "attraction"
-            and cand.lat is not None
-            and cand.lon is not None
-        ):
-            anchors.append((cand.lat, cand.lon))
-    towns = conn.execute(
-        "SELECT ST_Y(geom), ST_X(geom) FROM geo.city"
-        " WHERE country_iso2 = ANY (%s) AND population >= %s ORDER BY id",
-        (list(region.countries), TOWN_MIN_POPULATION),
-    ).fetchall()
-    return Proximity(
-        ProximityIndex(anchors, RESTAURANT_RADIUS_M),
-        ProximityIndex([(lat, lon) for lat, lon in towns], TOWN_RADIUS_M),
     )
 
 
@@ -233,7 +176,6 @@ def classify_candidates(
     region: RegionDef,
     candidates: Iterable[Candidate],
     counters: Counters,
-    proximity: Proximity | None = None,
 ) -> Iterable[PlaceRow]:
     """Apply the selection rule, count everything, and yield the places to keep."""
     for cand in candidates:
@@ -247,13 +189,6 @@ def classify_candidates(
             continue
         if cand.lon is None or cand.lat is None:
             counters.exclude(decision, ref, cand.tags, REASON_NO_GEOMETRY)
-            continue
-        if (
-            proximity is not None
-            and decision.kind == "restaurant"
-            and not proximity.near(cand.lat, cand.lon)
-        ):
-            counters.exclude(decision, ref, cand.tags, REASON_NOT_NEAR)
             continue
         place = build_place(
             region.id, cand.osm_type, cand.osm_id, decision, cand.tags, cand.lon, cand.lat
@@ -269,7 +204,7 @@ def _copy_places(conn: psycopg.Connection[Any], places: Iterable[PlaceRow]) -> i
         cur.copy(
             "COPY stage_place (id, kind, category, name, name_norm, names_i18n, name_en_norm, alias_norm, lon, lat,"
             " address,"
-            " source_ref, tags, cuisines, venue_type, meal_types, diet_flags, wikidata_id,"
+            " source_ref, tags, wikidata_id,"
             " osm_signals, score) FROM STDIN"
         ) as copy,
     ):
@@ -401,24 +336,6 @@ def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) 
         params,
     )
     conn.execute(
-        "DELETE FROM geo.restaurant_profile rp USING stage_place s"
-        " WHERE rp.place_id = s.id AND s.kind <> 'restaurant'"
-    )
-    conn.execute(
-        """
-        INSERT INTO geo.restaurant_profile (place_id, cuisines, venue_type, meal_types, diet_flags)
-        SELECT id, cuisines, venue_type, meal_types, diet_flags FROM stage_place
-        WHERE kind = 'restaurant'
-        ON CONFLICT (place_id) DO UPDATE SET
-            cuisines = EXCLUDED.cuisines, venue_type = EXCLUDED.venue_type,
-            meal_types = EXCLUDED.meal_types, diet_flags = EXCLUDED.diet_flags
-        WHERE (geo.restaurant_profile.cuisines, geo.restaurant_profile.venue_type,
-               geo.restaurant_profile.meal_types, geo.restaurant_profile.diet_flags)
-              IS DISTINCT FROM
-              (EXCLUDED.cuisines, EXCLUDED.venue_type, EXCLUDED.meal_types, EXCLUDED.diet_flags)
-        """
-    )
-    conn.execute(
         """
         INSERT INTO geo.place_signal (place_id, wikidata_id, osm_signals, score)
         SELECT id, wikidata_id, osm_signals, score FROM stage_place
@@ -490,20 +407,15 @@ def _db_counts(conn: psycopg.Connection[Any], region_id: str) -> dict[str, dict[
         SELECT p.kind,
                count(*),
                count(p.name),
-               count(*) FILTER (WHERE rp.cuisines IS NOT NULL),
                count(*) FILTER (WHERE s.wikidata_id IS NOT NULL)
         FROM geo.place p
-        LEFT JOIN geo.restaurant_profile rp ON rp.place_id = p.id
         LEFT JOIN geo.place_signal s ON s.place_id = p.id
         WHERE p.region_id = %s AND p.is_active
         GROUP BY p.kind
         """,
         (region_id,),
     ).fetchall()
-    return {
-        kind: {"total": t, "named": n, "with_cuisine": c, "with_wikidata": w}
-        for kind, t, n, c, w in rows
-    }
+    return {kind: {"total": t, "named": n, "with_wikidata": w} for kind, t, n, w in rows}
 
 
 def _geo_bytes(conn: psycopg.Connection[Any]) -> int:
@@ -519,11 +431,10 @@ def _verify_counts(counters: Counters, db: dict[str, dict[str, int]]) -> None:
     """The report is built from counters; refuse to commit if the database disagrees."""
     for kind in set(db) | set(counters.kinds):
         seen = counters.kinds.get(kind)
-        row = db.get(kind, {"total": 0, "named": 0, "with_cuisine": 0, "with_wikidata": 0})
+        row = db.get(kind, {"total": 0, "named": 0, "with_wikidata": 0})
         expected = {
             "total": seen.total if seen else 0,
             "named": seen.named if seen else 0,
-            "with_cuisine": seen.with_cuisine if seen else 0,
             "with_wikidata": seen.with_wikidata if seen else 0,
         }
         if expected != row:
@@ -543,8 +454,7 @@ def load_region(
         conn.execute("SELECT pg_advisory_xact_lock(%s)", (IMPORT_LOCK_KEY,))
         conn.execute(_STAGE_PLACE)
         conn.execute(_STAGE_AREA)
-        proximity = build_proximity(conn, staging, region)
-        places = classify_candidates(region, iter_candidates(staging), counters, proximity)
+        places = classify_candidates(region, iter_candidates(staging), counters)
         _copy_places(conn, places)
         counters.areas = _copy_areas(conn, region, staging)
         merge_counts = _merge(conn, region, run_id)
@@ -566,11 +476,6 @@ def load_region(
         assert area_count is not None  # noqa: S101
         if area_count[0] != counters.areas:
             raise ImportError_(f"admin areas: loaded {counters.areas}, database {area_count[0]}")
-        if proximity.towns.count == 0:
-            warnings.append(
-                "No gazetteer towns for this region's countries: restaurants and cafes were kept"
-                " only near attractions. Import the gazetteer first and run this import again."
-            )
         if source.osm_snapshot_date is None:
             warnings.append("The extract has no replication timestamp: snapshot date unknown.")
 
@@ -595,7 +500,6 @@ def load_region(
                 else None,
             },
             "kinds": {k: v.as_dict() for k, v in sorted(counters.kinds.items())},
-            "proximity_rule": proximity.describe(),
             "admin_areas": counters.areas,
             "excluded": {
                 "total": sum(counters.excluded.values()),
@@ -642,8 +546,7 @@ def vacuum_and_analyze(conn: psycopg.Connection[Any], full: bool = False) -> int
         conn.autocommit = True
         options = "FULL, ANALYZE" if full else "ANALYZE"
         conn.execute(
-            f"VACUUM ({options}) geo.place, geo.place_source, geo.restaurant_profile,"
-            " geo.place_signal, geo.admin_area"
+            f"VACUUM ({options}) geo.place, geo.place_source, geo.place_signal, geo.admin_area"
         )
         return _geo_bytes(conn)
     except psycopg.Error as exc:

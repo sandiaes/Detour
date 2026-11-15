@@ -10,7 +10,7 @@ from detour_api.models.trips import UserPlace, UserPlaceCreate, UserPlaceUpdate
 
 MAX_USER_PLACES = 500
 _COLUMNS = (
-    "id, kind, name, ST_Y(geom) AS lat, ST_X(geom) AS lon, cuisines, meal_types, source,"
+    "id, kind, name, ST_Y(geom) AS lat, ST_X(geom) AS lon, source,"
     " search_provider, search_ref, created_at, updated_at"
 )
 
@@ -22,8 +22,6 @@ def _place(row: Any) -> UserPlace:
         name=row.name,
         lat=row.lat,
         lon=row.lon,
-        cuisines=None if row.cuisines is None else list(row.cuisines),
-        meal_types=None if row.meal_types is None else list(row.meal_types),
         source=row.source,
         search_provider=row.search_provider,
         search_ref=row.search_ref,
@@ -70,9 +68,9 @@ def create(conn: Connection, installation_id: uuid.UUID, body: UserPlaceCreate) 
     place_id = uuid.uuid4()
     conn.execute(
         text(
-            "INSERT INTO app.user_place (id, installation_id, kind, name, geom, cuisines,"
-            " meal_types, source, search_provider, search_ref) VALUES (:id, :n, :kind, :name,"
-            " ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :cuisines, :meals, :source, :prov, :ref)"
+            "INSERT INTO app.user_place (id, installation_id, kind, name, geom, source,"
+            " search_provider, search_ref) VALUES (:id, :n, :kind, :name,"
+            " ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :source, :prov, :ref)"
         ),
         {
             "id": place_id,
@@ -81,8 +79,6 @@ def create(conn: Connection, installation_id: uuid.UUID, body: UserPlaceCreate) 
             "name": body.name,
             "lon": body.lon,
             "lat": body.lat,
-            "cuisines": body.cuisines,
-            "meals": body.meal_types,
             "source": body.source,
             "prov": body.search_provider,
             "ref": body.search_ref,
@@ -94,14 +90,8 @@ def create(conn: Connection, installation_id: uuid.UUID, body: UserPlaceCreate) 
 def update(
     conn: Connection, installation_id: uuid.UUID, place_id: uuid.UUID, body: UserPlaceUpdate
 ) -> UserPlace:
-    current = require(conn, installation_id, place_id)
+    require(conn, installation_id, place_id)
     changed = body.model_fields_set
-    if (
-        current.kind != "restaurant"
-        and ({"cuisines", "meal_types"} & changed)
-        and (body.cuisines or body.meal_types)
-    ):
-        raise conflict("not_a_restaurant", "cuisines and meal_types are only for restaurants")
     sets: list[str] = []
     params: dict[str, Any] = {"i": place_id, "n": installation_id}
     if "name" in changed and body.name is not None:
@@ -110,12 +100,6 @@ def update(
     if body.lat is not None and body.lon is not None:
         sets.append("geom = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)")
         params.update(lat=body.lat, lon=body.lon)
-    if "cuisines" in changed:
-        sets.append("cuisines = :cuisines")
-        params["cuisines"] = body.cuisines
-    if "meal_types" in changed:
-        sets.append("meal_types = :meals")
-        params["meals"] = body.meal_types
     if sets:
         conn.execute(
             text(

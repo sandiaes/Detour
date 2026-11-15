@@ -11,7 +11,10 @@ name and inter-city leg (ADR 016), and removes the trip's currency, meal budget 
 slot. The past-trips archive (section 3.5, ADR 006) needs no migration since `0003`; its automatic
 rule and size report are described in section 5. Migration `0013_multilingual_place_names`
 (ADR 025) adds `geo.place.alias_norm`, `geo.place_name`, `geo.place_name_lookup` and
-`app.place_name_override` (sections 2.6, 2.11 and 3.8).
+`app.place_name_override` (sections 2.6, 2.11 and 3.8). Migration `0014_no_imported_restaurants`
+(ADR 026, data step) deletes the imported restaurants and cafes, drops `geo.restaurant_profile`, the
+cuisine and meal-type columns and `app.itinerary_item.meal_type`, adds the user-place kind `cafe` and
+retires the `add_restaurant` change-set action with its slot columns.
 Where the built schema differs from the earlier proposal, the difference is listed in section 9
 and decided in [ADR 012](decisions/012-phase-2-data-and-search-choices.md). Photos (section 8) are
 still reserved, not built.
@@ -34,7 +37,7 @@ cannot break an accepted plan), and an archived visit keeps a name and point (AD
 ```
 geo.region ──< geo.import_run          geo.licence ──< geo.place_source, geo.city, ...
 geo.region ──< geo.place ──< geo.place_source
-geo.place ──1 geo.restaurant_profile   geo.place ──1 geo.place_signal
+geo.place ──1 geo.place_signal
 geo.region ──< geo.admin_area          geo.country ──< geo.city      geo.country >── geo.currency
 geo.travel_time (end points, mode)     geo.admin_code
 
@@ -128,9 +131,9 @@ about 100 m): areas scope a destination, they are not for drawing borders.
 | Field | Notes |
 |---|---|
 | `id` | uuid, derived from the region and the OSM reference: **stable across imports** |
-| `region_id`, `kind` | `attraction` or `restaurant` today (restaurants and cafes only near attractions or towns, ADR 011); `transport_hub` and `other` are reserved |
-| `category` | Normalised: the `tourism` value, an allow-listed `historic` value (`historic_building` and the other generic classes carry the `historic_` prefix; `historic=yes` is `historic`), or `restaurant`/`cafe` |
-| `name`, `name_norm` | Null when the source has no name; both null or both set. Attractions without a name are not imported (ADR 011), so a null name occurs only for restaurants and cafes |
+| `region_id`, `kind` | `attraction` only (restaurants and cafes are no longer imported, ADR 026); `transport_hub` and `other` are reserved |
+| `category` | Normalised: the `tourism` value, an allow-listed `historic` value (`historic_building` and the other generic classes carry the `historic_` prefix; `historic=yes` is `historic`), |
+| `name`, `name_norm` | Null when the source has no name; both null or both set. Attractions without a name are not imported (ADR 011), so a null name does not occur in current imports |
 | `names_i18n` | jsonb, language to name (`name:*` tags and `int_name` as `int`); null if none |
 | `name_en_norm` | The normalised English name (`names_i18n.en`), set only when it differs from `name_norm`; search matches it as well (migration `0010`, ADR 021 decision 40) |
 | `alias_norm` | The normalised search aliases the source gives, `\|`-joined: every other `name:*`, `int_name`, romanizations, `official_name`, `short_name`, `alt_name`, `old_name`, `brand` (and their `:en` forms), Detour's transliteration of the name, and German/Scandinavian ASCII spellings (`moenchsberg`); at most 60 forms or 4,000 characters; null if none. Search only, never shown (migration `0013`, ADR 025). Which name is **shown** is decided by the name resolver (section 2.11) |
@@ -155,16 +158,11 @@ One row per source record that contributed to a place; the primary key is
 | `tags` | jsonb: the tags the importer reads, unmodified. Not `name:*` and `addr:*` (own columns) and never `opening_hours`. Since ADR 025 the import also keeps `official_name`, `short_name`, `alt_name`, `old_name`, `brand`, `brand:wikidata` and the `official_name:*`, `short_name:*` and `brand:*` tags (places imported earlier have them after a re-import) |
 | `import_run_id` | |
 
-### 2.8 `geo.restaurant_profile` and `geo.place_signal`
+### 2.8 `geo.place_signal`
 
-| `restaurant_profile` | Notes |
-|---|---|
-| `place_id` | pk, fk |
-| `cuisines` | text[] from the `cuisine` tag: split on `;`, lower case, spaces as `_`, sorted, distinct. **Null = no cuisine tag** |
-| `venue_type` | `restaurant` or `cafe` today (`fast_food`, `bar`, `pub`, `food_court`, `other` reserved) |
-| `meal_types` | Derived from the venue type by a fixed rule: restaurant → lunch, dinner; cafe → breakfast, snack |
-| `diet_flags` | From `diet:*`: `yes` → `vegan`, `only` → `vegan_only`. **Null = no `diet:*` tag**; a `no` is not stored |
-| `provider_price_level`, `provider_price_source` | **Always null**: no licensed source, and the app has no prices (ADR 017) |
+`geo.restaurant_profile` (cuisines, venue type, meal types, diet flags) **was dropped by migration `0014`**
+(ADR 026, 2026-11-14): restaurants and cafes are not imported and nothing in `geo` describes a place to
+eat.
 
 | `place_signal` | Notes |
 |---|---|
@@ -249,7 +247,8 @@ and `last_seen_at` is refreshed at most hourly. No token or hash is stored.
 |---|---|
 | `id`, `installation_id` | fk, `ON DELETE CASCADE` |
 | `title` | 1 to 120 characters |
-| `destination_kind`, `destination_ref` | `city` (a `geo.city.id`), `area` (a `geo.admin_area.id`) or `route` (a multi-city trip, ADR 024: the first stop's city id); existence and region availability are checked by the API |
+| `destination_kind`, `destination_ref` | `city` (a `geo.city.id`), `area` (a `geo.admin_area.id`) `route` (a multi-city trip, ADR 024: the first stop's city id) or `place` (ADR 027, migration `0016`: a place outside the imported regions, `destination_ref` is `photon:N123`, `geonames:123`, `area:<uuid>` or `manual` and nothing is checked against `geo`); existence and region availability of the other kinds are checked by the API |
+| `destination_country` | ISO 3166-1 alpha-2, known for a place trip when the source gave it (migration `0016`); null otherwise |
 | `stops_version` | Counts applied stop edits of a multi-city trip (migration `0012`); 0 otherwise |
 | `destination_name`, `destination_point` | Snapshot taken at creation |
 | `duration_days` | 1 to 30; cannot change once the trip has itineraries |
@@ -292,8 +291,8 @@ The API's `Day` adds the base city's position (`base_city_lat`, `base_city_lon`)
 | `itinerary_item` | Notes |
 |---|---|
 | `position` | Dense and 1-based within a day; unique per day (deferrable, so reorders are atomic) |
-| `type`, `meal_type` | `visit`, `meal`, `free_time`; `meal_type` (`breakfast`, `lunch`, `snack`, `dinner`) iff `type = meal`. Engine meals (ADR 016) take the length of the meal-length table with `duration_source = 'category_default'`; the read endpoints add the place's venue type and cuisines from `geo.restaurant_profile` (or the user place) by identifier, never copied |
-| `place_id`, `user_place_id` | Exactly one for a visit or meal, neither for free time. A meal needs a restaurant; a visit must not be one. `user_place_id` is `ON DELETE RESTRICT` |
+| `type` | `visit`, `meal`, `free_time`. A `meal` item is a restaurant or cafe stop (a place of kind `restaurant` or `cafe`); it has no meal type (`meal_type` was dropped by `0014`). A restaurant takes 75 minutes and a cafe 45 when no length is given (*proposed*, `planner/durations.py`; `duration_source = 'category_default'`); the read endpoints add the kind of the user place by identifier, never copied. Stops of plans made before ADR 026 keep their times and became the installation's own places (`0014`) |
+| `place_id`, `user_place_id` | Exactly one for a visit or meal, neither for free time. A meal needs a user place of kind `restaurant` or `cafe`; a visit must not be one. `user_place_id` is `ON DELETE RESTRICT` |
 | `display_name`, `display_point` | Snapshot at creation (name or, for an unnamed place, its category); user-place renames are propagated |
 | `start_time`, `end_time` | Local time at the destination; both null or both set, `end > start`, same day. Unscheduled is allowed. Timed items of a day may touch but not overlap |
 | `duration_minutes`, `duration_source` | 1 to 1440; `user` or `category_default`. Engine items and imported attractions added without a duration take the category default (ADR 014); a meal or a user place needs a duration |
@@ -307,21 +306,29 @@ A hand edit deletes the transfers that no longer join an item to the next one; t
 recomputed. A recalculation (ADR 018) writes the transfers of the days it changes.
 
 ### 3.4 `app.user_place`
-A place the user added that is not in `geo.place`: `kind` (`city`, `location`, `restaurant`),
-`name`, `geom`, `cuisines` and `meal_types` (restaurants only; meal types may include `snack`;
-**null means unknown** and is shown as "Cuisine not specified" and "Meals not specified": a
-restaurant entered by hand without them stays unknown, nothing is derived or guessed; a Photon
-result saved as one gets its meal types from the venue-type rule and no cuisine, ADR 019),
-`source` (`manual_pin`, `search_result`), and `search_provider` (`photon`, or `geonames` for a
-town from destination search saved to add it to a plan, ADR 018) with `search_ref` (for example
-`N123`, an OSM node, or a GeoNames id) **iff** the source is a search result. At most 500 per
+
+A place the user added that is not in `geo.place`: `kind` (`city`, `location`, `restaurant`, `cafe`),
+`name`, `geom`, `source` (`manual_pin`, `search_result`), and `search_provider` (`photon`, or `geonames`
+for a town from destination search saved to add it to a plan, ADR 018) with `search_ref` (for example
+`N123`, an OSM node, or a GeoNames id) **iff** the source is a search result. A restaurant or cafe is
+only a name, a point and a kind (Photon's `amenity` value or the user's choice): `cuisines` and
+`meal_types` were dropped by `0014` because Photon cannot supply them (ADR 026). At most 500 per
 installation.
 
 ### 3.5 `app.trip_visit`: the past-trip archive (ADR 006)
-One row per city or attraction of the selected itinerary of a past trip: `kind`, `name` and
-`point` (snapshots), `geo_place_ref` (a `geo.place` id for imported places, null for user places
-and cities; may no longer exist), `day_number`, `confirmed` (default true; the user can clear it).
-Restaurants and meals are not archived. Each city is listed once, however many days are spent there.
+
+> **ADR 026, history step (built, migration `0015`): the archive is also the day-by-day record.**
+> `trip_visit` holds one row per base city (once each) and one per stop of the selected itinerary,
+> restaurants and cafés the user added included; free time is not a stop (it is read from the times).
+> "Restaurants and meals are not archived" no longer holds.
+One row per base city or stop of the selected itinerary of a past trip: `kind` (`city`,
+`attraction`, `restaurant`, `cafe`), `name` and `point` (snapshots), `geo_place_ref` (a `geo.place`
+id for imported places, null for user places and cities; may no longer exist), `day_number`,
+`position` (order within the day), `start_time` and `duration_minutes` (all three null for a city
+row and for rows archived before `0015`: their plans were already gone), `confirmed` (the visited
+flag: set when archived; the user can clear it). A town the user added that is also a base city is
+not listed twice. Notes (ADR 021) are not built, so there is no note column.
+Restaurants and meals are not archived (until step 5 of ADR 026). Each city is listed once, however many days are spent there.
 The archive stores no city for an attraction: the app groups attractions under the nearest city row.
 `GET /v1/trips/{id}/archive` reports the counts and `size_bytes`, the stored row data of the trip
 row and its visit rows (`pg_column_size`; no indexes or page overhead).
@@ -338,11 +345,11 @@ never holds an installation identifier. `provider_usage` is `(provider, usage_da
 |---|---|
 | `itinerary_id` | fk, `ON DELETE CASCADE` |
 | `base_version` | The itinerary version the preview was made from; apply refuses if it changed |
-| `action` | `add_place` (with `place_id` **or** `user_place_id`, and `duration_minutes` if given), `remove_place` (with `item_id`) or `add_restaurant` (Phase 8, ADR 019: `place_id` of a place to eat **or** `user_place_id` of a restaurant, with `slot_day`, `slot_meal` and `after_item_id`) |
-| `slot_day`, `slot_meal`, `after_item_id` | `add_restaurant` only (a CHECK enforces it): the day, the meal type and the stop the new meal follows (null: first of the day), as the suggestion gave them |
+| `action` | `add_place` (with `place_id` **or** `user_place_id`, and `duration_minutes` if given), `remove_place` (with `item_id`) `edit_stops` (ADR 024) or `optimize` (ADR 029, migration `0017`; names no place, like `edit_stops`; with `restores_version` set it is an undo). `add_restaurant` (Phase 8, ADR 019) is gone: its rows were deleted by `0014` |
+| `slot_day` | The one day an add-place preview was restricted to (ADR 021, step 4); null otherwise. `slot_meal` and `after_item_id` were dropped by `0014` |
 | `target_name` | Snapshot of the place's name |
 | `status` | `pending` (previewed), `applied`, `discarded`, `expired` (the itinerary changed, or a newer preview replaced it); `decided_at` iff not pending; `result_version` iff applied |
-| `restores_version` | Set when applying restores that stored version exactly (removing the place the latest change added) |
+| `restores_version` | Set when applying restores that stored version exactly (removing the place the latest change added, or undoing an Optimize) |
 | `proposal` | The plan rows to write (same shape as a version's `state`); **cleared once decided** |
 | `diff`, `notes` | What the preview showed, kept after the decision |
 
@@ -367,7 +374,7 @@ snapshots (`display_name`) and archived visit names of that place; a later gener
 
 **Removed** (ADR 017, owner decision of 2026-11-13). `app.price_record`, the trip's currency, meal
 budget and price-band thresholds, and `geo.fx_rate` were dropped by migration `0006`. Places to eat
-carry venue type, cuisines and meal types only. Bringing prices back needs a new ADR.
+carry no cuisine, meal type or price (ADR 026). Bringing prices back needs a new ADR.
 
 ## 5. Lifecycle and deletion rules
 
@@ -375,7 +382,7 @@ carry venue type, cuisines and meal types only. Bringing prices back needs a new
 |---|---|
 | **Import of a region** | Upsert by deterministic id inside one transaction; **a row that did not change is not written** (a rewrite leaves a dead copy and would double the database on every re-import). Places missing from the new extract are **deleted with their source, signal and profile rows**, unless an itinerary item in `app` still names them: those stay with `is_active = false` and are cleared by a later import once nothing names them. Administrative areas missing from the extract are deleted (a trip keeps its own destination snapshot). After the commit the tables are vacuumed; after a clean-up of 1,000 rows or more they are rewritten (`VACUUM FULL`) so the file shrinks. A failed import changes no data and leaves a `failed` import run |
 | **Gazetteer import** | Upserts countries, currencies, codes and cities; cities of the imported countries that are gone from the file are deleted (`place.city_id` becomes null); places get their nearest city |
-| **Region status** | Set by each import from the six gates: `available` or `disabled`. There is no manual override |
+| **Region status** | Set by each import from gates 4 to 6 (ADR 009; gates 1 to 3 were retired by ADR 026): `available` or `disabled`. There is no manual override |
 | **First API call of an installation** | Creates its `app.installation` row |
 | **Delete a trip** | Cascades to its itineraries, days, items, transfers and archive rows. User places stay |
 | **Delete an itinerary** | Cascades to days, items and transfers; clears the trip's selection if it was selected |
@@ -385,7 +392,7 @@ carry venue type, cuisines and meal types only. Bringing prices back needs a new
 | **Discard a change** | The change set becomes `discarded` and loses its proposal |
 | **Delete a user place** | Refused (409) while an item uses it |
 | **Name lookup** (ADR 025) | Writes the entity's `geo.place_name` rows (replacing its earlier Wikidata rows) and its lookup row. `prune` (the `names` command) deletes expired names of entities nothing in `app` names (items, past-trip visits, overrides, a trip's cities and area), and the names and lookups of entities gone from `geo`; named entities keep theirs and are refreshed when due |
-| **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per base city (once each) and per visit item of the *selected* itinerary (or the destination city if there is none and the destination is a city); then **every** itinerary of the trip is deleted (days, items, transfers, route geometry, versions and change sets go with them; user places stay); the trip becomes `past`. One-way. A past trip is read-only except deletion and clearing visits |
+| **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per base city (once each) and per stop (visit or meal item) of the *selected* itinerary with its day, order, start and length (or the destination city if there is none and the destination is a city); then **every** itinerary of the trip is deleted (days, items, transfers, route geometry, versions and change sets go with them; user places stay); the trip becomes `past`. One-way. A past trip is read-only except deletion and clearing visits |
 | **A trip's last day passes** (ADR 006, amendment of 2026-11-13) | Reading the trips (`GET /v1/trips`, `GET /v1/trips/{id}`) first archives the caller's active, non-seed trips that have a start date and whose last day ended two days ago or more (the same archive as above). No scheduled job. A trip without a start date never becomes past by itself |
 | **Delete an installation** (no endpoint; operator action) | Cascades to everything it owns. Tokens are stateless, so the app would register a new installation |
 | **Limits** | 100 trips per installation, 5 itineraries per trip, 40 items per day, 500 user places, 30 kept versions per itinerary, one pending change set per itinerary |
@@ -402,7 +409,7 @@ Not built: a backup of `app` (ADR 005: Supabase Free has none).
   is one `geo.place_source` row (source `osm`, the reference, the licence, the tags). A different
   source (Overture, Foursquare OS Places, Wikidata) would be another row for the same place with
   its own licence, never merged into the OSM row (CLAUDE.md, architecture rules).
-- **Derived values** (`category`, `cuisines`, `meal_types`, `score`) are computed from source
+- **Derived values** (`category`, `score`) are computed from source
   tags by versioned rules (`rules_version` on the import run); they are part of the adapted OSM
   database.
 - **If an adapted OSM database is used publicly, it must be offered under ODbL on request.**
@@ -426,10 +433,10 @@ Not built: a backup of `app` (ADR 005: Supabase Free has none).
 
 Every import stores a report in `geo.import_run.report` (and writes `report.json`, `report.md`
 and `review-sample.json` as workflow artifacts): source file and hash, places by kind with the
-share named, with a cuisine, with Wikidata and with Latin letters in the name, administrative
+share named, with Wikidata and with Latin letters in the name, administrative
 areas, **excluded objects per class and reason**, the largest categories, the size of the `geo`
 schema (measured after the vacuum that follows the commit, which is the size gate 6 uses), and
-the six gates of [ADR 009](decisions/009-region-readiness-thresholds.md) with their values. A region is `available` only if every gate passes; an unknown value never passes.
+gates 4 to 6 of [ADR 009](decisions/009-region-readiness-thresholds.md) with their values (gates 1 to 3 concerned restaurants and were retired by ADR 026). A region is `available` only if every gate passes; an unknown value never passes.
 
 ## 8. Photos
 
@@ -460,6 +467,24 @@ phone. The app's SQLite database (`detour-cache.db`) has a `trip_document` table
 number, a place key with its name and day as linked, or a journey's day and town), file name, type,
 size and the location of the copy in the app's private storage. Deleting a trip deletes its rows and
 files on the phone. The backend stores nothing about documents.
+
+## 8b. The trip file (ADR 028)
+
+Not a table: the format of what leaves the app. A `.detour` file is a zip holding `trip.json` and,
+when documents are included, `documents.json` and `documents/<n>.<ext>` (generated names).
+`trip.json` is `{format: "detour-trip", format_version: 1, exported_at, trips: [...]}`. Each trip
+has `title`, `destination` (`kind`, `ref` only when it is a provider reference such as
+`geonames:123`, `photon:N123`, `area:<uuid>` or `manual`, `name`, `lat`, `lon`, `country_iso2`),
+`duration_days`, `start_date`, `status` and `archived_at`, `stops` (the cities of a multi-city trip,
+for reference), `days` (the chosen plan: day number, base city name and the stops with position,
+kind `sight`, `city`, `place`, `restaurant` or `cafe`, name, point, start time, length, whether the
+user set the length, locked) and, for a past trip, `visits` (the archive rows with their visited
+mark). It holds no installation, trip, plan or place identifier, no `geo` identifier, no travel
+time and no cover photo. `documents.json` lists each document with its trip's position, title,
+kind, a link by name and day, date, note, file name and type. Import (`repo/exchange.py`) writes
+every trip as a new `place` trip, a manual itinerary of the user's own places (`app.user_place`,
+`source = manual_pin`) and, for a past trip, `app.trip_visit` rows with no `geo` reference.
+Version 1 keeps importing in later versions.
 
 ## 9. Differences from the earlier proposal
 

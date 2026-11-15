@@ -16,7 +16,6 @@ import {
 import { TOUCH, colors, radius, shadow, spacing, type } from "../../theme";
 import {
   formatClock,
-  formatCuisines,
   formatDate,
   formatMeters,
   formatMinutes,
@@ -31,13 +30,6 @@ import { ItineraryMap } from "../ItineraryMap";
 // One day of a plan (ADR 021, step 3): a day selector, the day's stops in time order, and the map.
 // The list and the map share one selection: choosing a stop in either highlights it in both.
 
-export const MEAL_LABEL = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  snack: "Afternoon snack",
-  dinner: "Dinner",
-} as const;
-
 export function dayTitle(day: Day): string {
   return day.date
     ? `Day ${day.day_index} · ${formatDate(day.date, false)}`
@@ -47,7 +39,7 @@ export function dayTitle(day: Day): string {
 export function dayTotalsText(day: Day): string {
   const t = dayTotals(day);
   if (t.visits === 0 && t.meals === 0) return "Nothing planned";
-  const meals = t.meals > 0 ? ` · ${pluralise(t.meals, "meal")}` : "";
+  const meals = t.meals > 0 ? ` · ${pluralise(t.meals, "place to eat", "places to eat")}` : "";
   return `${pluralise(t.visits, "visit")}${meals} · ${formatMinutes(t.visitMinutes)} at the sights · ${formatSeconds(t.travelSeconds)} travelling`;
 }
 
@@ -65,11 +57,10 @@ export function arrivalText(day: Day): string | null {
   return `${a.mode === "walk" ? "Walk" : "Drive"}${from} · ${formatSeconds(a.seconds)} · ${formatMeters(a.meters)}`;
 }
 
-/** "Lunch · Restaurant · 1 h" or "Attraction · 2 h": what a stop is, in words, and how long. */
+/** "Restaurant · 1 h 15 min" or "Attraction · 2 h": what a stop is, in words, and how long. */
 export function stopSummary(item: Item): string {
   const kind = stopKind(item);
   const parts: string[] = [];
-  if (item.type === "meal" && item.meal_type) parts.push(MEAL_LABEL[item.meal_type]);
   if (item.type === "free_time") parts.push("Free time");
   else parts.push(STOP_KIND_LABEL[kind]);
   parts.push(formatMinutes(item.duration_minutes));
@@ -85,15 +76,9 @@ export function stopSentence(item: Item, ordinal: number | null): string {
     item.duration_source === "user"
       ? "set by you"
       : meal
-        ? "typical meal length"
+        ? "typical length"
         : "typical visit length";
-  const kind =
-    meal && item.meal_type
-      ? MEAL_LABEL[item.meal_type]
-      : item.type === "free_time"
-        ? "Free time"
-        : null;
-  const cuisine = meal ? formatCuisines(item.restaurant?.cuisines) : null;
+  const kind = item.type === "free_time" ? "Free time" : null;
   const when = start ? (end ? `${start} to ${end}` : start) : "Time not set";
   const reasons = item.reason_texts.join(" ");
   const tags = [item.locked ? "Locked" : null, item.origin === "user" ? "Added by you" : null]
@@ -101,7 +86,7 @@ export function stopSentence(item: Item, ordinal: number | null): string {
     .join(" · ");
   return (
     `${ordinal ? `Stop ${ordinal}. ` : ""}${item.type === "free_time" ? "" : `${STOP_KIND_LABEL[stopKind(item)]}. `}${kind ? `${kind}. ` : ""}${item.display_name}. ` +
-    `${tags ? `${tags}. ` : ""}${cuisine ? `${cuisine}. ` : ""}${when}. ` +
+    `${tags ? `${tags}. ` : ""}${when}. ` +
     `${formatMinutes(item.duration_minutes)}, ${source}.${reasons ? ` Why: ${reasons}` : ""}`
   );
 }
@@ -231,7 +216,6 @@ export function StopRow({
   const end = formatClock(item.end_time);
   const stop = stopKind(item);
   const eat = isEatKind(stop);
-  const meal = item.type === "meal";
   const tags = [item.locked ? "Locked" : null, item.origin === "user" ? "Added by you" : null]
     .filter(Boolean)
     .join(" · ");
@@ -276,9 +260,6 @@ export function StopRow({
                   {stopSummary(item)}
                 </Text>
               </View>
-              {meal ? (
-                <Text style={styles.meta}>{formatCuisines(item.restaurant?.cuisines)}</Text>
-              ) : null}
               {tags ? <Text style={styles.tags}>{tags}</Text> : null}
             </View>
           </Pressable>
@@ -301,6 +282,23 @@ export function StopRow({
 
 /** Travel between two stops, written into a hairline: ———— Walk · 3 min · 170 m ————. The words
  * for a screen reader still say when a time is only an estimate. */
+/** An idle stretch between two stops, in a hairline like a transfer, with no place or icon. */
+export function FreeTimeRow({ row }: { row: Extract<DayRow, { kind: "free" }> }) {
+  const text = `Free time · ${formatMinutes(row.minutes)} · ${row.start} to ${row.end}`;
+  return (
+    <View
+      style={styles.transfer}
+      accessible
+      accessibilityLabel={`Free time, ${formatMinutes(row.minutes)}, from ${row.start} to ${row.end}`}
+      testID="free-time"
+    >
+      <View style={styles.transferLine} />
+      <Text style={styles.transferText}>{text}</Text>
+      <View style={styles.transferLine} />
+    </View>
+  );
+}
+
 export function TransferRow({ row }: { row: Extract<DayRow, { kind: "transfer" }> }) {
   const { transfer, to } = row;
   const routed = transfer.confidence === "routed";
@@ -364,6 +362,8 @@ export function DayPlanList({
               onDetails={onDetails ? () => onDetails(row.item) : undefined}
             />
           </View>
+        ) : row.kind === "free" ? (
+          <FreeTimeRow key={row.key} row={row} />
         ) : (
           <TransferRow key={row.key} row={row} />
         ),

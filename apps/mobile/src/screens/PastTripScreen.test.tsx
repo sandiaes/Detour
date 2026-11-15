@@ -229,3 +229,41 @@ test("a past trip reached through the trip route shows the same view", async () 
   );
   expect(await screen.findByText("2 cities and 3 attractions visited")).toBeOnTheScreen();
 });
+
+test("the Days tab shows what was done on each day, in order, with the times that were kept", async () => {
+  const visits = [
+    ...makeArchivedVisits()
+      .slice(0, 2)
+      .map((v) =>
+        v.id === "v-schlossberg"
+          ? { ...v, position: 1, start_time: "09:30", duration_minutes: 90 }
+          : v,
+      ),
+    {
+      ...makeArchivedVisits()[1]!,
+      id: "v-cafe",
+      kind: "cafe" as const,
+      name: "Café Central",
+      position: 2,
+      start_time: "11:30",
+      duration_minutes: 45,
+    },
+  ];
+  await open(server(visits));
+  expect(
+    await screen.findByText("1 city, 1 attraction and 1 place to eat visited"),
+  ).toBeOnTheScreen();
+  await fireEvent.press(screen.getByLabelText("Show the days"));
+  expect(screen.getByText("Day 1 · Sat 1 May")).toBeOnTheScreen();
+  expect(screen.getByText("Attraction · 09:30 · 1 h 30 min")).toBeOnTheScreen();
+  expect(screen.getByText("Café · 11:30 · 45 min")).toBeOnTheScreen();
+  // A stop can be cleared here as in the list.
+  expect(screen.getByLabelText("Mark Café Central as skipped")).toBeOnTheScreen();
+});
+
+test("a trip archived before days were kept says so on the Days tab and points to the list", async () => {
+  await open(server(makeArchivedVisits().filter((v) => v.kind === "city")));
+  await screen.findByText("2 cities and 0 attractions visited");
+  await fireEvent.press(screen.getByLabelText("Show the days"));
+  expect(screen.getByText("No stops were kept by day")).toBeOnTheScreen();
+});

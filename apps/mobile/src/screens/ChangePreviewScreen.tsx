@@ -102,11 +102,15 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
     <ScrollView contentContainerStyle={styles.content}>
       <ScreenHeader
         title={
-          data.action === "edit_stops"
-            ? "Change your cities?"
-            : removing
-              ? `Remove ${data.target_name}?`
-              : `Add ${data.target_name}?`
+          data.action === "optimize"
+            ? data.restores_version !== null
+              ? "Undo Optimize?"
+              : "A shorter order?"
+            : data.action === "edit_stops"
+              ? "Change your cities?"
+              : removing
+                ? `Remove ${data.target_name}?`
+                : `Add ${data.target_name}?`
         }
         subtitle="Nothing changes until you accept."
         onBack={nav.back}
@@ -119,7 +123,7 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
           <Text style={styles.travel}>{travelChangeText(data.diff.travel_minutes_added)}</Text>
         </Card>
       </View>
-      <PlanNotes notes={data.notes} />
+      <PlanNotes notes={data.notes} defaultOpen={data.action === "optimize"} />
       {sections.map((s) => (
         <View key={s.key} style={styles.section} testID={`diff-${s.key}`}>
           {s.warn ? (

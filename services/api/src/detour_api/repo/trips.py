@@ -27,7 +27,7 @@ _TRIP_COLUMNS = """
     t.id, t.title, t.destination_kind, t.destination_ref, t.destination_name,
     ST_Y(t.destination_point) AS dlat, ST_X(t.destination_point) AS dlon, t.duration_days,
     t.start_date, t.selected_itinerary_id, t.status, t.archived_at, t.is_seed, t.created_at, t.updated_at,
-    t.stops_version
+    t.stops_version, t.destination_country
 """
 
 
@@ -81,6 +81,7 @@ def _trip(row: Any, cover: Photo | None = None, stops: list[TripStop] | None = N
             name=row.destination_name,
             lat=row.dlat,
             lon=row.dlon,
+            country_iso2=row.destination_country,
         ),
         duration_days=row.duration_days,
         start_date=row.start_date,
@@ -155,9 +156,10 @@ def create_trip(
         text(
             """
             INSERT INTO app.trip (id, installation_id, title, destination_kind, destination_ref,
-                destination_name, destination_point, duration_days, start_date, is_seed)
+                destination_name, destination_point, duration_days, start_date, is_seed,
+                destination_country)
             VALUES (:id, :inst, :title, :kind, :ref, :dname,
-                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :days, :start, :seed)
+                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :days, :start, :seed, :country)
             """
         ),
         {
@@ -172,6 +174,7 @@ def create_trip(
             "days": body.duration_days,
             "start": body.start_date,
             "seed": is_seed,
+            "country": (body.destination_country or "").upper() or None,
         },
     )
     if stops:
@@ -330,8 +333,9 @@ def today_utc() -> date:
 
 
 def _collect_visits(conn: Connection, trip: Trip) -> list[dict[str, Any]]:
-    """The cities and attractions of the selected itinerary, as snapshots. Meals, restaurants and
-    free time are not archived. Each city is listed once, however many days are spent there."""
+    """The day record of the selected itinerary, as snapshots (ADR 026): every stop with its day,
+    order, start and length, the user's restaurants and cafes included; free time is not a stop.
+    Each base city is listed once, however many days are spent there, without a time."""
     visits: list[dict[str, Any]] = []
     if trip.selected_itinerary_id is not None:
         cities = conn.execute(
@@ -353,18 +357,23 @@ def _collect_visits(conn: Connection, trip: Trip) -> list[dict[str, Any]]:
                 "lon": c.lon,
                 "ref": f"city:{c.id}",
                 "day": c.day,
+                "position": None,
+                "start": None,
+                "minutes": None,
             }
             for c in cities
         ]
         items = conn.execute(
             text(
                 """
-                SELECT d.day_index, i.position, i.display_name, i.place_id,
+                SELECT d.day_index, i.position, i.display_name, i.place_id, i.type,
+                       i.start_time, i.duration_minutes,
                        ST_Y(i.display_point) lat, ST_X(i.display_point) lon, up.kind AS up_kind
                 FROM app.itinerary_item i
                 JOIN app.itinerary_day d ON d.id = i.day_id
                 LEFT JOIN app.user_place up ON up.id = i.user_place_id
-                WHERE d.itinerary_id = :it AND i.type = 'visit' AND i.display_point IS NOT NULL
+                WHERE d.itinerary_id = :it AND i.type IN ('visit', 'meal')
+                  AND i.display_point IS NOT NULL
                 ORDER BY d.day_index, i.position
                 """
             ),
@@ -373,22 +382,33 @@ def _collect_visits(conn: Connection, trip: Trip) -> list[dict[str, Any]]:
         # A town the user added by hand may be a base city already listed (or added twice).
         listed_cities = {v["name"].casefold() for v in visits}
         for it in items:
-            is_city = it.up_kind == "city"
+            is_city = it.type == "visit" and it.up_kind == "city"
             if is_city:
                 if it.display_name.casefold() in listed_cities:
                     continue
                 listed_cities.add(it.display_name.casefold())
             visits.append(
                 {
-                    "kind": "city" if is_city else "attraction",
+                    "kind": (
+                        "city"
+                        if is_city
+                        else it.up_kind
+                        if it.type == "meal" and it.up_kind in ("restaurant", "cafe")
+                        else "restaurant"
+                        if it.type == "meal"
+                        else "attraction"
+                    ),
                     "name": it.display_name,
                     "lat": it.lat,
                     "lon": it.lon,
                     "ref": None if it.place_id is None else str(it.place_id),
                     "day": it.day_index,
+                    "position": it.position,
+                    "start": it.start_time,
+                    "minutes": it.duration_minutes,
                 }
             )
-    if not any(v["kind"] == "city" for v in visits) and trip.destination.kind == "city":
+    if not any(v["kind"] == "city" for v in visits) and trip.destination.kind in ("city", "place"):
         visits.insert(
             0,
             {
@@ -396,8 +416,14 @@ def _collect_visits(conn: Connection, trip: Trip) -> list[dict[str, Any]]:
                 "name": trip.destination.name,
                 "lat": trip.destination.lat,
                 "lon": trip.destination.lon,
-                "ref": f"city:{trip.destination.ref}",
+                # A place trip's destination has no geo row (ADR 027).
+                "ref": (
+                    None if trip.destination.kind == "place" else f"city:{trip.destination.ref}"
+                ),
                 "day": 1,
+                "position": None,
+                "start": None,
+                "minutes": None,
             },
         )
     return visits
@@ -416,8 +442,8 @@ def _archive(conn: Connection, trip: Trip, reason: str) -> bool:
         conn.execute(
             text(
                 "INSERT INTO app.trip_visit (id, trip_id, kind, name, point, geo_place_ref,"
-                " day_number) VALUES (:id, :t, :k, :n, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326),"
-                " :ref, :d)"
+                " day_number, position, start_time, duration_minutes) VALUES (:id, :t, :k, :n,"
+                " ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :ref, :d, :pos, :st, :min)"
             ),
             {
                 "id": uuid.uuid4(),
@@ -428,6 +454,9 @@ def _archive(conn: Connection, trip: Trip, reason: str) -> bool:
                 "lat": v["lat"],
                 "ref": v["ref"],
                 "d": v["day"],
+                "pos": v["position"],
+                "st": v["start"],
+                "min": v["minutes"],
             },
         )
     conn.execute(
@@ -456,9 +485,9 @@ def _archive(conn: Connection, trip: Trip, reason: str) -> bool:
 def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
     """Turn a trip into a past trip, on the user's request.
 
-    Keeps the title, destination, dates and duration, and one snapshot row per city and attraction
-    of the *selected* itinerary; deletes every itinerary (and with them transfers, route geometry,
-    versions and seeds).
+    Keeps the title, destination, dates and duration, and one snapshot row per stop of the
+    *selected* itinerary (day, order, start and length) and per base city; deletes every
+    itinerary (and with them transfers, route geometry, versions and seeds).
     """
     trip = require_trip(conn, installation_id, trip_id)
     if trip.status == "past" or not _archive(conn, trip, "user"):
@@ -471,14 +500,18 @@ def archive_due_trips(
 ) -> list[uuid.UUID]:
     """Archives the installation's active trips whose last day ended
     ``AUTO_ARCHIVE_GRACE_DAYS`` ago. Trips without a start date never become past by themselves
-    (there is no last day), and neither does the seed trip, which is illustrative.
+    (there is no last day), and neither does the seed trip, which is illustrative. A trip created
+    after its last day (a journey already taken, ADR 026) is not archived by itself either.
 
     Called when the trips are read, so no scheduled job is needed."""
     due = conn.execute(
         text(
             "SELECT id FROM app.trip WHERE installation_id = :i AND status = 'active' AND NOT is_seed"
             " AND start_date IS NOT NULL"
-            " AND start_date + (duration_days - 1 + :g) <= CAST(:today AS date) ORDER BY id"
+            " AND start_date + (duration_days - 1 + :g) <= CAST(:today AS date)"
+            # A trip made after its last day was entered as a journey already taken: the user
+            # fills it and marks it past (ADR 026 decision 23).
+            " AND CAST(created_at AS date) <= start_date + (duration_days - 1 + :g) ORDER BY id"
         ),
         {"i": installation_id, "g": AUTO_ARCHIVE_GRACE_DAYS, "today": today or today_utc()},
     ).all()
@@ -497,6 +530,7 @@ def archive_info(conn: Connection, trip_id: uuid.UUID) -> ArchiveInfo:
             SELECT
               count(*) FILTER (WHERE v.kind = 'city') AS cities,
               count(*) FILTER (WHERE v.kind = 'attraction') AS attractions,
+              count(*) FILTER (WHERE v.kind IN ('restaurant', 'cafe')) AS eateries,
               count(*) FILTER (WHERE NOT v.confirmed) AS skipped,
               coalesce(sum(pg_column_size(v.*)), 0)
                 + (SELECT pg_column_size(t.*) FROM app.trip t WHERE t.id = :t) AS size_bytes
@@ -509,6 +543,7 @@ def archive_info(conn: Connection, trip_id: uuid.UUID) -> ArchiveInfo:
         trip_id=trip_id,
         cities=row.cities,
         attractions=row.attractions,
+        places_to_eat=row.eateries,
         skipped=row.skipped,
         size_bytes=int(row.size_bytes),
     )
@@ -527,10 +562,17 @@ def list_visits(
     conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
 ) -> list[TripVisit]:
     require_trip(conn, installation_id, trip_id)
+    return list_visits_of(conn, trip_id)
+
+
+def list_visits_of(conn: Connection, trip_id: uuid.UUID) -> list[TripVisit]:
+    """The archived visits of a trip the caller already owns."""
     rows = conn.execute(
         text(
             "SELECT id, kind, name, ST_Y(point) lat, ST_X(point) lon, geo_place_ref, day_number,"
-            " confirmed FROM app.trip_visit WHERE trip_id = :t ORDER BY day_number, (kind = 'city') DESC, name, id"
+            " position, to_char(start_time, 'HH24:MI') AS start_time, duration_minutes, confirmed"
+            " FROM app.trip_visit WHERE trip_id = :t"
+            " ORDER BY day_number, (kind = 'city') DESC, position NULLS FIRST, name, id"
         ),
         {"t": trip_id},
     ).all()
@@ -543,6 +585,9 @@ def list_visits(
             lon=r.lon,
             geo_place_ref=r.geo_place_ref,
             day_number=r.day_number,
+            position=r.position,
+            start_time=r.start_time,
+            duration_minutes=r.duration_minutes,
             confirmed=r.confirmed,
         )
         for r in rows
@@ -575,6 +620,14 @@ def cover_destinations(conn: Connection, trip_id: uuid.UUID) -> list[tuple[str, 
     ).one()
     if row[0] in ("city", "area"):
         return [(row[0], row[1])]
+    if row[0] == "place":
+        # Only a gazetteer place has photo candidates; Photon and manual ones have none (ADR 027).
+        ref = str(row[1])
+        if ref.startswith("geonames:"):
+            return [("city", ref.removeprefix("geonames:"))]
+        if ref.startswith("area:"):
+            return [("area", ref.removeprefix("area:"))]
+        return []
     stops = conn.execute(
         text("SELECT city_id::text FROM app.trip_stop WHERE trip_id = :id ORDER BY position"),
         {"id": trip_id},

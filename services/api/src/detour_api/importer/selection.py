@@ -4,7 +4,7 @@ One function, ``decide``, so the rule is read, tested and versioned in one place
 ADR 003 with the additions of ADR 011:
 
 * kept by default: ``tourism=attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium``, every
-  ``historic=*`` value not named below, and ``amenity=restaurant|cafe``;
+  ``historic=*`` value not named below, and nothing else (ADR 026: restaurants and cafes are no longer imported);
 * never imported: wayside shrines and crosses, boundary stones, bomb craters (ADR 003), and tree
   shrines, ``heritage`` and ``heritage_building`` (ADR 011, after the first real import);
 * memorials: kept only with a ``wikidata`` tag **and** a name, and not of a subtype that is a
@@ -21,12 +21,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 # Bump when any rule below changes: the version is stored on every import run.
-RULES_VERSION = "2026-11-12.4"
+RULES_VERSION = "2026-11-14.1"
 
 ATTRACTION_TOURISM = frozenset(
     {"attraction", "museum", "gallery", "viewpoint", "zoo", "theme_park", "aquarium"}
 )
-FOOD_AMENITY = frozenset({"restaurant", "cafe"})
 
 # ADR 011, owner decision of 2026-11-12 ("only cities and tourist spots mostly"): the
 # historic=* values that are tourist spots. Everything else is left out and counted by class, so
@@ -94,14 +93,7 @@ REASON_MEMORIAL_SUBTYPE = "memorial_excluded_subtype"
 REASON_UNQUALIFIED = "generic_class_without_name_and_notability"
 REASON_NO_GEOMETRY = "no_geometry"
 REASON_ATTRACTION_UNNAMED = "attraction_without_name"
-REASON_NOT_NEAR = "restaurant_not_near_attraction_or_town"
 
-# ADR 011, owner decision of 2026-11-12: restaurants and cafes are kept only near attractions or
-# towns (importer/proximity.py). Radii and town size chosen from a measurement on the Austria
-# database: 500 m keeps 51 % of its restaurants and 75 % of its cafes.
-RESTAURANT_RADIUS_M = 500
-TOWN_MIN_POPULATION = 5000
-TOWN_RADIUS_M = 1500
 REASON_NOT_TOURIST = "historic_class_not_tourist"
 
 
@@ -110,7 +102,7 @@ class Decision:
     kept: bool
     osm_class: str  # for example "historic=memorial" or "tourism=museum"
     reason: str  # why it was excluded, or why it was kept
-    kind: str | None = None  # "attraction" or "restaurant" when kept
+    kind: str | None = None  # "attraction" when kept
     category: str | None = None
 
 
@@ -121,10 +113,6 @@ def _present(tags: Mapping[str, str], key: str) -> bool:
 def decide(tags: Mapping[str, str]) -> Decision | None:
     """Classify one object. ``None`` means it is not a candidate at all."""
     named = _present(tags, "name")
-
-    amenity = tags.get("amenity")
-    if amenity in FOOD_AMENITY:
-        return Decision(True, f"amenity={amenity}", "food", "restaurant", amenity)
 
     tourism = tags.get("tourism")
     if tourism in ATTRACTION_TOURISM:

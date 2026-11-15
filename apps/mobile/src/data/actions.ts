@@ -21,6 +21,7 @@ export const keys = {
   trips: "trips",
   itineraries: (tripId: string) => `itineraries:${tripId}`,
   itinerary: (id: string) => `itinerary:${id}`,
+  versions: (id: string) => `versions:${id}`,
   visits: (tripId: string) => `visits:${tripId}`,
   archive: (tripId: string) => `archive:${tripId}`,
 };

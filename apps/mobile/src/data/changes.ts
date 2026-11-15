@@ -5,11 +5,10 @@ import type {
   ChangeSet,
   ChangeSetApplied,
   ChangeSetCreate,
+  OptimizeRequest,
   Itinerary,
   ItemCreate,
   ItinerarySummary,
-  SlotRequest,
-  SlotSuggestions,
   UserPlace,
   UserPlaceCreate,
   UserPlaceUpdate,
@@ -52,19 +51,6 @@ export function useChangeActions() {
     [need],
   );
 
-  /** Where a restaurant fits in the plan: up to three slots with reasons (Phase 8, ADR 019).
-   * Nothing is stored on the server. */
-  const suggestSlots = useCallback(
-    async (itineraryId: string, body: SlotRequest): Promise<SlotSuggestions> =>
-      call(
-        need().POST("/v1/itineraries/{itinerary_id}/restaurant-suggestions", {
-          params: { path: { itinerary_id: itineraryId } },
-          body,
-        }),
-      ),
-    [need],
-  );
-
   /** Up to three days a place could go on, best first, from the Phase 7 recalculation (ADR 021).
    * Nothing is stored on the server. */
   const suggestPlaces = useCallback(
@@ -92,6 +78,35 @@ export function useChangeActions() {
     [need, data],
   );
 
+  /** A shorter order of the plan's stops (ADR 029): previewed like any change, applied later. */
+  const previewOptimize = useCallback(
+    async (itineraryId: string, body: OptimizeRequest): Promise<ChangeSet> => {
+      const change = await call(
+        need().POST("/v1/itineraries/{itinerary_id}/optimize", {
+          params: { path: { itinerary_id: itineraryId } },
+          body,
+        }),
+      );
+      data.put(changeKey(change.id), change);
+      return change;
+    },
+    [need, data],
+  );
+
+  /** Restores the plan from before the latest Optimize, as a preview. */
+  const previewOptimizeUndo = useCallback(
+    async (itineraryId: string): Promise<ChangeSet> => {
+      const change = await call(
+        need().POST("/v1/itineraries/{itinerary_id}/optimize/undo", {
+          params: { path: { itinerary_id: itineraryId } },
+        }),
+      );
+      data.put(changeKey(change.id), change);
+      return change;
+    },
+    [need, data],
+  );
+
   /** Applies a previewed change. The new version of the plan comes back whole and is stored. */
   const apply = useCallback(
     async (tripId: string, changeSetId: string): Promise<ChangeSetApplied> => {
@@ -103,6 +118,7 @@ export function useChangeActions() {
       const { days: _days, ...summary } = result.itinerary;
       data.put(changeKey(changeSetId), result.change_set);
       data.put(keys.itinerary(result.itinerary.id), result.itinerary);
+      data.invalidate(keys.versions(result.itinerary.id));
       data.update<ItinerarySummary[]>(keys.itineraries(tripId), (list) =>
         list.map((s) => (s.id === summary.id ? summary : s)),
       );
@@ -190,9 +206,10 @@ export function useChangeActions() {
     setDisplayName,
     savePlace,
     updatePlace,
-    suggestSlots,
     suggestPlaces,
     preview,
+    previewOptimize,
+    previewOptimizeUndo,
     apply,
     discard,
     setLocked,

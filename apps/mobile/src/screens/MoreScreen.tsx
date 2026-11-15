@@ -30,9 +30,17 @@ export function MoreScreen() {
           />
           <ListRow
             icon="export"
-            title="Export trip"
-            detail="A file or calendar of a trip"
-            disabled
+            title="Back up all trips"
+            detail="One file with every trip, to keep or move to a new phone"
+            testID="more-backup"
+            onPress={() => nav.push({ name: "exportTrips" })}
+          />
+          <ListRow
+            icon="export"
+            title="Import a trip"
+            detail="Add trips from a Detour file"
+            testID="more-import"
+            onPress={() => nav.push({ name: "importTrips" })}
           />
           <ListRow
             icon="archive"
@@ -58,8 +66,8 @@ export function MoreScreen() {
           />
         </RowGroup>
         <Text style={styles.note}>
-          A trip&apos;s own actions (new proposals, mark as past, delete) are in the trip&apos;s
-          menu.
+          A trip&apos;s own actions (export, new proposals, mark as past, delete) are in the
+          trip&apos;s menu.
         </Text>
       </ScrollView>
     </View>

@@ -10,6 +10,26 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
+**Direction change of 2026-11-14 (ADR 026, proposed; all six build steps are built: the planner, the
+slot-engine removal, the data step, history and the app changes):** Detour is a **trip manager
+and travel history first**. Trips usually start empty; generating itineraries is an optional helper
+that now produces **sights only** (`planner-3.0.0`: no restaurants or cafés, one unplanned 90-minute
+midday gap per day, a 09:00–20:00 day). Restaurants and cafés are **no longer imported** (importer
+rules `2026-11-14.1`; migration `0014` deleted them and dropped `geo.restaurant_profile`, the cuisine
+and meal-type columns and `itinerary_item.meal_type`; a stored restaurant stop became the user's own
+place) and are added only through Photon or by hand as a user place of kind `restaurant` or `cafe`,
+with the user choosing the day and time (default 75 and 45 minutes, *proposed*). The Phase 8 slot
+engine (`planner/restaurant_slots.py`, `restaurant-suggestions`, `add_restaurant`) is **removed**.
+ADR 009 gates 1 to 3 are retired (4 to 6 keep their numbers). A past trip keeps its day-by-day record (migration `0015`: stops with day,
+order, start and length in `app.trip_visit`; the past-trip screen has a Days tab); the new-trip screen
+leads with "Start with an empty trip" and "Suggest itineraries" is the second button; day lists show
+an idle stretch as "Free time". Next, in the owner's order: destinations outside the imported regions (**ADR 027, accepted and built**: a trip to any place found through Photon, the gazetteer or typed by hand is an empty `place` trip, migration `0016`; suggestions are refused for it), then trip export
+(**ADR 028, accepted and built**: `GET /v1/trips/{id}/export`, `POST /v1/trips/import`, a `.detour` zip file with optional documents, import as a new place trip with a manual plan; the app has Export trip, Back up all trips and Import a trip), then **Optimize a hand-made trip** (**ADR 029, accepted and built**: `POST /v1/itineraries/{id}/optimize`
+and `.../optimize/undo`, a change-set action, migration `0017`; `planner/optimize.py` reorders the user's
+stops for the least travel, within or across days, never longer, with a preview and an undo). The build order is in ADR 026; the
+paragraphs below were written before this decision, so where they describe meals, meal windows,
+cuisines, imported restaurants or the slot engine they are out of date.
+
 **Phases 1 to 8 are implemented.** Phase 1: a monorepo with a placeholder mobile app, a FastAPI
 service, a generated API client, CI, an Android APK workflow and Render/Supabase deployment
 configuration (ADR 010). Phase 2 (ADR 011, ADR 012; `docs/data-model.md`): the `geo` and `app`
@@ -118,6 +138,7 @@ not start the next phase until the owner asks for it.
 | Need | Document |
 |---|---|
 | What the product does and does not do | `docs/product-brief.md` |
+| The current direction (manager and history first) | `docs/decisions/026-trip-manager-first.md` |
 | System design and planning engine | `docs/architecture.md` |
 | Which providers may be used, and on what terms | `docs/api-evaluation.md` |
 | Tables, the licence boundary, lifecycle | `docs/data-model.md` |

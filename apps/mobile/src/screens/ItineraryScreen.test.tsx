@@ -47,6 +47,14 @@ test("the list shows one day at a time, with times, kinds and durations", async 
   expect(screen.queryByText("Schönbrunn Palace")).toBeNull();
 });
 
+test("an idle stretch between two stops is a Free time row, not an item (ADR 026)", async () => {
+  await openDays();
+  await screen.findByText("Schönbrunn Palace");
+  const rows = screen.getAllByTestId("free-time");
+  expect(rows.length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/^Free time · .* · \d\d:\d\d to \d\d:\d\d$/).length).toBe(rows.length);
+});
+
 test("choosing a stop only selects it: nothing opens under it", async () => {
   await openDays();
   await fireEvent.press(await screen.findByTestId("stop-i1"));
@@ -59,19 +67,17 @@ test("choosing a stop only selects it: nothing opens under it", async () => {
   expect(screen.getByTestId("stop-i1").props.accessibilityState).toMatchObject({ selected: false });
 });
 
-test("meals show the meal, the venue type and the cuisine from the open data", async () => {
+test("restaurant and café stops show only their kind and length (ADR 026)", async () => {
   await openDays();
   expect(await screen.findByText("Gasthaus Zum Test")).toBeOnTheScreen();
-  expect(screen.getByText("Lunch · Restaurant · 1 h")).toBeOnTheScreen();
-  expect(screen.getByText("Regional, coffee shop")).toBeOnTheScreen();
-  // Unknown cuisine is said plainly, never guessed; no price or rating is shown.
-  expect(screen.getByText("Dinner · Restaurant · 1 h 30 min")).toBeOnTheScreen();
-  expect(screen.getByText("Cuisine not specified")).toBeOnTheScreen();
-  expect(screen.queryByText(/€|EUR|price|rating/i)).toBeNull();
+  expect(screen.getByText("Restaurant · 1 h")).toBeOnTheScreen();
+  expect(screen.getByText("Café · 1 h 30 min")).toBeOnTheScreen();
+  // No cuisine, meal label, price or rating is shown.
+  expect(screen.queryByText(/ruisine|Lunch|Dinner|€|EUR|price|rating/i)).toBeNull();
   expect(
     screen.getByLabelText(
-      "Stop 3. Restaurant. Lunch. Gasthaus Zum Test. Regional, coffee shop. 13:01 to 14:01. " +
-        "1 h, typical meal length. Why: Lunch, planned between 13:00 and 15:00.",
+      "Stop 3. Restaurant. Gasthaus Zum Test. 13:01 to 14:01. " +
+        "1 h, typical length. Why: Added by you.",
     ),
   ).toBeOnTheScreen();
 });
@@ -285,7 +291,8 @@ test("sights and places to eat are told apart in words, not by colour alone", as
   await openDays();
   await screen.findByText("Gasthaus Zum Test");
   expect(screen.getAllByTestId("kind-attraction")).toHaveLength(3);
-  expect(screen.getAllByTestId("kind-restaurant")).toHaveLength(2);
-  expect(screen.getByText("Lunch · Restaurant · 1 h")).toBeOnTheScreen();
+  expect(screen.getAllByTestId("kind-restaurant")).toHaveLength(1);
+  expect(screen.getAllByTestId("kind-cafe")).toHaveLength(1);
+  expect(screen.getByText("Restaurant · 1 h")).toBeOnTheScreen();
   expect(screen.getAllByText("Attraction · 2 h").length).toBeGreaterThan(0);
 });

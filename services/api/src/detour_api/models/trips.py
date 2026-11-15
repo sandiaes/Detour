@@ -1,5 +1,6 @@
 """Models for trips, user places, itineraries, days and items."""
 
+import re
 import uuid
 from datetime import date, datetime, time, timedelta
 from typing import Literal, Self
@@ -10,7 +11,6 @@ from detour_api.models.common import Latitude, Longitude, PlaceName, StrictModel
 from detour_api.models.images import Photo
 
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]
-ALLOWED_MEAL_TYPES = ("breakfast", "lunch", "dinner", "snack")
 
 
 # -- trips -------------------------------------------------------------------------------------
@@ -18,6 +18,10 @@ ALLOWED_MEAL_TYPES = ("breakfast", "lunch", "dinner", "snack")
 
 MIN_STOPS = 2
 MAX_STOPS = 6
+
+
+# A place destination's reference names its provider (ADR 027).
+PLACE_REF = re.compile(r"photon:[NWR][0-9]{1,20}|geonames:[0-9]{1,12}|area:[0-9a-fA-F-]{36}|manual")
 
 
 class StopIn(StrictModel):
@@ -33,12 +37,26 @@ class TripCreate(StrictModel):
         max_length=120,
         description="Ignored for a multi-city trip, whose name follows its stops",
     )
-    destination_kind: Literal["city", "area", "route"]
+    destination_kind: Literal["city", "area", "route", "place"]
     destination_ref: str | None = Field(
         default=None,
         min_length=1,
         max_length=64,
-        description="The city or area; not sent for a multi-city trip (route)",
+        description="The city or area; not sent for a multi-city trip (route). For a place "
+        "(ADR 027): photon:N123, geonames:2761369, area:<uuid> or manual",
+    )
+    destination_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+        description="Only for a place: the name the user chose, stored as a snapshot",
+    )
+    destination_lat: Latitude | None = Field(default=None, description="Only for a place")
+    destination_lon: Longitude | None = Field(default=None, description="Only for a place")
+    destination_country: str | None = Field(
+        default=None,
+        pattern="^[A-Za-z]{2}$",
+        description="Only for a place: the ISO 3166-1 alpha-2 country code, if known",
     )
     stops: list[StopIn] | None = Field(
         default=None,
@@ -50,6 +68,24 @@ class TripCreate(StrictModel):
 
     @model_validator(mode="after")
     def _destination_or_stops(self) -> Self:
+        place_fields = (
+            self.destination_name,
+            self.destination_lat,
+            self.destination_lon,
+            self.destination_country,
+        )
+        if self.destination_kind == "place":
+            if self.stops is not None:
+                raise ValueError("only a multi-city trip (route) has stops")
+            if self.destination_ref is None or not PLACE_REF.fullmatch(self.destination_ref):
+                raise ValueError(
+                    "a place needs destination_ref photon:N123, geonames:123, area:<uuid> or manual"
+                )
+            if None in (self.destination_name, self.destination_lat, self.destination_lon):
+                raise ValueError("a place needs destination_name, destination_lat, destination_lon")
+            return self
+        if any(f is not None for f in place_fields):
+            raise ValueError("only a place has a destination name, point or country")
         if self.destination_kind == "route":
             if self.stops is None:
                 raise ValueError("a multi-city trip needs its stops")
@@ -85,11 +121,12 @@ class TripUpdate(StrictModel):
 class Destination(BaseModel):
     """For a multi-city trip (route): ``ref`` is the first stop's city and ``name`` the trip's."""
 
-    kind: Literal["city", "area", "route"]
+    kind: Literal["city", "area", "route", "place"]
     ref: str
     name: str
     lat: float
     lon: float
+    country_iso2: str | None = Field(default=None, description="Known for a place trip (ADR 027)")
 
 
 class Trip(BaseModel):
@@ -125,14 +162,22 @@ def end_date_of(start: date | None, days: int) -> date | None:
 
 
 class TripVisit(BaseModel):
+    """One stop of a past trip's day record, or one of its base cities (ADR 006, ADR 026)."""
+
     id: uuid.UUID
-    kind: Literal["city", "attraction"]
+    kind: Literal["city", "attraction", "restaurant", "cafe"]
     name: str
     lat: float
     lon: float
     geo_place_ref: str | None
     day_number: int
-    confirmed: bool
+    position: int | None = Field(
+        description="Order within the day; null for a base city row and for rows archived before "
+        "the day record existed"
+    )
+    start_time: str | None = Field(description="HH:MM; null when the stop had no time")
+    duration_minutes: int | None
+    confirmed: bool = Field(description="Visited. Set when archived; the user can clear it")
 
 
 class TripVisitUpdate(StrictModel):
@@ -145,6 +190,7 @@ class ArchiveInfo(BaseModel):
     trip_id: uuid.UUID
     cities: int = Field(description="Archived city rows (each base city once)")
     attractions: int
+    places_to_eat: int = Field(description="Restaurants and cafes the user added")
     skipped: int = Field(description="Visits the user cleared (confirmed = false)")
     size_bytes: int = Field(
         description="Stored row data of the trip row and its visit rows (PostgreSQL "
@@ -155,29 +201,11 @@ class ArchiveInfo(BaseModel):
 # -- user places -------------------------------------------------------------------------------
 
 
-def _clean_list(
-    values: list[str] | None, label: str, allowed: tuple[str, ...] | None
-) -> list[str] | None:
-    if values is None:
-        return None
-    cleaned = sorted({v.strip().lower().replace(" ", "_") for v in values if v.strip()})
-    if not cleaned:
-        return None
-    for item in cleaned:
-        if allowed is not None and item not in allowed:
-            raise ValueError(f"{label}: {item!r} is not one of {', '.join(allowed)}")
-        if allowed is None and not (1 <= len(item) <= 40 and item.replace("_", "").isalnum()):
-            raise ValueError(f"{label}: {item!r} is not a valid cuisine name")
-    return cleaned
-
-
 class UserPlaceCreate(StrictModel):
-    kind: Literal["city", "location", "restaurant"]
+    kind: Literal["city", "location", "restaurant", "cafe"]
     name: str = Field(min_length=1, max_length=200)
     lat: Latitude
     lon: Longitude
-    cuisines: list[str] | None = Field(default=None, max_length=10, description="Restaurants only")
-    meal_types: list[str] | None = Field(default=None, max_length=4, description="Restaurants only")
     source: Literal["manual_pin", "search_result"]
     search_provider: Literal["photon", "geonames"] | None = Field(
         default=None,
@@ -188,10 +216,6 @@ class UserPlaceCreate(StrictModel):
 
     @model_validator(mode="after")
     def _rules(self) -> Self:
-        self.cuisines = _clean_list(self.cuisines, "cuisines", None)
-        self.meal_types = _clean_list(self.meal_types, "meal_types", ALLOWED_MEAL_TYPES)
-        if self.kind != "restaurant" and (self.cuisines or self.meal_types):
-            raise ValueError("cuisines and meal_types are only for restaurants")
         has_provider = self.search_provider is not None and self.search_ref is not None
         if self.source == "search_result" and not has_provider:
             raise ValueError("a search_result needs search_provider and search_ref")
@@ -204,26 +228,20 @@ class UserPlaceUpdate(StrictModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     lat: Latitude | None = None
     lon: Longitude | None = None
-    cuisines: list[str] | None = None
-    meal_types: list[str] | None = None
 
     @model_validator(mode="after")
     def _rules(self) -> Self:
         if (self.lat is None) != (self.lon is None):
             raise ValueError("lat and lon must be changed together")
-        self.cuisines = _clean_list(self.cuisines, "cuisines", None)
-        self.meal_types = _clean_list(self.meal_types, "meal_types", ALLOWED_MEAL_TYPES)
         return self
 
 
 class UserPlace(BaseModel):
     id: uuid.UUID
-    kind: Literal["city", "location", "restaurant"]
+    kind: Literal["city", "location", "restaurant", "cafe"]
     name: str
     lat: float
     lon: float
-    cuisines: list[str] | None
-    meal_types: list[str] | None
     source: Literal["manual_pin", "search_result"]
     search_provider: str | None
     search_ref: str | None
@@ -236,7 +254,6 @@ class UserPlace(BaseModel):
 
 class ItemCreate(StrictModel):
     type: Literal["visit", "meal", "free_time"]
-    meal_type: MealType | None = None
     place_id: uuid.UUID | None = Field(default=None, description="A geo.place")
     user_place_id: uuid.UUID | None = None
     start_time: time | None = Field(default=None, description="Local time at the destination")
@@ -251,10 +268,6 @@ class ItemCreate(StrictModel):
 
     @model_validator(mode="after")
     def _shape(self) -> Self:
-        if self.type == "meal" and self.meal_type is None:
-            raise ValueError("a meal needs meal_type")
-        if self.type != "meal" and self.meal_type is not None:
-            raise ValueError("meal_type is only for meals")
         both = self.place_id is not None and self.user_place_id is not None
         neither = self.place_id is None and self.user_place_id is None
         if self.type == "free_time":
@@ -275,7 +288,6 @@ class ItemUpdate(StrictModel):
     locked: bool | None = None
     position: int | None = Field(default=None, ge=1)
     day_index: int | None = Field(default=None, ge=1, description="Move to another day")
-    meal_type: MealType | None = None
 
 
 class Transfer(BaseModel):
@@ -304,15 +316,11 @@ class Arrival(BaseModel):
 
 
 class RestaurantInfo(BaseModel):
-    """What the open data says about a meal's place to eat. There is no price, rating or opening
-    hours."""
+    """What is known about a restaurant or cafe stop: only its kind. There is no cuisine, meal
+    type, price, rating or opening hours (ADR 026)."""
 
-    venue_type: str | None = Field(
-        description="restaurant or cafe (from the OpenStreetMap amenity tag); null when unknown"
-    )
-    cuisines: list[str] | None = Field(
-        description="From the OpenStreetMap cuisine tag; null when the data states no cuisine "
-        "(shown as 'Cuisine not specified')"
+    venue_type: Literal["restaurant", "cafe"] | None = Field(
+        description="The kind of the user's place; null when unknown"
     )
 
 
@@ -321,7 +329,6 @@ class Item(BaseModel):
     day_id: uuid.UUID
     position: int
     type: Literal["visit", "meal", "free_time"]
-    meal_type: MealType | None
     place_id: uuid.UUID | None
     user_place_id: uuid.UUID | None
     display_name: str
@@ -343,7 +350,7 @@ class Item(BaseModel):
         "has been computed (items added or moved by hand)",
     )
     restaurant: RestaurantInfo | None = Field(
-        default=None, description="Meals only: the place to eat as the open data describes it"
+        default=None, description="Restaurant and cafe stops only: its kind"
     )
     image: Photo | None = Field(
         default=None,

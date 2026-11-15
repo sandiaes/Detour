@@ -1,5 +1,9 @@
 # KPIs
 
+> **ADR 026 (proposed, 2026-11-14):** the app is a trip manager and history first, and suggested
+> plans are sights only. The planning KPIs below apply to the optional generator. KPIs marked
+> *(removed, ADR 026)* go when the matching build step lands; section 1b is added now.
+
 Status: **proposed targets**. Numbers are starting points to be confirmed after the Phase 0
 spikes and tuned with real fixtures. Each KPI names how it is measured; none requires an
 analytics SDK.
@@ -17,10 +21,22 @@ Measurement sources:
 | Variant count | Share of plan requests returning at least two itineraries | ≥ 95% of fixtures; the rest return the explicit single-plan response | Fixture suite |
 | Variant diversity | Jaccard similarity of the visit sets of the two variants | ≤ 0.6, or different base cities or days per base (areas) | Fixture suite |
 | Feasibility | Generated itineraries passing the independent validator | 100% | Fixture suite, logs |
-| Day utilisation | Planned time (visits, meals, transfers, inter-city drives) as a share of the 09:00–22:00 window | 60–90% | Fixture suite |
-| Meals in their windows | Planned meals that start and end inside their meal window (ADR 016) | 100% | Validator |
+| Day utilisation | Planned time (visits, transfers, inter-city drives; the midday gap is unplanned) as a share of the 09:00–20:00 window (ADR 026, built) | 55–90% | Fixture suite |
+| Meals in their windows *(removed, ADR 026; the validator now checks the midday gap instead)* | Planned meals that start and end inside their meal window (ADR 016) | 100% | Validator |
 | Travel share | Transfer and inter-city time as a share of planned time, Essentials profile | ≤ 25% | Fixture suite |
 | Determinism | Identical output for identical input, data version and engine version | 100% | Golden tests |
+
+## 1b. Trip manager and history (ADR 026, proposed)
+
+| KPI | Definition | Target | Source |
+|---|---|---|---|
+| Empty trip to first place | Taps from the new-trip screen to a first place on a day of an empty trip | ≤ 8 | Manual walk-through, component test |
+| History kept | Past trips that keep every stop of their days, with day, time and visited mark | 100% | Archive tests |
+| Past trip without routing | Past trips that read with `app.transfer` and `geo.travel_time` absent | 100% | Archive tests |
+| Optimize never longer | Optimized plans whose total travel is higher than the plan before (ADR 029) | 0 | Property tests, validator |
+| Optimize keeps every stop | Stops lost, duplicated or moved to another city by an optimization | 0 | Property tests, validator |
+| Optimize latency | p95 time to return a preview for a plan of up to 30 stops | ≤ 5 s | Backend logs |
+| Restaurant add without cuisine | Restaurants added through Photon or by hand with no cuisine or meal field required | 100% | API and app tests |
 
 ## 2. Editing and recalculation
 
@@ -29,7 +45,7 @@ Measurement sources:
 | Locked-item stability | Locked items moved by a recalculation | 0 | Tests, logs |
 | Disruption on add | Existing items changing day after one added location in the same city | ≤ 20% | Fixture suite |
 | Diff fidelity | Accepted diffs whose applied result equals the preview | 100% | Tests |
-| Restaurant placement acceptance | Proposed slot accepted without choosing an alternative | ≥ 70% | Backend logs: `restaurant_slots_suggested` (`slots`, best first) and `change_previewed` (`slot`) per itinerary |
+| Restaurant placement acceptance *(removed, ADR 026: slot engine retired)* | Proposed slot accepted without choosing an alternative | ≥ 70% | Backend logs: `restaurant_slots_suggested` (`slots`, best first) and `change_previewed` (`slot`) per itinerary |
 | Recalculation acceptance | Preview diffs accepted rather than discarded | ≥ 70% | Backend logs |
 
 ## 3. Performance
@@ -38,7 +54,7 @@ Measurement sources:
 |---|---|---|---|
 | Plan generation latency | p95 time to return two variants for a trip of up to 7 days | ≤ 5 s | Backend logs |
 | Recalculation latency | p95 time to return a preview diff | ≤ 3 s | Backend logs |
-| Restaurant placement latency | p95 time to return the proposal and alternatives | ≤ 2 s | Backend logs |
+| Restaurant placement latency *(removed, ADR 026)* | p95 time to return the proposal and alternatives | ≤ 2 s | Backend logs |
 | Search latency | p95 for destination and place search on local data | ≤ 300 ms | Backend logs |
 | App start to trip list | Cold start on a mid-range Android device | ≤ 3 s | Manual measurement |
 
@@ -47,10 +63,10 @@ Measurement sources:
 | KPI | Definition | Target | Source |
 |---|---|---|---|
 | Routed travel share | Transfers with `routed` rather than `estimated` confidence | ≥ 95% | Backend logs |
-| Cuisine coverage | Restaurants with a normalised cuisine | Reported per region | Import report |
-| Meals planned | Meals of the profiles on days with visits that found a place to eat within 3 km | Reported per fixture; every gap explained in a note | Fixture suite |
+| Cuisine coverage *(removed, ADR 026)* | Restaurants with a normalised cuisine | Reported per region | Import report |
+| Meals planned *(removed, ADR 026)* | Meals of the profiles on days with visits that found a place to eat within 3 km | Reported per fixture; every gap explained in a note | Fixture suite |
 | Unlabelled estimates | Estimated or unknown values shown without a label | 0 | UI review checklist |
-| Region readiness | Pilot regions passing the minimum data thresholds set after spike S2 (ADR 009; computed by every import since Phase 2, a region is `available` only if all six gates pass) | 100% of enabled regions | Import report |
+| Region readiness | Pilot regions passing the minimum data thresholds set after spike S2 (ADR 009; computed by every import since Phase 2, a region is `available` only if all gates pass; ADR 026 removes the three restaurant gates, leaving three) | 100% of enabled regions | Import report |
 
 ## 5. Cost and provider dependence
 
@@ -89,6 +105,13 @@ engine time for two variants 54 ms (3 days), 176 ms (7 days), 610 ms (14 days); 
 plan through the API, without the routing provider. The routed-share KPI is not met on a cold cache
 (provider time is capped at 3 s per generation). Golden tests pin the output. Planner line coverage
 is 92 to 100 % per module. Not yet measured on real data or on Render.
+
+**Planner 3 (2026-11-14, synthetic fixtures; ADR 026):** generated plans hold sights only, each day
+with sights before and after midday has one 90-minute gap, days end by about 18:00 (window
+09:00–20:00); day utilisation 59 to 67 % (Essentials 66 to 67 %, Wider 59 to 60 %), travel share 6 to
+29 % (Essentials 9 to 26 %, route3 the highest); Jaccard 0.35 to 0.59; every plan passes the validator.
+The 59 % Wider figure is just under the old 60 % floor, hence the new 55 % band. Not yet measured on
+real data or on Render.
 
 ## 9. Review cadence
 

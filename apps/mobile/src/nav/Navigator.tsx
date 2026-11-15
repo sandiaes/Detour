@@ -1,5 +1,3 @@
-import type { RestaurantResult } from "@detour/shared";
-
 import type { DocCategory, DocLink } from "../documents/model";
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
@@ -21,6 +19,10 @@ export type Route =
   | { name: "more" }
   | { name: "settings" }
   | { name: "imageCredits" }
+  /** Export one trip, or every trip as a backup (ADR 028). */
+  | { name: "exportTrips"; tripId?: string }
+  /** Import a trip file; `uri` when the app was opened with one. */
+  | { name: "importTrips"; uri?: string }
   | { name: "tripOverview"; tripId: string; section?: TripSection }
   | { name: "createTrip" }
   | { name: "trip"; tripId: string }
@@ -51,14 +53,10 @@ export type Route =
       /** The kind to start with (a tile on the empty Documents tab). */
       category?: DocCategory;
     }
+  /** Optimize a plan's order of stops (ADR 029). */
+  | { name: "optimize"; tripId: string; itineraryId: string }
   | { name: "addPlace"; tripId: string; itineraryId: string }
-  | {
-      name: "addRestaurant";
-      tripId: string;
-      itineraryId: string;
-      /** A place to eat already chosen in the add-place search (ADR 021). */
-      preset?: RestaurantResult;
-    }
+  | { name: "addRestaurant"; tripId: string; itineraryId: string }
   | { name: "changePreview"; tripId: string; itineraryId: string; changeSetId: string };
 
 export type Navigation = {

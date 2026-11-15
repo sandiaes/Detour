@@ -50,7 +50,7 @@ test("Add on a trip opens the restaurant flow for the active itinerary", async (
   await screen.findByRole("header", { name: "Your itineraries" });
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   await fireEvent.press(await screen.findByRole("button", { name: /^Restaurant\./ }));
-  expect(await screen.findByRole("header", { name: "Add a restaurant" })).toBeOnTheScreen();
+  expect(await screen.findByRole("header", { name: "Add a restaurant or café" })).toBeOnTheScreen();
 });
 
 test("without a chosen plan, places and restaurants wait for a plan", async () => {
@@ -99,14 +99,15 @@ test("Explore, Photos and More are root tabs; the planned ones say they are not 
   await fireEvent.press(screen.getByRole("tab", { name: "Photos" }));
   expect(await screen.findByTestId("photos-planned")).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("tab", { name: "More" }));
-  for (const name of [
-    /^Saved places\./,
-    /^Travel preferences\./,
-    /^Export trip\./,
-    /^Archive trip\./,
-  ]) {
+  for (const name of [/^Saved places\./, /^Travel preferences\./, /^Archive trip\./]) {
     expect(screen.getByRole("button", { name }).props.accessibilityState).toMatchObject({
       disabled: true,
+    });
+  }
+  // The backup and the import (ADR 028) are built.
+  for (const name of [/^Back up all trips\./, /^Import a trip\./]) {
+    expect(screen.getByRole("button", { name }).props.accessibilityState).toMatchObject({
+      disabled: false,
     });
   }
   await fireEvent.press(screen.getByTestId("more-settings"));

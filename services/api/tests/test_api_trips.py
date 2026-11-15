@@ -69,6 +69,7 @@ def test_create_trip_computes_the_end_date_and_has_no_money_fields(api_env: ApiE
         "name": "Testburg",
         "lat": pytest.approx(48.2082),
         "lon": pytest.approx(16.3738),
+        "country_iso2": None,  # only a place trip knows its country (ADR 027)
     }
     assert trip["is_seed"] is False
     assert sql(api_env, "SELECT count(*) FROM app.installation") == [(1,)]  # created on first use
@@ -218,11 +219,10 @@ def test_deleting_a_trip_removes_its_plans_but_not_the_users_places_or_prices(
         it,
         1,
         type="meal",
-        meal_type="lunch",
         user_place_id=place["id"],
         duration_minutes=60,
     ).json()
-    assert item["restaurant"] == {"venue_type": None, "cuisines": None}  # a user place
+    assert item["restaurant"] == {"venue_type": "restaurant"}  # the kind of the user's place
     assert (
         api_env.client.delete(f"/v1/trips/{trip['id']}", headers=api_env.headers).status_code == 204
     )
@@ -246,24 +246,24 @@ def create_place(env: ApiEnv, **over: Any) -> dict[str, Any]:
 def test_user_place_crud(api_env: ApiEnv) -> None:
     c, h = api_env.client, api_env.headers
     pin = create_place(api_env)
-    assert (
-        pin["cuisines"] is None and pin["source"] == "manual_pin" and pin["search_provider"] is None
-    )
+    assert pin["source"] == "manual_pin" and pin["search_provider"] is None
+    assert "cuisines" not in pin and "meal_types" not in pin  # ADR 026: Photon cannot supply them
     resto = create_place(
         api_env,
         kind="restaurant",
         name="Noodle Bar",
-        cuisines=["Ramen ", "noodle bar", "ramen"],
-        meal_types=["Lunch", "dinner"],
         source="search_result",
         search_provider="photon",
         search_ref="N123",
     )
-    assert resto["cuisines"] == ["noodle_bar", "ramen"] and resto["meal_types"] == [
-        "dinner",
-        "lunch",
+    cafe = create_place(api_env, kind="cafe", name="Corner Cafe")
+    assert (resto["kind"], cafe["kind"]) == ("restaurant", "cafe")
+    assert [p["id"] for p in c.get("/v1/user-places", headers=h).json()] == [
+        pin["id"],
+        resto["id"],
+        cafe["id"],
     ]
-    assert [p["id"] for p in c.get("/v1/user-places", headers=h).json()] == [pin["id"], resto["id"]]
+    assert [p["id"] for p in c.get("/v1/user-places?kind=cafe", headers=h).json()] == [cafe["id"]]
     assert [p["id"] for p in c.get("/v1/user-places?kind=restaurant", headers=h).json()] == [
         resto["id"]
     ]
@@ -278,9 +278,9 @@ def test_user_place_crud(api_env: ApiEnv) -> None:
 @pytest.mark.parametrize(
     "over",
     [
-        {"cuisines": ["ramen"]},  # not a restaurant
-        {"kind": "restaurant", "meal_types": ["brunch"]},
-        {"kind": "restaurant", "cuisines": ["no/slash"]},
+        {"cuisines": ["ramen"]},  # cuisine and meal types are gone (ADR 026)
+        {"kind": "restaurant", "meal_types": ["lunch"]},
+        {"kind": "bar"},
         {"source": "search_result"},  # needs provider and ref
         {"source": "search_result", "search_provider": "photon"},
         {"search_provider": "photon", "search_ref": "N1"},  # a pin has no provider
@@ -388,11 +388,21 @@ def test_an_attraction_without_a_duration_gets_its_category_default(api_env: Api
     assert (item["duration_minutes"], item["duration_source"]) == (90, "category_default")
 
 
-def test_a_meal_still_needs_a_duration(api_env: ApiEnv) -> None:
+def test_a_restaurant_or_cafe_gets_its_default_length_and_it_is_labelled(api_env: ApiEnv) -> None:
+    # ADR 026 (proposed lengths): 75 minutes for a restaurant, 45 for a cafe; both can be changed.
     it = make_itinerary(api_env, make_trip(api_env))
-    restaurant = find_place(api_env, "alten post")
-    r = add_item(api_env, it, 1, type="meal", meal_type="lunch", place_id=restaurant["id"])
-    assert r.status_code == 422 and code(r) == "duration_required"
+    restaurant = create_place(api_env, kind="restaurant", name="Zur Alten Post")
+    cafe = create_place(api_env, kind="cafe", name="Corner Cafe")
+    r = add_item(api_env, it, 1, type="meal", user_place_id=restaurant["id"]).json()
+    c = add_item(api_env, it, 1, type="meal", user_place_id=cafe["id"]).json()
+    assert (r["duration_minutes"], r["duration_source"]) == (75, "category_default")
+    assert (c["duration_minutes"], c["duration_source"]) == (45, "category_default")
+    assert (r["restaurant"], c["restaurant"]) == (
+        {"venue_type": "restaurant"},
+        {"venue_type": "cafe"},
+    )
+    own = add_item(api_env, it, 1, type="meal", user_place_id=cafe["id"], duration_minutes=20)
+    assert own.json()["duration_source"] == "user"
 
 
 def test_a_known_category_default_is_used_and_labelled(api_env: ApiEnv) -> None:
@@ -407,14 +417,13 @@ def test_a_known_category_default_is_used_and_labelled(api_env: ApiEnv) -> None:
     ("body", "expected_code"),
     [
         ({"type": "visit"}, "None"),  # no place
-        ({"type": "meal", "meal_type": "lunch"}, "None"),
-        ({"type": "meal", "place_id": "RESTAURANT"}, "None"),  # no meal_type
-        ({"type": "visit", "place_id": "MUSEUM", "meal_type": "lunch"}, "None"),
+        ({"type": "meal"}, "None"),
+        ({"type": "meal", "user_place_id": "EATERY", "meal_type": "lunch"}, "None"),  # gone
         ({"type": "free_time", "place_id": "MUSEUM"}, "None"),
         ({"type": "visit", "place_id": "MUSEUM", "user_place_id": "PIN"}, "None"),
-        ({"type": "visit", "place_id": "RESTAURANT"}, "wrong_place_kind"),
-        ({"type": "meal", "meal_type": "lunch", "place_id": "MUSEUM"}, "wrong_place_kind"),
-        ({"type": "meal", "meal_type": "lunch", "user_place_id": "PIN"}, "wrong_place_kind"),
+        ({"type": "visit", "user_place_id": "EATERY"}, "wrong_place_kind"),
+        ({"type": "meal", "place_id": "MUSEUM"}, "wrong_place_kind"),
+        ({"type": "meal", "user_place_id": "PIN"}, "wrong_place_kind"),
         ({"type": "visit", "place_id": "00000000-0000-0000-0000-000000000000"}, "place_not_found"),
         (
             {"type": "visit", "user_place_id": "00000000-0000-0000-0000-000000000000"},
@@ -432,7 +441,7 @@ def test_item_validation(api_env: ApiEnv, body: dict[str, Any], expected_code: s
     it = make_itinerary(api_env, make_trip(api_env))
     ids = {
         "MUSEUM": find_place(api_env, "testburg museum")["id"],
-        "RESTAURANT": find_place(api_env, "alten post")["id"],
+        "EATERY": create_place(api_env, kind="restaurant", name="Zur Alten Post")["id"],
         "PIN": create_place(api_env)["id"],
     }
     body = {k: ids.get(v, v) if isinstance(v, str) else v for k, v in body.items()}
@@ -446,11 +455,9 @@ def test_item_validation(api_env: ApiEnv, body: dict[str, Any], expected_code: s
 
 def test_a_meal_needs_a_restaurant_and_free_time_needs_none(api_env: ApiEnv) -> None:
     it = make_itinerary(api_env, make_trip(api_env))
-    post = find_place(api_env, "alten post")
-    meal = add_item(
-        api_env, it, 1, type="meal", meal_type="dinner", place_id=post["id"], duration_minutes=90
-    )
-    assert meal.status_code == 201 and meal.json()["meal_type"] == "dinner"
+    post = create_place(api_env, kind="restaurant", name="Zur Alten Post")
+    meal = add_item(api_env, it, 1, type="meal", user_place_id=post["id"], duration_minutes=90)
+    assert meal.status_code == 201 and "meal_type" not in meal.json()
     free = add_item(api_env, it, 1, type="free_time", duration_minutes=45)
     assert free.status_code == 201
     assert (free.json()["display_name"], free.json()["lat"]) == ("Free time", None)
@@ -665,12 +672,10 @@ def test_archiving_keeps_snapshots_and_deletes_the_plans(api_env: ApiEnv) -> Non
     trip = make_trip(api_env, duration_days=2)
     keep, drop = make_itinerary(api_env, trip), make_itinerary(api_env, trip)
     museum, castle = find_place(api_env, "testburg museum"), find_place(api_env, "testburg castle")
-    post = find_place(api_env, "alten post")
+    post = create_place(api_env, kind="restaurant", name="Zur Alten Post")
     city_pin = create_place(api_env, kind="city", name="Pin Town")
     add_item(api_env, keep, 1, type="visit", place_id=museum["id"], duration_minutes=60)
-    add_item(
-        api_env, keep, 1, type="meal", meal_type="lunch", place_id=post["id"], duration_minutes=60
-    )
+    add_item(api_env, keep, 1, type="meal", user_place_id=post["id"], duration_minutes=60)
     add_item(api_env, keep, 2, type="visit", place_id=castle["id"], duration_minutes=60)
     add_item(api_env, keep, 2, type="visit", user_place_id=city_pin["id"], duration_minutes=60)
     add_item(api_env, keep, 2, type="free_time", duration_minutes=30)
@@ -703,14 +708,16 @@ def test_archiving_keeps_snapshots_and_deletes_the_plans(api_env: ApiEnv) -> Non
     assert summary == [
         (1, "city", "Testburg"),
         (1, "attraction", "Testburg Museum"),
+        (1, "restaurant", "Zur Alten Post"),  # the user's own place is in the record (ADR 026)
         (2, "city", "Alpenau"),
         (2, "city", "Pin Town"),
         (2, "attraction", "Testburg Castle"),
     ]
     assert all(v["confirmed"] for v in visits)
-    assert visits[1]["geo_place_ref"] == museum["id"] and visits[3]["geo_place_ref"] is None
-    assert visits[1]["lat"] == pytest.approx(48.2082)  # a snapshot: no routes, no times
-    assert "start_time" not in visits[1] and "seconds" not in visits[1]
+    assert visits[1]["geo_place_ref"] == museum["id"] and visits[4]["geo_place_ref"] is None
+    assert visits[1]["lat"] == pytest.approx(48.2082)  # a snapshot: no routes
+    assert visits[1]["position"] == 1 and visits[2]["position"] == 2
+    assert visits[1]["duration_minutes"] == 60 and "seconds" not in visits[1]
 
     for table in ("itinerary", "itinerary_day", "itinerary_item", "transfer"):
         assert sql(api_env, f"SELECT count(*) FROM app.{table}") == [(0,)]  # noqa: S608

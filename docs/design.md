@@ -34,6 +34,14 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    forget it). A photo is never a map marker. **A photo fills its frame and the overflow is cropped**
    (ADR 022 amendment, decision e): a landscape photo is centred, a portrait photo is anchored about a
    third of the way down (`photoPlacement` in `Cover.tsx`); nothing is cropped in storage.
+   **Optimize (ADR 029).** The trip menu and the top of the Itinerary tab offer **Optimize** when the
+   plan has at least three stops with a place. A screen asks how far the order may change (within each
+   day, or across all days) and lists the stops to keep in place: a stop a document is about starts
+   selected, a locked stop is shown as kept. "Show a shorter order" opens the ordinary change preview
+   titled "A shorter order?", with the saving in minutes and kilometres, whether times are estimated,
+   "a shorter order, not necessarily the shortest" and "opening hours are not known" shown open, then
+   Accept or Discard. When nothing is shorter the screen says so and changes nothing. Right after an
+   Optimize the trip menu offers **Undo Optimize** (until the plan changes).
    **"Change photo"** (the new-trip screen under the destination, and the trip menu) opens a sheet of up
    to 12 photos of the destination, three across, each with its author and licence, and "Automatic
    photo" (`CoverPicker`). For a multi-city trip it has one tab per stop. A day of the Itinerary tab
@@ -109,8 +117,13 @@ country, else "Multi-city Central Europe" (a fixed table of regions), "Multi-cit
 
 Back, then the title "Create new trip" and one line of subtitle. Then, as hairline fields:
 
-1. **Destination:** a pin icon, the search field (a city or area in an imported region), results as
-   hairline rows with the reason when one cannot be chosen. Once chosen, the name with its kind and
+1. **Destination:** a pin icon, the search field (any place), results as
+   hairline rows. Every result can be chosen (ADR 027); one with no sight data (outside the
+   available regions, from Photon, or typed by hand) says so and offers only **Start with an empty
+   trip**, "Suggest itineraries" being disabled with the reason. **Search more widely** asks Photon
+   for any place; **Enter it by hand** takes a name and typed coordinates (a decimal comma is
+   accepted). A place trip has no "Add another city", no proposals in its menu or settings, and
+   "Change photo" only when the place is in the gazetteer (otherwise the illustration stays). Once chosen, the name with its kind and
    country, an X to clear it, and the destination's cover illustration beneath.
    **Add another city** (a quiet text button under a chosen city) makes it a **multi-city trip**
    (ADR 024): a sheet searches cities only, and the cities become hairline rows (a navy number
@@ -126,9 +139,14 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
 4. **Public transport:** a switch.
 5. A line: travel style and public transport are saved for later; the plans do not use them yet.
 6. Two buttons:
-   - **Generate itineraries** (dark): creates the trip and the two proposals to compare.
-   - **Start with an empty trip** (outlined): creates the trip and an empty plan, one empty day
+   - **Start with an empty trip** (dark, the main action): creates the trip and an empty plan, one empty day
      per trip day, chosen as its itinerary at once. No proposals. The trip opens on its overview.
+   - **Suggest itineraries** (outlined): creates the trip and the two proposals to compare. Sights
+     only, with a midday gap, no restaurants.
+
+   The empty trip comes first (ADR 026, built). A trip whose dates are all in the past is created
+   the same way (the calendar does not block past dates); the user fills it and marks it past, and
+   it is not archived by itself (the two-day rule applies only to trips made before their last day).
 
 Removed from the screen of the reference image: interests, budget and "Include popular
 highlights" and the personalised-itineraries note. "Change photo" is a slim outlined pill under
@@ -210,7 +228,7 @@ then "Edit display name" (a compact outlined button opening a one-line field wit
 edited name offers "Use the usual name"); one line with the kind icon,
 the kind and the town ("Attraction · Vienna"); two flat figures (as on the overview) for the day
 ("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit"); one quiet line with the
-address (no label); for places to eat the meal, venue and cuisine from the data; slim icon pills Show
+address (no label); for places to eat the kind and, when Photon gave one, the address (*ADR 026: the meal, venue and cuisine lines go*); slim icon pills Show
 on map, Lock, Remove and Add a document; the place's documents; the data source. No opening hours, no
 "why it is in the plan", no rating, price or description (CLAUDE.md rule 5).
 
@@ -261,7 +279,11 @@ anything changes. Outside a trip it starts a new trip.
 - **A place's details** list that place's documents under "Tickets and documents" (sights) or
   "Bookings and documents" (places to eat), with "Attach a document".
 - **A past trip** is a flat page: a compact header with the settings icon, a summary, a Documents
-  row, underlined Map and List tabs, and hairline rows by city with plain Skip and Restore actions.
+  row, underlined Map, Days and List tabs, and hairline rows with plain Skip and Restore actions
+  (the visited mark of every stop, restaurants and cafés included). **Days** (ADR 026, built) is the
+  day record: a heading per day ("Day 2 · Sun 2 May") and its stops in their planned order, each
+  as "Café · 11:30 · 45 min" (kind, start and length when they were kept; a trip archived before
+  `0015` has no times and says so, pointing to the list). No routes or travel times.
 
 ### Edit cities (multi-city trips, ADR 024)
 
@@ -277,7 +299,16 @@ Planned features and a menu of hairline rows. Items that are not built say "Comi
 
 ## 5. Plans and times
 
-- **Meals are aimed at lunch 13:00 and dinner 20:00** (owner, 2026-11-14). Windows: lunch 13:00 to
+- **Suggested plans have no meals (ADR 026, built).** Each day has one
+  unplanned gap at midday (90 minutes, starting 12:30 to 14:00). It is not an item: the app draws it
+  as a "Free time" hairline row ("Free time · 1 h 30 min · 12:45 to 14:15") with no kind icon and
+  no place, derived from any idle stretch of 30 minutes or more between two stops after the
+  transfer between them (`freeStretch` in `domain/itinerary.ts`); plans made by hand show it too.
+  The proposals' comparison has no "Places to eat" row unless an older plan has some. The day runs 09:00 to 20:00. A restaurant or
+  café is a stop the user adds; it reads "Restaurant · 1 h 15 min" or "Café · 45 min", with no
+  Lunch or Dinner label, no cuisine and no meal type. Everything below about meal times describes
+  the app until step 2 is built.
+- **Meals are aimed at lunch 13:00 and dinner 20:00** (owner, 2026-11-14; *to change, ADR 026*). Windows: lunch 13:00 to
   15:00, afternoon snack 15:00 to 17:30 (Wider only), dinner 20:00 to 22:00. A meal starts at its
   window's start at the earliest. The day runs 09:00 to 22:00 so a 90-minute dinner at 20:00 ends
   inside it. The sightseeing allowance is unchanged: the evening that the longer day added is
@@ -293,6 +324,9 @@ the screen reader announcing a screen's title on arrival.
 
 ## 7. Open points
 
+- **ADR 026 (proposed):** the midday gap numbers, the day window, the default lengths of a
+  restaurant (75 min) and café (45 min), and how a "Free time" row looks are proposals for the
+  owner to confirm on a device.
 - **Adding places to an empty trip.** An empty trip is a manual plan. The Add-place and Add-a-
   restaurant flows (ADR 018, 019) recalculate planned itineraries and refuse a manual one
   ("not recalculable"). Adding a place to an empty day by hand needs its own flow: choose the day,
@@ -306,5 +340,6 @@ the screen reader announcing a screen's title on arrival.
   and safe romanization, in that order; the rest keep their local name. Wikidata names arrive in the
   background, so a place may show its local name on the first look. Not checked on a device.
 - **Notes, reservations, trip summary:** ADR 021, "Not built". Documents are built (ADR 023) and
-  are kept on the phone only; backing them up would need accounts or an export.
+  are kept on the phone only; a trip file (ADR 028) carries them, unencrypted and only when the user
+  chooses, from "Export trip" and "Back up all trips".
 - **Dark mode** is not designed.

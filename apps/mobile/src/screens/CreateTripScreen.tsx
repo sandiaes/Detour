@@ -23,6 +23,15 @@ import { TOUCH, colors, radius, spacing, type } from "../theme";
 import { formatDate, isValidIsoDate, pluralise } from "../util/format";
 import { CalendarSheet } from "../components/ds/Calendar";
 import { localToday } from "../domain/trips";
+import {
+  type Choice,
+  choiceFromExternal,
+  isPlannable,
+  manualChoice,
+  manualPoint,
+  notPlannableReason,
+  tripBody,
+} from "../domain/destinations";
 
 export const SEARCH_DEBOUNCE_MS = 350;
 export const MIN_QUERY_LENGTH = 2;
@@ -31,21 +40,16 @@ export const MAX_DAYS = 30;
 type SearchState =
   | { phase: "idle" }
   | { phase: "searching" }
-  | { phase: "done"; results: DestinationResult[] }
+  | { phase: "done"; results: Choice[] }
   | { phase: "error"; offline: boolean; message: string };
 
-/** Why a result cannot be chosen, or null when it can. The backend decides (`unavailable_reason`). */
+/** Why suggestions are not offered for a result, or null when they are (ADR 027: the result can
+ * still be chosen, as an empty trip). */
 export function unavailableReason(r: DestinationResult): string | null {
-  if (r.unavailable_reason === "area_single_city_only") {
-    return "Areas in Japan cannot be planned yet (rail travel is not modelled). Choose a city.";
-  }
-  if (r.unavailable_reason === "region_not_available" || !r.planning_available) {
-    return "Not available yet: this region's data has not been imported.";
-  }
-  return null;
+  return notPlannableReason(r);
 }
 
-function describeResult(r: DestinationResult): string {
+function describeResult(r: Choice): string {
   return [r.admin1_name, r.country_name].filter(Boolean).join(", ");
 }
 
@@ -72,7 +76,12 @@ export function CreateTripScreen() {
     offline: boolean;
     message: string;
   } | null>(null);
-  const [chosen, setChosen] = useState<DestinationResult | null>(null);
+  const [chosen, setChosen] = useState<Choice | null>(null);
+  // "Search more widely" (ADR 027): Photon results by normalised query, "none" when it found
+  // nothing, "unavailable" when it could not be asked. Typed coordinates of a manual destination.
+  const [wide, setWide] = useState<Record<string, Choice[] | "none" | "unavailable">>({});
+  const [manualLat, setManualLat] = useState("");
+  const [manualLon, setManualLon] = useState("");
   // A multi-city trip (ADR 024): the cities in the user's order with their days. Null while the
   // trip has one destination; "Add another city" starts it with the chosen city first.
   const [stops, setStops] = useState<StopDraft[] | null>(null);
@@ -125,6 +134,29 @@ export function CreateTripScreen() {
     };
   }, [needsSearch, client, q, key]);
 
+  const searchWider = async () => {
+    if (!client) return;
+    try {
+      const response = await call(
+        client.GET("/v1/destinations/search", {
+          params: { query: { q, limit: 8, include_external: true, also_if_found: true } },
+        }),
+      );
+      const places = (response.external.results ?? [])
+        .map(choiceFromExternal)
+        .filter((c): c is Choice => c !== null);
+      const state =
+        places.length > 0
+          ? places
+          : response.external.state === "ok" || response.external.state === "cached"
+            ? "none"
+            : "unavailable";
+      setWide((w) => ({ ...w, [key]: state }));
+    } catch {
+      setWide((w) => ({ ...w, [key]: "unavailable" }));
+    }
+  };
+
   let search: SearchState;
   if (chosen || q.length < MIN_QUERY_LENGTH) search = { phase: "idle" };
   else if (found[key] !== undefined) search = { phase: "done", results: found[key] };
@@ -133,6 +165,13 @@ export function CreateTripScreen() {
     search = { phase: "error", offline: true, message: "Searching needs a connection." };
   else search = { phase: "searching" };
 
+  // A manual destination needs both typed coordinates before anything is created.
+  const manual = chosen?.ref === "manual";
+  const point = manual ? manualPoint(manualLat, manualLon) : null;
+  const needsPoint = manual && point === null;
+  const plannable = chosen !== null && isPlannable(chosen);
+  const hasPhotos =
+    chosen !== null && !(chosen.kind === "place" && !chosen.ref.startsWith("geonames:"));
   const errors = validateForm({ startDate });
   const hasErrors = Object.keys(errors).length > 0;
 
@@ -163,7 +202,7 @@ export function CreateTripScreen() {
   const submit = async (how: "generate" | "empty") => {
     setProblem(null);
     setMode(how);
-    if (!chosen || hasErrors) return;
+    if (!chosen || hasErrors || needsPoint) return;
     if (stops && stopsProblem(stops)) return;
     let trip = created;
     if (!trip) {
@@ -179,14 +218,13 @@ export function CreateTripScreen() {
                 duration_days: stops.reduce((n, x) => n + x.days, 0),
                 start_date: startDate.trim() || null,
               }
-            : {
-                // The trip is named after its destination: the country, region or city.
-                title: chosen.name,
-                destination_kind: chosen.kind,
-                destination_ref: chosen.ref,
-                duration_days: days,
-                start_date: startDate.trim() || null,
-              },
+            : // The trip is named after its destination: the country, region or city. A place
+              // with no sight data is an empty trip whose destination is a snapshot (ADR 027).
+              tripBody(
+                point ? { ...chosen, ...point } : chosen,
+                { days, startDate: startDate.trim() || null },
+                !isPlannable(chosen),
+              ),
         );
         setCreated(trip);
         if (cover) {
@@ -233,7 +271,7 @@ export function CreateTripScreen() {
                 <>
                   <Text style={styles.chosenName}>{chosen.name}</Text>
                   <Text style={styles.hint}>
-                    {chosen.kind === "area" ? "Area" : "City"}
+                    {chosen.kind === "area" ? "Area" : chosen.kind === "place" ? "Place" : "City"}
                     {describeResult(chosen) ? ` · ${describeResult(chosen)}` : ""}
                   </Text>
                 </>
@@ -241,8 +279,8 @@ export function CreateTripScreen() {
                 <TextInput
                   testID="destination-input"
                   accessibilityLabel="Destination"
-                  accessibilityHint="A city or an area in one of the imported regions, for example Vienna or Tyrol."
-                  placeholder="City or area, for example Vienna"
+                  accessibilityHint="Any place, for example Vienna, Tyrol or Hallstatt."
+                  placeholder="Any place, for example Vienna"
                   placeholderTextColor={colors.muted}
                   value={query}
                   onChangeText={setQuery}
@@ -266,13 +304,51 @@ export function CreateTripScreen() {
               />
             ) : null}
           </View>
-          {chosen?.kind === "area" ? (
+          {chosen?.kind === "area" && plannable ? (
             <Text style={styles.hint}>
               The plans choose base cities in the area and divide the days between them.
             </Text>
           ) : null}
+          {chosen && !plannable ? (
+            <Text style={styles.hint} testID="not-plannable">
+              {notPlannableReason(chosen)}
+            </Text>
+          ) : null}
+          {manual ? (
+            <View style={styles.coords}>
+              <TextInput
+                testID="manual-lat"
+                accessibilityLabel="Latitude"
+                placeholder="Latitude, e.g. 47.5622"
+                placeholderTextColor={colors.muted}
+                value={manualLat}
+                onChangeText={setManualLat}
+                keyboardType="numbers-and-punctuation"
+                style={[styles.input, styles.coord]}
+              />
+              <TextInput
+                testID="manual-lon"
+                accessibilityLabel="Longitude"
+                placeholder="Longitude, e.g. 13.6493"
+                placeholderTextColor={colors.muted}
+                value={manualLon}
+                onChangeText={setManualLon}
+                keyboardType="numbers-and-punctuation"
+                style={[styles.input, styles.coord]}
+              />
+            </View>
+          ) : null}
           {!chosen ? (
-            <SearchResults search={search} waking={waking} query={q} onChoose={setChosen} />
+            <SearchResults
+              search={search}
+              waking={waking}
+              query={q}
+              onChoose={setChosen}
+              wide={wide[key]}
+              onWiden={() => void searchWider()}
+              onManual={() => setChosen(manualChoice(q))}
+              online={client !== null}
+            />
           ) : (
             <>
               <Cover
@@ -283,24 +359,26 @@ export function CreateTripScreen() {
                 style={styles.cover}
                 testID="create-cover"
               />
-              <View style={styles.coverActions}>
-                <Button
-                  label="Change photo"
-                  icon="photos"
-                  variant="secondary"
-                  size="compact"
-                  hint="Choose the trip's photo from photos of the destination"
-                  disabled={!actions.connected}
-                  onPress={() => setPicker(true)}
-                  testID="change-photo"
-                />
-                {cover ? (
-                  <Text style={styles.hint} numberOfLines={1}>
-                    Photo: {cover.credit.author}, {cover.credit.licence}
-                  </Text>
-                ) : null}
-              </View>
-              {chosen.kind === "city" ? (
+              {hasPhotos ? (
+                <View style={styles.coverActions}>
+                  <Button
+                    label="Change photo"
+                    icon="photos"
+                    variant="secondary"
+                    size="compact"
+                    hint="Choose the trip's photo from photos of the destination"
+                    disabled={!actions.connected}
+                    onPress={() => setPicker(true)}
+                    testID="change-photo"
+                  />
+                  {cover ? (
+                    <Text style={styles.hint} numberOfLines={1}>
+                      Photo: {cover.credit.author}, {cover.credit.licence}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+              {chosen.kind === "city" && plannable ? (
                 stops ? (
                   <StopList
                     stops={stops}
@@ -367,7 +445,13 @@ export function CreateTripScreen() {
                           ref: String(x.cityId),
                           name: x.name,
                         }))
-                      : [{ kind: chosen.kind, ref: chosen.ref, name: chosen.name }]
+                      : [
+                          {
+                            kind: chosen.kind === "area" ? ("area" as const) : ("city" as const),
+                            ref: chosen.ref.replace(/^geonames:/, ""),
+                            name: chosen.name,
+                          },
+                        ]
                   }
                   load={actions.coverCandidates}
                   chosen={cover?.commons_file ?? null}
@@ -488,41 +572,21 @@ export function CreateTripScreen() {
         ) : null}
         {working === "planning" ? (
           <Notice tone="info" label="Planning">
-            Choosing sights and places to eat and working out travel times. This usually takes a few
-            seconds.
+            Choosing sights and working out travel times. This usually takes a few seconds.
           </Notice>
         ) : null}
 
         <View style={styles.actions}>
           <Button
-            testID="plan-trip"
-            label={
-              created && problem && mode === "generate"
-                ? "Try planning again"
-                : "Generate itineraries"
-            }
-            icon="route"
-            variant="ink"
-            fill
-            loading={working !== null && mode === "generate"}
-            disabled={
-              !chosen ||
-              offline ||
-              (stops !== null && stopsProblem(stops) !== null) ||
-              (working !== null && mode !== "generate")
-            }
-            hint={chosen ? "Two different plans to compare" : "Choose a destination first"}
-            onPress={() => void submit("generate")}
-          />
-          <Button
             testID="empty-trip"
             label="Start with an empty trip"
             icon="add"
-            variant="secondary"
+            variant="ink"
             fill
             loading={working !== null && mode === "empty"}
             disabled={
               !chosen ||
+              needsPoint ||
               offline ||
               (stops !== null && stopsProblem(stops) !== null) ||
               (working !== null && mode !== "empty")
@@ -531,6 +595,33 @@ export function CreateTripScreen() {
               chosen ? "No proposals: you add the places yourself" : "Choose a destination first"
             }
             onPress={() => void submit("empty")}
+          />
+          <Button
+            testID="plan-trip"
+            label={
+              created && problem && mode === "generate"
+                ? "Try planning again"
+                : "Suggest itineraries"
+            }
+            icon="route"
+            variant="secondary"
+            fill
+            loading={working !== null && mode === "generate"}
+            disabled={
+              !chosen ||
+              !plannable ||
+              offline ||
+              (stops !== null && stopsProblem(stops) !== null) ||
+              (working !== null && mode !== "generate")
+            }
+            hint={
+              !chosen
+                ? "Choose a destination first"
+                : !plannable
+                  ? (notPlannableReason(chosen) ?? "")
+                  : "Two different sightseeing plans to compare, with no restaurants"
+            }
+            onPress={() => void submit("generate")}
           />
           {created && problem ? (
             <Button
@@ -602,16 +693,45 @@ function DaysStepper({ value, onChange }: { value: number; onChange: (n: number)
   );
 }
 
+function ResultRow({ r, onChoose }: { r: Choice; onChoose: (r: Choice) => void }) {
+  const reason = notPlannableReason(r);
+  const kind = r.kind === "city" ? "City" : r.kind === "area" ? "Area" : "Place";
+  return (
+    <Pressable
+      testID={`destination-result-${r.ref}`}
+      accessibilityRole="button"
+      accessibilityLabel={`${r.name}${describeResult(r) ? `, ${describeResult(r)}` : ""}. ${kind}.${reason ? ` ${reason}` : ""}`}
+      onPress={() => onChoose(r)}
+      style={({ pressed }) => [styles.result, pressed && styles.pressed]}
+    >
+      <Text style={styles.resultName}>{r.name}</Text>
+      <Text style={styles.resultMeta}>
+        {kind}
+        {describeResult(r) ? ` · ${describeResult(r)}` : ""}
+      </Text>
+      {reason ? <Text style={styles.reason}>{reason}</Text> : null}
+    </Pressable>
+  );
+}
+
 function SearchResults({
   search,
   waking,
   query,
   onChoose,
+  wide,
+  onWiden,
+  onManual,
+  online,
 }: {
   search: SearchState;
   waking: boolean;
   query: string;
-  onChoose: (r: DestinationResult) => void;
+  onChoose: (r: Choice) => void;
+  wide: Choice[] | "none" | "unavailable" | undefined;
+  onWiden: () => void;
+  onManual: () => void;
+  online: boolean;
 }) {
   if (search.phase === "idle") {
     return query.length === 0 ? null : (
@@ -635,41 +755,47 @@ function SearchResults({
       </Notice>
     );
   }
-  if (search.results.length === 0) {
-    return (
-      <Text style={styles.hint} accessibilityLiveRegion="polite">
-        No place matches “{query}”. Try another spelling. Only the imported regions can be planned.
-      </Text>
-    );
-  }
+  const more = Array.isArray(wide) ? wide : [];
   return (
     <View style={styles.results} accessibilityLiveRegion="polite">
-      {search.results.map((r) => {
-        const reason = unavailableReason(r);
-        return (
-          <Pressable
-            key={`${r.kind}:${r.ref}`}
-            testID={`destination-result-${r.ref}`}
-            accessibilityRole="button"
-            accessibilityLabel={`${r.name}${describeResult(r) ? `, ${describeResult(r)}` : ""}. ${r.kind === "city" ? "City" : "Area"}.${reason ? ` ${reason}` : ""}`}
-            accessibilityState={{ disabled: reason !== null }}
-            disabled={reason !== null}
-            onPress={() => onChoose(r)}
-            style={({ pressed }) => [
-              styles.result,
-              reason !== null && styles.resultDisabled,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.resultName}>{r.name}</Text>
-            <Text style={styles.resultMeta}>
-              {r.kind === "city" ? "City" : "Area"}
-              {describeResult(r) ? ` · ${describeResult(r)}` : ""}
-            </Text>
-            {reason ? <Text style={styles.reason}>{reason}</Text> : null}
-          </Pressable>
-        );
-      })}
+      {search.results.length === 0 && wide === undefined ? (
+        <Text style={styles.hint}>
+          Nothing in the imported data matches “{query}”. Search more widely to find any place.
+        </Text>
+      ) : null}
+      {search.results.map((r) => (
+        <ResultRow key={`${r.kind}:${r.ref}`} r={r} onChoose={onChoose} />
+      ))}
+      {more.map((r) => (
+        <ResultRow key={r.ref} r={r} onChoose={onChoose} />
+      ))}
+      {wide === "none" ? <Text style={styles.hint}>No wider result for “{query}”.</Text> : null}
+      {wide === "unavailable" ? (
+        <Text style={styles.hint}>
+          The wider search is not available right now. You can still enter the place by hand.
+        </Text>
+      ) : null}
+      <View style={styles.coverActions}>
+        {wide === undefined ? (
+          <Button
+            testID="search-wider"
+            label="Search more widely"
+            variant="secondary"
+            size="compact"
+            hint="Look for any place in the world, not only the imported regions"
+            disabled={!online}
+            onPress={onWiden}
+          />
+        ) : null}
+        <Button
+          testID="enter-by-hand"
+          label="Enter it by hand"
+          variant="quiet"
+          size="compact"
+          hint="Type the name and the coordinates yourself"
+          onPress={onManual}
+        />
+      </View>
     </View>
   );
 }
@@ -703,6 +829,8 @@ const styles = StyleSheet.create({
   placeholder: { color: colors.muted },
   chosenName: { ...type.heading, color: colors.text },
   cover: { marginTop: spacing.xs },
+  coords: { flexDirection: "row", gap: spacing.md },
+  coord: { flex: 1, borderBottomWidth: RULE, borderBottomColor: colors.border },
   coverActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   pair: {
     flexDirection: "row",

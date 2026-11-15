@@ -2,10 +2,44 @@ import type { Day, Item, Transfer } from "@detour/shared";
 
 export type DayRow =
   | { kind: "item"; key: string; item: Item; ordinal: number | null }
-  | { kind: "transfer"; key: string; from: Item; to: Item | null; transfer: Transfer };
+  | { kind: "transfer"; key: string; from: Item; to: Item | null; transfer: Transfer }
+  | { kind: "free"; key: string; start: string; end: string; minutes: number };
+
+/** An idle stretch shorter than this is slack, not free time (ADR 026, decision 5). */
+export const MIN_FREE_MINUTES = 30;
+
+function minutesOf(time: string | null | undefined): number | null {
+  const m = /^(\d{2}):(\d{2})/.exec(time ?? "");
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+function clockOf(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
 
 /**
- * One flat list per day: an item, then the transfer to the next one (if the backend computed it).
+ * The idle stretch between two stops, after the travel between them: the midday gap of a generated
+ * plan, or any gap in a plan made by hand. It is not stored; it is read from the times (ADR 026,
+ * design §5). Null when a time is missing or the stretch is shorter than `MIN_FREE_MINUTES`.
+ */
+export function freeStretch(
+  from: Item,
+  to: Item,
+): { start: string; end: string; minutes: number } | null {
+  const end = minutesOf(from.end_time);
+  const next = minutesOf(to.start_time);
+  if (end === null || next === null) return null;
+  const travel = from.transfer ? Math.ceil(from.transfer.seconds / 60) : 0;
+  const start = end + travel;
+  const minutes = next - start;
+  return minutes >= MIN_FREE_MINUTES
+    ? { start: clockOf(start), end: clockOf(next), minutes }
+    : null;
+}
+
+/**
+ * One flat list per day: an item, then the transfer to the next one (if the backend computed it),
+ * then a "Free time" row when the stops leave an idle stretch of 30 minutes or more.
  * `ordinal` numbers the items that have a place, so the number on a list row matches the number on
  * the map marker.
  */
@@ -24,6 +58,11 @@ export function buildDayRows(day: Day): DayRow[] {
         to: byId.get(item.transfer.to_item_id) ?? null,
         transfer: item.transfer,
       });
+    }
+    const next = day.items[day.items.indexOf(item) + 1];
+    if (next && item.type !== "free_time" && next.type !== "free_time") {
+      const free = freeStretch(item, next);
+      if (free) rows.push({ kind: "free", key: `${item.id}~free`, ...free });
     }
   }
   return rows;

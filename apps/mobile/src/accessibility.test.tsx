@@ -155,7 +155,7 @@ test("add a place: search results and the suggested days", async () => {
       <AppContent />
     </Harness>,
   );
-  await fireEvent.changeText(screen.getByLabelText("Sight, town or restaurant"), "Prat");
+  await fireEvent.changeText(screen.getByLabelText("Sight or town"), "Prat");
   await fireEvent.press(await screen.findByLabelText(/^Prater, theme park/, {}, { timeout: 3000 }));
   checkControls();
   await fireEvent.press(screen.getByTestId("find-days"));
@@ -207,7 +207,7 @@ test("documents: the list, the form with a place chosen, and a document", async 
 test("place detail", async () => {
   await show(
     { name: "placeDetail", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID, itemId: "m1" },
-    "Regional, coffee shop",
+    "Gasthaus Zum Test",
   );
   checkControls();
 });

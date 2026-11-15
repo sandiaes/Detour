@@ -118,15 +118,13 @@ class PlaceSummary(BaseModel):
         default=None,
         description="The resolved English-facing name with the original local name (ADR 025)",
     )
-    kind: Literal["attraction", "restaurant", "transport_hub", "other"]
+    kind: Literal["attraction", "transport_hub", "other"]
     category: str
     lat: float
     lon: float
     region_id: str
     city_id: int | None
     city_name: str | None
-    cuisines: list[str] | None = Field(default=None, description="Restaurants; null = unknown")
-    venue_type: str | None = None
     distance_m: float | None = Field(default=None, description="From the search point, if given")
     match: MatchQuality | None = None
 
@@ -134,8 +132,6 @@ class PlaceSummary(BaseModel):
 class PlaceDetail(PlaceSummary):
     names_i18n: dict[str, str] | None
     address: dict[str, str] | None
-    meal_types: list[str] | None
-    diet_flags: list[str] | None
     default_visit_minutes: int | None = Field(
         description="Null: no category rule table exists yet (Phase 4); never a guess"
     )

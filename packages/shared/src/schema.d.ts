@@ -248,6 +248,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/trips/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Every trip of the caller in the trip-file shape (ADR 028): a backup. */
+    get: operations["export_all"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One trip in the trip-file shape (ADR 028): the chosen plan, or a past trip's record. */
+    get: operations["export_one"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/import": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add the trips of a trip file as new trips (ADR 028). Never merges or overwrites; all or nothing. */
+    post: operations["import_trips"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/trips": {
     parameters: {
       query?: never;
@@ -477,6 +528,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/itineraries/{itinerary_id}/optimize": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Preview a shorter order of the stops of a plan of any kind (ADR 029): within each day or across all days. Locked stops and the ones named in fixed_item_ids stay; restaurants and cafés keep their day. Returns the diff and the saving; nothing changes until it is applied. 409 no_better_order when the plan is already as short as the search can make it. */
+    post: operations["preview_optimize"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/itineraries/{itinerary_id}/optimize/undo": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Preview restoring the plan as it was before the latest applied Optimize, while nothing else changed it. 409 nothing_to_undo otherwise. */
+    post: operations["preview_optimize_undo"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/itineraries/{itinerary_id}/place-suggestions": {
     parameters: {
       query?: never;
@@ -586,27 +671,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Search restaurants: imported places first, then your saved restaurants and, when nothing matches and asked for, Photon through the backend (cached, budgeted). */
+    /** Search restaurants and cafes: your saved places first and, when nothing matches and asked for, Photon through the backend (cached, budgeted). */
     get: operations["search_restaurants"];
     put?: never;
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/itineraries/{itinerary_id}/restaurant-suggestions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Where a restaurant fits in a planned itinerary: up to three day and meal slots, scored by location, neighbouring stops, meal type, meal window and travel, each with its reasons, the estimated detour and which items move. Nothing is stored. */
-    post: operations["restaurant_suggestions"];
     delete?: never;
     options?: never;
     head?: never;
@@ -671,6 +739,11 @@ export interface components {
       cities: number;
       /** Attractions */
       attractions: number;
+      /**
+       * Places To Eat
+       * @description Restaurants and cafes the user added
+       */
+      places_to_eat: number;
       /**
        * Skipped
        * @description Visits the user cleared (confirmed = false)
@@ -787,7 +860,7 @@ export interface components {
        * Action
        * @enum {string}
        */
-      action: "add_place" | "remove_place" | "add_restaurant" | "edit_stops";
+      action: "add_place" | "remove_place" | "add_restaurant" | "edit_stops" | "optimize";
       /** Target Name */
       target_name: string;
       /**
@@ -830,23 +903,23 @@ export interface components {
     /**
      * ChangeSetCreate
      * @description Preview adding a place (an imported attraction, or one of your own places of kind city or
-     *     location), adding a restaurant to a meal slot, or removing a visit. Nothing changes until the
-     *     change set is applied.
+     *     location) or removing a visit. Nothing changes until the change set is applied. A restaurant
+     *     or café is not added this way: its day and time are chosen by the user (ADR 026).
      */
     ChangeSetCreate: {
       /**
        * Action
        * @enum {string}
        */
-      action: "add_place" | "remove_place" | "add_restaurant";
+      action: "add_place" | "remove_place";
       /**
        * Place Id
-       * @description add_place: an imported attraction. add_restaurant: an imported place to eat
+       * @description add_place: an imported attraction
        */
       place_id?: string | null;
       /**
        * User Place Id
-       * @description add_place: one of your places (kind city or location). add_restaurant: one of your restaurants (kind restaurant)
+       * @description add_place: one of your places (kind city or location)
        */
       user_place_id?: string | null;
       /**
@@ -861,19 +934,9 @@ export interface components {
       item_id?: string | null;
       /**
        * Day
-       * @description add_restaurant: the day (a suggestion's day). add_place: optional, only this day is tried (a place suggestion's day); without it the day that costs the plan least
+       * @description add_place: optional, only this day is tried (a place suggestion's day); without it the day that costs the plan least
        */
       day?: number | null;
-      /**
-       * Meal Type
-       * @description add_restaurant: the meal (a suggestion's meal_type)
-       */
-      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
-      /**
-       * After Item Id
-       * @description add_restaurant: the visit (or meal you fixed) the meal follows, as a suggestion gives it; null puts the meal first in the day
-       */
-      after_item_id?: string | null;
     };
     /** ClientConfig */
     ClientConfig: {
@@ -988,7 +1051,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "city" | "area" | "route";
+      kind: "city" | "area" | "route" | "place";
       /** Ref */
       ref: string;
       /** Name */
@@ -997,6 +1060,11 @@ export interface components {
       lat: number;
       /** Lon */
       lon: number;
+      /**
+       * Country Iso2
+       * @description Known for a place trip (ADR 027)
+       */
+      country_iso2?: string | null;
     };
     /** DestinationResult */
     DestinationResult: {
@@ -1084,8 +1152,6 @@ export interface components {
       kind: "visit" | "meal";
       /** Name */
       name: string;
-      /** Meal Type */
-      meal_type: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /**
        * Start Time
        * Format: time
@@ -1153,8 +1219,6 @@ export interface components {
       name: string;
       /** Day */
       day: number;
-      /** Meal Type */
-      meal_type: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /**
        * Old Start Time
        * Format: time
@@ -1236,9 +1300,8 @@ export interface components {
     };
     /**
      * ExternalRestaurant
-     * @description A restaurant or café from the external provider (Photon). Not part of our data: save it as
-     *     a user place (kind restaurant, source search_result) to add it to a plan. The provider gives
-     *     no cuisine, so it is not specified unless you give one.
+     * @description A restaurant or cafe from the external provider (Photon). Not part of our data: save it as
+     *     a user place (kind restaurant or cafe, source search_result) to add it to a plan.
      */
     ExternalRestaurant: {
       /**
@@ -1284,31 +1347,16 @@ export interface components {
       licence: "ODbL-1.0";
       /**
        * Venue Type
+       * @description From the OpenStreetMap amenity value; also the kind to save it as
        * @enum {string}
        */
       venue_type: "restaurant" | "cafe";
-      /**
-       * Meal Types
-       * @description From the venue type by the same fixed rule as imported places: a restaurant serves lunch and dinner, a café breakfast and a snack. You can change them.
-       */
-      meal_types: ("breakfast" | "lunch" | "dinner" | "snack")[];
-      /**
-       * Meal Types Basis
-       * @default venue_type
-       * @constant
-       */
-      meal_types_basis: "venue_type";
-      /**
-       * Cuisines
-       * @description Always null: the provider's answer carries none
-       */
-      cuisines?: string[] | null;
     };
     /** ExternalRestaurantStatus */
     ExternalRestaurantStatus: {
       /**
        * State
-       * @description not_requested: include_external was false. not_needed: there are local or own results. unavailable, budget_exhausted and disabled: no external results; you can always enter the restaurant by hand (a name and a map pin).
+       * @description not_requested: include_external was false. not_needed: your saved places match. unavailable, budget_exhausted and disabled: no external results; you can always enter the place by hand (a name, a kind and a map pin).
        * @enum {string}
        */
       state:
@@ -1343,6 +1391,164 @@ export interface components {
       provider?: "photon" | null;
       /** Results */
       results?: components["schemas"]["ExternalPlace"][];
+    };
+    /** FileDay */
+    FileDay: {
+      /** Day Index */
+      day_index: number;
+      /** Base City Name */
+      base_city_name?: string | null;
+      /** Items */
+      items?: components["schemas"]["FileItem"][];
+    };
+    /** FileDestination */
+    FileDestination: {
+      /**
+       * Kind
+       * @description What it was in the app; it imports as a place
+       * @enum {string}
+       */
+      kind: "city" | "area" | "route" | "place";
+      /**
+       * Ref
+       * @description A provider reference (photon:N123, geonames:123, area:<uuid>) when known
+       */
+      ref?: string | null;
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description WGS 84 latitude
+       */
+      lat: number;
+      /**
+       * Lon
+       * @description WGS 84 longitude
+       */
+      lon: number;
+      /** Country Iso2 */
+      country_iso2?: string | null;
+    };
+    /** FileItem */
+    FileItem: {
+      /** Position */
+      position: number;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "sight" | "city" | "place" | "restaurant" | "cafe";
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description WGS 84 latitude
+       */
+      lat: number;
+      /**
+       * Lon
+       * @description WGS 84 longitude
+       */
+      lon: number;
+      /** Start Time */
+      start_time?: string | null;
+      /** Duration Minutes */
+      duration_minutes: number;
+      /**
+       * Duration Is User
+       * @default false
+       */
+      duration_is_user: boolean;
+      /**
+       * Locked
+       * @default false
+       */
+      locked: boolean;
+    };
+    /**
+     * FileStop
+     * @description A city of a multi-city trip, kept for reference (it imports as a single place trip).
+     */
+    FileStop: {
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description WGS 84 latitude
+       */
+      lat: number;
+      /**
+       * Lon
+       * @description WGS 84 longitude
+       */
+      lon: number;
+      /** Days */
+      days: number;
+      /** Country Iso2 */
+      country_iso2?: string | null;
+    };
+    /** FileTrip */
+    FileTrip: {
+      /** Title */
+      title: string;
+      destination: components["schemas"]["FileDestination"];
+      /** Duration Days */
+      duration_days: number;
+      /** Start Date */
+      start_date?: string | null;
+      /**
+       * Status
+       * @default active
+       * @enum {string}
+       */
+      status: "active" | "past";
+      /** Archived At */
+      archived_at?: string | null;
+      /** Stops */
+      stops?: components["schemas"]["FileStop"][];
+      /**
+       * Days
+       * @description The chosen plan; empty if none
+       */
+      days?: components["schemas"]["FileDay"][];
+      /** Visits */
+      visits?: components["schemas"]["FileVisit"][];
+    };
+    /**
+     * FileVisit
+     * @description One row of a past trip's day record.
+     */
+    FileVisit: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "city" | "attraction" | "restaurant" | "cafe";
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description WGS 84 latitude
+       */
+      lat: number;
+      /**
+       * Lon
+       * @description WGS 84 longitude
+       */
+      lon: number;
+      /** Day Number */
+      day_number: number;
+      /** Position */
+      position?: number | null;
+      /** Start Time */
+      start_time?: string | null;
+      /** Duration Minutes */
+      duration_minutes?: number | null;
+      /**
+       * Confirmed
+       * @default true
+       */
+      confirmed: boolean;
     };
     /** GenerationResult */
     GenerationResult: {
@@ -1394,6 +1600,30 @@ export interface components {
        */
       release?: string | null;
     };
+    /** ImportResult */
+    ImportResult: {
+      /** Trips */
+      trips: components["schemas"]["ImportedTrip"][];
+    };
+    /** ImportedTrip */
+    ImportedTrip: {
+      /**
+       * Index
+       * @description Position of the trip in the file, from 0
+       */
+      index: number;
+      /** Trip Id */
+      trip_id: string;
+      /** Title */
+      title: string;
+      /**
+       * Days
+       * @description Days with at least one stop
+       */
+      days: number;
+      /** Stops */
+      stops: number;
+    };
     /** InstallationInfo */
     InstallationInfo: {
       /**
@@ -1441,8 +1671,6 @@ export interface components {
        * @enum {string}
        */
       type: "visit" | "meal" | "free_time";
-      /** Meal Type */
-      meal_type: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /** Place Id */
       place_id: string | null;
       /** User Place Id */
@@ -1483,7 +1711,7 @@ export interface components {
       reason_texts: string[];
       /** @description To the next item of the day. Null for the last item, or when no transfer has been computed (items added or moved by hand) */
       transfer?: components["schemas"]["Transfer"] | null;
-      /** @description Meals only: the place to eat as the open data describes it */
+      /** @description Restaurant and cafe stops only: its kind */
       restaurant?: components["schemas"]["RestaurantInfo"] | null;
       /** @description Photo of an imported place, when one was found (restaurants have none yet) */
       image?: components["schemas"]["Photo"] | null;
@@ -1497,8 +1725,6 @@ export interface components {
        * @enum {string}
        */
       type: "visit" | "meal" | "free_time";
-      /** Meal Type */
-      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
       /**
        * Place Id
        * @description A geo.place
@@ -1545,8 +1771,6 @@ export interface components {
        * @description Move to another day
        */
       day_index?: number | null;
-      /** Meal Type */
-      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
     };
     /** Itinerary */
     Itinerary: {
@@ -1693,9 +1917,14 @@ export interface components {
        */
       change_set_id: string | null;
       /** Action */
-      action: ("add_place" | "remove_place" | "add_restaurant" | "edit_stops") | null;
+      action: ("add_place" | "remove_place" | "add_restaurant" | "edit_stops" | "optimize") | null;
       /** Target Name */
       target_name: string | null;
+      /**
+       * Restores Version
+       * @description Set when applying that change set restored an earlier version
+       */
+      restores_version?: number | null;
     };
     /** MapConfig */
     MapConfig: {
@@ -1704,25 +1933,23 @@ export interface components {
       /** Attribution */
       attribution: components["schemas"]["AttributionLine"][];
     };
-    /** MovedItem */
-    MovedItem: {
+    /**
+     * OptimizeRequest
+     * @description Preview a shorter order for the stops of a plan (ADR 029). Nothing changes until the change
+     *     set is applied.
+     */
+    OptimizeRequest: {
       /**
-       * Kind
+       * Scope
+       * @description within_days: no stop changes day; across_days: visits may also change day
        * @enum {string}
        */
-      kind: "visit" | "meal";
-      /** Name */
-      name: string;
+      scope: "within_days" | "across_days";
       /**
-       * Old Start Time
-       * Format: time
+       * Fixed Item Ids
+       * @description Stops to keep exactly where they are for this change only, such as the ones with a ticket (documents are on the phone, so the app names them)
        */
-      old_start_time: string;
-      /**
-       * New Start Time
-       * Format: time
-       */
-      new_start_time: string;
+      fixed_item_ids?: string[];
     };
     /** Photo */
     Photo: {
@@ -1795,7 +2022,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "attraction" | "restaurant" | "transport_hub" | "other";
+      kind: "attraction" | "transport_hub" | "other";
       /** Category */
       category: string;
       /** Lat */
@@ -1808,13 +2035,6 @@ export interface components {
       city_id: number | null;
       /** City Name */
       city_name: string | null;
-      /**
-       * Cuisines
-       * @description Restaurants; null = unknown
-       */
-      cuisines?: string[] | null;
-      /** Venue Type */
-      venue_type?: string | null;
       /**
        * Distance M
        * @description From the search point, if given
@@ -1830,10 +2050,6 @@ export interface components {
       address: {
         [key: string]: string;
       } | null;
-      /** Meal Types */
-      meal_types: string[] | null;
-      /** Diet Flags */
-      diet_flags: string[] | null;
       /**
        * Default Visit Minutes
        * @description Null: no category rule table exists yet (Phase 4); never a guess
@@ -2040,7 +2256,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "attraction" | "restaurant" | "transport_hub" | "other";
+      kind: "attraction" | "transport_hub" | "other";
       /** Category */
       category: string;
       /** Lat */
@@ -2053,13 +2269,6 @@ export interface components {
       city_id: number | null;
       /** City Name */
       city_name: string | null;
-      /**
-       * Cuisines
-       * @description Restaurants; null = unknown
-       */
-      cuisines?: string[] | null;
-      /** Venue Type */
-      venue_type?: string | null;
       /**
        * Distance M
        * @description From the search point, if given
@@ -2173,242 +2382,26 @@ export interface components {
     };
     /**
      * RestaurantInfo
-     * @description What the open data says about a meal's place to eat. There is no price, rating or opening
-     *     hours.
+     * @description What is known about a restaurant or cafe stop: only its kind. There is no cuisine, meal
+     *     type, price, rating or opening hours (ADR 026).
      */
     RestaurantInfo: {
       /**
        * Venue Type
-       * @description restaurant or cafe (from the OpenStreetMap amenity tag); null when unknown
+       * @description The kind of the user's place; null when unknown
        */
-      venue_type: string | null;
-      /**
-       * Cuisines
-       * @description From the OpenStreetMap cuisine tag; null when the data states no cuisine (shown as 'Cuisine not specified')
-       */
-      cuisines: string[] | null;
-    };
-    /**
-     * RestaurantResult
-     * @description An imported place to eat. ``cuisines`` null means the data states none: shown as
-     *     "Cuisine not specified".
-     */
-    RestaurantResult: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /**
-       * Name
-       * @description Null when the source has no name
-       */
-      name: string | null;
-      /**
-       * Name En
-       * @description The English name the source gives (OpenStreetMap name:en), only when it differs from the name; null = none. Never machine-translated.
-       */
-      name_en?: string | null;
-      /** @description The resolved English-facing name with the original local name (ADR 025) */
-      names?: components["schemas"]["PlaceName"] | null;
-      /**
-       * Kind
-       * @enum {string}
-       */
-      kind: "attraction" | "restaurant" | "transport_hub" | "other";
-      /** Category */
-      category: string;
-      /** Lat */
-      lat: number;
-      /** Lon */
-      lon: number;
-      /** Region Id */
-      region_id: string;
-      /** City Id */
-      city_id: number | null;
-      /** City Name */
-      city_name: string | null;
-      /**
-       * Cuisines
-       * @description Restaurants; null = unknown
-       */
-      cuisines?: string[] | null;
-      /** Venue Type */
-      venue_type?: string | null;
-      /**
-       * Distance M
-       * @description From the search point, if given
-       */
-      distance_m?: number | null;
-      /** Match */
-      match?: ("exact" | "prefix" | "word_prefix" | "contains" | "similar") | null;
-      /**
-       * Meal Types
-       * @description Derived from the venue type by the import's fixed rule
-       */
-      meal_types?: ("breakfast" | "lunch" | "dinner" | "snack")[] | null;
+      venue_type: ("restaurant" | "cafe") | null;
     };
     /** RestaurantSearchResponse */
     RestaurantSearchResponse: {
       /** Query */
       query: string;
       /**
-       * Results
-       * @description Imported places to eat, searched first
-       */
-      results: components["schemas"]["RestaurantResult"][];
-      /**
        * Your Places
-       * @description Restaurants you saved before (kind restaurant) whose name matches
+       * @description Restaurants and cafes you saved before whose name matches
        */
       your_places: components["schemas"]["UserPlace"][];
       external: components["schemas"]["ExternalRestaurantStatus"];
-    };
-    /** SlotReason */
-    SlotReason: {
-      /** Code */
-      code: string;
-      /** Text */
-      text: string;
-    };
-    /**
-     * SlotRequest
-     * @description Suggest where a restaurant fits in a planned itinerary.
-     */
-    SlotRequest: {
-      /**
-       * Place Id
-       * @description An imported place to eat
-       */
-      place_id?: string | null;
-      /**
-       * User Place Id
-       * @description One of your restaurants (kind restaurant)
-       */
-      user_place_id?: string | null;
-      /**
-       * Day
-       * @description Only this day
-       */
-      day?: number | null;
-      /**
-       * Meal Type
-       * @description Only this meal
-       */
-      meal_type?: ("breakfast" | "lunch" | "dinner" | "snack") | null;
-    };
-    /** SlotRestaurant */
-    SlotRestaurant: {
-      /** Name */
-      name: string;
-      /** Venue Type */
-      venue_type: string | null;
-      /**
-       * Cuisines
-       * @description Null: Cuisine not specified
-       */
-      cuisines: string[] | null;
-      /**
-       * Meal Types
-       * @description Null: not known
-       */
-      meal_types: ("breakfast" | "lunch" | "dinner" | "snack")[] | null;
-      /**
-       * Meal Types Basis
-       * @enum {string}
-       */
-      meal_types_basis: "venue_type" | "you" | "unknown";
-    };
-    /** SlotSuggestion */
-    SlotSuggestion: {
-      /**
-       * Rank
-       * @description 1 is the best slot
-       */
-      rank: number;
-      /** Day */
-      day: number;
-      /**
-       * Meal Type
-       * @enum {string}
-       */
-      meal_type: "breakfast" | "lunch" | "dinner" | "snack";
-      /**
-       * Start Time
-       * Format: time
-       */
-      start_time: string;
-      /**
-       * End Time
-       * Format: time
-       */
-      end_time: string;
-      /**
-       * After Item Id
-       * @description Pass this, with day and meal_type, to the change-set preview to place the meal here. Null: first in the day
-       */
-      after_item_id: string | null;
-      /**
-       * After Name
-       * @description The stop before the meal; null: first of the day
-       */
-      after_name: string | null;
-      /**
-       * Before Name
-       * @description The stop after the meal; null: last of the day
-       */
-      before_name: string | null;
-      /**
-       * Travel Minutes Added
-       * @description Travel the day gains (negative: less). Estimated from the cache and straight-line distance, not routed, unless travel_label says routed
-       */
-      travel_minutes_added: number;
-      /**
-       * Travel Label
-       * @enum {string}
-       */
-      travel_label: "routed" | "estimated";
-      /**
-       * Detour Metres
-       * @description Straight-line detour from the stops before and after the meal
-       */
-      detour_metres: number;
-      /**
-       * Replaces
-       * @description The meal of this type the plan has now, replaced
-       */
-      replaces: string | null;
-      /**
-       * Items Moved
-       * @description Other items that start at another time
-       */
-      items_moved: components["schemas"]["MovedItem"][];
-      /** Reasons */
-      reasons: components["schemas"]["SlotReason"][];
-      /**
-       * Score
-       * @description Lower is better; ties go to the earlier day, then the start
-       */
-      score: number;
-    };
-    /** SlotSuggestions */
-    SlotSuggestions: {
-      restaurant: components["schemas"]["SlotRestaurant"];
-      /**
-       * Suggestions
-       * @description At most three, best first
-       */
-      suggestions: components["schemas"]["SlotSuggestion"][];
-      /**
-       * Slots Considered
-       * @description Day and meal combinations that could be tried
-       */
-      slots_considered: number;
-      /**
-       * Issues
-       * @description Why there is nothing to suggest, when empty
-       */
-      issues: components["schemas"]["SlotReason"][];
     };
     /**
      * StopIn
@@ -2535,12 +2528,32 @@ export interface components {
        * Destination Kind
        * @enum {string}
        */
-      destination_kind: "city" | "area" | "route";
+      destination_kind: "city" | "area" | "route" | "place";
       /**
        * Destination Ref
-       * @description The city or area; not sent for a multi-city trip (route)
+       * @description The city or area; not sent for a multi-city trip (route). For a place (ADR 027): photon:N123, geonames:2761369, area:<uuid> or manual
        */
       destination_ref?: string | null;
+      /**
+       * Destination Name
+       * @description Only for a place: the name the user chose, stored as a snapshot
+       */
+      destination_name?: string | null;
+      /**
+       * Destination Lat
+       * @description Only for a place
+       */
+      destination_lat?: number | null;
+      /**
+       * Destination Lon
+       * @description Only for a place
+       */
+      destination_lon?: number | null;
+      /**
+       * Destination Country
+       * @description Only for a place: the ISO 3166-1 alpha-2 country code, if known
+       */
+      destination_country?: string | null;
       /**
        * Stops
        * @description Only for a multi-city trip: 2 to 6 cities in order, whose days add up to duration_days
@@ -2550,6 +2563,27 @@ export interface components {
       duration_days: number;
       /** Start Date */
       start_date?: string | null;
+    };
+    /**
+     * TripFile
+     * @description The contents of ``trip.json`` inside a ``.detour`` file.
+     */
+    TripFile: {
+      /**
+       * Format
+       * @default detour-trip
+       * @constant
+       */
+      format: "detour-trip";
+      /**
+       * Format Version
+       * @description Refused when higher than the server knows
+       */
+      format_version: number;
+      /** Exported At */
+      exported_at?: string | null;
+      /** Trips */
+      trips: components["schemas"]["FileTrip"][];
     };
     /** TripStop */
     TripStop: {
@@ -2585,7 +2619,10 @@ export interface components {
       /** Selected Itinerary Id */
       selected_itinerary_id?: string | null;
     };
-    /** TripVisit */
+    /**
+     * TripVisit
+     * @description One stop of a past trip's day record, or one of its base cities (ADR 006, ADR 026).
+     */
     TripVisit: {
       /**
        * Id
@@ -2596,7 +2633,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "city" | "attraction";
+      kind: "city" | "attraction" | "restaurant" | "cafe";
       /** Name */
       name: string;
       /** Lat */
@@ -2607,7 +2644,22 @@ export interface components {
       geo_place_ref: string | null;
       /** Day Number */
       day_number: number;
-      /** Confirmed */
+      /**
+       * Position
+       * @description Order within the day; null for a base city row and for rows archived before the day record existed
+       */
+      position: number | null;
+      /**
+       * Start Time
+       * @description HH:MM; null when the stop had no time
+       */
+      start_time: string | null;
+      /** Duration Minutes */
+      duration_minutes: number | null;
+      /**
+       * Confirmed
+       * @description Visited. Set when archived; the user can clear it
+       */
       confirmed: boolean;
     };
     /** TripVisitUpdate */
@@ -2626,17 +2678,13 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "city" | "location" | "restaurant";
+      kind: "city" | "location" | "restaurant" | "cafe";
       /** Name */
       name: string;
       /** Lat */
       lat: number;
       /** Lon */
       lon: number;
-      /** Cuisines */
-      cuisines: string[] | null;
-      /** Meal Types */
-      meal_types: string[] | null;
       /**
        * Source
        * @enum {string}
@@ -2663,7 +2711,7 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "city" | "location" | "restaurant";
+      kind: "city" | "location" | "restaurant" | "cafe";
       /** Name */
       name: string;
       /**
@@ -2676,16 +2724,6 @@ export interface components {
        * @description WGS 84 longitude
        */
       lon: number;
-      /**
-       * Cuisines
-       * @description Restaurants only
-       */
-      cuisines?: string[] | null;
-      /**
-       * Meal Types
-       * @description Restaurants only
-       */
-      meal_types?: string[] | null;
       /**
        * Source
        * @enum {string}
@@ -2707,10 +2745,6 @@ export interface components {
       lat?: number | null;
       /** Lon */
       lon?: number | null;
-      /** Cuisines */
-      cuisines?: string[] | null;
-      /** Meal Types */
-      meal_types?: string[] | null;
     };
     /** ValidationError */
     ValidationError: {
@@ -3020,6 +3054,8 @@ export interface operations {
         limit?: number;
         /** @description If nothing is found locally, ask Photon (through the backend, cached) */
         include_external?: boolean;
+        /** @description With include_external: ask Photon even when the imported data has answers (ADR 027: a place outside it, or one with the same name) */
+        also_if_found?: boolean;
         /** @description Result language for external search */
         lang?: string | null;
       };
@@ -3264,6 +3300,153 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlaceName"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  export_all: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripFile"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  export_one: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripFile"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  import_trips: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripFile"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ImportResult"];
         };
       };
       /** @description Unauthorized */
@@ -4530,6 +4713,126 @@ export interface operations {
       };
     };
   };
+  preview_optimize: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["OptimizeRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanningErrorBody"];
+        };
+      };
+    };
+  };
+  preview_optimize_undo: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
   place_suggestions: {
     parameters: {
       query?: never;
@@ -4893,7 +5196,6 @@ export interface operations {
         region?: string | null;
         lat?: number | null;
         lon?: number | null;
-        radius_m?: number | null;
         limit?: number;
         include_external?: boolean;
         lang?: string | null;
@@ -4951,72 +5253,10 @@ export interface operations {
       };
     };
   };
-  restaurant_suggestions: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        itinerary_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SlotRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SlotSuggestions"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorBody"];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorBody"];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorBody"];
-        };
-      };
-      /** @description Unprocessable Content */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PlanningErrorBody"];
-        };
-      };
-    };
-  };
   list_user_places: {
     parameters: {
       query?: {
-        kind?: ("city" | "location" | "restaurant") | null;
+        kind?: ("city" | "location" | "restaurant" | "cafe") | null;
       };
       header?: never;
       path?: never;

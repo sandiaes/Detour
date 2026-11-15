@@ -7,23 +7,20 @@ from typing import Literal, Self
 from pydantic import BaseModel, Field, model_validator
 
 from detour_api.models.common import StrictModel
-from detour_api.models.trips import Itinerary, MealType, PlanNote, StopIn
+from detour_api.models.trips import Itinerary, PlanNote, StopIn
 
 
 class ChangeSetCreate(StrictModel):
     """Preview adding a place (an imported attraction, or one of your own places of kind city or
-    location), adding a restaurant to a meal slot, or removing a visit. Nothing changes until the
-    change set is applied."""
+    location) or removing a visit. Nothing changes until the change set is applied. A restaurant
+    or café is not added this way: its day and time are chosen by the user (ADR 026)."""
 
-    action: Literal["add_place", "remove_place", "add_restaurant"]
+    action: Literal["add_place", "remove_place"]
     place_id: uuid.UUID | None = Field(
-        default=None,
-        description="add_place: an imported attraction. add_restaurant: an imported place to eat",
+        default=None, description="add_place: an imported attraction"
     )
     user_place_id: uuid.UUID | None = Field(
-        default=None,
-        description="add_place: one of your places (kind city or location). add_restaurant: one "
-        "of your restaurants (kind restaurant)",
+        default=None, description="add_place: one of your places (kind city or location)"
     )
     duration_minutes: int | None = Field(
         default=None,
@@ -37,21 +34,13 @@ class ChangeSetCreate(StrictModel):
         default=None,
         ge=1,
         le=60,
-        description="add_restaurant: the day (a suggestion's day). add_place: optional, only this "
-        "day is tried (a place suggestion's day); without it the day that costs the plan least",
-    )
-    meal_type: MealType | None = Field(
-        default=None, description="add_restaurant: the meal (a suggestion's meal_type)"
-    )
-    after_item_id: uuid.UUID | None = Field(
-        default=None,
-        description="add_restaurant: the visit (or meal you fixed) the meal follows, as a "
-        "suggestion gives it; null puts the meal first in the day",
+        description="add_place: optional, only this day is tried (a place suggestion's day); "
+        "without it the day that costs the plan least",
     )
 
     @model_validator(mode="after")
     def _shape(self) -> Self:
-        slot = self.day is not None or self.meal_type is not None or self.after_item_id is not None
+        slot = self.day is not None
         if self.action == "remove_place":
             if self.item_id is None:
                 raise ValueError("remove_place needs item_id")
@@ -62,14 +51,6 @@ class ChangeSetCreate(StrictModel):
             raise ValueError(f"{self.action} needs exactly one of place_id and user_place_id")
         if self.item_id is not None:
             raise ValueError("item_id is only for remove_place")
-        if self.action == "add_place":
-            if self.meal_type is not None or self.after_item_id is not None:
-                raise ValueError("meal_type and after_item_id are only for add_restaurant")
-        else:
-            if self.day is None or self.meal_type is None:
-                raise ValueError("add_restaurant needs day and meal_type")
-            if self.duration_minutes is not None:
-                raise ValueError("a meal's length follows its meal type and venue")
         return self
 
 
@@ -77,7 +58,6 @@ class DiffItem(BaseModel):
     day: int
     kind: Literal["visit", "meal"]
     name: str
-    meal_type: MealType | None
     start_time: time
     end_time: time
     added_by_you: bool = Field(description="True for the place you add (and places you added)")
@@ -96,7 +76,6 @@ class DiffRetime(BaseModel):
     kind: Literal["visit", "meal"]
     name: str
     day: int
-    meal_type: MealType | None
     old_start_time: time
     new_start_time: time
 
@@ -135,7 +114,7 @@ class ChangeDiff(BaseModel):
 class ChangeSet(BaseModel):
     id: uuid.UUID
     itinerary_id: uuid.UUID
-    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops"]
+    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops", "optimize"]
     target_name: str
     status: Literal["pending", "applied", "discarded", "expired"] = Field(
         description="pending: previewed, nothing changed yet. expired: the itinerary changed "
@@ -162,8 +141,11 @@ class ItineraryVersion(BaseModel):
     version: int
     replaced_at: datetime
     change_set_id: uuid.UUID | None = Field(description="Null when a hand edit replaced it")
-    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops"] | None
+    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops", "optimize"] | None
     target_name: str | None
+    restores_version: int | None = Field(
+        default=None, description="Set when applying that change set restored an earlier version"
+    )
 
 
 class PlaceSuggestionRequest(StrictModel):
@@ -228,3 +210,18 @@ class StopsEdit(StrictModel):
     """A multi-city trip's new stops, in order (ADR 024): add, remove, reorder or change days."""
 
     stops: list[StopIn] = Field(description="2 to 6 cities; their days become the trip's length")
+
+
+class OptimizeRequest(StrictModel):
+    """Preview a shorter order for the stops of a plan (ADR 029). Nothing changes until the change
+    set is applied."""
+
+    scope: Literal["within_days", "across_days"] = Field(
+        description="within_days: no stop changes day; across_days: visits may also change day"
+    )
+    fixed_item_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        max_length=400,
+        description="Stops to keep exactly where they are for this change only, such as the ones "
+        "with a ticket (documents are on the phone, so the app names them)",
+    )

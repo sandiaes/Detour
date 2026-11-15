@@ -74,10 +74,6 @@ def canonical_geo_dump(url: str, region_id: str) -> dict[str, list[tuple[Any, ..
             " FROM geo.place_source ps JOIN geo.place p ON p.id = ps.place_id"
             " WHERE p.region_id = %s ORDER BY 1, 2, 3"
         ),
-        "restaurant_profile": (
-            "SELECT rp.* FROM geo.restaurant_profile rp JOIN geo.place p ON p.id = rp.place_id"
-            " WHERE p.region_id = %s ORDER BY rp.place_id"
-        ),
         "place_signal": (
             "SELECT s.* FROM geo.place_signal s JOIN geo.place p ON p.id = s.place_id"
             " WHERE p.region_id = %s ORDER BY s.place_id"

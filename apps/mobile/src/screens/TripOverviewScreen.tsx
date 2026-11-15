@@ -1,4 +1,4 @@
-import type { Day, Itinerary, ItinerarySummary, Trip } from "@detour/shared";
+import type { Day, Itinerary, ItinerarySummary, ItineraryVersion, Trip } from "@detour/shared";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -31,11 +31,14 @@ import {
   useAnnounceOnMount,
 } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
+import { useChangeActions } from "../data/changes";
 import { CoverPicker, type CoverSource } from "../components/ds/CoverPicker";
+import { isPlaceTrip, placeCoverSource } from "../domain/destinations";
 import { useResource } from "../data/DataProvider";
 import { useTripCounts } from "../data/tripCounts";
 import { PlanSummaryCard } from "../components/plan/PlanSummaryCard";
 import { dayTotals } from "../domain/itinerary";
+import { canOptimize, canUndoOptimize } from "../domain/optimize";
 import { type TripCounts, localToday, shortSpan } from "../domain/trips";
 import { type TripSection, useNavigation } from "../nav/Navigator";
 import { TOUCH, colors, radius, spacing, type } from "../theme";
@@ -167,6 +170,11 @@ export function coverSources(trip: Trip): CoverSource[] {
   if (stops.length > 0) {
     return stops.map((s) => ({ kind: "city" as const, ref: String(s.city_id), name: s.name }));
   }
+  if (trip.destination.kind === "place") {
+    // A place has photo candidates only when it came from the gazetteer (ADR 027).
+    const source = placeCoverSource(trip);
+    return source ? [source] : [];
+  }
   const kind = trip.destination.kind === "area" ? "area" : "city";
   return [{ kind, ref: trip.destination.ref, name: trip.destination.name }];
 }
@@ -242,6 +250,19 @@ export function TripOverviewScreen({
       call(c.GET("/v1/trips/{trip_id}/itineraries", { params: { path: { trip_id: tripId } } })),
     { ttlMs: 10 * 60_000 },
   );
+  const planId0 = trip?.status !== "past" ? (trip?.selected_itinerary_id ?? null) : null;
+  const versions = useResource<ItineraryVersion[]>(
+    planId0 ? keys.versions(planId0) : null,
+    (c) =>
+      call(
+        c.GET("/v1/itineraries/{itinerary_id}/versions", {
+          params: { path: { itinerary_id: planId0 as string } },
+        }),
+      ),
+    { ttlMs: 60_000 },
+  );
+  const changeActions = useChangeActions();
+  const [undoing, setUndoing] = useState<string | null>(null);
   const [section, setSectionState] = useState<TripSection>(initialSection);
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
@@ -290,6 +311,19 @@ export function TripOverviewScreen({
 
   const hasPlan = trip.selected_itinerary_id !== null;
   const planId = trip.selected_itinerary_id as string;
+  const optimizable = hasPlan && plan.data ? canOptimize(plan.data.days) : false;
+  const undoable = hasPlan && plan.data ? canUndoOptimize(versions.data, plan.data.version) : false;
+  const openOptimize = () => nav.push({ name: "optimize", tripId, itineraryId: planId });
+  const undoOptimize = async () => {
+    setMenu(false);
+    try {
+      const change = await changeActions.previewOptimizeUndo(planId);
+      nav.push({ name: "changePreview", tripId, itineraryId: planId, changeSetId: change.id });
+    } catch (e) {
+      setUndoing(describeError(e));
+    }
+  };
+
   const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
   // The day shown in the Itinerary and Map tabs: today's during the trip, else the first.
   const day =
@@ -384,6 +418,16 @@ export function TripOverviewScreen({
       <>
         <ResourceNotices resource={plan} noun="this itinerary" />
         {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
+        {undoing ? <Notice tone="error">{undoing}</Notice> : null}
+        {optimizable ? (
+          <ListRow
+            icon="route"
+            title="Optimize"
+            detail="Find a shorter order for your stops"
+            testID="itinerary-optimize"
+            onPress={openOptimize}
+          />
+        ) : null}
         <DayTimeline
           days={[...plan.data.days].sort((x, y) => x.day_index - y.day_index)}
           coverKey={trip.destination.ref}
@@ -396,34 +440,71 @@ export function TripOverviewScreen({
   const menuSheet = menu ? (
     <Sheet visible title="Trip menu" onClose={() => setMenu(false)}>
       <RowGroup>
+        {isPlaceTrip(trip) ? null : (
+          <ListRow
+            icon="history"
+            title={hasPlan ? "Original proposals" : "Proposals"}
+            detail={
+              hasPlan
+                ? "The plans Detour proposed for this trip"
+                : "Compare the two plans and choose one"
+            }
+            testID="menu-proposals"
+            onPress={() => {
+              setMenu(false);
+              nav.push({ name: "trip", tripId });
+            }}
+          />
+        )}
+        {coverSources(trip).length === 0 ? null : (
+          <ListRow
+            icon="photos"
+            title="Change photo"
+            detail="Choose the trip's cover from photos of the destination"
+            testID="menu-change-photo"
+            onPress={() => {
+              setMenu(false);
+              setPicker(true);
+            }}
+          />
+        )}
+        {optimizable ? (
+          <ListRow
+            icon="route"
+            title="Optimize"
+            detail="Find a shorter order for your stops"
+            testID="menu-optimize"
+            onPress={() => {
+              setMenu(false);
+              openOptimize();
+            }}
+          />
+        ) : null}
+        {undoable ? (
+          <ListRow
+            icon="history"
+            title="Undo Optimize"
+            detail="Put the stops back in the order they had"
+            testID="menu-undo-optimize"
+            onPress={() => void undoOptimize()}
+          />
+        ) : null}
         <ListRow
-          icon="history"
-          title={hasPlan ? "Original proposals" : "Proposals"}
-          detail={
-            hasPlan
-              ? "The plans Detour proposed for this trip"
-              : "Compare the two plans and choose one"
-          }
-          testID="menu-proposals"
+          icon="export"
+          title="Export trip"
+          detail="A file with this trip, to keep or share"
+          testID="menu-export"
           onPress={() => {
             setMenu(false);
-            nav.push({ name: "trip", tripId });
-          }}
-        />
-        <ListRow
-          icon="photos"
-          title="Change photo"
-          detail="Choose the trip's cover from photos of the destination"
-          testID="menu-change-photo"
-          onPress={() => {
-            setMenu(false);
-            setPicker(true);
+            nav.push({ name: "exportTrips", tripId });
           }}
         />
         <ListRow
           icon="settings"
           title="Trip settings"
-          detail="New proposals, mark as past, delete"
+          detail={
+            isPlaceTrip(trip) ? "Mark as past, delete" : "New proposals, mark as past, delete"
+          }
           testID="menu-settings"
           onPress={() => {
             setMenu(false);

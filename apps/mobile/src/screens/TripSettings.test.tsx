@@ -172,3 +172,22 @@ test("a trip without a chosen plan says that only the destination city is kept",
     await screen.findByText(/the destination city \(no plan is chosen, so nothing else\)/),
   ).toBeOnTheScreen();
 });
+
+test("a trip to a place with no sight data offers no proposals (ADR 027)", async () => {
+  await open({
+    "GET /v1/trips": () => [
+      makeTrip({
+        destination: {
+          kind: "place",
+          ref: "photon:N42",
+          name: "Hallstatt",
+          lat: 47.56,
+          lon: 13.65,
+          country_iso2: "AT",
+        },
+      }),
+    ],
+  });
+  expect(await screen.findByTestId("delete-trip")).toBeOnTheScreen();
+  expect(screen.queryByRole("button", { name: "Get new proposals" })).toBeNull();
+});

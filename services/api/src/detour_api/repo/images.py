@@ -54,8 +54,11 @@ def trip_covers(conn: Connection, trip_ids: Iterable[uuid.UUID]) -> dict[uuid.UU
             f"SELECT t.id AS trip_id, {_select('ce', 'c_')}, {_select('ca', 'a_')}"
             " FROM app.trip t"
             " LEFT JOIN geo.image ce ON ce.id = t.cover_image_id AND NOT ce.hidden"
-            " LEFT JOIN geo.image_lookup l ON l.status = 'found' AND l.ref_id = t.destination_ref"
-            "   AND l.kind = (CASE t.destination_kind WHEN 'area' THEN 'area' ELSE 'city' END)"
+            " LEFT JOIN geo.image_lookup l ON l.status = 'found'"
+            # A place trip (ADR 027) borrows the photo of its gazetteer city or area, if any.
+            "   AND l.ref_id = regexp_replace(t.destination_ref, '^(geonames|area):', '')"
+            "   AND l.kind = (CASE WHEN t.destination_kind = 'area'"
+            "     OR t.destination_ref LIKE 'area:%' THEN 'area' ELSE 'city' END)"
             " LEFT JOIN geo.image ca ON ca.id = l.image_id AND NOT ca.hidden"
             " WHERE t.id = ANY(:ids)"
         ),

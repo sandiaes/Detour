@@ -85,7 +85,7 @@ def licences(conn: Connection) -> list[AttributionEntry]:
                 text=r.attribution,
                 url="https://www.openstreetmap.org/copyright",
                 licence=r.code,
-                applies_to="Places, restaurants, administrative areas; search results from Photon",
+                applies_to="Places, administrative areas; search results from Photon",
             )
         )
     if "CC-BY-4.0" in by_code:
@@ -366,13 +366,12 @@ def build_place_search(
         where.append("p.category = :category")
     sql = f"""
         SELECT p.id, p.name, p.kind, p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
-               p.region_id, p.city_id, c.name AS city_name, rp.cuisines, rp.venue_type,
+               p.region_id, p.city_id, c.name AS city_name,
                p.names_i18n->>'en' AS en_name, p.name_en_norm, p.names_i18n,
                {PLACE_NAME_COLUMNS},
                {tier} AS tier, {sim} AS sim, {dist} AS dist
         FROM geo.place p
         LEFT JOIN geo.city c ON c.id = p.city_id
-        LEFT JOIN geo.restaurant_profile rp ON rp.place_id = p.id
         WHERE {" AND ".join(where)}
         ORDER BY {", ".join(order)}, p.id
         LIMIT :limit
@@ -396,8 +395,6 @@ def search_places(conn: Connection, **kwargs: Any) -> list[PlaceSummary]:
             region_id=r.region_id,
             city_id=r.city_id,
             city_name=r.city_name,
-            cuisines=list(r.cuisines) if r.cuisines is not None else None,
-            venue_type=r.venue_type,
             distance_m=None if r.dist is None else round(r.dist, 1),
             match=None if r.tier is None else MATCH_NAMES[r.tier],
         )
@@ -442,13 +439,11 @@ def get_place(
         text(
             f"""
             SELECT p.id, p.name, p.kind, p.category, ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
-                   p.region_id, p.city_id, c.name AS city_name, rp.cuisines, rp.venue_type,
-                   rp.meal_types, rp.diet_flags, p.names_i18n, p.names_i18n->>'en' AS en_name,
+                   p.region_id, p.city_id, c.name AS city_name, p.names_i18n, p.names_i18n->>'en' AS en_name,
                    p.name_en_norm, p.address, p.default_visit_minutes,
                    p.is_active, s.wikidata_id, {PLACE_NAME_COLUMNS}
             FROM geo.place p
             LEFT JOIN geo.city c ON c.id = p.city_id
-            LEFT JOIN geo.restaurant_profile rp ON rp.place_id = p.id
             LEFT JOIN geo.place_signal s ON s.place_id = p.id
             WHERE p.id = :i
             """
@@ -477,12 +472,8 @@ def get_place(
         region_id=row.region_id,
         city_id=row.city_id,
         city_name=row.city_name,
-        cuisines=list(row.cuisines) if row.cuisines is not None else None,
-        venue_type=row.venue_type,
         names_i18n=row.names_i18n,
         address=row.address,
-        meal_types=list(row.meal_types) if row.meal_types is not None else None,
-        diet_flags=list(row.diet_flags) if row.diet_flags is not None else None,
         default_visit_minutes=row.default_visit_minutes,
         is_active=row.is_active,
         wikidata_id=row.wikidata_id,

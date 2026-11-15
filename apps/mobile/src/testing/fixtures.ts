@@ -117,8 +117,7 @@ type ItemInit = {
   end?: string | null;
   minutes: number;
   type?: "visit" | "meal" | "free_time";
-  mealType?: "lunch" | "snack" | "dinner" | null;
-  restaurant?: { venue_type: string | null; cuisines: string[] | null };
+  restaurant?: { venue_type: "restaurant" | "cafe" | null };
   source?: "category_default" | "user";
   reasons?: string[];
   transfer?: {
@@ -136,7 +135,6 @@ function item(day: string, position: number, i: ItemInit) {
     day_id: day,
     position,
     type: i.type ?? "visit",
-    meal_type: i.mealType ?? null,
     place_id: null,
     user_place_id: null,
     display_name: i.name,
@@ -209,14 +207,13 @@ export function makeItinerary(
             id: "m1",
             name: "Gasthaus Zum Test",
             type: "meal",
-            mealType: "lunch",
             lat: 48.2079,
             lon: 16.3725,
             start: "13:01:00",
             end: "14:01:00",
             minutes: 60,
-            reasons: ["Lunch, planned between 13:00 and 15:00."],
-            restaurant: { venue_type: "restaurant", cuisines: ["regional", "coffee_shop"] },
+            reasons: ["Added by you."],
+            restaurant: { venue_type: "restaurant" },
             transfer: { to: "i3", seconds: 120, meters: 90, confidence: "estimated" },
           }),
           item(d1, 4, {
@@ -233,13 +230,12 @@ export function makeItinerary(
             id: "m2",
             name: "Café Ohne Angabe",
             type: "meal",
-            mealType: "dinner",
             lat: 48.2091,
             lon: 16.3711,
             start: "18:30:00",
             end: "20:00:00",
             minutes: 90,
-            restaurant: { venue_type: "restaurant", cuisines: null },
+            restaurant: { venue_type: "cafe" },
           }),
         ],
       },
@@ -324,7 +320,6 @@ export function makeChangeSet(over: Partial<ChangeSet> = {}): ChangeSet {
           day: 1,
           kind: "visit",
           name: "Prater",
-          meal_type: null,
           start_time: "15:10:00",
           end_time: "16:10:00",
           added_by_you: true,
@@ -335,7 +330,6 @@ export function makeChangeSet(over: Partial<ChangeSet> = {}): ChangeSet {
           day: 1,
           kind: "visit",
           name: "St. Stephen's Cathedral",
-          meal_type: null,
           start_time: "14:03:00",
           end_time: "15:03:00",
           added_by_you: false,
@@ -356,7 +350,6 @@ export function makeChangeSet(over: Partial<ChangeSet> = {}): ChangeSet {
           kind: "meal",
           name: "Gasthaus Zum Test",
           day: 1,
-          meal_type: "lunch",
           old_start_time: "13:01:00",
           new_start_time: "12:30:00",
         },
@@ -387,7 +380,17 @@ export function makeChangeSet(over: Partial<ChangeSet> = {}): ChangeSet {
 export function makeVisit(
   over: Partial<TripVisit> & Pick<TripVisit, "id" | "kind" | "name">,
 ): TripVisit {
-  return { lat: 47.07, lon: 15.44, geo_place_ref: null, day_number: 1, confirmed: true, ...over };
+  return {
+    lat: 47.07,
+    lon: 15.44,
+    geo_place_ref: null,
+    day_number: 1,
+    position: null,
+    start_time: null,
+    duration_minutes: null,
+    confirmed: true,
+    ...over,
+  };
 }
 
 /** An area trip's archive: Graz on days 1 and 2, Leoben from day 3, in the archive's order. */
@@ -443,7 +446,15 @@ export function makePastTrip(over: Partial<Trip> = {}): Trip {
 }
 
 export function makeArchiveInfo(over: Partial<ArchiveInfo> = {}): ArchiveInfo {
-  return { trip_id: TRIP_ID, cities: 2, attractions: 3, skipped: 0, size_bytes: 4519, ...over };
+  return {
+    trip_id: TRIP_ID,
+    cities: 2,
+    attractions: 3,
+    places_to_eat: 0,
+    skipped: 0,
+    size_bytes: 4519,
+    ...over,
+  };
 }
 
 const EMPTY_DIFF = {
@@ -465,7 +476,6 @@ export function makePlaceSuggestions(over: Partial<PlaceSuggestions> = {}): Plac
     day,
     kind: "visit",
     name: "Prater",
-    meal_type: null,
     start_time: start,
     end_time: end,
     added_by_you: true,
@@ -498,7 +508,6 @@ export function makePlaceSuggestions(over: Partial<PlaceSuggestions> = {}): Plac
               kind: "meal",
               name: "Café Ohne Angabe",
               day: 1,
-              meal_type: "dinner",
               old_start_time: "18:30:00",
               new_start_time: "19:00:00",
             },
@@ -527,7 +536,6 @@ export function makePlaceSuggestions(over: Partial<PlaceSuggestions> = {}): Plac
               day: 2,
               kind: "visit",
               name: "Kunsthaus",
-              meal_type: null,
               start_time: "14:00:00",
               end_time: "15:00:00",
               added_by_you: false,

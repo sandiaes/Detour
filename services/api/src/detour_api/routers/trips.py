@@ -62,6 +62,19 @@ def _create_trip(session: SessionDep, body: TripCreate) -> Trip:
                 stops=stops,
                 title=name,
             )
+    if body.destination_kind == "place":
+        # A snapshot: nothing is checked against the imported data (ADR 027).
+        assert body.destination_name is not None  # noqa: S101 - the model requires it
+        assert body.destination_lat is not None and body.destination_lon is not None  # noqa: S101
+        with session.tx() as conn:
+            return trips.create_trip(
+                conn,
+                session.installation_id,
+                body,
+                destination_name=body.destination_name,
+                lat=body.destination_lat,
+                lon=body.destination_lon,
+            )
     assert body.destination_ref is not None  # noqa: S101 - the model requires it
     with session.tx() as conn:
         dest = geo.resolve_destination(conn, body.destination_kind, body.destination_ref)
