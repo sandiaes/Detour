@@ -33,3 +33,9 @@ def test_readiness_without_a_database_is_503(client: TestClient) -> None:
 def test_unknown_path_is_404_and_unversioned_paths_do_not_exist(client: TestClient) -> None:
     assert client.get("/health").status_code == 404
     assert client.get("/v2/health").status_code == 404
+
+
+def test_head_works_for_uptime_monitors(client: TestClient) -> None:
+    assert client.head("/v1/health").status_code == 200
+    # Same status as GET: 503 here because the test app has no database.
+    assert client.head("/v1/health/ready").status_code == 503

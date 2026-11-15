@@ -277,6 +277,25 @@ The backend streams stored photos to the app, so it needs the same two Storage s
 5. **APK:** [`android-release.md`](android-release.md) replaces steps 8 and 9 above for every later
    build and update.
 
+## Keeping it awake (ADR 005 addendum, 2026-11-15)
+
+An UptimeRobot monitor calls `/v1/health/ready` every 5 minutes, so Render does not spin the API down
+(idle limit 15 minutes) and Supabase sees a real query. You create it once; nothing in the repository
+or the API changes.
+
+1. Create a free account at <https://uptimerobot.com> (no card needed). Use **Add new monitor**.
+2. Type **HTTP(s)** (or **Keyword**). **URL:** `https://<your-service>.onrender.com/v1/health/ready`.
+   **Interval:** 5 minutes (the Free plan's shortest).
+3. **HEAD is fine.** UptimeRobot's HTTP(s) monitor may only offer HEAD: the API answers HEAD on
+   `/v1/health` and `/v1/health/ready` exactly like GET (same status, no body), and HEAD on `/ready` runs
+   the same database check. (Which method the monitor sends was not confirmed from UptimeRobot's pages.)
+4. Add your e-mail as the alert contact. A "down" alert with HTTP 503 means the database is paused or
+   unreachable: restore it in the Supabase dashboard.
+5. The service now runs all month (744 of Render's 750 free hours per workspace): do not add a second
+   Free web service to the workspace.
+6. After a day, open the Render dashboard: the service should show no spin-downs. If it still sleeps,
+   Render does not count the pings as traffic: tell the project owner's assistant.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | What to do |
@@ -298,9 +317,10 @@ The backend streams stored photos to the app, so it needs the same two Storage s
 From the pages read on 2026-11-12 (ADR 005 has the full list). They can change; re-read before
 relying on them:
 
-- Render free: sleeps after 15 idle minutes, 750 instance hours a month, 512 MB RAM, restarts at
+- Render free: sleeps after 15 idle minutes (an UptimeRobot monitor pings every 5 minutes),
+  750 instance hours a month, 512 MB RAM, restarts at
   any time, no persistent disk.
-- Supabase Free: 500 MB database, paused after one week of inactivity, no automatic backups.
+- Supabase Free: 500 MB database, "may be paused" after low activity over 7 days (the UptimeRobot monitor queries it every 5 minutes), no automatic backups.
 - GitHub Actions in a private repository: the APK build costs about 14 of the roughly 2,000
   monthly minutes.
 

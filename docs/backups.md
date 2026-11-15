@@ -38,7 +38,7 @@ Workflow: [`.github/workflows/backup-app-data.yml`](../.github/workflows/backup-
    count of every `app` table) and `schema-version.txt`.
 
 **Also keeps Supabase awake:** the daily connection counts as activity, so a Free project is not
-paused after a week without use.
+paused after low activity over 7 days. The UptimeRobot monitor (every 5 minutes, `deployment.md`) does the same job more often.
 
 **Not running?** Standard runners are free in a public repository ("The use of standard GitHub-hosted
 runners is free: In public repositories", GitHub Docs, Actions billing, read 2026-11-15). But "In a

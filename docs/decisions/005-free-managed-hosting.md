@@ -111,3 +111,55 @@ Verification marks: ✅ read on the official page on 2026-11-12; ◐ partly read
   enabled the PostGIS extension from the dashboard on a Supabase Free project while following
   `../deployment.md` step 3. (Reported by the owner; the `/v1/health/ready` version string was not
   reported.)
+
+## Addendum 2026-11-15: keeping the free hosting awake with UptimeRobot (owner request)
+
+**Status:** accepted (owner's instruction); the monitor is created by the owner in the UptimeRobot dashboard.
+
+**Context.** Render Free spins the API down after 15 idle minutes and takes about a minute to wake;
+Supabase Free may pause a project with low activity. The owner asked for UptimeRobot and
+explicitly not for a GitHub Actions workflow (one was built first and removed the same day).
+
+**Terms read on 2026-11-15** (official pages):
+
+- Render, <https://render.com/docs/free> (no date on the page): a Free web service spins down after
+  15 minutes "without receiving any inbound traffic" and wakes in "about one minute"; "750 Free
+  instance hours to each workspace per calendar month", used only while the service runs; if all are
+  used Render "suspends all of your Free web services until the start of the next month". One service
+  running all month uses about 744 hours (31 days), so it fits only if no other Free web service runs
+  in the workspace. The page has no rule for or against health-check pings and does not say whether
+  they count as inbound traffic: the first day shows it (the service must stay up past 15 minutes).
+  A ping is inbound and tiny; the page limits only "uncommonly high" outbound traffic.
+- Supabase, <https://supabase.com/docs/guides/deployment/going-into-prod> (no date): "We may pause
+  applications on the Free Plan that exhibit low activity in a 7-day period"; restore from the
+  dashboard; Pro guarantees no pause. What counts as activity is not defined, so the ping runs a real
+  query. (The window is 7 days, not 15.)
+- UptimeRobot, <https://uptimerobot.com/pricing/> and <https://uptimerobot.com/terms/> (terms
+  changelog: latest entry 26 May 2026) and <https://uptimerobot.com/terms-fair-use/>: the Free plan
+  is "$0 /month", "Good for personal and commercial projects", with "50 monitors", "5 min. monitoring
+  interval", HTTP, keyword, port and ping monitors, "Only 5 integrations", and email among the
+  notification channels. "UptimeRobot is available for any use, including commercial and business
+  use." The Fair Use Policy lists as outside fair use: coordinated multiple accounts, automated
+  patterns of monitor creation or changes, and circumventing limits. It says nothing for or against
+  keep-alive pings; one monitor at the 5-minute interval is ordinary use. **Not read:** which HTTP
+  method an HTTP(s) monitor sends (help.uptimerobot.com is outside the network allowlist); the
+  owner checks it in the monitor form (see `../deployment.md`).
+
+**Decision.** One UptimeRobot monitor on the Free plan calls `GET /v1/health/ready` every 5 minutes.
+That reaches the API (Render's idle timer) and runs a query on the database (Supabase activity). The
+API answers HEAD on `/v1/health` and `/v1/health/ready` (hidden from the OpenAPI schema; same status
+as GET, `/ready` still runs the database check) because the owner's monitor form offers only HEAD; the
+request limiter already exempts `/v1/health*`. UptimeRobot
+is a monitoring service that only requests a public URL: it receives no user data and the app does
+not call it (the architecture rule about the app calling only the backend is unaffected). It is a
+new external service under hard constraint 4, recorded here; the API sends nothing to it.
+
+**Consequences.**
+
+- The 5-minute interval is the Free plan's shortest; a missed check can still let Render sleep after
+  15 minutes (the app's reconnect handles it).
+- The service now runs all month: 744 of the 750 hours. Do not add another Free web service to the
+  same Render workspace.
+- The monitor's e-mail alert when the endpoint answers 503 is the early warning for a paused database.
+- The daily backup keeps its own role and still counts as activity.
+- If UptimeRobot changes its Free plan or terms, re-read them (this addendum is dated 2026-11-15).
