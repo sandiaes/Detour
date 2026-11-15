@@ -1,4 +1,4 @@
-import type { Day, Itinerary, ItineraryVersion, Trip } from "@detour/shared";
+import type { Day, Itinerary, ItineraryVersion, Stay, Trip } from "@detour/shared";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
@@ -258,6 +258,11 @@ export function TripOverviewScreen({
   const { counts, plan } = useTripCounts(trip);
   const insets = useSafeAreaInsets();
   const planId0 = trip?.status !== "past" ? (trip?.selected_itinerary_id ?? null) : null;
+  const stays = useResource<Stay[]>(
+    planId0 ? keys.stays(tripId) : null,
+    (c) => call(c.GET("/v1/trips/{trip_id}/stays", { params: { path: { trip_id: tripId } } })),
+    { ttlMs: 60_000 },
+  );
   const versions = useResource<ItineraryVersion[]>(
     planId0 ? keys.versions(planId0) : null,
     (c) =>
@@ -373,6 +378,7 @@ export function TripOverviewScreen({
         onDayChange={setDayIndex}
         mode={mode}
         map={mapConfig}
+        stays={stays.data}
         initialSelectedId={selectedStop}
         onSelectionChange={(id) => {
           setSelectedStop(id);

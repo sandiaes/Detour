@@ -473,7 +473,7 @@ say "Made for the trip's earlier cities" and their "Choose this itinerary" is di
 
 Trip menu, "Where you're staying": a compact header, one line on what a stay does, the stays as
 hairline rows (a house icon, the name, "Day 1" or "Days 2 to 3"), **Add a stay** (`primary`). The form
-searches a hotel, apartment or address (Photon through the server) or takes a name and coordinates,
+searches a hotel, apartment or address (Photon through the server), or **Pin on map** (tap the map or type coordinates, and a name),
 then **From** and **To** day steppers (the first days that have no stay); Save, Cancel and, when
 editing, a red ghost "Remove this stay" with a confirmation sheet. On the map a stay is a navy
 rounded-square house mark (not numbered) with a line to the day's first stop, and the key says "Your

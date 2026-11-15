@@ -118,3 +118,22 @@ test("a day with a stay says how the morning goes", async () => {
   expect(await screen.findByTestId("stay-start")).toBeTruthy();
   expect(screen.getByText(/Walk from Hotel Alpen · 10 min · 800 m/)).toBeTruthy();
 });
+
+test("a stay can be pinned: the coordinates and a name, then the days", async () => {
+  const bodies: unknown[] = [];
+  await show({
+    "GET /v1/trips/{trip_id}/stays": () => [],
+    "POST /v1/trips/{trip_id}/stays": ({ body }: { body: unknown }) => {
+      bodies.push(body);
+      return stay({ id: "new" });
+    },
+  });
+  await fireEvent.press(await screen.findByTestId("stay-add"));
+  await fireEvent.press(await screen.findByText("Pin on map"));
+  await fireEvent.changeText(screen.getByLabelText("Latitude"), "47,5");
+  await fireEvent.changeText(screen.getByLabelText("Longitude"), "13.6");
+  await fireEvent.changeText(screen.getByLabelText("Name"), "Airbnb");
+  await fireEvent.press(screen.getByTestId("stay-use-pin"));
+  await fireEvent.press(screen.getByTestId("stay-save"));
+  expect(bodies).toEqual([{ name: "Airbnb", lat: 47.5, lon: 13.6, first_day: 1, last_day: 3 }]);
+});

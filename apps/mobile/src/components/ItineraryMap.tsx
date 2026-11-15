@@ -1,4 +1,4 @@
-import type { ClientConfig, Day } from "@detour/shared";
+import type { ClientConfig, Day, Stay } from "@detour/shared";
 import {
   Camera,
   GeoJSONSource,
@@ -43,6 +43,8 @@ type Props = {
   /** The highlighted stop (an item id, or the transport marker's id); shared with the list. */
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** The trip's stays: a day whose plan carries no morning leg still shows its stay. */
+  stays?: Stay[];
 };
 
 /**
@@ -51,11 +53,19 @@ type Props = {
  * straight lines between them. The selection is held by the screen, so the list and the map
  * highlight the same stop.
  */
-export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, onSelect }: Props) {
+export function ItineraryMap({
+  day,
+  previousDay,
+  map,
+  onShowList,
+  selectedId,
+  onSelect,
+  stays,
+}: Props) {
   const points = useMemo(() => mapPoints(day), [day]);
   const transport = useMemo(() => transportPoint(day, previousDay), [day, previousDay]);
   const features = useMemo(() => transferFeatures(day), [day]);
-  const stay = useMemo(() => stayPoint(day), [day]);
+  const stay = useMemo(() => stayPoint(day, stays), [day, stays]);
   const bounds = useMemo(
     () => boundsOf([...points, ...(transport ? [transport] : []), ...(stay ? [stay] : [])]),
     [points, transport, stay],
@@ -70,7 +80,7 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
     return {
       type: "FeatureCollection" as const,
       features: [
-        ...(morning && shownIds.has(stay?.start.to_item_id ?? "") ? [morning] : []),
+        ...(morning && shownIds.has(stay?.start?.to_item_id ?? "") ? [morning] : []),
         ...features.filter((f) => {
           const [a, b] = f.id.split(">");
           return shownIds.has(a as string) && shownIds.has(b as string);
