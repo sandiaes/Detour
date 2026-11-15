@@ -111,9 +111,11 @@ two-statement SQL step (see [`privacy.md`](privacy.md), section 5).
 - **Secrets stay private.** Workflows that use them run on `push`, `schedule` and
   `workflow_dispatch` only; CI has no `pull_request` trigger, so a fork's pull request runs nothing
   with this repository's secrets.
-- Recommended settings (GitHub, the repository, Settings): under Actions, General, keep "Require
-  approval for all external contributors" for fork pull requests; under Code security, turn on
-  secret scanning and push protection (offered for public repositories).
+- Recommended settings (GitHub Docs, read 2026-11-15; they appear once the repository is public):
+  Settings, sidebar section **Security and quality**, **Advanced Security**: Enable **Secret
+  Protection**, then Enable **Push protection** inside it. Settings, **Actions**, **General**,
+  "Approval for running fork pull request workflows from contributors": **Require approval for all
+  external contributors** (the default is first-time contributors only).
 
 ## 4. Supabase notes
 
