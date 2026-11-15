@@ -36,6 +36,8 @@ cuisines, imported restaurants or the slot engine they are out of date.
 
 **Owner's UI requests of 2026-11-15** (ADR 021, decisions 92 to 94, built, awaiting acceptance): a Car pill on the new-trip screen (`app.trip.uses_car`, migration `0018`; off means Optimize only walks), a Day drop-down in Edit time, and Add a place opening on the open day at its first free time.
 
+**Accommodation is built** (2026-11-15, ADR 030, awaiting acceptance; migration `0019`): a trip has stays, each for a range of days (`app.trip_stay`, `GET/POST/PATCH/DELETE /v1/trips/{id}/stays`), `Day.start` is the morning leg from the stay worked out on read (not stored), Optimize and the generator start each day at its stay (no leg back at night), and the app has "Where you're staying", a house mark on the map and a morning row in the day list. Not run against the production database; export does not carry stays.
+
 **A design system is built** (2026-11-15, ADR 021 amendment, decisions 78 to 90; `docs/design-audit.md`,
 `docs/design.md`; built and awaiting acceptance, **checked by tests only, not on a device**): one set of
 tokens in `theme.ts` and one set of components in `components/ds` that every screen uses (green main

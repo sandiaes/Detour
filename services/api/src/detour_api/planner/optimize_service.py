@@ -19,16 +19,18 @@ from sqlalchemy import text
 from detour_api.deps import Session
 from detour_api.errors import ApiError, conflict, invalid
 from detour_api.models.changes import ChangeSet, OptimizeRequest
+from detour_api.models.trips import Stay
 from detour_api.planner import diff, optimize, recalc
 from detour_api.planner.config import DEFAULT_CONFIG, ENGINE_VERSION, PlannerConfig
 from detour_api.planner.optimize_validator import validate
 from detour_api.planner.recalc import RDay, RPlan
 from detour_api.planner.travel import ServiceTravelSource, TravelLookup
 from detour_api.planner.types import Note
-from detour_api.repo import changes, trips
+from detour_api.repo import changes, stays, trips
 from detour_api.repo.plan_state import State, read_state, to_rplan
 from detour_api.settings import Settings
 from detour_api.travel.service import TravelTimeService
+from detour_api.travel.types import Coord
 
 log = structlog.get_logger("detour.optimize")
 
@@ -52,6 +54,7 @@ def preview_optimize(
         ).scalar_one()
         trip = trips.require_trip(conn, session.installation_id, trip_id)
         state = read_state(conn, itinerary_id)
+        trip_stays = stays.list_for_trip(conn, trip_id)
     day_index = {d["id"]: d["day_index"] for d in state["days"]}
     items = [{**r, "day": day_index[r["day_id"]]} for r in state["items"]]
     known = {str(r["id"]) for r in items}
@@ -92,6 +95,14 @@ def preview_optimize(
     # Without a car every leg is walked, however long (the mode rule of planner/travel.py).
     lookup = TravelLookup(source, config.walk_max_m if trip.uses_car else WALK_EVERYWHERE_M)
     day_numbers = [d.index for d in days]
+    # Each day starts at its stay, when it has one (ADR 030): the leg to the first stop counts.
+    anchors: dict[int, Coord] = {}
+    day_stay: dict[int, Stay] = {}
+    for n in day_numbers:
+        stay = stays.stay_of_day(trip_stays, n)
+        if stay is not None:
+            anchors[n] = Coord.from_degrees(stay.lat, stay.lon)
+            day_stay[n] = stay
     outcome = optimize.optimize(
         stops,
         day_numbers,
@@ -99,6 +110,7 @@ def preview_optimize(
         lookup=lookup,
         use_provider=settings.planner_use_provider,
         rules=rules,
+        anchors=anchors,
     )
     problems = validate(stops, day_numbers, outcome, rules)
     if problems:
@@ -141,12 +153,18 @@ def preview_optimize(
             "import_run_id": state["import_run_id"],
         },
     )
+    proposal["starts"] = _starts(outcome.days, day_stay, state)
     proposal["summary"] = {
         **state["summary"],
         "stats": asdict(recalc.revision_stats(_without_blocks(proposal, row.profile), config)),
         "notes": [{"code": n.code, "params": n.params} for n in notes],
     }
     planned = diff.compare(to_rplan(before_state, row.profile), to_rplan(proposal, row.profile))
+    diff_out = changes.diff_model(planned)
+    # The saving counts the legs from the stays too, which the stored plan does not carry.
+    diff_out.travel_minutes_before = outcome.travel_before
+    diff_out.travel_minutes_after = outcome.travel_after
+    diff_out.travel_minutes_added = outcome.travel_after - outcome.travel_before
     ctx = changes.Context(
         itinerary_id=itinerary_id,
         version=row.version,
@@ -158,9 +176,7 @@ def preview_optimize(
         recalc=None,
     )
     with session.tx() as conn:
-        result = changes.save(
-            conn, session.installation_id, ctx, proposal, changes.diff_model(planned), notes
-        )
+        result = changes.save(conn, session.installation_id, ctx, proposal, diff_out, notes)
     log.info(
         "optimize_previewed",
         itinerary_id=str(itinerary_id),
@@ -244,6 +260,34 @@ def _with_plan(
                     }
                 )
     return {**state, **versions, "items": items, "transfers": transfers}
+
+
+def _starts(
+    days: dict[int, tuple[optimize.Laid, ...]], day_stay: dict[int, Stay], state: State
+) -> list[dict[str, Any]]:
+    """The proposal's morning legs from the stays, for the preview (not stored with the plan: a
+    plan read later works them out again from the stays)."""
+    out: list[dict[str, Any]] = []
+    for d in sorted(days):
+        stay = day_stay.get(d)
+        first = next((p for p in days[d] if p.head is not None), None)
+        if stay is None or first is None or first.head is None:
+            continue
+        out.append(
+            {
+                "day_index": d,
+                "stay_id": str(stay.id),
+                "name": stay.name,
+                "lat": stay.lat,
+                "lon": stay.lon,
+                "to_item_id": first.id,
+                "mode": first.head.mode,
+                "seconds": first.head.seconds,
+                "meters": first.head.meters,
+                "confidence": first.head.confidence,
+            }
+        )
+    return out
 
 
 def _without_blocks(state: State, profile: str) -> list[RDay]:

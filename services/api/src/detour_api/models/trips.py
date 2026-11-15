@@ -380,6 +380,21 @@ class Item(BaseModel):
     )
 
 
+class StayStart(BaseModel):
+    """The traveller's morning at their stay: the leg from it to the day's first stop with a
+    place. Worked out when the plan is read (cached times, labelled estimates), not stored."""
+
+    stay_id: uuid.UUID
+    name: str
+    lat: float
+    lon: float
+    to_item_id: uuid.UUID
+    mode: Literal["walk", "drive"]
+    seconds: int
+    meters: int
+    confidence: Literal["routed", "estimated"]
+
+
 class Day(BaseModel):
     id: uuid.UUID
     day_index: int
@@ -398,6 +413,11 @@ class Day(BaseModel):
         default=None,
         description="Travel from the previous day's base city at the start of the day; null "
         "when the base does not change",
+    )
+    start: StayStart | None = Field(
+        default=None,
+        description="From the stay of this day to its first stop with a place (ADR 030); null "
+        "without a stay or a stop",
     )
     items: list[Item]
 
@@ -466,3 +486,32 @@ class GenerationResult(BaseModel):
     max_jaccard_permille: int
     notes: list[PlanNote]
     itineraries: list[Itinerary]
+
+
+class Stay(BaseModel):
+    """Where the traveller sleeps for a range of days of a trip (ADR 030)."""
+
+    id: uuid.UUID
+    trip_id: uuid.UUID
+    name: str
+    lat: float
+    lon: float
+    first_day: int = Field(ge=1)
+    last_day: int = Field(ge=1)
+    created_at: datetime
+
+
+class StayCreate(StrictModel):
+    name: str = Field(min_length=1, max_length=200)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    first_day: int = Field(ge=1, le=30)
+    last_day: int = Field(ge=1, le=30)
+
+
+class StayUpdate(StrictModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    first_day: int | None = Field(default=None, ge=1, le=30)
+    last_day: int | None = Field(default=None, ge=1, le=30)

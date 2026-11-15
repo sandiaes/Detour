@@ -57,6 +57,15 @@ class RouteStop:
 
 
 @dataclass(frozen=True)
+class StayPoint:
+    """Where the traveller sleeps on days ``first_day`` to ``last_day`` (ADR 030)."""
+
+    first_day: int
+    last_day: int
+    coord: Coord
+
+
+@dataclass(frozen=True)
 class PlanRequest:
     destination_name: str
     lat: float
@@ -71,6 +80,8 @@ class PlanRequest:
     kind: Literal["city", "area", "route"] = "city"
     base_cities: tuple[BaseCity, ...] = ()
     stops: tuple[RouteStop, ...] = ()
+    # Where each day starts: the stay of its day, when it has one (ADR 030).
+    stays: tuple[StayPoint, ...] = ()
 
     @property
     def centre(self) -> Coord:

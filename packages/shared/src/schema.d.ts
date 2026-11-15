@@ -457,6 +457,42 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/trips/{trip_id}/stays": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Where the trip's days are slept, by day. */
+    get: operations["list_stays"];
+    put?: never;
+    /** Add a stay for a range of days (ADR 030). 409 stay_overlap if a day already has one. */
+    post: operations["create_stay"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/stays/{stay_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove a stay. */
+    delete: operations["delete_stay"];
+    options?: never;
+    head?: never;
+    /** Change a stay. */
+    patch: operations["update_stay"];
+    trace?: never;
+  };
   "/v1/itineraries/{itinerary_id}": {
     parameters: {
       query?: never;
@@ -887,6 +923,8 @@ export interface components {
       diff: components["schemas"]["ChangeDiff"];
       /** Notes */
       notes: components["schemas"]["PlanNote"][];
+      /** @description Optimize previews only, while pending: the proposed order of the stops */
+      proposed?: components["schemas"]["ProposedPlan"] | null;
       /**
        * Created At
        * Format: date-time
@@ -1039,6 +1077,8 @@ export interface components {
       base_city_lon?: number | null;
       /** @description Travel from the previous day's base city at the start of the day; null when the base does not change */
       arrival?: components["schemas"]["Arrival"] | null;
+      /** @description From the stay of this day to its first stop with a place (ADR 030); null without a stay or a stop */
+      start?: components["schemas"]["StayStart"] | null;
       /** Items */
       items: components["schemas"]["Item"][];
     };
@@ -2358,6 +2398,100 @@ export interface components {
        */
       issues?: components["schemas"]["IssueBody"][];
     };
+    /**
+     * ProposedPlan
+     * @description The order an Optimize preview proposes, for drawing it next to the current plan: the same
+     *     stops (by id) in their new days, order and times, and the travel between them.
+     */
+    ProposedPlan: {
+      /** Stops */
+      stops: components["schemas"]["ProposedStop"][];
+      /** Transfers */
+      transfers: components["schemas"]["ProposedTransfer"][];
+      /**
+       * Starts
+       * @description The mornings from the stays (ADR 030), per day
+       */
+      starts?: components["schemas"]["ProposedStart"][];
+    };
+    /** ProposedStart */
+    ProposedStart: {
+      /** Day Index */
+      day_index: number;
+      /**
+       * Stay Id
+       * Format: uuid
+       */
+      stay_id: string;
+      /** Name */
+      name: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /**
+       * To Item Id
+       * Format: uuid
+       */
+      to_item_id: string;
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "walk" | "drive";
+      /** Seconds */
+      seconds: number;
+      /** Meters */
+      meters: number;
+      /**
+       * Confidence
+       * @enum {string}
+       */
+      confidence: "routed" | "estimated";
+    };
+    /** ProposedStop */
+    ProposedStop: {
+      /**
+       * Item Id
+       * Format: uuid
+       */
+      item_id: string;
+      /** Day Index */
+      day_index: number;
+      /** Position */
+      position: number;
+      /** Start Time */
+      start_time: string | null;
+      /** End Time */
+      end_time: string | null;
+    };
+    /** ProposedTransfer */
+    ProposedTransfer: {
+      /**
+       * From Item Id
+       * Format: uuid
+       */
+      from_item_id: string;
+      /**
+       * To Item Id
+       * Format: uuid
+       */
+      to_item_id: string;
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "walk" | "drive";
+      /** Seconds */
+      seconds: number;
+      /** Meters */
+      meters: number;
+      /**
+       * Confidence
+       * @enum {string}
+       */
+      confidence: "routed" | "estimated";
+    };
     /** ReadinessResponse */
     ReadinessResponse: {
       /**
@@ -2412,6 +2546,100 @@ export interface components {
        */
       your_places: components["schemas"]["UserPlace"][];
       external: components["schemas"]["ExternalRestaurantStatus"];
+    };
+    /**
+     * Stay
+     * @description Where the traveller sleeps for a range of days of a trip (ADR 030).
+     */
+    Stay: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Trip Id
+       * Format: uuid
+       */
+      trip_id: string;
+      /** Name */
+      name: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** First Day */
+      first_day: number;
+      /** Last Day */
+      last_day: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** StayCreate */
+    StayCreate: {
+      /** Name */
+      name: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /** First Day */
+      first_day: number;
+      /** Last Day */
+      last_day: number;
+    };
+    /**
+     * StayStart
+     * @description The traveller's morning at their stay: the leg from it to the day's first stop with a
+     *     place. Worked out when the plan is read (cached times, labelled estimates), not stored.
+     */
+    StayStart: {
+      /**
+       * Stay Id
+       * Format: uuid
+       */
+      stay_id: string;
+      /** Name */
+      name: string;
+      /** Lat */
+      lat: number;
+      /** Lon */
+      lon: number;
+      /**
+       * To Item Id
+       * Format: uuid
+       */
+      to_item_id: string;
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "walk" | "drive";
+      /** Seconds */
+      seconds: number;
+      /** Meters */
+      meters: number;
+      /**
+       * Confidence
+       * @enum {string}
+       */
+      confidence: "routed" | "estimated";
+    };
+    /** StayUpdate */
+    StayUpdate: {
+      /** Name */
+      name?: string | null;
+      /** Lat */
+      lat?: number | null;
+      /** Lon */
+      lon?: number | null;
+      /** First Day */
+      first_day?: number | null;
+      /** Last Day */
+      last_day?: number | null;
     };
     /**
      * StopIn
@@ -4282,6 +4510,246 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  list_stays: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Stay"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  create_stay: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StayCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Stay"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  delete_stay: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+        stay_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  update_stay: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+        stay_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StayUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Stay"];
         };
       };
       /** @description Unauthorized */

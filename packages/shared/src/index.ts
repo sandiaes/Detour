@@ -42,6 +42,8 @@ export type UserPlaceUpdate = components["schemas"]["UserPlaceUpdate"];
 
 // Adding and removing places (Phase 7, ADR 018).
 export type ChangeSet = components["schemas"]["ChangeSet"];
+export type Stay = components["schemas"]["Stay"];
+export type StayStart = components["schemas"]["StayStart"];
 export type ChangeSetCreate = components["schemas"]["ChangeSetCreate"];
 export type OptimizeRequest = components["schemas"]["OptimizeRequest"];
 export type ItineraryVersion = components["schemas"]["ItineraryVersion"];

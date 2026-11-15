@@ -111,6 +111,47 @@ class ChangeDiff(BaseModel):
     )
 
 
+class ProposedStop(BaseModel):
+    item_id: uuid.UUID
+    day_index: int
+    position: int
+    start_time: time | None
+    end_time: time | None
+
+
+class ProposedTransfer(BaseModel):
+    from_item_id: uuid.UUID
+    to_item_id: uuid.UUID
+    mode: Literal["walk", "drive"]
+    seconds: int
+    meters: int
+    confidence: Literal["routed", "estimated"]
+
+
+class ProposedStart(BaseModel):
+    day_index: int
+    stay_id: uuid.UUID
+    name: str
+    lat: float
+    lon: float
+    to_item_id: uuid.UUID
+    mode: Literal["walk", "drive"]
+    seconds: int
+    meters: int
+    confidence: Literal["routed", "estimated"]
+
+
+class ProposedPlan(BaseModel):
+    """The order an Optimize preview proposes, for drawing it next to the current plan: the same
+    stops (by id) in their new days, order and times, and the travel between them."""
+
+    stops: list[ProposedStop]
+    transfers: list[ProposedTransfer]
+    starts: list[ProposedStart] = Field(
+        default_factory=list, description="The mornings from the stays (ADR 030), per day"
+    )
+
+
 class ChangeSet(BaseModel):
     id: uuid.UUID
     itinerary_id: uuid.UUID
@@ -128,6 +169,10 @@ class ChangeSet(BaseModel):
     result_version: int | None = Field(description="The version created by applying it")
     diff: ChangeDiff
     notes: list[PlanNote]
+    proposed: ProposedPlan | None = Field(
+        default=None,
+        description="Optimize previews only, while pending: the proposed order of the stops",
+    )
     created_at: datetime
     decided_at: datetime | None
 

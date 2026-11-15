@@ -68,7 +68,9 @@ def validate(
 
     if outcome.travel_after > outcome.travel_before:
         problems.append("the proposal travels more than the plan")
-    legs = sum(p.leg.minutes for _, p in placed if p.leg is not None)
+    legs = sum(p.leg.minutes for _, p in placed if p.leg is not None) + sum(
+        p.head.minutes for _, p in placed if p.head is not None
+    )
     if legs != outcome.travel_after:
         problems.append("the proposal's travel total does not match its legs")
     return problems

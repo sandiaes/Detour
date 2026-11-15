@@ -16,6 +16,8 @@ import {
   boundsOf,
   isEatKind,
   mapPoints,
+  stayFeature,
+  stayPoint,
   transferFeatures,
   transportFeature,
   transportPoint,
@@ -53,9 +55,10 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
   const points = useMemo(() => mapPoints(day), [day]);
   const transport = useMemo(() => transportPoint(day, previousDay), [day, previousDay]);
   const features = useMemo(() => transferFeatures(day), [day]);
+  const stay = useMemo(() => stayPoint(day), [day]);
   const bounds = useMemo(
-    () => boundsOf(transport ? [...points, transport] : points),
-    [points, transport],
+    () => boundsOf([...points, ...(transport ? [transport] : []), ...(stay ? [stay] : [])]),
+    [points, transport, stay],
   );
   const shownCount = useProgressiveCount(points.length, day.id);
   const shown = points.slice(0, shownCount);
@@ -63,9 +66,11 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
   // A line appears once both of its stops are on the map.
   const lines = useMemo(() => {
     const leg = transport ? transportFeature(transport) : null;
+    const morning = stayFeature(day);
     return {
       type: "FeatureCollection" as const,
       features: [
+        ...(morning && shownIds.has(stay?.start.to_item_id ?? "") ? [morning] : []),
         ...features.filter((f) => {
           const [a, b] = f.id.split(">");
           return shownIds.has(a as string) && shownIds.has(b as string);
@@ -73,7 +78,7 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
         ...(leg ? [leg] : []),
       ],
     };
-  }, [features, shownIds, transport]);
+  }, [day, features, shownIds, stay, transport]);
 
   const camera = useRef<CameraRef>(null);
   const [status, setStatus] = useState<"loading" | "loaded" | "failed">("loading");
@@ -138,6 +143,25 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
             style={{ lineColor: colors.outline, lineWidth: 2, lineDasharray: [2, 2] }}
           />
         </GeoJSONSource>
+        {stay ? (
+          <Marker
+            key={stay.id}
+            id={stay.id}
+            lngLat={stay.lngLat}
+            anchor="center"
+            selected={false}
+            onPress={() => {}}
+          >
+            <View
+              accessible
+              accessibilityLabel={`Your stay: ${stay.name}`}
+              style={styles.hit}
+              testID="stay-marker"
+            >
+              <StopMark kind="city" icon="home" size="map" />
+            </View>
+          </Marker>
+        ) : null}
         {transport ? (
           <Marker
             key={transport.id}
@@ -255,6 +279,12 @@ export function Legend() {
           <StopMark kind="eat" size="key" />
         </View>
         <Text style={styles.legendText}>Restaurant or café</Text>
+      </View>
+      <View style={styles.legendRow}>
+        <View style={styles.legendKey}>
+          <StopMark kind="city" size="key" />
+        </View>
+        <Text style={styles.legendText}>Your stay</Text>
       </View>
       <View style={styles.legendRow}>
         <View style={styles.legendKey}>

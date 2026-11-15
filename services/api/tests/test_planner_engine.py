@@ -612,3 +612,40 @@ def test_the_validator_refuses_a_route_out_of_order_or_with_an_invented_rail_tim
     driven = route_request([(990001, 1, "AT"), (990003, 1, "AT")])
     codes = {v.code for v in validate_plan(plan, driven, by_id, {}, DEFAULT_CONFIG)}
     assert "UNKNOWN_LEG_MISMATCH" in codes
+
+
+def test_a_stay_makes_each_day_start_there_and_the_plan_stays_valid() -> None:
+    from detour_api.planner.types import StayPoint
+
+    base = request("city-large", 3, None)
+    plain = engine.generate(base, candidates("city-large"), FixedTravelSource())
+    # The traveller sleeps at the far edge of the first place the plan visits on day 1.
+    first = plain.plans[0].days[0].items[0]
+    stay = Coord.from_degrees(first.lat + 0.01, first.lon + 0.01)
+    with_stay = dataclasses.replace(base, stays=(StayPoint(1, 3, stay),))
+    got = engine.generate(with_stay, candidates("city-large"), FixedTravelSource())
+    assert validate_generation(got, DEFAULT_CONFIG) == []
+    for plan in got.plans:
+        for day in plan.days:
+            if day.items:
+                # The first visit starts after the walk or drive from the stay, never before 09:00.
+                assert day.items[0].start_minute >= DEFAULT_CONFIG.day_start_minute
+    # Same input, same output: stays keep the engine deterministic.
+    again = engine.generate(with_stay, candidates("city-large"), FixedTravelSource())
+    assert canonical(got) == canonical(again)
+
+
+def test_the_sequencer_counts_the_leg_from_the_stay() -> None:
+    # Two far-apart nodes and one day: the stay is next to node 1, so it must be the first visit.
+    travel = ((0, 30), (30, 0))
+    problem = SequencingProblem(
+        ids=("a", "b"),
+        value=(100, 100),
+        duration=(60, 60),
+        travel=travel,
+        days=1,
+        day_minutes=400,
+        travel_weight=1,
+        start_travel=((40, 1),),
+    )
+    assert HeuristicSequencer().solve(problem) == [[1, 0]]

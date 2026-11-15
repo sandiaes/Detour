@@ -2262,6 +2262,351 @@
         }
       }
     },
+    "/v1/trips/{trip_id}/stays": {
+      "get": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Where the trip's days are slept, by day.",
+        "operationId": "list_stays",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Stay"
+                  },
+                  "title": "Response List Stays"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Add a stay for a range of days (ADR 030). 409 stay_overlap if a day already has one.",
+        "operationId": "create_stay",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StayCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stay"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/trips/{trip_id}/stays/{stay_id}": {
+      "patch": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Change a stay.",
+        "operationId": "update_stay",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          },
+          {
+            "name": "stay_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Stay Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StayUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stay"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Remove a stay.",
+        "operationId": "delete_stay",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          },
+          {
+            "name": "stay_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Stay Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/itineraries/{itinerary_id}": {
       "get": {
         "tags": [
@@ -4383,6 +4728,17 @@
             "type": "array",
             "title": "Notes"
           },
+          "proposed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposedPlan"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optimize previews only, while pending: the proposed order of the stops"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4756,6 +5112,17 @@
               }
             ],
             "description": "Travel from the previous day's base city at the start of the day; null when the base does not change"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StayStart"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the stay of this day to its first stop with a place (ADR 030); null without a stay or a stop"
           },
           "items": {
             "items": {
@@ -7979,6 +8346,205 @@
         ],
         "title": "PlanningErrorBody"
       },
+      "ProposedPlan": {
+        "properties": {
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedStop"
+            },
+            "type": "array",
+            "title": "Stops"
+          },
+          "transfers": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedTransfer"
+            },
+            "type": "array",
+            "title": "Transfers"
+          },
+          "starts": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedStart"
+            },
+            "type": "array",
+            "title": "Starts",
+            "description": "The mornings from the stays (ADR 030), per day"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stops",
+          "transfers"
+        ],
+        "title": "ProposedPlan",
+        "description": "The order an Optimize preview proposes, for drawing it next to the current plan: the same\nstops (by id) in their new days, order and times, and the travel between them."
+      },
+      "ProposedStart": {
+        "properties": {
+          "day_index": {
+            "type": "integer",
+            "title": "Day Index"
+          },
+          "stay_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Stay Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "to_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "To Item Id"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "drive"
+            ],
+            "title": "Mode"
+          },
+          "seconds": {
+            "type": "integer",
+            "title": "Seconds"
+          },
+          "meters": {
+            "type": "integer",
+            "title": "Meters"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "routed",
+              "estimated"
+            ],
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day_index",
+          "stay_id",
+          "name",
+          "lat",
+          "lon",
+          "to_item_id",
+          "mode",
+          "seconds",
+          "meters",
+          "confidence"
+        ],
+        "title": "ProposedStart"
+      },
+      "ProposedStop": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "day_index": {
+            "type": "integer",
+            "title": "Day Index"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "day_index",
+          "position",
+          "start_time",
+          "end_time"
+        ],
+        "title": "ProposedStop"
+      },
+      "ProposedTransfer": {
+        "properties": {
+          "from_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "From Item Id"
+          },
+          "to_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "To Item Id"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "drive"
+            ],
+            "title": "Mode"
+          },
+          "seconds": {
+            "type": "integer",
+            "title": "Seconds"
+          },
+          "meters": {
+            "type": "integer",
+            "title": "Meters"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "routed",
+              "estimated"
+            ],
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_item_id",
+          "to_item_id",
+          "mode",
+          "seconds",
+          "meters",
+          "confidence"
+        ],
+        "title": "ProposedTransfer"
+      },
       "ReadinessResponse": {
         "properties": {
           "status": {
@@ -8108,6 +8674,240 @@
           "external"
         ],
         "title": "RestaurantSearchResponse"
+      },
+      "Stay": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "trip_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Trip Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "first_day": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "First Day"
+          },
+          "last_day": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Last Day"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "trip_id",
+          "name",
+          "lat",
+          "lon",
+          "first_day",
+          "last_day",
+          "created_at"
+        ],
+        "title": "Stay",
+        "description": "Where the traveller sleeps for a range of days of a trip (ADR 030)."
+      },
+      "StayCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon"
+          },
+          "first_day": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "First Day"
+          },
+          "last_day": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Last Day"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "lat",
+          "lon",
+          "first_day",
+          "last_day"
+        ],
+        "title": "StayCreate"
+      },
+      "StayStart": {
+        "properties": {
+          "stay_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Stay Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "to_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "To Item Id"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "drive"
+            ],
+            "title": "Mode"
+          },
+          "seconds": {
+            "type": "integer",
+            "title": "Seconds"
+          },
+          "meters": {
+            "type": "integer",
+            "title": "Meters"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "routed",
+              "estimated"
+            ],
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stay_id",
+          "name",
+          "lat",
+          "lon",
+          "to_item_id",
+          "mode",
+          "seconds",
+          "meters",
+          "confidence"
+        ],
+        "title": "StayStart",
+        "description": "The traveller's morning at their stay: the leg from it to the day's first stop with a\nplace. Worked out when the plan is read (cached times, labelled estimates), not stored."
+      },
+      "StayUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "first_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 30.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Day"
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 30.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Day"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "StayUpdate"
       },
       "StopIn": {
         "properties": {

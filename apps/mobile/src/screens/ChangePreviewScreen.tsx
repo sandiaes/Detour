@@ -1,7 +1,8 @@
-import type { ChangeSet } from "@detour/shared";
-import { useState } from "react";
+import type { ChangeSet, Itinerary } from "@detour/shared";
+import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { useBackend } from "../api/BackendProvider";
 import { ApiError, call, describeError } from "../api/unwrap";
 import {
   Bullets,
@@ -12,14 +13,20 @@ import {
   LoadingState,
   Notice,
   SectionHeader,
+  StatRow,
+  Tabs,
   WakingServer,
 } from "../components/ds";
+import { PlanDayView } from "../components/plan/DayPlan";
 import { PlanNotes } from "../components/plan/PlanNotes";
+import { keys } from "../data/actions";
 import { changeKey, useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
 import { diffSections, diffSummary, travelChangeText } from "../domain/changes";
+import { formatDistance, proposedDays, travelMeters } from "../domain/optimize";
 import { type Route, useNavigation } from "../nav/Navigator";
 import { colors, layout, spacing, type, weight } from "../theme";
+import { formatMinutes } from "../util/format";
 
 type PreviewRoute = Extract<Route, { name: "changePreview" }>;
 
@@ -44,8 +51,27 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
   );
   const [working, setWorking] = useState<"apply" | "discard" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [view, setView] = useState<"map" | "details">("map");
+  const [dayIndex, setDayIndex] = useState<number | null>(null);
+  const { state: backend } = useBackend();
 
   const data = change.data;
+  // An Optimize preview is drawn as a map of the proposed days; it needs the current plan's stops.
+  const mapped = data?.action === "optimize" && data.proposed ? data.proposed : null;
+  const current = useResource<Itinerary>(
+    mapped ? keys.itinerary(route.itineraryId) : null,
+    (c) =>
+      call(
+        c.GET("/v1/itineraries/{itinerary_id}", {
+          params: { path: { itinerary_id: route.itineraryId } },
+        }),
+      ),
+    { ttlMs: 10 * 60_000 },
+  );
+  const after = useMemo(
+    () => (mapped && current.data ? proposedDays(current.data.days, mapped) : null),
+    [mapped, current.data],
+  );
   if (data === undefined) {
     return (
       <View style={styles.fill}>
@@ -99,6 +125,115 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
       setWorking(null);
     }
   };
+
+  if (after && current.data) {
+    const metersBefore = travelMeters(current.data.days);
+    const metersAfter = travelMeters(after);
+    const saved = -data.diff.travel_minutes_added;
+    const shorter = saved >= 0;
+    const km = Math.abs(metersBefore - metersAfter);
+    const first = data.diff.days_changed[0] ?? after[0]?.day_index ?? 1;
+    const shownDay = dayIndex ?? first;
+    return (
+      <View style={styles.fill}>
+        <CompactHeader
+          title={data.restores_version !== null ? "Undo Optimize?" : "A shorter order?"}
+          subtitle="Nothing changes until you accept."
+          onBack={nav.back}
+        />
+        <StatRow
+          stats={[
+            {
+              key: "time",
+              icon: "clock",
+              value: formatMinutes(Math.abs(saved)),
+              label: shorter ? "Time saved" : "Time added",
+              spoken: `${formatMinutes(Math.abs(saved))} of travel ${shorter ? "saved" : "added"}`,
+            },
+            {
+              key: "distance",
+              icon: "route",
+              value: formatDistance(km),
+              label: metersAfter <= metersBefore ? "Shorter" : "Longer",
+              spoken: `${formatDistance(km)} ${metersAfter <= metersBefore ? "shorter" : "longer"}`,
+            },
+            {
+              key: "days",
+              icon: "calendar",
+              value: data.diff.days_changed.length,
+              label: data.diff.days_changed.length === 1 ? "Day changed" : "Days changed",
+            },
+          ]}
+        />
+        <Tabs
+          compact
+          value={view}
+          onChange={setView}
+          items={[
+            { key: "map", label: "Map" },
+            { key: "details", label: "Details" },
+          ]}
+        />
+        <View style={styles.fill}>
+          {view === "map" ? (
+            <PlanDayView
+              days={after}
+              dayIndex={shownDay}
+              onDayChange={setDayIndex}
+              mode="map"
+              map={backend.phase === "ready" ? backend.connection.config.map : null}
+              onShowList={() => setView("details")}
+            />
+          ) : (
+            <ScrollView contentContainerStyle={styles.details}>
+              <PlanNotes notes={data.notes} defaultOpen />
+              {sections.map((s) => (
+                <View key={s.key} style={styles.section} testID={`diff-${s.key}`}>
+                  <SectionHeader title={s.title} />
+                  <Bullets items={s.lines} />
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+        <View style={styles.footer}>
+          {problem ? <Notice tone="error">{problem}</Notice> : null}
+          {pending ? (
+            <View style={styles.footerButtons}>
+              <View style={styles.footerButton}>
+                <Button
+                  label="Discard"
+                  testID="discard-change"
+                  variant="secondary"
+                  fill
+                  loading={working === "discard"}
+                  disabled={working !== null}
+                  hint="Leaves the plan as it is."
+                  onPress={() => void discard()}
+                />
+              </View>
+              <View style={styles.footerButton}>
+                <Button
+                  label="Accept"
+                  testID="accept-change"
+                  fill
+                  loading={working === "apply"}
+                  disabled={working !== null}
+                  hint="Changes the plan as shown. The previous version is kept."
+                  onPress={() => void accept()}
+                />
+              </View>
+            </View>
+          ) : (
+            <>
+              <Notice tone="info">{STATUS_TEXT[data.status] ?? data.status}</Notice>
+              <Button label="Back to the plan" variant="secondary" fill onPress={nav.back} />
+            </>
+          )}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -191,4 +326,8 @@ const styles = StyleSheet.create({
   travel: { ...type.label, color: colors.muted },
   muted: { ...type.caption, color: colors.muted },
   buttons: { gap: spacing.sm },
+  details: { paddingTop: spacing.sm, paddingBottom: spacing.xl },
+  footer: { paddingHorizontal: layout.gutter, paddingVertical: spacing.md, gap: spacing.sm },
+  footerButtons: { flexDirection: "row", gap: spacing.sm },
+  footerButton: { flex: 1 },
 });

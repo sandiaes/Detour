@@ -73,6 +73,7 @@ const SHAPES = {
       [15, 13.5, 0.8],
     ],
   },
+  home: { d: ["M4 11l8-7 8 7", "M6 10v10h12V10", "M10 20v-6h4v6"] },
   clock: { circles: [[12, 12, 9]], d: ["M12 7v5l3 2"] },
   route: {
     circles: [

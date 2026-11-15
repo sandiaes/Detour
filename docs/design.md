@@ -44,9 +44,12 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    (two slim radio rows: within each day, or across all days) and has one "Keep in place" row (how
    many stops are kept) that opens a sheet with the stops by day: a stop a document is about starts
    selected, a locked stop is shown as kept; the screen itself never lists every stop. "Show a
-   shorter order" opens the ordinary change preview titled "A shorter order?", with the saving in
-   minutes and kilometres, whether times are estimated, "a shorter order, not necessarily the
-   shortest" and "opening hours are not known" shown open, then Accept or Discard. When nothing is shorter the screen says so and changes nothing. Right after an
+   shorter order" opens the change preview titled "A shorter order?" (owner, 2026-11-15): three flat
+   figures (time saved, distance shorter, days changed), then **Map** and **Details** tabs. Map is the
+   trip's Map tab for the *proposed* plan (day pills, map, stops; `ChangeSet.proposed`, built by
+   `proposedDays`); Details holds the notes (estimates, "a shorter order, not necessarily the
+   shortest", "opening hours are not known") and the list of changes. Discard and Accept sit at the
+   bottom. When nothing is shorter the screen says so and changes nothing. Right after an
    Optimize the trip menu offers **Undo Optimize** (until the plan changes).
    **"Change photo"** (the new-trip screen under the destination, and the trip menu) opens a sheet of up
    to 12 photos of the destination, three across, each with its author and licence, and "Automatic
@@ -121,7 +124,7 @@ of the borders that identify a control is asserted in `theme.test.ts`.
   `pill` (chips, badges, discs, switches).
 - **Borders** (`border`): `hairline` (dividers), `thin` 1 (control outlines in `outline`), `thick` 2
   (focus ring, tab underline, selected outline). Nothing at 1.5, 2.5 or 3.
-- **Shadows** (`shadow`): none by default; `card` for cards and floating map controls; `raised` for sheets.
+- **Shadows** (`shadow`): none by default; `card` for cards; `floating` for buttons and the key over a map (a soft iOS shadow and a 1 dp border, **no Android `elevation`**, which drew a black disc under the round map-key button); `raised` for sheets.
 - **Heights** (`size`): `control` 44 (buttons, inputs, selects, segmented control), `controlSm` 36
   (small buttons, chips, header icon buttons), `row` 56 (a row with a detail line), `rowCompact` 48,
   `tab` 44, `tabCompact` 40. A drawn height is a **minimum**, so text can scale.
@@ -340,7 +343,7 @@ not asked; it is the destination.
 - **No day title above the stops.** The pills say which day it is; there is no "Day 3, Wed 14 Mar,
   8 visits, 2 meals, 4 h at the sights, 1 h travelling" block. A trip
   that moves between base cities shows the day's base city as one quiet line.
-- **A stop is a hairline row** (a stop the user added is not marked; Locked is): the time (start over end), a numbered disc that matches the map
+- **A stop is a hairline row** (a stop the user added is not marked; a locked stop has a small lock in a soft-green disc beside its name): the time (start over end), a numbered disc that matches the map
   marker, the name in small bold, the **kind icon** and the kind and length in caption ("Attraction ·
   2 h", "Restaurant · 1 h 15 min"), a chevron to the place's details. The names are English where
   the source has an English name; the local name is on the place's details. Selecting a stop gives
@@ -465,6 +468,17 @@ new-trip screen. With a chosen plan the main button is "Preview the change", whi
 preview ("Change your cities?", the diff, and a note naming what leaves with a removed day, marked
 "added by you" or "locked"); without one it is "Save cities". Proposals made for the earlier cities
 say "Made for the trip's earlier cities" and their "Choose this itinerary" is disabled.
+
+### Where you're staying (ADR 030)
+
+Trip menu, "Where you're staying": a compact header, one line on what a stay does, the stays as
+hairline rows (a house icon, the name, "Day 1" or "Days 2 to 3"), **Add a stay** (`primary`). The form
+searches a hotel, apartment or address (Photon through the server) or takes a name and coordinates,
+then **From** and **To** day steppers (the first days that have no stay); Save, Cancel and, when
+editing, a red ghost "Remove this stay" with a confirmation sheet. On the map a stay is a navy
+rounded-square house mark (not numbered) with a line to the day's first stop, and the key says "Your
+stay". The day list opens with a hairline row, house icon first: "Walk from Hotel Alpen · 10 min ·
+800 m". No leg back at night.
 
 ### Trip settings, Export, Import, Settings, Image credits
 
