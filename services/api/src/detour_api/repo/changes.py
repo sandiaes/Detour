@@ -30,6 +30,7 @@ from detour_api.models.changes import (
     DiffRetime,
     ItineraryVersion,
     ProposedPlan,
+    ProposedStart,
     ProposedStop,
     ProposedTransfer,
 )
@@ -488,6 +489,7 @@ def _proposed(row: Any) -> ProposedPlan | None:
             for r in proposal["items"]
         ],
         transfers=[ProposedTransfer.model_validate(t) for t in proposal["transfers"]],
+        starts=[ProposedStart.model_validate(t) for t in proposal.get("starts", [])],
     )
 
 

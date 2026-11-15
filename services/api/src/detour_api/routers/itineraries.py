@@ -1,10 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Request, Response, status
 
 from detour_api.deps import SessionDep
 from detour_api.models.trips import Item, ItemCreate, ItemUpdate, Itinerary
-from detour_api.repo import itineraries
+from detour_api.repo import itineraries, stays
 from detour_api.routers.responses import ERRORS
 
 router = APIRouter(prefix="/v1", tags=["itineraries"])
@@ -15,9 +15,10 @@ router = APIRouter(prefix="/v1", tags=["itineraries"])
     summary="An itinerary with its days and items.",
     responses=ERRORS,
 )
-def get_itinerary(session: SessionDep, itinerary_id: uuid.UUID) -> Itinerary:
+def get_itinerary(request: Request, session: SessionDep, itinerary_id: uuid.UUID) -> Itinerary:
     with session.tx() as conn:
-        return itineraries.require_itinerary(conn, session.installation_id, itinerary_id)
+        plan = itineraries.require_itinerary(conn, session.installation_id, itinerary_id)
+        return stays.with_starts(conn, session.installation_id, plan, request.app.state.travel_time)
 
 
 @router.delete(

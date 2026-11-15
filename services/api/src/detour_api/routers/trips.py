@@ -24,6 +24,9 @@ from detour_api.models.trips import (
     GenerationResult,
     Itinerary,
     ItinerarySummary,
+    Stay,
+    StayCreate,
+    StayUpdate,
     Trip,
     TripCreate,
     TripUpdate,
@@ -31,7 +34,7 @@ from detour_api.models.trips import (
     TripVisitUpdate,
 )
 from detour_api.planner.service import generate_for_trip
-from detour_api.repo import geo, itineraries, routes, trips
+from detour_api.repo import geo, itineraries, routes, stays, trips
 from detour_api.routers.responses import AUTH, ERRORS
 
 router = APIRouter(prefix="/v1/trips", tags=["trips"])
@@ -297,3 +300,42 @@ def replace_stops(session: SessionDep, trip_id: uuid.UUID, body: StopsEdit) -> T
             },
         )
         return trips.require_trip(conn, session.installation_id, trip_id)
+
+
+@router.get(
+    "/{trip_id}/stays", summary="Where the trip's days are slept, by day.", responses=ERRORS
+)
+def list_stays(session: SessionDep, trip_id: uuid.UUID) -> list[Stay]:
+    with session.tx() as conn:
+        return stays.list_all(conn, session.installation_id, trip_id)
+
+
+@router.post(
+    "/{trip_id}/stays",
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a stay for a range of days (ADR 030). 409 stay_overlap if a day already has one.",
+    responses=ERRORS,
+)
+def create_stay(session: SessionDep, trip_id: uuid.UUID, body: StayCreate) -> Stay:
+    with session.tx() as conn:
+        return stays.create(conn, session.installation_id, trip_id, body)
+
+
+@router.patch("/{trip_id}/stays/{stay_id}", summary="Change a stay.", responses=ERRORS)
+def update_stay(
+    session: SessionDep, trip_id: uuid.UUID, stay_id: uuid.UUID, body: StayUpdate
+) -> Stay:
+    with session.tx() as conn:
+        return stays.update(conn, session.installation_id, trip_id, stay_id, body)
+
+
+@router.delete(
+    "/{trip_id}/stays/{stay_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove a stay.",
+    responses=ERRORS,
+)
+def delete_stay(session: SessionDep, trip_id: uuid.UUID, stay_id: uuid.UUID) -> Response:
+    with session.tx() as conn:
+        stays.delete(conn, session.installation_id, trip_id, stay_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

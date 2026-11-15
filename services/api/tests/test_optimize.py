@@ -258,3 +258,29 @@ def test_without_a_car_every_leg_is_walked_however_long() -> None:
     assert driving.mode(*far) == "drive"
     assert walking.mode(*far) == "walk"
     assert walking.get(*far).seconds > driving.get(*far).seconds
+
+
+def test_a_day_starts_at_its_stay_and_does_not_return_to_it() -> None:
+    # A line of stops in a good order, but the stay is at the far end: the day should start there.
+    stops = [stop(f"s{i}", i, start=540 + 70 * i) for i in range(5)]
+    anchor = Coord.from_degrees(48.0 + 4 * STEP, 16.0)
+    lookup = TravelLookup(FixedTravelSource(), 2_000)
+    out = optimize(
+        stops, [1], scope="within_days", lookup=lookup, use_provider=False, anchors={1: anchor}
+    )
+    assert validate(stops, [1], out) == []
+    assert [p.id for p in out.days[1]] == ["s4", "s3", "s2", "s1", "s0"]
+    assert out.travel_after < out.travel_before
+    first = out.days[1][0]
+    assert first.head is not None and first.head.minutes <= 1
+    assert all(p.head is None for p in out.days[1][1:])  # only the first stop has a morning leg
+    # The first visit starts after the walk from the stay, not before; nothing returns at the end.
+    assert first.start >= 540 + first.head.minutes
+    assert out.days[1][-1].leg is None
+
+
+def test_without_a_stay_the_plan_is_as_before() -> None:
+    stops = [stop(f"s{i}", i, start=540 + 70 * i) for i in range(5)]
+    _, out = run(stops, [1])
+    assert out.changed_days == ()  # type: ignore[attr-defined]
+    assert all(p.head is None for p in out.days[1])  # type: ignore[attr-defined]

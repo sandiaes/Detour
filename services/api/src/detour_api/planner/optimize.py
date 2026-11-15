@@ -99,6 +99,8 @@ class Laid:
     start: int
     end: int
     leg: Leg | None
+    # From the day's stay to this stop, on the first stop of the day with a place (ADR 030).
+    head: Leg | None = None
 
 
 @dataclass(frozen=True)
@@ -225,8 +227,10 @@ class _Search:
         scope: Scope,
         lookup: TravelLookup,
         rules: Rules,
+        anchors: dict[int, Coord] | None = None,
     ) -> None:
         self.stops = stops
+        self.anchors = anchors or {}
         self.days = tuple(days)
         self.scope = scope
         self.lookup = lookup
@@ -278,18 +282,50 @@ class _Search:
             self._leg_memo[key] = found
         return found
 
-    def travel(self, order: Sequence[int]) -> int:
-        return sum(self.leg(a, b) for a, b in itertools.pairwise(order))
+    def head(self, day: int, i: int) -> int:
+        """Minutes from the day's stay to stop ``i``; 0 without a stay or a point (ADR 030)."""
+        anchor = self.anchors.get(day)
+        s = self.stops[i]
+        if anchor is None or not s.located:
+            return 0
+        return minutes(self.lookup.get(anchor, s.coord).seconds)
+
+    def _head_fn(self, day: int) -> Callable[[int], int] | None:
+        if day not in self.anchors:
+            return None
+
+        def head(i: int) -> int:
+            return self.head(day, i)
+
+        return head
+
+    def first_located(self, order: Sequence[int]) -> int | None:
+        return next((i for i in order if self.stops[i].located), None)
+
+    def travel(self, order: Sequence[int], day: int) -> int:
+        """The day's travel: between its stops, and from its stay to its first stop with a place.
+        There is no leg back to the stay at the end of the day (owner, 2026-11-15)."""
+        total = sum(self.leg(a, b) for a, b in itertools.pairwise(order))
+        first = self.first_located(order)
+        return total if first is None else total + self.head(day, first)
 
     def total(self) -> int:
-        return sum(self.travel(o) for o in self.orders.values())
+        return sum(self.travel(o, d) for d, o in self.orders.items())
 
     def fits(self, day: int, order: Sequence[int]) -> bool:
         key = (day, tuple(order))
         found = self._fit_memo.get(key)
         if found is None:
             found = (
-                lay_out(self.stops, order, self.start[day], self.limit[day], self.leg) is not None
+                lay_out(
+                    self.stops,
+                    order,
+                    self.start[day],
+                    self.limit[day],
+                    self.leg,
+                    self._head_fn(day),
+                )
+                is not None
             )
             self._fit_memo[key] = found
         return found
@@ -314,7 +350,7 @@ class _Search:
                     if not self.stops[order[j]].movable:
                         break
                     cand = order[:i] + order[i : j + 1][::-1] + order[j + 1 :]
-                    if self.travel(cand) < self.travel(order) and self.fits(d, cand):
+                    if self.travel(cand, d) < self.travel(order, d) and self.fits(d, cand):
                         self._commit({d: cand})
                         return True
         return False
@@ -342,14 +378,14 @@ class _Search:
                             continue
                         cand = [*target[:p], v, *target[p:]]
                         if dd == d:
-                            before = self.travel(order)
-                            after = self.travel(cand)
+                            before = self.travel(order, d)
+                            after = self.travel(cand, d)
                             if after < before and self.fits(d, cand):
                                 self._commit({d: cand})
                                 return True
                         else:
-                            before = self.travel(order) + self.travel(self.orders[dd])
-                            after = self.travel(rest) + self.travel(cand)
+                            before = self.travel(order, d) + self.travel(self.orders[dd], dd)
+                            after = self.travel(rest, d) + self.travel(cand, dd)
                             if after < before and self.fits(d, rest) and self.fits(dd, cand):
                                 self._commit({d: rest, dd: cand})
                                 return True
@@ -365,7 +401,7 @@ class _Search:
                 order = self.orders[d1]
                 cand = list(order)
                 cand[p1], cand[p2] = v2, v1
-                if self.travel(cand) < self.travel(order) and self.fits(d1, cand):
+                if self.travel(cand, d1) < self.travel(order, d1) and self.fits(d1, cand):
                     self._commit({d1: cand})
                     return True
                 continue
@@ -375,8 +411,9 @@ class _Search:
                 continue
             a, b = list(self.orders[d1]), list(self.orders[d2])
             a[p1], b[p2] = v2, v1
-            before = self.travel(self.orders[d1]) + self.travel(self.orders[d2])
-            if self.travel(a) + self.travel(b) < before and self.fits(d1, a) and self.fits(d2, b):
+            before = self.travel(self.orders[d1], d1) + self.travel(self.orders[d2], d2)
+            after = self.travel(a, d1) + self.travel(b, d2)
+            if after < before and self.fits(d1, a) and self.fits(d2, b):
                 self._commit({d1: a, d2: b})
                 return True
         return False
@@ -388,16 +425,21 @@ def lay_out(
     day_start: int,
     limit: int,
     leg: Callable[[int, int], int],
+    head: Callable[[int], int] | None = None,
 ) -> list[tuple[int, int]] | None:
     """Start and end of every stop of a day in the given order, or None if the day cannot be laid
     out: a block or a locked stop would start too early, a restaurant would start later than 60
-    minutes after its chosen time or after 21:00, or the day ends after ``limit``."""
+    minutes after its chosen time or after 21:00, or the day ends after ``limit``. ``head`` gives
+    the minutes from the day's stay to a stop: the first stop starts that long after the day."""
     out: list[tuple[int, int]] = []
     cursor = day_start
     prev: int | None = None
     for i in order:
         s = stops[i]
-        earliest = cursor + (leg(prev, i) if prev is not None else 0)
+        if prev is not None:
+            earliest = cursor + leg(prev, i)
+        else:  # the first stop: the day starts at the stay (ADR 030)
+            earliest = cursor + (head(i) if head is not None and s.located else 0)
         if s.fixed or s.kind == "free_time":
             assert s.start is not None and s.end is not None  # noqa: S101
             if s.start < earliest:
@@ -423,22 +465,32 @@ def lay_out(
 # -- the whole run -------------------------------------------------------------------------------
 
 
-def _cells(stops: Sequence[Stop], orders: dict[int, Sequence[int]]) -> list[Cell]:
-    return [
+def _cells(
+    stops: Sequence[Stop], orders: dict[int, Sequence[int]], anchors: dict[int, Coord]
+) -> list[Cell]:
+    cells = [
         (stops[a].coord, stops[b].coord)
         for order in orders.values()
         for a, b in itertools.pairwise(order)
         if stops[a].located and stops[b].located
     ]
+    for day, order in orders.items():
+        first = next((i for i in order if stops[i].located), None)
+        if first is not None and day in anchors:
+            cells.append((anchors[day], stops[first].coord))
+    return cells
 
 
-def _all_cells(stops: Sequence[Stop], scope: Scope) -> list[Cell]:
+def _all_cells(stops: Sequence[Stop], scope: Scope, anchors: dict[int, Coord]) -> list[Cell]:
     located = [s for s in stops if s.located]
-    return [
+    cells = [
         (a.coord, b.coord)
         for a, b in itertools.permutations(located, 2)
         if scope == "across_days" or a.day == b.day
     ]
+    for day, anchor in anchors.items():
+        cells.extend((anchor, s.coord) for s in located if scope == "across_days" or s.day == day)
+    return cells
 
 
 @dataclass
@@ -457,13 +509,17 @@ def optimize(
     lookup: TravelLookup,
     use_provider: bool,
     rules: Rules | None = None,
+    anchors: dict[int, Coord] | None = None,
 ) -> Outcome:
-    """Search for a shorter order. ``changed_days`` is empty when nothing improves."""
+    """Search for a shorter order. ``changed_days`` is empty when nothing improves. ``anchors`` is
+    where each day starts (the traveller's stay, ADR 030): the leg from it to the day's first stop
+    counts in the travel and the day starts that much later."""
     rules = rules or Rules()
+    anchors = anchors or {}
     if len([s for s in stops if s.kind != "free_time"]) > MAX_STOPS:
         raise ValueError("too many stops")
-    lookup.fetch(_all_cells(stops, scope), use_provider=False)
-    search = _Search(stops, days, scope, lookup, rules)
+    lookup.fetch(_all_cells(stops, scope, anchors), use_provider=False)
+    search = _Search(stops, days, scope, lookup, rules, anchors)
     for round_ in range(FOLLOW_UP_FETCHES + 1):
         search.run()
         changed = [d for d in search.days if tuple(search.orders[d]) != search.original[d]]
@@ -471,14 +527,15 @@ def optimize(
             break
         # Both the proposed order and the current one of the changed days, so the saving compares
         # routed times with routed times.
-        cells = _cells(stops, {d: search.orders[d] for d in changed}) + _cells(
-            stops, {d: search.original[d] for d in changed}
+        cells = _cells(stops, {d: search.orders[d] for d in changed}, anchors) + _cells(
+            stops, {d: search.original[d] for d in changed}, anchors
         )
         missing = [c for c in sorted(set(cells)) if not lookup.answered(*c)]
         if not missing:
             break
         lookup.fetch(missing, use_provider=True)
-        search = _Search(stops, days, scope, lookup, rules)  # the original order, new times
+        # The original order again, with the new times.
+        search = _Search(stops, days, scope, lookup, rules, anchors)
     return _outcome(stops, search)
 
 
@@ -507,12 +564,35 @@ def _lay_all(
     for d in search.days:
         order = orders[d]
         if d in relay:
-            times = lay_out(stops, order, search.start[d], search.limit[d], search.leg)
+            times = lay_out(
+                stops,
+                order,
+                search.start[d],
+                search.limit[d],
+                search.leg,
+                search._head_fn(d),
+            )
             assert times is not None  # noqa: S101 - the search only keeps days that fit
         else:
             times = [(stops[i].start or 0, stops[i].end or 0) for i in order]
         laid: list[Laid] = []
+        first = search.first_located(order)
         for n, i in enumerate(order):
+            head: Leg | None = None
+            if i == first and d in search.anchors:
+                origin = search.anchors[d]
+                t = search.lookup.get(origin, stops[i].coord)
+                head = Leg(
+                    mode=search.lookup.mode(origin, stops[i].coord),
+                    seconds=t.seconds,
+                    meters=t.meters,
+                    minutes=minutes(t.seconds),
+                    confidence=t.confidence,
+                    estimate_reason=t.reason,
+                )
+                totals.minutes += head.minutes
+                totals.meters += t.meters
+                totals.estimated += 0 if t.confidence == "routed" else 1
             leg: Leg | None = None
             if n + 1 < len(order) and stops[i].located and stops[order[n + 1]].located:
                 a, b = stops[i], stops[order[n + 1]]
@@ -529,7 +609,7 @@ def _lay_all(
                 totals.minutes += mins
                 totals.meters += t.meters
                 totals.estimated += 0 if t.confidence == "routed" else 1
-            laid.append(Laid(stops[i].id, d, times[n][0], times[n][1], leg))
+            laid.append(Laid(stops[i].id, d, times[n][0], times[n][1], leg, head))
         totals.legs[d] = tuple(laid)
     return totals
 

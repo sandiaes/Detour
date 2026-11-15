@@ -128,12 +128,28 @@ class ProposedTransfer(BaseModel):
     confidence: Literal["routed", "estimated"]
 
 
+class ProposedStart(BaseModel):
+    day_index: int
+    stay_id: uuid.UUID
+    name: str
+    lat: float
+    lon: float
+    to_item_id: uuid.UUID
+    mode: Literal["walk", "drive"]
+    seconds: int
+    meters: int
+    confidence: Literal["routed", "estimated"]
+
+
 class ProposedPlan(BaseModel):
     """The order an Optimize preview proposes, for drawing it next to the current plan: the same
     stops (by id) in their new days, order and times, and the travel between them."""
 
     stops: list[ProposedStop]
     transfers: list[ProposedTransfer]
+    starts: list[ProposedStart] = Field(
+        default_factory=list, description="The mornings from the stays (ADR 030), per day"
+    )
 
 
 class ChangeSet(BaseModel):
