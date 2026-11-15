@@ -343,7 +343,7 @@ not asked; it is the destination.
 - **No day title above the stops.** The pills say which day it is; there is no "Day 3, Wed 14 Mar,
   8 visits, 2 meals, 4 h at the sights, 1 h travelling" block. A trip
   that moves between base cities shows the day's base city as one quiet line.
-- **A stop is a hairline row** (a stop the user added is not marked; Locked is): the time (start over end), a numbered disc that matches the map
+- **A stop is a hairline row** (a stop the user added is not marked; a locked stop has a small lock in a soft-green disc beside its name): the time (start over end), a numbered disc that matches the map
   marker, the name in small bold, the **kind icon** and the kind and length in caption ("Attraction ·
   2 h", "Restaurant · 1 h 15 min"), a chevron to the place's details. The names are English where
   the source has an English name; the local name is on the place's details. Selecting a stop gives

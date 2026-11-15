@@ -234,7 +234,7 @@ export function StopRow({
   const stop = stopKind(item);
   const eat = isEatKind(stop);
   // A stop the user added is not marked in the list (owner, 2026-11-15); its details still say so.
-  const tags = item.locked ? "Locked" : "";
+  // A locked stop wears a small lock beside its name (the spoken label says "Locked").
   return (
     <View style={[styles.row, selected && styles.rowSelected]}>
       <View style={styles.timeCol}>
@@ -260,7 +260,14 @@ export function StopRow({
               <StopMark kind="quiet" icon="clock" />
             )}
             <View style={styles.cardText}>
-              <Text style={styles.title}>{item.display_name}</Text>
+              <View style={styles.titleLine}>
+                <Text style={[styles.title, styles.titleText]}>{item.display_name}</Text>
+                {item.locked ? (
+                  <View style={styles.lockBadge} testID={`locked-${item.id}`}>
+                    <Icon name="lock" size="xs" color={colors.primary} />
+                  </View>
+                ) : null}
+              </View>
               <View style={styles.kindLine}>
                 <KindIcon kind={stop} size="xs" />
                 <Text
@@ -270,7 +277,6 @@ export function StopRow({
                   {stopSummary(item)}
                 </Text>
               </View>
-              {tags ? <Text style={styles.tags}>{tags}</Text> : null}
             </View>
           </FocusPressable>
           {onDetails ? (
@@ -629,7 +635,17 @@ const styles = StyleSheet.create({
   kindSight: { color: colors.primary },
   kindEat: { color: colors.accentText },
   meta: { ...type.caption, color: colors.muted },
-  tags: { ...type.caption, fontWeight: weight.bold, color: colors.primary },
+  titleLine: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  titleText: { flexShrink: 1 },
+  // The lock: a small soft-green disc, the same quiet tone as a selected state.
+  lockBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.selectedSoft,
+  },
   transfer: {
     flexDirection: "row",
     alignItems: "center",
