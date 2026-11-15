@@ -286,6 +286,18 @@ ADR 019).
 
 ### Phase 9 — MVP hardening and release
 
+**Status (2026-11-15): built in part, not complete.** Done in a cloud session (branch
+`claude/quirky-mccarthy-m4w5du`): the audit ([`audit-phase-9.md`](audit-phase-9.md)), resilience
+fixes (reconnection with backoff, a clear state per dependency, photo and Photon fallbacks), API
+request limits, location and cloud-backup removed from the APK, migration `0020` (RLS on
+`public.alembic_version`), the daily "Back up app data" workflow, an opt-in project signing key,
+`privacy.md`, `security.md`, `backups.md`, `android-release.md`, `known-limitations.md`,
+`ios-readiness.md`, the journeys and the performance pass ([`test-plan-phase-9.md`](test-plan-phase-9.md)),
+and both E2E flows brought up to date. **Open:** GitHub Actions stopped starting jobs on 2026-11-15
+(likely the private repository's minutes), so the E2E screenshot tour, a new APK and the backups
+cannot run; no journey has been checked on a device; the owner's acceptance of ADRs 013 to 030 is
+recorded in the audit but no ADR status was changed; the PMTiles tile-switch rehearsal was not done.
+
 **Goal:** a build fit for the owner's own real trips, installed as a sideloaded APK (ADR 008).
 *Revised 2026-11-15:* the Play Console closed test is removed (ADR 008: no app stores), and the
 scope follows the manager-first direction (ADR 026). Meals, restaurant slots and Japan single-city
@@ -396,7 +408,10 @@ data change, history record, app); destinations (ADR 027), export and import (AD
 are built; saved ideas, notes and photos wait for the owner. The text below is older and still stands for the phases it names,
 except where ADR 026 retires them (Phase 8's slot costs, the imported restaurants).
 
-**Accept the built work (Phases 3 to 8 and the ADR 021 to 029 changes), then Phase 9 (MVP
+**Phase 9 is under way (2026-11-15, see its section above).** Next: get GitHub Actions running
+again, build the APK from the Phase 9 branch, do the phone check of `test-plan-phase-9.md`
+section 3, run the E2E screenshot tour, then record the acceptance of ADRs 013 to 030. The older text
+below is kept for the items it lists. **Accept the built work (Phases 3 to 8 and the ADR 021 to 029 changes), then Phase 9 (MVP
 hardening, revised 2026-11-15), when the owner asks for it (CLAUDE.md).** For Phase 8: confirm or change the slot costs of ADR 019 on a real imported city,
 add a restaurant from the map data, one from the wider search and one by hand on the phone, and
 decide whether removing an added restaurant is wanted. For Phase 7: confirm or change the stability costs and the 20 km / 25 km distances

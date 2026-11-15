@@ -388,3 +388,13 @@ def test_the_city_assignment_query_uses_the_knn_index(api_env: ApiEnv) -> None:
         " ORDER BY c.geom <-> ST_SetSRID(ST_MakePoint(16.37, 48.2), 4326) LIMIT 5",
     )
     assert "city_geom_gix" in explained, explained
+
+
+def test_the_migration_table_is_closed_to_supabase_api_roles(db: psycopg.Connection[Any]) -> None:
+    """Migration 0020 (Phase 9, docs/security.md): RLS on, so Supabase's anon role sees nothing."""
+    row = db.execute(
+        "SELECT relrowsecurity FROM pg_class WHERE oid = 'public.alembic_version'::regclass"
+    ).fetchone()
+    assert row == (True,)
+    # The owner (migrations, the API) still reads and writes it.
+    assert db.execute("SELECT version_num FROM public.alembic_version").fetchone() is not None

@@ -59,13 +59,12 @@ sightseeing plans are an occasional help, not the main way in.
    map and in the list (ADR 020), with start times and durations, transfers with mode
    and duration, markers for estimated travel times and, on an area trip, the day's base city and
    the drive from the previous one. A suggested day has one unplanned "Free time" gap at midday
-   *(to change, ADR 026: today it has planned meals)*.
+   (ADR 026, built).
 4. **Add a place.** Search or drop a pin. The app shows what would change. Accept or discard.
 5. **Add a restaurant or café.** Search through Photon, or enter it by hand (a name, a map pin or
    typed coordinates, and the kind). The user chooses the day and the start time; the length is a
    default they can change. No cuisine and no served meals are stored: Photon does not supply them
-   (ADR 026). *(To change, ADR 026 steps 3 and 4: today the app also searches imported restaurants
-   and proposes up to three day and meal slots, ADR 019.)*
+   (ADR 026, built: the imported restaurants and the slot suggestions of ADR 019 are gone).
 6. **Optimize (ADR 029).** On a trip with at least three stops, ask the engine for a shorter
    order. Choose to reorder within each day or across all days, keep the stops with tickets in place,
    review the diff and the saving, apply or discard. Never longer than the current plan; opening
@@ -107,9 +106,8 @@ shape Detour needs. The product shows only what it can stand behind.
 
 **No meals in a suggested plan** (ADR 026, superseding the meal part of ADR 016). Generated
 itineraries have no lunch, no dinner and no snack. Each day has one unplanned midday gap
-(*proposed:* 90 minutes between 12:30 and 14:00) and runs 09:00 to 20:00 (*proposed*). *(To change,
-ADR 026 step 2: until then plans have meals in fixed windows, breakfast 07:30–10:00, lunch
-13:00–15:00, afternoon snack 15:00–17:30, dinner 20:00–22:00, at imported places to eat.)*
+(*proposed:* 90 minutes between 12:30 and 14:00) and runs 09:00 to 20:00 (*proposed*). Built
+(`planner-3.0.0`); the earlier fixed meal windows of ADR 016 are history.
 
 **No prices, budgets or currencies** (ADR 017, owner decision of 2026-11-13). Earlier versions of
 this brief had a trip currency, a meal budget per person, user-entered prices and price bands;

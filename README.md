@@ -13,17 +13,15 @@ task, not a rewrite.
 backend, a generated typed API client, CI, an APK build workflow, and Render and Supabase
 deployment configuration.
 
-**Phase 2 (data and search) is built, awaiting the owner's acceptance:** the `geo` and `app`
-database schemas, a region import (manually started GitHub Actions workflow: Geofabrik extract,
-selection rule, data quality report and readiness gates), a GeoNames gazetteer import, destination
-and place search with Photon as the only external fallback, a seed trip, and endpoints for trips,
-user places and itinerary items. **Phases 3 to 8 are built and await acceptance:** travel times
-(ADR 013), the planner (two itineraries for a city, ADR 014), the mobile screens with the day list
-and map (ADR 015), meals and area destinations (ADR 016), and adding or removing a place with a
-previewed recalculation and itinerary versions (ADR 018), and adding a restaurant with its best day
-and meal slot (ADR 019). The app has no budgets, currencies or
-prices (ADR 017). Later work follows the phases in [`docs/app-plan.md`](docs/app-plan.md). The architecture, API strategy,
-hosting, licence and distribution are decided (see below).
+**Phases 2 to 8 and ADRs 020 to 030 are built** and await the owner's acceptance (the owner
+approved them in words on 2026-11-15; see [`docs/audit-phase-9.md`](docs/audit-phase-9.md)). Since
+ADR 026 Detour is a **trip manager and travel history first**: trips usually start empty, are filled
+by hand (sights, towns, pins, restaurants through Photon or by hand, documents kept on the phone),
+can be optimized, exported and imported, and are kept as a day-by-day record afterwards. Generating
+two sightseeing itineraries is an optional helper for the imported regions (Austria and Italy). The
+app has no budgets, currencies or prices (ADR 017). **Phase 9 (hardening for the owner's own use)
+is under way**: [`docs/test-plan-phase-9.md`](docs/test-plan-phase-9.md). Later work follows
+[`docs/app-plan.md`](docs/app-plan.md).
 
 ## Repository layout
 
@@ -58,6 +56,12 @@ Everything is built and tested in GitHub Actions; no local toolchain is required
 | [`docs/data-model.md`](docs/data-model.md) | The `geo` and `app` schemas, lifecycle, deletion and licence rules |
 | [`docs/decisions/011-attraction-selection-rule-v2.md`](docs/decisions/011-attraction-selection-rule-v2.md) | ADR: stricter memorial test and generic `historic=*` classes |
 | [`docs/decisions/012-phase-2-data-and-search-choices.md`](docs/decisions/012-phase-2-data-and-search-choices.md) | ADR: Phase 2 choices, terms read, open items |
+| [`docs/android-release.md`](docs/android-release.md) | Build, install and update the APK; the signing key |
+| [`docs/audit-phase-9.md`](docs/audit-phase-9.md) | Phase 9 audit: what is built, what the owner must accept |
+| [`docs/test-plan-phase-9.md`](docs/test-plan-phase-9.md) | Phase 9 journeys, results, the phone check, performance |
+| [`docs/privacy.md`](docs/privacy.md), [`docs/security.md`](docs/security.md) | What is stored where; threat model |
+| [`docs/backups.md`](docs/backups.md) | Daily database backup and "Back up all trips" |
+| [`docs/known-limitations.md`](docs/known-limitations.md), [`docs/ios-readiness.md`](docs/ios-readiness.md) | What Detour does not do; the iPhone route |
 | [`CLAUDE.md`](CLAUDE.md) | Working rules for AI-assisted development in this repository |
 
 ## Proposed architecture in brief
@@ -73,7 +77,8 @@ Everything is built and tested in GitHub Actions; no local toolchain is required
 
 Open data (OpenStreetMap, GeoNames, Wikidata) is imported into the project's own database, so
 generating an itinerary makes no third-party API calls. The few external services (map tiles,
-fallback place search, daily exchange rates) sit behind backend adapters with named fallbacks.
+fallback place search through Photon, travel times from the FOSSGIS server, names and photos from
+Wikimedia) sit behind backend adapters with named fallbacks.
 
 ## Decisions
 

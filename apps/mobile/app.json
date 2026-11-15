@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "android": {
       "package": "io.github.sandiaes.detour",
+      "allowBackup": false,
       "blockedPermissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",

@@ -9,9 +9,9 @@ connections, the Photon and routing budgets shared by every installation, and Re
   (only a genuine, signed token gets its own bucket; anything else shares the anonymous one).
 * **Registrations:** one bucket for the whole service, because a new registration is the way
   around the per-installation limit.
-* **Photos:** ``GET /v1/images/...`` is loaded by the phone's image view, which sends no token, so
-  photos have one generous bucket of their own (a photo that is refused falls back to the
-  illustration in the app).
+* **Photos:** ``GET /v1/images/...`` and ``/v1/cover-previews/...`` are loaded by the phone's
+  image view, which sends no token, so photos have one generous bucket of their own (a photo that
+  is refused falls back to the illustration in the app).
 
 Over a limit the API answers ``429`` with ``Retry-After`` and the code ``rate_limited``. The
 buckets live in memory, per process, like the provider limits (``adapters/ratelimit.py``); a
@@ -85,7 +85,7 @@ class RequestLimiter:
             return 0.0
         if method == "POST" and path == "/v1/installations":
             return self._registrations.try_acquire()
-        if method == "GET" and path.startswith("/v1/images/"):
+        if method == "GET" and path.startswith(("/v1/images/", "/v1/cover-previews/")):
             return self._images.try_acquire()
         return self._bucket(self.caller_key(authorization)).try_acquire()
 

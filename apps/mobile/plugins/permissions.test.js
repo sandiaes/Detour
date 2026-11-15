@@ -12,3 +12,7 @@ test("location and drawing over other apps are removed from the APK", () => {
     ]),
   );
 });
+
+test("Android's automatic cloud backup is off: documents stay on the phone (ADR 023)", () => {
+  expect(app.expo.android.allowBackup).toBe(false);
+});

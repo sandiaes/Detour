@@ -388,7 +388,7 @@ then "Edit display name" (a small outlined button opening a one-line field with 
 edited name offers "Use the usual name"); one line with the kind icon,
 the kind and the town ("Attraction · Vienna"); two flat figures for the day
 ("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit" or "Set by you"); one quiet line with the
-address (no label); for places to eat the kind and, when Photon gave one, the address (*ADR 026: the meal, venue and cuisine lines go*); small buttons Show
+address (no label); for places to eat the kind and, when Photon gave one, the address (ADR 026, built: no meal, venue or cuisine line); small buttons Show
 on map, **Edit time**, Lock, Remove (red outline) and Add a document. Lock and Remove are offered on a plan made by hand too (Remove asks first in a `ConfirmSheet`; on a generated plan it shows the change preview). Edit time opens a **Day** drop-down (move the stop to another day), the start time (`TimeField`) and one length field (minutes or
 "1h30"), a "Default" pill that goes back to the usual length, Save and Cancel, and a live check: a
 length that runs into the next timed stop is a conflict and cannot be saved; too little time for
@@ -507,13 +507,8 @@ Planned features and a menu of hairline rows. Items that are not built say "Comi
   transfer between them (`freeStretch` in `domain/itinerary.ts`); plans made by hand show it too.
   The proposals' comparison has no "Places to eat" row unless an older plan has some. The day runs 09:00 to 20:00. A restaurant or
   café is a stop the user adds; it reads "Restaurant · 1 h 15 min" or "Café · 45 min", with no
-  Lunch or Dinner label, no cuisine and no meal type. Everything below about meal times describes
-  the app until step 2 is built.
-- **Meals are aimed at lunch 13:00 and dinner 20:00** (owner, 2026-11-14; *to change, ADR 026*). Windows: lunch 13:00 to
-  15:00, afternoon snack 15:00 to 17:30 (Wider only), dinner 20:00 to 22:00. A meal starts at its
-  window's start at the earliest. The day runs 09:00 to 22:00 so a 90-minute dinner at 20:00 ends
-  inside it. The sightseeing allowance is unchanged: the evening that the longer day added is
-  reserved as unplanned time (`Profile.free_minutes`), so days are not packed with more visits.
+  Lunch or Dinner label, no cuisine and no meal type. (The meal times of 2026-11-14, lunch 13:00 and
+  dinner 20:00 in fixed windows, are history: ADR 026 step 2 removed them.)
 - The two plans can be compared, chosen, extended and recalculated as before (ADR 014 to 019).
 - An empty trip has a plan of kind "Manual": days with nothing in them.
 

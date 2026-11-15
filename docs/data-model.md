@@ -14,7 +14,11 @@ rule and size report are described in section 5. Migration `0013_multilingual_pl
 `app.place_name_override` (sections 2.6, 2.11 and 3.8). Migration `0014_no_imported_restaurants`
 (ADR 026, data step) deletes the imported restaurants and cafes, drops `geo.restaurant_profile`, the
 cuisine and meal-type columns and `app.itinerary_item.meal_type`, adds the user-place kind `cafe` and
-retires the `add_restaurant` change-set action with its slot columns.
+retires the `add_restaurant` change-set action with its slot columns. Later migrations: `0015` (the
+past trip's day record), `0016` (place destinations, ADR 027), `0017` (Optimize change sets, ADR 029),
+`0018` (`app.trip.uses_car`), `0019` (`app.trip_stay`, ADR 030) and `0020` (Phase 9: row level
+security on `public.alembic_version`, so Supabase's Data API roles cannot read or change it). The
+production database was at `0019` on 2026-11-15.
 Where the built schema differs from the earlier proposal, the difference is listed in section 9
 and decided in [ADR 012](decisions/012-phase-2-data-and-search-choices.md). Photos (section 8) are
 still reserved, not built.

@@ -29,7 +29,7 @@ built and await acceptance.
    mobile app renders and edits.
 5. **Deterministic and explainable.** The same inputs and data version produce the same
    itineraries, and every placement carries the reasons for it.
-6. **Honest data.** Estimated travel times and unknown cuisines are shown as
+6. **Honest data.** Estimated travel times and unknown values are shown as
    estimated or unknown, never guessed silently. The app has no prices (ADR 017). Place names are
    never translated; a name Detour romanized itself says so (ADR 025).
 
@@ -385,7 +385,7 @@ drop their lowest-value visit. Code: `planner/engine.py` (pipeline), `scoring.py
 
 Destination (a city or an area), trip length in days, optional start date, and items the user
 has added or locked. Defaults that the user does not see as features: day window (for example
-09:00–22:00), meal windows, and walking threshold. These live in a versioned configuration file.
+09:00–20:00 since ADR 026), the midday gap, and walking threshold. These live in a versioned configuration file.
 
 > **ADR 026 (proposed, 2026-11-14; planner step built):** the engine (`planner-3.0.0`) produces
 > **sights only**: no meals, no restaurant lookup, one unplanned 90-minute midday gap per day
@@ -419,7 +419,8 @@ has added or locked. Defaults that the user does not see as features: day window
 7. **Validation.** An independent checker verifies every produced itinerary: no overlaps, day length respected, locked items untouched. A failed check is a
    bug, not a user-visible itinerary.
 8. **Explanation.** Each item carries reason codes such as `WIKIDATA_LINKED`,
-   `NEAR_PREVIOUS_ITEM`, `LUNCH_WINDOW`, `NEW_CUISINE`, `CUISINE_NOT_SPECIFIED`.
+   `NEAR_PREVIOUS_ITEM`, `NEAR_CENTRE`, `ADDS_VARIETY`. (The meal and cuisine codes of ADR 016 were
+   retired in Phase 9: a stored retired code is not shown.)
 
 ### 5.3 Two meaningfully different itineraries
 

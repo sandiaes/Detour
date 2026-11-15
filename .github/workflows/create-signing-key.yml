@@ -1,0 +1,70 @@
+# Creates the project's own Android signing key once (ADR 008, "Signing"; docs/android-release.md,
+# "Your own signing key"). The owner cannot install Java on the work PC, so keytool runs here.
+#
+# Run by hand ONCE: Actions -> "Create signing key" -> Run workflow. It uploads an artifact
+# "signing-key" (kept for 1 day) with four text files whose contents go into four repository
+# secrets, and the keystore itself to keep in a password manager. Delete the run (or at least the
+# artifact) after copying them: anyone who can read the repository's Actions can download it
+# until then. Running it again makes a DIFFERENT key, and an APK signed with another key cannot be
+# installed over the current one without uninstalling (which deletes the documents on the phone).
+name: Create signing key
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type CREATE to make a new key (only once; see docs/android-release.md)"
+        required: true
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  key:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "CREATE" ]; then
+            echo "::error::Type CREATE in the confirm box to make a new key."
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Generate
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p out
+          password=$(openssl rand -base64 30 | tr -d '/+=' | cut -c1-32)
+          echo "::add-mask::$password"
+          keytool -genkeypair -v -storetype PKCS12 -keystore out/detour-release.keystore \
+            -alias detour -keyalg RSA -keysize 4096 -validity 10000 \
+            -storepass "$password" -keypass "$password" \
+            -dname "CN=Detour, O=Detour (personal build)" > /dev/null 2>&1
+          base64 -w0 out/detour-release.keystore > out/DETOUR_KEYSTORE_BASE64.txt
+          printf '%s' "$password" > out/DETOUR_KEYSTORE_PASSWORD.txt
+          printf '%s' "detour" > out/DETOUR_KEY_ALIAS.txt
+          printf '%s' "$password" > out/DETOUR_KEY_PASSWORD.txt
+          keytool -list -v -keystore out/detour-release.keystore -storepass "$password" \
+            | grep -E "SHA256:" | head -1 | sed 's/^\s*/Certificate fingerprint /' > out/fingerprint.txt
+          cat out/fingerprint.txt
+          {
+            echo "### Signing key created"
+            echo
+            echo "Download the artifact **signing-key**, put each DETOUR_*.txt file's contents into the"
+            echo "repository secret of the same name, keep detour-release.keystore and the password in a"
+            echo "password manager, then delete this run. $(cat out/fingerprint.txt)"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signing-key
+          path: out/
+          retention-days: 1
+          if-no-files-found: error

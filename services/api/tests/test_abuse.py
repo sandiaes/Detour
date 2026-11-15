@@ -84,6 +84,7 @@ def test_photos_have_their_own_bucket() -> None:
     assert limiter.check("GET", "/v1/trips", None) > 0  # the anonymous bucket is empty
     assert all(limiter.check("GET", f"/v1/images/{n}", None) == 0.0 for n in range(5))
     assert limiter.check("GET", "/v1/images/x", None) > 0
+    assert limiter.check("GET", "/v1/cover-previews/x", None) > 0  # the same bucket
 
 
 def test_limits_can_be_switched_off() -> None:
