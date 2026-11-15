@@ -34,6 +34,8 @@ tab; "Start a fresh trip" and "Generate itineraries" on the new-trip screen, no 
 paragraphs below were written before this decision, so where they describe meals, meal windows,
 cuisines, imported restaurants or the slot engine they are out of date.
 
+**Owner's UI requests of 2026-11-15** (ADR 021, decisions 92 to 94, built, awaiting acceptance): a Car pill on the new-trip screen (`app.trip.uses_car`, migration `0018`; off means Optimize only walks), a Day drop-down in Edit time, and Add a place opening on the open day at its first free time.
+
 **A design system is built** (2026-11-15, ADR 021 amendment, decisions 78 to 90; `docs/design-audit.md`,
 `docs/design.md`; built and awaiting acceptance, **checked by tests only, not on a device**): one set of
 tokens in `theme.ts` and one set of components in `components/ds` that every screen uses (green main

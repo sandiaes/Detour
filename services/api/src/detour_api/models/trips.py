@@ -65,6 +65,10 @@ class TripCreate(StrictModel):
     )
     duration_days: int = Field(ge=1, le=30)
     start_date: date | None = None
+    uses_car: bool = Field(
+        default=True,
+        description="False: Optimize considers walking only, never driving",
+    )
 
     @model_validator(mode="after")
     def _destination_or_stops(self) -> Self:
@@ -116,6 +120,7 @@ class TripUpdate(StrictModel):
     duration_days: int | None = Field(default=None, ge=1, le=30)
     start_date: date | None = None
     selected_itinerary_id: uuid.UUID | None = None
+    uses_car: bool | None = None
 
 
 class Destination(BaseModel):
@@ -152,6 +157,9 @@ class Trip(BaseModel):
     )
     stops_version: int = Field(
         default=0, description="Counts applied stop edits; a plan records the one it was made for"
+    )
+    uses_car: bool = Field(
+        default=True, description="False: Optimize considers walking only, never driving"
     )
     created_at: datetime
     updated_at: datetime

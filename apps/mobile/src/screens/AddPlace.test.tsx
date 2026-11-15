@@ -553,6 +553,27 @@ test("choose the day and the time directly, without a proposal", async () => {
   });
 });
 
+test("Choose day and time starts on the open day, at its first free time", async () => {
+  const client = server({ [ITEM_PATH]: () => ({ id: "new" }) });
+  await render(
+    <Harness client={client} initial={{ ...planRoute, day: 2 }}>
+      <AppContent />
+    </Harness>,
+  );
+  await fireEvent.press(await screen.findByTestId("add-place"));
+  await search("Prat");
+  await fireEvent.press(await screen.findByLabelText(/Prater, theme park/));
+  await fireEvent.press(screen.getByTestId("how-choose"));
+  expect(screen.getByTestId("slot-day")).toHaveTextContent(/Day 2/);
+  // Nothing was typed, so the time is the day's first free time, not a fixed hour.
+  const suggested = screen.getByTestId("slot-time").props.value as string;
+  expect(suggested).toMatch(/^\d\d:\d\d$/);
+  await fireEvent.press(screen.getByTestId("add-at-time"));
+  const added = client.calls.find((c) => c.path.endsWith("/days/{day_index}/items"));
+  expect(added?.params).toMatchObject({ day_index: 2 });
+  expect(added?.body).toMatchObject({ start_time: suggested });
+});
+
 test("an empty trip has no suggestion button: the day and time are chosen", async () => {
   const empty = { ...makeItinerary("essentials"), profile: "manual" } as never;
   const client = await openPlan(

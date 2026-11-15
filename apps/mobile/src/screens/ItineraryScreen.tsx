@@ -169,7 +169,12 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
             testID="add-place"
             hint="Search or drop a pin; you see what would change first"
             onPress={() =>
-              nav.push({ name: "addPlace", tripId: route.tripId, itineraryId: route.itineraryId })
+              nav.push({
+                name: "addPlace",
+                tripId: route.tripId,
+                itineraryId: route.itineraryId,
+                day: route.day,
+              })
             }
           />
           <Button
@@ -184,6 +189,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
                 name: "addRestaurant",
                 tripId: route.tripId,
                 itineraryId: route.itineraryId,
+                day: route.day,
               })
             }
           />

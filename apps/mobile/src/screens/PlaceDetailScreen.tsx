@@ -28,6 +28,8 @@ import {
   TimeField,
   WakingServer,
   ConfirmSheet,
+  ChoiceRow,
+  SelectField,
   useAnnounceOnMount,
 } from "../components/ds";
 import { dayTitle } from "../components/plan/DayPlan";
@@ -41,7 +43,7 @@ import { useResource } from "../data/DataProvider";
 import { STOP_KIND_LABEL, isEatKind, stopKind } from "../domain/itinerary";
 import { useNavigation } from "../nav/Navigator";
 import { border, colors, layout, radius, spacing, type, weight } from "../theme";
-import { formatClock, formatDate, formatMinutes } from "../util/format";
+import { formatClock, formatDate, formatDayLabel, formatMinutes } from "../util/format";
 
 // One stop of a plan (ADR 021, step 3): what Detour knows about it, and nothing it does not.
 // There is no description, rating, price or opening hours in the data (ADR 003, ADR 017,
@@ -164,17 +166,24 @@ function EditDisplayName({
  * neighbouring stop cannot be saved. */
 function EditLength({
   day,
+  days,
+  startDate,
   item,
   itineraryId,
   onSaved,
 }: {
   day: Day;
+  /** Every day of the plan: the stop can be moved to any of them. */
+  days: Day[];
+  startDate: string | null;
   item: Item;
   itineraryId: string;
   onSaved: () => void;
 }) {
   const changes = useChangeActions();
   const [open, setOpen] = useState(false);
+  const [dayIndex, setDayIndex] = useState(day.day_index);
+  const [pickingDay, setPickingDay] = useState(false);
   const [minutes, setMinutes] = useState<number | null>(item.duration_minutes);
   const ownStart = formatClock(item.start_time) ?? "";
   const [startText, setStartText] = useState(ownStart);
@@ -187,9 +196,17 @@ function EditLength({
   // An item with no time may stay without one; otherwise the time must be a time of day.
   const startValid = newStart !== null || (startText.trim() === "" && ownStart === "");
   const startChanged = newStart !== null && newStart !== ownStart;
+  const dayChanged = dayIndex !== day.day_index;
+  // The day the stop would be on: its clashes are checked there, with the time it would have.
+  const target = days.find((d) => d.day_index === dayIndex) ?? day;
   const check =
     valid && startValid
-      ? checkDuration(day, item, effective, startChanged ? newStart : null)
+      ? checkDuration(
+          target,
+          item,
+          effective,
+          startChanged ? newStart : dayChanged ? (newStart ?? null) : null,
+        )
       : null;
 
   if (!open) {
@@ -203,6 +220,8 @@ function EditLength({
         onPress={() => {
           setMinutes(item.duration_minutes);
           setStartText(ownStart);
+          setDayIndex(day.day_index);
+          setPickingDay(false);
           setValid(true);
           setProblem(null);
           setOpen(true);
@@ -214,23 +233,27 @@ function EditLength({
     minutes === null
       ? item.duration_source === "category_default"
       : minutes === item.duration_minutes;
-  const unchanged = lengthUnchanged && !startChanged;
+  const unchanged = lengthUnchanged && !startChanged && !dayChanged;
   const save = async () => {
     setBusy(true);
     setProblem(null);
     try {
       // Only what changed is sent. A new start keeps the day in time order.
-      const position = startChanged
-        ? day.items.filter(
-            (o) =>
-              o.id !== item.id &&
-              o.start_time !== null &&
-              (formatClock(o.start_time) ?? "") <= newStart,
-          ).length + 1
-        : undefined;
+      const at = startChanged ? newStart : ownStart;
+      const position =
+        (startChanged || dayChanged) && at
+          ? target.items.filter(
+              (o) =>
+                o.id !== item.id &&
+                o.start_time !== null &&
+                (formatClock(o.start_time) ?? "") <= at,
+            ).length + 1
+          : undefined;
       await changes.setSchedule(itineraryId, item.id, {
         ...(lengthUnchanged ? {} : { minutes }),
-        ...(startChanged ? { startTime: newStart, position } : {}),
+        ...(startChanged ? { startTime: newStart } : {}),
+        ...(dayChanged ? { dayIndex } : {}),
+        ...(position !== undefined ? { position } : {}),
       });
       setOpen(false);
       onSaved();
@@ -242,6 +265,35 @@ function EditLength({
   };
   return (
     <View style={styles.lengthEditor} testID="length-editor">
+      <SelectField
+        label="Day"
+        placeholder="Choose a day"
+        icon="calendar"
+        value={formatDayLabel(startDate, dayIndex)}
+        open={pickingDay}
+        onToggle={() => setPickingDay((o) => !o)}
+        testID="edit-day"
+      >
+        {days.map((d) => (
+          <ChoiceRow
+            key={d.day_index}
+            title={formatDayLabel(startDate, d.day_index)}
+            meta={
+              d.day_index === day.day_index
+                ? "Now here"
+                : d.items.length === 0
+                  ? "Nothing planned yet"
+                  : `${d.items.length} planned`
+            }
+            selected={dayIndex === d.day_index}
+            testID={`edit-day-${d.day_index}`}
+            onPress={() => {
+              setDayIndex(d.day_index);
+              setPickingDay(false);
+            }}
+          />
+        ))}
+      </SelectField>
       <TimeField label="Start time" value={startText} onChange={setStartText} testID="edit-start" />
       <DurationField
         label="Length of stay"
@@ -499,8 +551,10 @@ export function PlaceDetailScreen({
             />
             {lengthEditable ? (
               <EditLength
-                key={`${item.id}:${item.duration_minutes}`}
+                key={`${item.id}:${item.duration_minutes}:${day.day_index}`}
                 day={day}
+                days={plan.data.days}
+                startDate={trip?.start_date ?? null}
                 item={item}
                 itineraryId={itineraryId}
                 onSaved={plan.refresh}

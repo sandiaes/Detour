@@ -8319,6 +8319,12 @@
             "description": "Counts applied stop edits; a plan records the one it was made for",
             "default": 0
           },
+          "uses_car": {
+            "type": "boolean",
+            "title": "Uses Car",
+            "description": "False: Optimize considers walking only, never driving",
+            "default": true
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -8469,6 +8475,12 @@
               }
             ],
             "title": "Start Date"
+          },
+          "uses_car": {
+            "type": "boolean",
+            "title": "Uses Car",
+            "description": "False: Optimize considers walking only, never driving",
+            "default": true
           }
         },
         "additionalProperties": false,
@@ -8626,6 +8638,17 @@
               }
             ],
             "title": "Selected Itinerary Id"
+          },
+          "uses_car": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uses Car"
           }
         },
         "additionalProperties": false,

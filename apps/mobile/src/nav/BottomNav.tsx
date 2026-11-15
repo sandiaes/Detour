@@ -147,6 +147,12 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
     onClose();
     nav.push(route);
   };
+  // The day open on the trip's map or day list, if one is.
+  const open = nav.route;
+  const day =
+    (open.name === "tripOverview" || open.name === "itinerary") && open.day !== undefined
+      ? { day: open.day }
+      : {};
 
   return (
     <Sheet visible title="Add to this trip" onClose={onClose}>
@@ -158,7 +164,9 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
           disabled={!planId}
           disabledLabel="Not now"
           testID="add-sheet-place"
-          onPress={planId ? () => go({ name: "addPlace", tripId, itineraryId: planId }) : undefined}
+          onPress={
+            planId ? () => go({ name: "addPlace", tripId, itineraryId: planId, ...day }) : undefined
+          }
         />
         <ListRow
           icon="restaurant"
@@ -168,7 +176,9 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
           disabledLabel="Not now"
           testID="add-sheet-restaurant"
           onPress={
-            planId ? () => go({ name: "addRestaurant", tripId, itineraryId: planId }) : undefined
+            planId
+              ? () => go({ name: "addRestaurant", tripId, itineraryId: planId, ...day })
+              : undefined
           }
         />
         <ListRow icon="transport" title="Transport" detail="A train, bus or drive" disabled />

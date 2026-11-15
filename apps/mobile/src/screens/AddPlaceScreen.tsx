@@ -671,6 +671,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 <ChooseSlot
                   days={itinerary.data.days}
                   startDate={trip?.start_date ?? null}
+                  initialDay={route.day}
                   minutes={minutes ?? defaultMinutesFor(choice) ?? 60}
                   name={choiceName(choice, customName)}
                   working={working === "preview"}

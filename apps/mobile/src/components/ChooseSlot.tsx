@@ -3,6 +3,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { parseClock } from "../domain/clock";
+import { firstAvailableTime } from "../domain/duration";
 import { layout } from "../theme";
 import { formatClock, formatDayLabel, formatMinutes } from "../util/format";
 import { Button, ChoiceRow, SelectField, TimeField } from "./ds";
@@ -10,9 +11,6 @@ import { DurationField } from "./ds/DurationField";
 
 // Putting a place on a day at a time the user picks, with no proposal. It is the only way to fill
 // an empty trip (nothing to recalculate), and an option on a planned one.
-
-/** Where a day's start time suggestion comes from for a restaurant or café: the midday gap. */
-export const EATING_START = "13:00";
 
 export type ChosenSlot = {
   day: number;
@@ -36,7 +34,7 @@ export function positionFor(day: Day | undefined, time: string): number {
 export function ChooseSlot({
   days,
   startDate,
-  defaultTime = "10:00",
+  initialDay,
   minutes: fixedMinutes,
   defaultMinutes = null,
   name,
@@ -46,8 +44,9 @@ export function ChooseSlot({
 }: {
   days: Day[];
   startDate: string | null;
-  /** The start time suggested first (the user can change it). */
-  defaultTime?: string;
+  /** The day open when the user chose to add a place; day 1 when none was open. The start time
+   * is the first free time of the chosen day until the user types or picks one. */
+  initialDay?: number;
   /** How long the place gets, when the screen already asked; otherwise it is asked here. */
   minutes: number | null;
   /** The usual length offered by the pill when it is asked here (a restaurant's or cafe's). */
@@ -57,9 +56,21 @@ export function ChooseSlot({
   disabled: boolean;
   onSubmit: (slot: ChosenSlot) => void;
 }) {
-  const [day, setDay] = useState(days[0]?.day_index ?? 1);
+  const [day, setDay] = useState(
+    days.some((d) => d.day_index === initialDay)
+      ? (initialDay as number)
+      : (days[0]?.day_index ?? 1),
+  );
   const [picking, setPicking] = useState(false);
-  const [timeText, setTimeText] = useState(defaultTime);
+  const slotMinutes = fixedMinutes ?? defaultMinutes ?? 60;
+  const [timeText, setTimeText] = useState(() =>
+    firstAvailableTime(
+      days.find((d) => d.day_index === day),
+      slotMinutes,
+    ),
+  );
+  // Until the user sets a time, choosing another day suggests that day's first free time.
+  const [timeSet, setTimeSet] = useState(false);
   // null: the usual length. Typed lengths replace it.
   const [ownMinutes, setOwnMinutes] = useState<number | null>(null);
   const [ownValid, setOwnValid] = useState(true);
@@ -88,11 +99,20 @@ export function ChooseSlot({
             onPress={() => {
               setDay(d.day_index);
               setPicking(false);
+              if (!timeSet) setTimeText(firstAvailableTime(d, slotMinutes));
             }}
           />
         ))}
       </SelectField>
-      <TimeField label="Start time" value={timeText} onChange={setTimeText} testID="slot-time" />
+      <TimeField
+        label="Start time"
+        value={timeText}
+        onChange={(t) => {
+          setTimeSet(true);
+          setTimeText(t);
+        }}
+        testID="slot-time"
+      />
       {fixedMinutes === null ? (
         <DurationField
           minutes={ownMinutes}
