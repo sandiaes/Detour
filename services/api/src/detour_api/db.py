@@ -15,13 +15,23 @@ EXPECTED_SCHEMAS = ("app", "geo")
 SEARCH_PATH = "public, extensions"
 
 
+# The pool. A request holds one connection, and several helpers open a second one while it is
+# still open (the travel-time cache, the provider budget counter, the background name lookup), so a
+# pool of 2 with no overflow stalled for the 30 s pool timeout whenever two requests overlapped
+# (2026-11-15). Up to 10 connections is still far below the Supabase Free pooler's limit; a stall
+# now fails after 10 s, not 30.
+POOL_SIZE = 4
+POOL_MAX_OVERFLOW = 6
+POOL_TIMEOUT_SECONDS = 10
+
+
 def make_engine(url: str) -> Engine:
-    # Small pool: the Supabase Free pooler and the 512 MB Render instance are both tight.
     engine = create_engine(
         url,
         pool_pre_ping=True,
-        pool_size=2,
-        max_overflow=0,
+        pool_size=POOL_SIZE,
+        max_overflow=POOL_MAX_OVERFLOW,
+        pool_timeout=POOL_TIMEOUT_SECONDS,
         connect_args={"connect_timeout": 5},
     )
 
