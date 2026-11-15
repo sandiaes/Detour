@@ -300,7 +300,7 @@ test("a document can carry a date and notes, and both are kept", async () => {
   await fireEvent.press(await screen.findByTestId("choose-file"));
   await fireEvent.press(screen.getByRole("button", { name: "Booking" }));
   await fireEvent.changeText(screen.getByTestId("document-notes"), "Window seat");
-  expect(screen.getByText("11/500")).toBeOnTheScreen();
+  expect(screen.getByText("11/500 characters")).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("document-date"));
   await fireEvent.press(screen.getByTestId(`cal-${localToday().slice(0, 8)}20`));
   await fireEvent.press(screen.getByTestId("save-document"));

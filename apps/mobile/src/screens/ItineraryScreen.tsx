@@ -1,6 +1,6 @@
 import type { Itinerary, Item, Trip } from "@detour/shared";
 import { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError } from "../api/unwrap";

@@ -217,9 +217,7 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
           <Button label="Show the day list" variant="secondary" size="sm" onPress={onShowList} />
         </View>
       ) : null}
-      {status === "loading" ? (
-        <MapChip text="Loading the map…" live />
-      ) : null}
+      {status === "loading" ? <MapChip text="Loading the map…" live /> : null}
       {points.length > shownCount ? (
         <MapChip text={`Placing stops ${shownCount} of ${points.length}…`} />
       ) : null}

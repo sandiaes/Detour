@@ -2,12 +2,19 @@ import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
-import { Card, LoadingState, Notice, ScreenHeader } from "../components/ui";
+import {
+  Button,
+  InlineStatus,
+  ListRow,
+  Notice,
+  RowGroup,
+  ScreenHeader,
+  SectionHeader,
+} from "../components/ds";
 import { ArchiveError, type ReadArchive, describeFile } from "../exchange/archive";
 import { type ImportOutcome, useExchange } from "../exchange/useExchange";
 import { useNavigation } from "../nav/Navigator";
-import { colors, spacing, type } from "../theme";
+import { colors, layout, spacing, type } from "../theme";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -81,7 +88,7 @@ export function ImportScreen({ uri }: { uri?: string }) {
               copies; nothing you have is changed or replaced.
             </Text>
           ) : null}
-          {busy === "reading" ? <LoadingState text="Reading the file…" /> : null}
+          {busy === "reading" ? <InlineStatus busy text="Reading the file…" /> : null}
           {problem ? <Notice tone="error">{problem}</Notice> : null}
           {!exchange.connected ? (
             <Notice tone="info">Importing needs a connection to the server.</Notice>
@@ -89,21 +96,23 @@ export function ImportScreen({ uri }: { uri?: string }) {
 
           {summary ? (
             <>
-              <Text accessibilityRole="header" style={styles.heading}>
-                In this file
-              </Text>
-              {summary.trips.map((t, n) => (
-                <Card key={n}>
-                  <Text style={styles.title}>{t.title}</Text>
-                  <Text style={styles.small}>
-                    {`${t.destination} · ${plural(t.days, "day", "days")} · ${
+              <SectionHeader title="In this file" />
+              <RowGroup>
+                {summary.trips.map((t, n) => (
+                  <ListRow
+                    key={n}
+                    icon="trips"
+                    title={t.title}
+                    detail={`${t.destination} · ${plural(t.days, "day", "days")} · ${
                       t.past
                         ? `past trip, ${plural(t.stops, "stop", "stops")} kept`
                         : plural(t.stops, "stop", "stops")
                     }`}
-                  </Text>
-                </Card>
-              ))}
+                    inset="none"
+                    trailing={null}
+                  />
+                ))}
+              </RowGroup>
               <Text style={styles.small}>
                 {summary.documents > 0
                   ? `${plural(summary.documents, "document", "documents")} come with the trips.`
@@ -167,10 +176,8 @@ export function ImportScreen({ uri }: { uri?: string }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { paddingBottom: spacing.xl },
-  pad: { paddingHorizontal: spacing.lg, gap: spacing.lg },
-  body: { ...type.body, color: colors.text },
-  heading: { ...type.headline, color: colors.text },
-  title: { ...type.body, color: colors.text, fontWeight: "600" },
-  small: { ...type.label, color: colors.muted },
+  content: { paddingBottom: spacing.xxl },
+  pad: { paddingHorizontal: layout.gutter, gap: layout.section },
+  body: { ...type.label, color: colors.text },
+  small: { ...type.caption, color: colors.muted },
 });

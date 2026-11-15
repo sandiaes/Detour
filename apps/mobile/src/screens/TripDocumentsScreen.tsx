@@ -3,11 +3,11 @@ import { ScrollView, StyleSheet, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
 import { DocumentList } from "../components/documents/DocumentList";
-import { ErrorState, LoadingState, ScreenHeader } from "../components/ui";
+import { ErrorState, LoadingState, ScreenHeader } from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useNavigation } from "../nav/Navigator";
-import { spacing } from "../theme";
+import { layout, spacing } from "../theme";
 
 /** A trip's documents as a screen of their own: how a past trip reaches them (ADR 023). */
 export function TripDocumentsScreen({ tripId }: { tripId: string }) {
@@ -32,5 +32,5 @@ export function TripDocumentsScreen({ tripId }: { tripId: string }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  content: { paddingHorizontal: layout.gutter, paddingBottom: spacing.xxl },
 });

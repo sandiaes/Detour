@@ -3,13 +3,21 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
-import { Card, EmptyState, ErrorState, LoadingState, Notice, ScreenHeader } from "../components/ui";
+import {
+  Button,
+  ConfirmSheet,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Notice,
+  ScreenHeader,
+  Section,
+} from "../components/ds";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useDocumentActions } from "../documents/DocumentsProvider";
 import { useNavigation } from "../nav/Navigator";
-import { colors, spacing, type } from "../theme";
+import { colors, layout, spacing, type } from "../theme";
 import { formatTripSpan } from "../util/format";
 
 /** Settings of one trip: ask for new proposals, or delete the trip. */
@@ -77,6 +85,8 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
       // The places are the screen to see now; going back from it returns to the trips.
       nav.resetTo([{ name: "trips" }, { name: "pastTrip", tripId: trip.id }]);
     } catch (e) {
+      // Close the sheet so the problem is in view.
+      setConfirmArchive(false);
       setProblem(describeError(e));
       setBusy(null);
     }
@@ -91,6 +101,7 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
       await documents.removeTrip(trip.id).catch(() => undefined);
       nav.switchRoot({ name: "trips" });
     } catch (e) {
+      setConfirmDelete(false);
       setProblem(describeError(e));
       setBusy(null);
     }
@@ -104,18 +115,15 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
           subtitle={`${trip.title} · ${formatTripSpan(trip.start_date, trip.end_date, trip.duration_days)}`}
           onBack={nav.back}
         />
-        {problem ? <Notice tone="error">{problem}</Notice> : null}
-        {!actions.connected ? (
-          <Notice tone="info">Changes to a trip need a connection to the server.</Notice>
-        ) : null}
+        <View style={styles.body}>
+          {problem ? <Notice tone="error">{problem}</Notice> : null}
+          {!actions.connected ? (
+            <Notice tone="info">Changes to a trip need a connection to the server.</Notice>
+          ) : null}
 
-        {!past && trip.destination.kind === "route" ? (
-          <View style={styles.pad}>
-            <Card>
-              <Text accessibilityRole="header" style={styles.heading}>
-                Your cities
-              </Text>
-              <Text style={styles.body}>
+          {!past && trip.destination.kind === "route" ? (
+            <Section title="Your cities">
+              <Text style={styles.text}>
                 {`${(trip.stops ?? []).map((x) => `${x.name} (${x.days})`).join(", ")}. Add, remove or reorder cities and change their days. ${
                   hasPlan
                     ? "You see what changes in your plan before anything is saved."
@@ -126,20 +134,16 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
                 testID="edit-stops"
                 label="Edit cities"
                 variant="secondary"
+                size="sm"
                 disabled={!actions.connected || busy !== null}
                 onPress={() => nav.push({ name: "editStops", tripId: trip.id })}
               />
-            </Card>
-          </View>
-        ) : null}
+            </Section>
+          ) : null}
 
-        {!past && trip.destination.kind !== "place" ? (
-          <View style={styles.pad}>
-            <Card>
-              <Text accessibilityRole="header" style={styles.heading}>
-                Proposals
-              </Text>
-              <Text style={styles.body}>
+          {!past && trip.destination.kind !== "place" ? (
+            <Section title="Proposals">
+              <Text style={styles.text}>
                 {hasPlan
                   ? "Ask Detour for two new proposals and choose again. Your current plan, with the places you added, stays selected until you choose another."
                   : "Ask Detour for two new proposals to compare."}
@@ -148,6 +152,7 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
                 testID="regenerate"
                 label="Get new proposals"
                 variant="secondary"
+                size="sm"
                 loading={busy === "generate"}
                 disabled={!actions.connected || busy !== null}
                 onPress={() => void regenerate()}
@@ -155,17 +160,12 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
               {busy === "generate" ? (
                 <Text style={styles.note}>Planning… this usually takes a few seconds.</Text>
               ) : null}
-            </Card>
-          </View>
-        ) : null}
+            </Section>
+          ) : null}
 
-        {!past ? (
-          <View style={styles.pad}>
-            <Card>
-              <Text accessibilityRole="header" style={styles.heading}>
-                Mark as a past trip
-              </Text>
-              <Text style={styles.body}>
+          {!past ? (
+            <Section title="Mark as a past trip">
+              <Text style={styles.text}>
                 {`A trip also becomes a past trip by itself two days after its last day, when it has dates. Detour keeps the title, destination, dates and ${
                   hasPlan
                     ? "the cities and attractions of your chosen plan"
@@ -174,91 +174,69 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
                       : "nothing else (no plan is chosen, so no cities or attractions)"
                 }, and shows them on a map. It deletes the plans, routes and travel times. Meals and restaurants are not kept. This cannot be undone.`}
               </Text>
-              {confirmArchive ? (
-                <View style={styles.confirm}>
-                  <Notice tone="error" label="Mark as a past trip?">
-                    {`“${trip.title}” will lose its plans for good.`}
-                  </Notice>
-                  <Button
-                    testID="confirm-archive"
-                    label="Yes, mark as past"
-                    loading={busy === "archive"}
-                    disabled={busy !== null}
-                    onPress={() => void markPast()}
-                  />
-                  <Button
-                    label="Keep planning"
-                    variant="secondary"
-                    disabled={busy !== null}
-                    onPress={() => setConfirmArchive(false)}
-                  />
-                </View>
-              ) : (
-                <Button
-                  testID="archive-trip"
-                  label="Mark as past trip"
-                  variant="secondary"
-                  disabled={!actions.connected || busy !== null}
-                  accessibilityLabel={`Mark the trip ${trip.title} as a past trip`}
-                  onPress={() => setConfirmArchive(true)}
-                />
-              )}
-            </Card>
-          </View>
-        ) : null}
+              <Button
+                testID="archive-trip"
+                label="Mark as past trip"
+                variant="secondary"
+                tone="danger"
+                size="sm"
+                disabled={!actions.connected || busy !== null}
+                accessibilityLabel={`Mark the trip ${trip.title} as a past trip`}
+                onPress={() => setConfirmArchive(true)}
+              />
+            </Section>
+          ) : null}
 
-        <View style={styles.pad}>
-          <Card>
-            <Text accessibilityRole="header" style={styles.heading}>
-              Delete this trip
-            </Text>
-            <Text style={styles.body}>
+          <Section title="Delete this trip">
+            <Text style={styles.text}>
               {past
                 ? "Removes the trip, its saved places and its documents on this phone for good. This cannot be undone."
                 : "Removes the trip, all its plans and its documents on this phone for good. This cannot be undone."}
             </Text>
-            {confirmDelete ? (
-              <View style={styles.confirm}>
-                <Notice tone="error" label="Delete this trip?">
-                  {`“${trip.title}” and all its plans will be deleted.`}
-                </Notice>
-                <Button
-                  testID="confirm-delete"
-                  label="Yes, delete the trip"
-                  loading={busy === "delete"}
-                  disabled={busy !== null}
-                  onPress={() => void remove()}
-                />
-                <Button
-                  label="Keep the trip"
-                  variant="secondary"
-                  disabled={busy !== null}
-                  onPress={() => setConfirmDelete(false)}
-                />
-              </View>
-            ) : (
-              <Button
-                testID="delete-trip"
-                label="Delete trip"
-                variant="secondary"
-                disabled={!actions.connected || busy !== null}
-                accessibilityLabel={`Delete the trip ${trip.title}`}
-                onPress={() => setConfirmDelete(true)}
-              />
-            )}
-          </Card>
+            <Button
+              testID="delete-trip"
+              label="Delete trip"
+              variant="secondary"
+              tone="danger"
+              size="sm"
+              disabled={!actions.connected || busy !== null}
+              accessibilityLabel={`Delete the trip ${trip.title}`}
+              onPress={() => setConfirmDelete(true)}
+            />
+          </Section>
         </View>
       </ScrollView>
+
+      <ConfirmSheet
+        visible={confirmArchive}
+        title="Mark as a past trip?"
+        message={`“${trip.title}” will lose its plans for good.`}
+        confirmLabel="Yes, mark as past"
+        cancelLabel="Keep planning"
+        confirmTestID="confirm-archive"
+        busy={busy === "archive"}
+        onConfirm={() => void markPast()}
+        onCancel={() => setConfirmArchive(false)}
+      />
+      <ConfirmSheet
+        visible={confirmDelete}
+        title="Delete this trip?"
+        message={`“${trip.title}” and all its plans will be deleted.`}
+        confirmLabel="Yes, delete the trip"
+        cancelLabel="Keep the trip"
+        confirmTestID="confirm-delete"
+        busy={busy === "delete"}
+        onConfirm={() => void remove()}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { paddingBottom: spacing.xxl, gap: spacing.md },
-  pad: { paddingHorizontal: spacing.lg },
-  heading: { ...type.headline, color: colors.text },
-  body: { ...type.body, color: colors.text },
-  note: { ...type.label, color: colors.muted },
-  confirm: { gap: spacing.sm },
+  content: { paddingBottom: spacing.xxl },
+  body: { paddingHorizontal: layout.gutter, gap: layout.section },
+  text: { ...type.label, color: colors.text },
+  note: { ...type.caption, color: colors.muted },
 });

@@ -388,5 +388,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radius.md,
   },
-  tileName: { ...type.caption, fontWeight: weight.semibold, color: colors.text, textAlign: "center" },
+  tileName: {
+    ...type.caption,
+    fontWeight: weight.semibold,
+    color: colors.text,
+    textAlign: "center",
+  },
 });

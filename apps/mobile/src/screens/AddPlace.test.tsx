@@ -385,9 +385,7 @@ test("up to three suggested days show the time, travel and what else changes", a
   ).toBeOnTheScreen();
   expect(screen.getByText("+12 min travel (estimated)")).toBeOnTheScreen();
   expect(screen.getByText("Café Ohne Angabe: 18:30 → 19:00")).toBeOnTheScreen();
-  expect(
-    screen.getByText("Adds the least travel of the days that can take it."),
-  ).toBeOnTheScreen();
+  expect(screen.getByText("Adds the least travel of the days that can take it.")).toBeOnTheScreen();
   // The alternative leaves a visit out, and says so first, as a warning.
   expect(screen.getByText("Day 2 · 10:05–12:05")).toBeOnTheScreen();
   expect(screen.getByText("Leaves out Kunsthaus (day 2)")).toBeOnTheScreen();

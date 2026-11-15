@@ -13,7 +13,6 @@ import { Button, IconButton, MapChip, Notice, StopMark, Tile } from "./ds";
 const PADDING = { top: 72, right: 56, bottom: 72, left: 56 };
 /** Android's minimum touch target; the markers are drawn smaller inside it. */
 
-
 type Props = {
   points: PastPoint[];
   map: ClientConfig["map"];
@@ -120,9 +119,7 @@ export function PastTripMap({ points, map, onShowList }: Props) {
             <Button label="Show the list" variant="secondary" size="sm" onPress={onShowList} />
           </View>
         ) : null}
-        {status === "loading" ? (
-          <MapChip text="Loading the map…" live />
-        ) : null}
+        {status === "loading" ? <MapChip text="Loading the map…" live /> : null}
         {points.length > shownCount ? (
           <MapChip text={`Placing visits ${shownCount} of ${points.length}…`} />
         ) : null}
@@ -177,7 +174,13 @@ export function PastTripMap({ points, map, onShowList }: Props) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   clip: { overflow: "hidden" },
-  hit: { width: TOUCH, height: TOUCH, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },
+  hit: {
+    width: TOUCH,
+    height: TOUCH,
+    minHeight: TOUCH,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   failure: {
     position: "absolute",
     top: spacing.md,

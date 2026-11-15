@@ -50,7 +50,7 @@ test("the bottom bar has Trips, Explore, Add, Photos and More; Settings is under
   expect(await screen.findByRole("header", { name: "More" })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: /^Settings\./ }));
   expect(await screen.findByRole("header", { name: "Settings" })).toBeOnTheScreen();
-  expect(screen.getByText("Status: connected")).toBeOnTheScreen();
+  expect(screen.getByLabelText("Status: connected")).toBeOnTheScreen();
   expect(screen.getByText(/detour-api 0\.1\.0 \(abcdef1\)/)).toBeOnTheScreen();
   expect(await screen.findByText("© OpenStreetMap contributors")).toBeOnTheScreen();
   expect(screen.getByText("GeoNames")).toBeOnTheScreen();

@@ -118,7 +118,7 @@ test("a restaurant shows its kind and reservations as planned, and no cuisine", 
   await open("m1");
   expect(await screen.findByRole("header", { name: "Gasthaus Zum Test" })).toBeOnTheScreen();
   expect(screen.getAllByText(/^Restaurant/).length).toBeGreaterThanOrEqual(2); // kind line and type
-  expect(screen.getByLabelText("Type: Restaurant.")).toBeOnTheScreen();
+  expect(screen.getByLabelText("Type: Restaurant")).toBeOnTheScreen();
   expect(screen.queryByText(/ruisine|Lunch|Diet|vegetarian/)).toBeNull();
   expect(screen.getByText("Notes, photos and reservations")).toBeOnTheScreen();
   expect(screen.getByText("Bookings and documents")).toBeOnTheScreen();
@@ -129,7 +129,7 @@ test("a restaurant shows its kind and reservations as planned, and no cuisine", 
 
 test("a café shows its kind", async () => {
   await open("m2");
-  expect(await screen.findByLabelText("Type: Café.")).toBeOnTheScreen();
+  expect(await screen.findByLabelText("Type: Café")).toBeOnTheScreen();
   expect(screen.queryByText(/ruisine|Dinner/)).toBeNull();
 });
 
