@@ -506,49 +506,86 @@ Scope guards:
 
 # Prompt 10 — MVP hardening and private Android APK (Phase 9)
 
-**Status:** after Prompt 9.  
+**Status:** revised 2026-11-15 for the manager-first product (ADR 026 to 029, ADR 021 amendments).
+Run it after the owner has accepted, changed or rejected the work that "awaits acceptance".  
 **Recommended model:** Claude Opus  
 **Effort:** High  
 **App-plan phase:** 9
 
 ```text
-Read CLAUDE.md, README.md and every document in docs/, including the ADRs and spike notes.
+Read CLAUDE.md, README.md and every document in docs/, including the ADRs and spike notes. Where
+CLAUDE.md and an older document disagree, CLAUDE.md and the newest ADR win.
 
-Task: stabilise Detour for the owner's own use as a sideloaded Android APK. No new product
-features.
+Task: stabilise Detour for the owner's own use as a sideloaded Android APK (ADR 008). No new
+product features. The product is a trip manager and travel history first: trips usually start
+empty, itineraries are an optional sights-only helper, restaurants and cafes are user places.
 
-1. Audit: requirements implemented, incomplete items, architecture consistency, provider-term
-   compliance and attribution, quotas, error handling, data correctness, itinerary feasibility
-   (meal windows and day length included), accessibility, performance, privacy, security, test
-   coverage. Confirm that no budget, currency or price remains anywhere (ADR 017).
-2. Resilience (only what the plan has): an on-device read cache with honest "cached, last
-   updated" labels, retry with backoff, network-status handling, a clear state for each external
-   dependency being slow or down (Render cold start, Supabase paused or limited, FOSSGIS
-   throttled, Photon unavailable).
+1. Audit, and write the result to docs/audit-phase-9.md: for each ADR still "proposed" or
+   "awaits acceptance" (013 to 016, 018 to 026 and their amendments), what is built, what was
+   only tried on synthetic fixtures, and what needs the owner on a phone. Also check: provider
+   terms and attribution, quotas, error handling, data correctness, accessibility, performance,
+   privacy, security, test coverage. Confirm that no budget, currency, price, meal window,
+   cuisine, meal type or restaurant slot remains anywhere in code, API, database or docs
+   (ADR 017, ADR 026), apart from history notes. Do not change the status of an ADR; list what
+   the owner must accept.
+2. Resilience (only what exists): the on-device read cache with honest "cached, last updated"
+   labels, retry with backoff, network-status handling, and a clear state for each dependency
+   being slow or down: Render cold start, Supabase paused or limited, FOSSGIS throttled, Photon
+   unavailable, Wikimedia or the image resolver unavailable, tiles down. Name-resolution and
+   image failures must fall back to the local name and the illustration, never to an error.
 3. Privacy and security: docs/privacy.md and docs/security.md with a threat model covering keys
    in the app binary (there must be none), unauthorised use of the public API without accounts
-   (installation token plus rate limits), location history, provider terms and cached data, and
-   log leakage. Trip and local data deletion. No export unless approved.
-4. Backups: Supabase Free has none (ADR 005). Implement or document the scheduled export of the
-   `app` schema that the owner chose, or record that the owner accepted the risk.
-5. Test plan and execution for these journeys: a 3-day city trip; a 14-day area trip with several
-   base cities; an area in Japan (refused, single-city only); comparing two proposals; adding a
-   place and previewing the impact; an impossible addition; adding a provider restaurant; a
-   custom restaurant by map pin; using the app with no network (read cache); restarting and
-   recovering a saved trip; FOSSGIS unavailable or throttled (estimated times labelled); the
-   Render cold start; a paused database; undoing an adjustment. The Android end-to-end workflow
-   is started by hand; run it once and record the result.
-6. docs/android-release.md: exact steps to build the APK in GitHub Actions and install it on a
-   phone (step by step). docs/known-limitations.md. docs/ios-readiness.md (the Mac route,
+   (installation token plus rate limits), the location permission if the app asks for it,
+   documents kept on the phone only (lost on uninstall; say so), `.detour` export files that may
+   contain documents (ADR 028), cached provider data and its licence, log leakage, and the
+   deletion of trips and local data.
+4. Backups: Supabase Free has none (ADR 005). Implement or document a scheduled export of the
+   `app` schema, or record that the owner accepted the risk. Explain how it relates to
+   "Back up all trips" in the app, and what it does not cover (documents on the phone).
+5. Test plan and execution. Run each journey on the fixture database and, where the owner can,
+   on a phone; record pass, fail or "needs the owner":
+   a. Start a fresh empty trip, add a sight, a town, a pin, then a restaurant through Photon and
+      one by hand with a chosen day and time.
+   b. Generate itineraries for a 3-day city trip; compare the two proposals; choose one; confirm
+      the day list shows "Free time" and no restaurants.
+   c. A multi-city trip (2 to 6 cities): add, edit and remove a city through a change set.
+   d. Add a place to a planned itinerary and preview the impact; an impossible addition; undo a
+      change.
+   e. Optimize a hand-made trip within a day and across days, with locked and ticketed stops;
+      preview, apply, undo.
+   f. A destination outside the imported regions (empty place trip, ADR 027); suggestions are
+      refused.
+   g. Documents: add, link to a day or a place, open, delete with confirmation; kept on the
+      phone only.
+   h. Export one trip and all trips as `.detour` (with and without documents); import as a new
+      trip; a damaged or oversized file is refused clearly.
+   i. Mark a trip as past, and let one become past by date; the Days tab keeps stops, order,
+      start and length; clear skipped visits; the archive size report.
+   j. Names: a place in a non-Latin script shows the English-facing name, keeps the local name,
+      is found by either, and "Edit display name" persists.
+   k. Photos: cover and place photos with credits, "Change photo", "Image credits".
+   l. No network (read cache); restart and recover a saved trip; Render cold start; paused
+      database; FOSSGIS unavailable (estimated times labelled); Photon unavailable.
+   Run the "E2E Android" workflow once (flow `screenshot-tour`), record the result, and bring
+   `e2e/trip-flow.yaml` up to date with the screens. Do not claim a device check that was not
+   run: state "checked by tests only" where that is true.
+6. docs/android-release.md: exact steps to build the release APK in GitHub Actions and install
+   it on a phone, step by step, including how to update by hand (ADR 008). docs/known-limitations.md
+   (Japan not imported, no public transport, no weather, no sync, no offline maps, documents on the
+   phone only, Explore and Photos not built if still so). docs/ios-readiness.md (the Mac route,
    ADR 008).
+7. Performance pass: trip list, plan map, day list, Optimize and the multi-city planner on the
+   largest fixture; record numbers against docs/kpis.md and report any target missed.
 
-Fix defects within existing scope. Report: tests run, passed, failed, unresolved blockers,
-manual checks required, and whether the MVP is ready for the owner's own use. Do not claim
-readiness while critical journeys are untested.
+Fix defects within existing scope. Report: tests run, passed, failed, unresolved blockers, manual
+checks required from the owner, and whether the app is ready for the owner's own use. Do not
+claim readiness while a critical journey is untested.
 
 Scope guards:
-- Stabilisation only. No new features, no paid services, no LLM.
-- No app-store submission.
+- Stabilisation only. No new features, no paid services, no new provider, no LLM.
+- No app-store submission and no Play Console test (ADR 008).
+- Update the affected documents in the same change (CLAUDE.md "Current state", app-plan,
+  development.md, deployment.md).
 ```
 
 ---

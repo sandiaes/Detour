@@ -286,16 +286,35 @@ ADR 019).
 
 ### Phase 9 — MVP hardening and release
 
-**Goal:** a build fit for real trips.
+**Goal:** a build fit for the owner's own real trips, installed as a sideloaded APK (ADR 008).
+*Revised 2026-11-15:* the Play Console closed test is removed (ADR 008: no app stores), and the
+scope follows the manager-first direction (ADR 026). Meals, restaurant slots and Japan single-city
+checks no longer belong here.
 
-- **Deliverables:** failure-mode handling; tile-provider switch rehearsed with a PMTiles
-  extract; attribution and licence screen; privacy note; performance pass; backup of the `app`
-  schema; deployment to the chosen host; release build; Play Console closed test.
+- **Deliverables:**
+  - an audit of what is built against what is accepted, with the list of items still "awaiting
+    acceptance" turned into accepted, changed or rejected;
+  - failure-mode handling and a clear state for each dependency being slow or down (Render cold
+    start, Supabase paused or limited, FOSSGIS throttled, Photon unavailable, Wikimedia
+    unavailable, tiles down);
+  - tile-provider switch rehearsed with a PMTiles extract;
+  - attribution and licence screen (OpenStreetMap, GeoNames, Wikimedia credits, tile provider);
+  - `docs/privacy.md` and `docs/security.md`, covering the anonymous installation, documents
+    kept on the phone only, `.detour` export files (which may contain documents), the location
+    permission if used, and logs;
+  - backup of the `app` schema (scheduled export, or the owner's recorded acceptance of the
+    risk; Supabase Free has no backups, ADR 005);
+  - a performance pass on the trip list, the plan map, Optimize and the multi-city planner;
+  - the device checks the design system still owes (the "E2E Android" screenshot tour run once,
+    `e2e/trip-flow.yaml` brought up to date with the screens);
+  - deployment to the chosen host; a release-mode APK; `docs/android-release.md`,
+    `docs/known-limitations.md`, `docs/ios-readiness.md`.
 - **Tests:** full regression; KPI measurement run; chaos checks (routing down, search down,
-  tiles down).
-- **Dependencies:** Phase 8, D3.
-- **Risks:** a new personal Play account needs a closed test with at least 12 testers for 14
-  days before production access; plan the calendar for it. Play registration costs $25 once.
+  tiles down, images down); the journeys in Prompt 10 (`build-prompts.md`).
+- **Dependencies:** the owner's acceptance of the built work (section 7), D3.
+- **Risks:** hardening unaccepted work turns into feature fixes, so accept or reject first.
+  Documents live only on the phone, so an uninstall loses them; the export and "Back up all
+  trips" actions must be explained in the privacy note.
 
 ## 4. After the MVP
 
@@ -377,8 +396,8 @@ data change, history record, app); destinations (ADR 027), export and import (AD
 are built; saved ideas, notes and photos wait for the owner. The text below is older and still stands for the phases it names,
 except where ADR 026 retires them (Phase 8's slot costs, the imported restaurants).
 
-**Accept Phases 3 to 8, then Phase 9 (MVP hardening), when the owner asks for it
-(CLAUDE.md).** For Phase 8: confirm or change the slot costs of ADR 019 on a real imported city,
+**Accept the built work (Phases 3 to 8 and the ADR 021 to 029 changes), then Phase 9 (MVP
+hardening, revised 2026-11-15), when the owner asks for it (CLAUDE.md).** For Phase 8: confirm or change the slot costs of ADR 019 on a real imported city,
 add a restaurant from the map data, one from the wider search and one by hand on the phone, and
 decide whether removing an added restaurant is wanted. For Phase 7: confirm or change the stability costs and the 20 km / 25 km distances
 of ADR 018 on a real imported city, and try adding a sight, a pin and a distant town on the phone. For Phase 6: confirm or change the meal windows, the profiles' meals and the
