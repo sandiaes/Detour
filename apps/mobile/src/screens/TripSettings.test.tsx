@@ -154,8 +154,12 @@ test("marking a trip as past asks first, keeps nothing until confirmed, then sho
   });
   await fireEvent.press(await screen.findByTestId("archive-trip"));
   // The warning says what is kept and what is deleted, and nothing has been sent yet.
-  expect(screen.getByText(/the cities and attractions of your chosen plan/)).toBeOnTheScreen();
-  expect(screen.getByText(/deletes the plans, routes and travel times/)).toBeOnTheScreen();
+  // ADR 026: every stop is kept by day, restaurants included; the old "not kept" line is gone.
+  expect(screen.getByText(/every stop of your chosen plan by day/)).toBeOnTheScreen();
+  expect(
+    screen.getByText(/deletes the plans themselves, routes and travel times/),
+  ).toBeOnTheScreen();
+  expect(screen.queryByText(/restaurants are not kept/)).toBeNull();
   expect(client.count("POST /v1/trips/{trip_id}/archive")).toBe(0);
   await fireEvent.press(screen.getByRole("button", { name: "Keep planning" }));
   expect(screen.getByTestId("archive-trip")).toBeOnTheScreen();

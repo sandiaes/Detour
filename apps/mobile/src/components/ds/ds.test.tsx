@@ -94,6 +94,18 @@ test("a photo from the backend is shown from the API address, over its average c
   expect(screen.getByTestId("c")).toHaveStyle({ backgroundColor: "#336699" });
 });
 
+test("a photo that fails to load falls back to the illustration and drops its credit", async () => {
+  const photo = makePhoto();
+  await render(
+    withApi("https://api.example.org", <Cover seedKey="x" height={100} photo={photo} testID="c" />),
+  );
+  expect(screen.getByTestId("photo-credit-toggle")).toBeOnTheScreen();
+  await fireEvent(screen.getByTestId("cover-photo"), "error", { nativeEvent: { error: "503" } });
+  expect(screen.queryByTestId("cover-photo", { includeHiddenElements: true })).toBeNull();
+  expect(screen.queryByTestId("photo-credit-toggle")).toBeNull();
+  expect(screen.getByTestId("c")).not.toHaveStyle({ backgroundColor: "#336699" });
+});
+
 test("without an API address or a photo the illustration stays: nothing is invented", async () => {
   await render(withApi("", <Cover seedKey="x" height={100} photo={makePhoto()} />));
   expect(screen.queryByTestId("cover-photo", { includeHiddenElements: true })).toBeNull();

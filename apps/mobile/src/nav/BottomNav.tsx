@@ -171,7 +171,7 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
         <ListRow
           icon="restaurant"
           title="Restaurant"
-          detail={why ?? "Detour suggests the best day and meal"}
+          detail={why ?? "Search or enter one, then choose the day and time"}
           disabled={!planId}
           disabledLabel="Not now"
           testID="add-sheet-restaurant"

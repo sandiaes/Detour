@@ -21,8 +21,6 @@ ENGINE_VERSION = "planner-3.0.0"
 CONFIG_VERSION = f"2026-11-14.3+durations-{DURATIONS_VERSION}"
 
 ProfileName = Literal["essentials", "wider"]
-# Plans stored before ADR 026 hold meals of these types; user-added restaurants have none.
-MealType = Literal["breakfast", "lunch", "dinner", "snack"]
 
 
 @dataclass(frozen=True)

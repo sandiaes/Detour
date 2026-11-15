@@ -184,8 +184,12 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   const [query, setQuery] = useState("");
   const [address, setAddress] = useState("");
   const [results, setResults] = useState<Record<string, Results>>({});
-  const [wide, setWide] = useState<Record<string, ExternalPlace[] | "none">>({});
-  const [addressResults, setAddressResults] = useState<ExternalPlace[] | "none" | null>(null);
+  // "unavailable": Photon could not be asked (down, throttled, today's budget used), which is not
+  // the same as finding nothing.
+  const [wide, setWide] = useState<Record<string, ExternalPlace[] | "none" | "unavailable">>({});
+  const [addressResults, setAddressResults] = useState<
+    ExternalPlace[] | "none" | "unavailable" | null
+  >(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
   const [customName, setCustomName] = useState("");
@@ -240,8 +244,8 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   }, [needsSearch, client, centre, q, key]);
 
   /** Places beyond the imported data, and addresses: Photon through the Detour server. */
-  const external = async (text: string): Promise<ExternalPlace[]> => {
-    if (!client || !centre) return [];
+  const external = async (text: string): Promise<ExternalPlace[] | "none" | "unavailable"> => {
+    if (!client || !centre) return "unavailable";
     const response = await call(
       client.GET("/v1/places/search", {
         params: {
@@ -249,13 +253,16 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
         },
       }),
     );
-    return response.external.results ?? [];
+    const results = response.external.results ?? [];
+    if (results.length) return results;
+    const asked = response.external.state === "ok" || response.external.state === "cached";
+    return asked ? "none" : "unavailable";
   };
 
   const searchWider = async () => {
     try {
       const found = await external(q);
-      setWide((w) => ({ ...w, [key]: found.length ? found : "none" }));
+      setWide((w) => ({ ...w, [key]: found }));
     } catch (e) {
       setSearchError(describeError(e));
     }
@@ -266,7 +273,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
     setSearchError(null);
     try {
       const found = await external(address.trim());
-      setAddressResults(found.length ? found : "none");
+      setAddressResults(found);
     } catch (e) {
       setSearchError(describeError(e));
     } finally {
@@ -506,6 +513,8 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                       />
                     ) : wider === "none" ? (
                       <InlineStatus text="The wider search found nothing either. Try the address, or drop a pin." />
+                    ) : wider === "unavailable" ? (
+                      <InlineStatus text="The wider search is not available right now. Drop a pin instead, or try again later." />
                     ) : (
                       <DropdownPanel>
                         <ChoiceGroupTitle title="Other places (OpenStreetMap, via Photon)" />
@@ -557,6 +566,8 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                   <InlineStatus
                     text={`No address matches “${address.trim()}”. Check the spelling, or drop a pin.`}
                   />
+                ) : addressResults === "unavailable" ? (
+                  <InlineStatus text="Address search is not available right now. Drop a pin instead, or try again later." />
                 ) : addressResults ? (
                   <DropdownPanel>
                     <ChoiceGroupTitle title="Addresses (OpenStreetMap, via Photon)" />

@@ -168,11 +168,11 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
               <Text style={styles.text}>
                 {`A trip also becomes a past trip by itself two days after its last day, when it has dates. Detour keeps the title, destination, dates and ${
                   hasPlan
-                    ? "the cities and attractions of your chosen plan"
+                    ? "every stop of your chosen plan by day, with its time and length (sights, restaurants and cafés), and its cities"
                     : trip.destination.kind === "city"
                       ? "the destination city (no plan is chosen, so nothing else)"
                       : "nothing else (no plan is chosen, so no cities or attractions)"
-                }, and shows them on a map. It deletes the plans, routes and travel times. Meals and restaurants are not kept. This cannot be undone.`}
+                }, and shows them on a map and by day. It then deletes the plans themselves, routes and travel times; the record and your documents stay. This cannot be undone.`}
               </Text>
               <Button
                 testID="archive-trip"

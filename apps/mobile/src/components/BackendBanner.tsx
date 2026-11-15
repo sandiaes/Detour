@@ -19,6 +19,7 @@ export function BackendBanner() {
       ) : (
         <Notice tone="error" label="Offline" action={{ label: "Retry", onPress: retry }}>
           Could not reach the server. {state.message}
+          {state.retryAt ? " Trying again by itself; saved trips can still be read." : ""}
         </Notice>
       )}
     </View>

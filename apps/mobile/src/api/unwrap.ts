@@ -71,6 +71,18 @@ const MESSAGES: Record<string, string> = {
   change_set_closed: "This preview was already accepted, discarded or replaced.",
   not_recalculable: "Plans made by hand are not recalculated.",
   wrong_place_kind: "Only sights, towns and your own places can be added here.",
+  // Dependencies that are down (Phase 9): say which one, and that saved trips still read.
+  database_unavailable:
+    "The database is paused or unavailable (the free plan pauses it after a week without use). Saved trips can still be read; try again in a few minutes.",
+  images_unavailable: "Photos are not available right now. The illustration is shown instead.",
+  destination_not_plannable:
+    "Suggestions need imported map data, which this destination does not have. Add places yourself.",
+  format_too_new: "This file was made by a newer version of Detour. Update the app first.",
+  nothing_to_undo: "There is nothing to undo: the plan changed after Optimize.",
+  not_enough_stops: "Optimize needs at least three stops with a place.",
+  too_many_stops: "This plan has too many stops to optimize at once.",
+  stay_overlap: "These days already have a stay. Change the other stay first.",
+  day_out_of_range: "Those days are outside the trip.",
 };
 
 /** Each reason a plan cannot be made (`planning_impossible` carries them as `issues`). */
@@ -88,6 +100,8 @@ export function describeError(error: unknown): string {
     if (error.code && MESSAGES[error.code]) return MESSAGES[error.code] as string;
     if (error.status === 401)
       return "The server did not accept this installation. Restart the app.";
+    if (error.status === 429)
+      return "Too many requests from this phone in a short time. Wait a minute and try again.";
     if (error.status >= 500) return "The server had a problem. Try again in a moment.";
     return error.message;
   }

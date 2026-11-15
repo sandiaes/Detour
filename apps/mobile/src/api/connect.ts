@@ -17,15 +17,25 @@ export type Connection = {
   client: ApiClient;
 };
 
-export class ConnectionError extends Error {}
+export class ConnectionError extends Error {
+  /** True when trying again cannot help (a build with no backend URL, a bad configuration). */
+  readonly permanent: boolean;
+  constructor(message: string, options: { permanent?: boolean } = {}) {
+    super(message);
+    this.name = "ConnectionError";
+    this.permanent = options.permanent ?? false;
+  }
+}
 
 /** Basic sanity checks on what the backend sent; the app never falls back to built-in values. */
 export function assertValidConfig(config: ClientConfig): void {
   if (!config.map.style_url.startsWith("https://")) {
-    throw new ConnectionError("The backend sent a map style URL that is not HTTPS.");
+    throw new ConnectionError("The backend sent a map style URL that is not HTTPS.", {
+      permanent: true,
+    });
   }
   if (config.map.attribution.length === 0) {
-    throw new ConnectionError("The backend sent no map attribution.");
+    throw new ConnectionError("The backend sent no map attribution.", { permanent: true });
   }
 }
 
@@ -65,7 +75,8 @@ export type ConnectOptions = {
 export async function connect(options: ConnectOptions): Promise<Connection> {
   if (!options.baseUrl) {
     throw new ConnectionError(
-      "This build has no backend URL. Rebuild the app with the api_url input (docs/deployment.md).",
+      "This build has no backend URL. Rebuild the app with the api_url input (docs/android-release.md).",
+      { permanent: true },
     );
   }
   let token: string | null = null;

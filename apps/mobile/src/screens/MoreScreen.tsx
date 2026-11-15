@@ -24,7 +24,7 @@ export function MoreScreen() {
           <ListRow
             icon="preferences"
             title="Travel preferences"
-            detail="Pace, interests and meals"
+            detail="Pace and interests"
             disabled
           />
           <ListRow

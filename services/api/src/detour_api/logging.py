@@ -96,7 +96,9 @@ def configure_logging(level: str = "INFO") -> None:
     root.handlers = [handler]
     root.setLevel(level)
     # HTTP client libraries log full URLs, query strings included, at INFO.
-    for name in ("httpx", "httpcore"):
+    # httpx2 and httpcore2 are what Starlette's TestClient prefers when installed (they are not
+    # a dependency of this project, but a machine may have them); silence them as well.
+    for name in ("httpx", "httpcore", "httpx2", "httpcore2"):
         logging.getLogger(name).setLevel(logging.WARNING)
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
         named = logging.getLogger(name)

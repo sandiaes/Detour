@@ -133,6 +133,21 @@ class Settings(BaseSettings):
     # wait on the provider for the changed days' legs (the KPI is 3 s for the whole preview).
     recalc_provider_max_seconds: float = Field(default=2.0, ge=0, le=30)
 
+    # Abuse limits on the public API (Phase 9, docs/security.md). The API has no accounts, so
+    # anyone who learns its address can register installations. These are our own numbers, set
+    # far above what one person's phone does: per installation, sustained requests per minute and
+    # the burst allowed; and for the whole service, new registrations per hour and their burst.
+    # Counted per process (the API runs as one process on Render's free plan).
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: float = Field(default=300.0, gt=0)
+    rate_limit_burst: int = Field(default=150, ge=1)
+    # Photos (GET /v1/images/...) are loaded by the phone's image view without the token, so they
+    # share one bucket for the whole service; a list of trips loads many at once.
+    image_requests_per_minute: float = Field(default=600.0, gt=0)
+    image_requests_burst: int = Field(default=300, ge=1)
+    registrations_per_hour: float = Field(default=20.0, gt=0)
+    registrations_burst: int = Field(default=10, ge=1)
+
     # Client configuration served by GET /v1/config. The app holds none of these as constants.
     config_version: str = "1"
     map_style_url: str = "https://tiles.openfreemap.org/styles/liberty"
