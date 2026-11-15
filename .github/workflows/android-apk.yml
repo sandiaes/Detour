@@ -1,8 +1,13 @@
 # Builds an installable Android APK of the Detour app and uploads it as an artifact.
 #
-# This is the release variant with the JavaScript bundled in, signed with the public React Native
-# debug key (ADR 008 addendum, spike S1): an expo-dev-client development build would need a
-# development server on a computer, which the owner does not have. The native code is the same.
+# This is the release variant with the JavaScript bundled in (ADR 008 addendum, spike S1): an
+# expo-dev-client development build would need a development server on a computer, which the owner
+# does not have. The native code is the same.
+#
+# Signing (docs/android-release.md, "Your own signing key"): when the repository secrets
+# DETOUR_KEYSTORE_BASE64, DETOUR_KEYSTORE_PASSWORD, DETOUR_KEY_ALIAS and DETOUR_KEY_PASSWORD are
+# set, the APK is signed with that key (plugins/withReleaseSigning.js); otherwise with the public
+# React Native debug key, as before. The keystore is written to the runner's temporary folder only.
 # The native Android project is generated here by `expo prebuild`; none is committed or edited.
 #
 # Run by hand: Actions tab -> "Android APK" -> Run workflow. Costs about 14 runner minutes.
@@ -44,6 +49,30 @@ jobs:
           else
             echo "Backend URL: $EXPO_PUBLIC_DETOUR_API_URL"
           fi
+      - name: Signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.DETOUR_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.DETOUR_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.DETOUR_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.DETOUR_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::No signing key secrets: the APK is signed with the public debug key (docs/android-release.md)."
+            exit 0
+          fi
+          if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::DETOUR_KEYSTORE_BASE64 is set but DETOUR_KEYSTORE_PASSWORD, DETOUR_KEY_ALIAS or DETOUR_KEY_PASSWORD is missing."
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/detour-release.keystore"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          {
+            echo "DETOUR_KEYSTORE_FILE=$keystore"
+            echo "DETOUR_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "DETOUR_KEY_ALIAS=$KEY_ALIAS"
+            echo "DETOUR_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "Signing with the project's own key."
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
       - name: Type check

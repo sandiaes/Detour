@@ -62,14 +62,31 @@ _ITINERARY_COLUMNS = """
 """
 
 
-def render_reason(code: str) -> str:
-    """A stored reason code through its fixed template (an unknown code is shown as itself)."""
-    return item_text(code) if code in ITEM_TEMPLATES else code
+def render_reason(code: str) -> str | None:
+    """A stored reason code through its fixed template. A code with no template (a meal or
+    cuisine reason of a plan made before ADR 026) is not shown: never the raw code."""
+    return item_text(code) if code in ITEM_TEMPLATES else None
 
 
-def render_note(code: str, params: dict[str, Any]) -> PlanNote:
-    text_ = note_text(code, params) if code in NOTE_TEMPLATES else code
-    return PlanNote(code=code, text=text_)
+def render_note(code: str, params: dict[str, Any]) -> PlanNote | None:
+    """A stored note through its fixed template, or None for a retired code (ADR 026) or
+    parameters that no longer fit the template."""
+    if code not in NOTE_TEMPLATES:
+        return None
+    try:
+        return PlanNote(code=code, text=note_text(code, params))
+    except (KeyError, IndexError, ValueError):
+        return None
+
+
+def render_notes(notes: list[Any]) -> list[PlanNote]:
+    """Stored notes (dicts with ``code`` and ``params``) as shown: retired codes left out."""
+    out: list[PlanNote] = []
+    for n in notes:
+        note = render_note(n["code"], n.get("params", {}))
+        if note is not None:
+            out.append(note)
+    return out
 
 
 def _summary(row: Any) -> ItinerarySummary:
@@ -87,7 +104,7 @@ def _summary(row: Any) -> ItinerarySummary:
         import_run_id=row.import_run_id,
         seed=row.seed,
         diversity_score=None if row.diversity_score is None else float(row.diversity_score),
-        notes=[render_note(n["code"], n.get("params", {})) for n in summary.get("notes", [])],
+        notes=render_notes(summary.get("notes", [])),
         stats=None if stats is None else PlanStats(**stats),
         created_at=row.created_at,
         stops_version=row.stops_version,
@@ -162,7 +179,7 @@ def _item(row: Any, transfer: Transfer | None = None) -> Item:
         origin=row.origin,
         locked=row.locked,
         reasons=list(row.reasons),
-        reason_texts=[render_reason(c) for c in row.reasons],
+        reason_texts=[t for t in (render_reason(c) for c in row.reasons) if t is not None],
         transfer=transfer,
         restaurant=(
             RestaurantInfo(

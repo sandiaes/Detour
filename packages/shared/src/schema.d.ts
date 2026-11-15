@@ -896,7 +896,7 @@ export interface components {
        * Action
        * @enum {string}
        */
-      action: "add_place" | "remove_place" | "add_restaurant" | "edit_stops" | "optimize";
+      action: "add_place" | "remove_place" | "edit_stops" | "optimize";
       /** Target Name */
       target_name: string;
       /**
@@ -1967,7 +1967,7 @@ export interface components {
        */
       change_set_id: string | null;
       /** Action */
-      action: ("add_place" | "remove_place" | "add_restaurant" | "edit_stops" | "optimize") | null;
+      action: ("add_place" | "remove_place" | "edit_stops" | "optimize") | null;
       /** Target Name */
       target_name: string | null;
       /**
@@ -2358,7 +2358,7 @@ export interface components {
       estimated_transfers: number;
       /**
        * Day Utilisation Permille
-       * @description Visits, meals and transfers as permille of the 09:00-22:00 window of all days
+       * @description Visits, places to eat and transfers as permille of the 09:00-20:00 window of all days (ADR 026)
        */
       day_utilisation_permille: number;
       /**

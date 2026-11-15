@@ -113,6 +113,15 @@ with sights before and after midday has one 90-minute gap, days end by about 18:
 The 59 % Wider figure is just under the old 60 % floor, hence the new 55 % band. Not yet measured on
 real data or on Render.
 
+**Phase 9 (2026-11-15, cloud container, synthetic fixtures and the fixture database;
+[`test-plan-phase-9.md`](test-plan-phase-9.md) section 4):** two plans for the largest city fixture in
+39 ms (3 days), 122 ms (7), 296 ms (14), worst 306 ms; the multi-city planner 55 ms (3 cities, 6 days)
+and 110 ms (6 stops, 12 days); Optimize 42 ms for 30 stops across 7 days (engine) and 117 ms through
+the API (worst 147 ms, KPI 5 s); destination search 7 ms (KPI 300 ms); trip list of 20 trips and a
+30-stop plan 9 ms each through the API. No target missed. Not measured: Render, the phone (app start
+to trip list, KPI 3 s), routed provider time. Engine line coverage 96 to 98 % (KPI 85 %). The "Crash-free
+sessions" KPI's source (Play Console) does not exist under ADR 008; it needs the owner's own record.
+
 ## 9. Review cadence
 
 - Fixture and golden KPIs: every CI run.

@@ -45,3 +45,38 @@ free-only project.
 - D11 is decided. The only open step is when to make the repository public.
 - A public repository gives free standard runners (4 CPUs, 16 GB RAM per GitHub's page) for the
   import and build workflows.
+
+## Addendum of 2026-11-15: the repository is made public
+
+The owner decided on 2026-11-15 to make the repository public ("lets turn the repo public, Ive hit
+my limit"): the private repository's Actions minutes were used up, so no CI, APK build or backup
+could run. Standard runners are free in a public repository ("The use of standard GitHub-hosted
+runners is free: In public repositories", GitHub Docs, Actions billing, read 2026-11-15). The owner
+changes the visibility in the repository's settings; nothing in the code does.
+
+The checklist above, done in the Phase 9 session before the switch:
+
+- **Secrets in the history:** none. All 156 commits of every branch were searched for keys, tokens,
+  passwords, connection strings and the Supabase project reference; only test placeholders
+  (`sb_secret_x`) and the documented example address match. No `.env`, keystore or key file was
+  ever committed (`.env.example` only).
+- **Author names and email addresses:** the history shows the owner's commit email addresses (two
+  personal or work addresses besides GitHub's and Anthropic's noreply addresses). They cannot be
+  hidden after publication without rewriting the history; the owner decides. Future commits can use
+  GitHub's noreply address (GitHub, Settings, Emails, "Keep my email addresses private").
+- **Personal data in the files:** none found; the reference screens in `docs/screenshots/` are
+  invented mock-ups.
+- **`LICENSE` and the README notice:** present since 2026-11-12.
+
+What changes with publication (GitHub Docs, "Setting repository visibility", read 2026-11-15):
+"Actions history and logs will be visible to everyone", "Anyone can fork your repository", and
+artifacts can be downloaded by anyone with read access. Hence, in the same change: the "Back up app
+data" workflow refuses to upload anything without its encryption passphrase and keeps even its row
+counts encrypted; "Create signing key" writes the key straight into the repository's secrets
+instead of an artifact; the APK artifact (which contains the backend's address) is accepted as
+public, protected by the API's request limits. Secrets stay hidden: fork pull requests get none, and
+CI runs only on pushes to this repository. The User-Agent contact link
+(`https://github.com/sandiaes/Detour`) now resolves for the providers (Photon, FOSSGIS, Wikimedia).
+"In a public repository, scheduled workflows are automatically disabled when no repository activity
+has occurred in 60 days" (GitHub Docs, read 2026-11-15): the daily backup must then be re-enabled
+by hand.

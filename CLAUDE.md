@@ -34,9 +34,28 @@ tab; "Start a fresh trip" and "Generate itineraries" on the new-trip screen, no 
 paragraphs below were written before this decision, so where they describe meals, meal windows,
 cuisines, imported restaurants or the slot engine they are out of date.
 
+**Phase 9 (hardening for the owner's own APK) is under way** (2026-11-15; [`docs/audit-phase-9.md`](docs/audit-phase-9.md),
+[`docs/test-plan-phase-9.md`](docs/test-plan-phase-9.md)). The owner wrote "I approve everything from
+ADR013 onwards" and that the app is "all wrong" on the phone; no ADR status was changed (the audit
+lists what the approval covers). Built: the app reconnects by itself (5 s doubling to 60 s), says
+which dependency is down (paused database, photos, Photon, 429), falls back to the illustration when
+a photo fails and to "not available" (not "nothing found") when Photon fails; API request limits
+(`abuse.py`: per installation, registrations, photos; 429 with Retry-After); the APK no longer
+declares location or draw-over-apps permissions and has Android cloud backup off; migration `0020`
+(RLS on `public.alembic_version`); the retired meal, cuisine and slot templates are gone (a stored
+code without a template is not shown); the daily "Back up app data" workflow; an opt-in project
+signing key ("Create signing key" workflow, `plugins/withReleaseSigning.js`); `privacy.md`,
+`security.md`, `backups.md`, `android-release.md`, `known-limitations.md`, `ios-readiness.md`; both E2E
+flows brought up to date. **Production** (read-only check): migrations `0014` to `0019` have run (at
+`0019`), Austria and Italy are available. GitHub Actions stopped starting jobs on 2026-11-15
+(the private repository's minutes were used up); the owner then decided to **make the repository
+public** (ADR 007 addendum): workflows must never log or upload anything secret or personal (the
+backup is always encrypted, the signing key goes straight into secrets). No journey has been checked
+on a device (checked by tests only).
+
 **Owner's UI requests of 2026-11-15** (ADR 021, decisions 92 to 94, built, awaiting acceptance): a Car pill on the new-trip screen (`app.trip.uses_car`, migration `0018`; off means Optimize only walks), a Day drop-down in Edit time, and Add a place opening on the open day at its first free time.
 
-**Accommodation is built** (2026-11-15, ADR 030, awaiting acceptance; migration `0019`): a trip has stays, each for a range of days (`app.trip_stay`, `GET/POST/PATCH/DELETE /v1/trips/{id}/stays`), `Day.start` is the morning leg from the stay worked out on read (not stored), Optimize and the generator start each day at its stay (no leg back at night), and the app has "Where you're staying", a house mark on the map and a morning row in the day list. Not run against the production database; export does not carry stays.
+**Accommodation is built** (2026-11-15, ADR 030, awaiting acceptance; migration `0019`): a trip has stays, each for a range of days (`app.trip_stay`, `GET/POST/PATCH/DELETE /v1/trips/{id}/stays`), `Day.start` is the morning leg from the stay worked out on read (not stored), Optimize and the generator start each day at its stay (no leg back at night), and the app has "Where you're staying", a house mark on the map and a morning row in the day list. Migration `0019` has run in production (checked 2026-11-15); export does not carry stays.
 
 **A design system is built** (2026-11-15, ADR 021 amendment, decisions 78 to 90; `docs/design-audit.md`,
 `docs/design.md`; built and awaiting acceptance, **checked by tests only, not on a device**): one set of
@@ -166,6 +185,9 @@ not start the next phase until the owner asks for it.
 | Recorded decisions | `docs/decisions/` |
 | Working on the code, CI | `docs/development.md` |
 | Deploying | `docs/deployment.md` |
+| Building and installing the APK | `docs/android-release.md` |
+| Privacy, security, backups | `docs/privacy.md`, `docs/security.md`, `docs/backups.md` |
+| Phase 9 audit, journeys, what the owner must check | `docs/audit-phase-9.md`, `docs/test-plan-phase-9.md` |
 
 ## Hard constraints
 
@@ -261,7 +283,11 @@ Other:
   tests are skipped without them)
 - `docker compose --env-file .env -f infrastructure/docker-compose.yml up --build --wait`:
   optional local database and API (`cp .env.example .env` first)
-- Android APK: run the "Android APK" workflow by hand (`docs/deployment.md`, steps 7 to 9)
+- Android APK: run the "Android APK" workflow by hand (`docs/android-release.md`; signing key in its
+  section 5)
+- `python scripts/measure_performance.py` (from `services/api`): engine timings of the Phase 9
+  performance pass; `pytest tests/test_performance_api.py -s` prints the API's
+- Backups: the "Back up app data" workflow (daily, `docs/backups.md`)
 
 Rules for this phase's code: no secrets in the repository (`.env.example` only; secrets live in
 Render, Supabase and GitHub settings); pin exact versions; the app reads the map style URL from

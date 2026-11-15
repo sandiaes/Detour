@@ -8,8 +8,8 @@ from collections.abc import Sequence
 from itertools import pairwise
 
 from detour_api.planner.optimize import (
-    MEAL_LATEST_START,
-    MEAL_WINDOW_MIN,
+    RESTAURANT_LATEST_START,
+    RESTAURANT_SHIFT_MIN,
     Outcome,
     Rules,
     Stop,
@@ -39,10 +39,10 @@ def validate(
             if day != s.day:
                 problems.append(f"{s.name}: a restaurant or café changed day")
             if s.start is not None and not (
-                s.start - MEAL_WINDOW_MIN <= p.start <= s.start + MEAL_WINDOW_MIN
+                s.start - RESTAURANT_SHIFT_MIN <= p.start <= s.start + RESTAURANT_SHIFT_MIN
             ):
                 problems.append(f"{s.name}: more than 60 minutes from the chosen time")
-            if p.start > MEAL_LATEST_START:
+            if p.start > RESTAURANT_LATEST_START:
                 problems.append(f"{s.name}: starts after 21:00")
         if s.kind == "visit" and day not in s.allowed_days:
             problems.append(f"{s.name}: moved to a day it may not be on")
@@ -84,5 +84,5 @@ def _limit(stops: Sequence[Stop], day: int, rules: Rules) -> int:
         if s.end is not None:
             ends.append(s.end)
         if s.kind == "meal" and s.start is not None:
-            ends.append(min(s.start + MEAL_WINDOW_MIN, MEAL_LATEST_START) + s.duration)
+            ends.append(min(s.start + RESTAURANT_SHIFT_MIN, RESTAURANT_LATEST_START) + s.duration)
     return max(ends)

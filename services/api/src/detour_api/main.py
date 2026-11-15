@@ -14,6 +14,7 @@ from fastapi.routing import APIRoute
 from sqlalchemy.exc import OperationalError
 
 from detour_api import __version__
+from detour_api.abuse import RequestLimiter, retry_after_header
 from detour_api.adapters.photon import PhotonClient
 from detour_api.adapters.valhalla import ValhallaClient
 from detour_api.db import make_engine
@@ -102,6 +103,25 @@ def create_app(
             status_code=503,
             content={"detail": "the database is unavailable", "code": "database_unavailable"},
         )
+
+    limiter = RequestLimiter(settings)
+    app.state.limiter = limiter
+
+    @app.middleware("http")
+    async def request_limits(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        wait = limiter.check(request.method, request.url.path, request.headers.get("authorization"))
+        if wait > 0:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": "too many requests; try again shortly",
+                    "code": "rate_limited",
+                },
+                headers={"Retry-After": retry_after_header(wait)},
+            )
+        return await call_next(request)
 
     @app.middleware("http")
     async def request_log(

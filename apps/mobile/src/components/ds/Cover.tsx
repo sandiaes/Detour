@@ -93,10 +93,13 @@ export function FittedPhoto({
   uri,
   photoSize,
   testID,
+  onError,
 }: {
   uri: string;
   photoSize?: { width: number; height: number } | null;
   testID?: string;
+  /** The photo could not be loaded (storage down, the source unreachable, offline). */
+  onError?: () => void;
 }) {
   const [frame, setFrame] = useState<{ width: number; height: number } | null>(null);
   const place = frame && photoSize ? photoPlacement(frame, photoSize) : null;
@@ -112,6 +115,7 @@ export function FittedPhoto({
         style={place ? { position: "absolute", ...place } : StyleSheet.absoluteFill}
         resizeMode="cover"
         testID={testID}
+        onError={onError}
       />
     </View>
   );
@@ -150,7 +154,11 @@ export function Cover({
   testID?: string;
 }) {
   const photoUri = usePhotoUri(photo);
-  const uri = givenUri ?? photoUri;
+  // A photo that fails to load (photo storage or the resolver down, no network) falls back to the
+  // illustration, never to an empty or broken frame, and its credit goes with it (Phase 9).
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const wanted = givenUri ?? photoUri;
+  const uri = wanted && wanted !== failedUri ? wanted : null;
   const seed = coverSeed(seedKey);
   const tone = COVER_TONES[seed % COVER_TONES.length] as (typeof COVER_TONES)[number];
   const ridge = RIDGES[(seed >>> 4) % RIDGES.length] as (typeof RIDGES)[number];
@@ -168,7 +176,12 @@ export function Cover({
       accessibilityIgnoresInvertColors
     >
       {uri ? (
-        <FittedPhoto uri={uri} photoSize={givenUri ? null : photo} testID="cover-photo" />
+        <FittedPhoto
+          uri={uri}
+          photoSize={givenUri ? null : photo}
+          testID="cover-photo"
+          onError={() => setFailedUri(uri)}
+        />
       ) : (
         <Svg
           width="100%"

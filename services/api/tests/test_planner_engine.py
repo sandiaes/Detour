@@ -237,10 +237,15 @@ def test_reasons_and_notes_render_through_their_templates() -> None:
     codes = {c for p in g.plans for d in p.days for v in d.visits for c in v.reasons}
     assert {"NEAR_PREVIOUS_ITEM", "WIKIDATA_LINKED", "NEAR_CENTRE", "ADDS_VARIETY"} <= codes
     assert not [m for p in g.plans for d in p.days for m in d.meals]  # ADR 026: sights only
-    # The reasons and notes of meals stored before ADR 026 still render.
-    for code in ("LUNCH_WINDOW", "DINNER_WINDOW", "VENUE_SUITS_MEAL", "NEW_CUISINE"):
-        assert item_text(code)
-    assert note_text("MEALS_FROM_MAP_DATA", {})
+    # The meal and cuisine reasons of plans stored before ADR 026 are retired (Phase 9): no
+    # template mentions meal windows, cuisines or slots any more.
+    from detour_api.planner import reasons
+
+    for table in (reasons.ITEM_TEMPLATES, reasons.NOTE_TEMPLATES, reasons.ISSUE_TEMPLATES):
+        for code, template in table.items():
+            assert "cuisine" not in template.lower(), code
+            assert "meal window" not in template.lower(), code
+    assert not hasattr(reasons, "SLOT_TEMPLATES")
     assert {n.code for n in g.notes} >= {"DISTINCT_PLANS", "NO_OPENING_HOURS", "SIGHTS_ONLY"}
 
 

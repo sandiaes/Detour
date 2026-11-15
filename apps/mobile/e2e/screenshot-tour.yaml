@@ -62,7 +62,7 @@ appId: io.github.sandiaes.detour
     id: "nav-add"
 - takeScreenshot: 09-add-menu
 - back
-- tapOn: "Plan a trip"
+- tapOn: "New trip"
 - takeScreenshot: 10-create-trip
 - tapOn:
     id: "destination-input"
@@ -114,7 +114,7 @@ appId: io.github.sandiaes.detour
     timeout: 30000
 - takeScreenshot: 17-trip-overview
 - tapOn:
-    id: "day-row-1"
+    id: "day-tab-1"
 - extendedWaitUntil:
     visible:
       id: "map-key"

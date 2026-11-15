@@ -1,0 +1,102 @@
+# Daily backup of the user data (the `app` schema) of the Supabase database (Phase 9; ADR 005,
+# decision 5: Supabase Free has no backups). docs/backups.md explains what it covers, how to restore
+# it, and how it differs from "Back up all trips" in the app.
+#
+# - Runs every day at 02:17 UTC and by hand (Actions -> "Back up app data" -> Run workflow).
+#   Scheduled runs start only from the default branch: merge this file to main first.
+# - Needs the repository secret DETOUR_IMPORT_DATABASE_URL (the Supabase session pooler string,
+#   port 5432, the same one the region import uses).
+# - Needs the secret DETOUR_BACKUP_PASSPHRASE: the dump is encrypted (AES-256, gpg) before it is
+#   uploaded, and the run fails without it. The repository is public (2026-11-15): GitHub shows
+#   Actions logs to everyone and lets anyone with read access download artifacts, so an
+#   unencrypted dump of the trips must never be uploaded. Keep the passphrase in a password
+#   manager; it is needed to restore.
+# - Keeps each encrypted backup as a workflow artifact for 30 days. Nothing else leaves the runner.
+# - The daily connection also counts as activity for Supabase, which pauses a Free project after a
+#   week without any.
+# - `geo` is not backed up: the import workflow rebuilds it. Documents on the phone are not in the
+#   database and are not covered (use "Back up all trips" in the app for those).
+name: Back up app data
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-app-data
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump the app schema
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DUMP_URL: ${{ secrets.DETOUR_IMPORT_DATABASE_URL }}
+      PASSPHRASE: ${{ secrets.DETOUR_BACKUP_PASSPHRASE }}
+      # The client must not be older than the server: Supabase runs PostgreSQL 17.
+      PG_IMAGE: postgres:17
+    steps:
+      - name: Check the secrets
+        run: |
+          if [ -z "$PASSPHRASE" ]; then
+            echo "::error::Repository secret DETOUR_BACKUP_PASSPHRASE is not set: the backup is never uploaded unencrypted (docs/backups.md)"
+            exit 1
+          fi
+          if [ -z "$DUMP_URL" ]; then
+            echo "::error::Repository secret DETOUR_IMPORT_DATABASE_URL is not set (docs/backups.md)"
+            exit 1
+          fi
+          case "$DUMP_URL" in
+            *:6543/*) echo "::error::Use the session pooler (port 5432), not 6543"; exit 1 ;;
+          esac
+      - name: Dump
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          stamp=$(date -u +%Y-%m-%dT%H%MZ)
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          # The connection string goes in as an environment variable, never on a command line
+          # that the log could show.
+          docker run --rm -e DUMP_URL -v "$PWD/out:/out" "$PG_IMAGE" sh -ec '
+            pg_dump "$DUMP_URL" --schema=app --format=custom --no-owner --no-privileges \
+              --file=/out/app.dump
+            psql "$DUMP_URL" -At -c "SELECT version_num FROM public.alembic_version" \
+              > /out/schema-version.txt
+            psql "$DUMP_URL" -At -F " " -c "
+              SELECT relname, n_live_tup FROM pg_stat_user_tables
+              WHERE schemaname = '"'"'app'"'"' ORDER BY relname" > /out/row-counts.txt
+            pg_restore --list /out/app.dump > /dev/null
+          '
+          echo "Schema version: $(cat out/schema-version.txt)"
+          echo "Dump size: $(stat -c %s out/app.dump) bytes"
+          {
+            echo "### App data backup $stamp"
+            echo
+            echo "Schema version \`$(cat out/schema-version.txt)\`, dump $(stat -c %s out/app.dump) bytes."
+            echo "Row counts are inside the encrypted artifact (the summary of a public repository is public)."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Encrypt
+        run: |
+          set -euo pipefail
+          printf '%s' "$PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+            --output out/app.dump.gpg out/app.dump
+          rm out/app.dump
+          # The row counts go inside the encrypted file too: how many trips there are is nobody's
+          # business in a public repository.
+          printf '%s' "$PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+            --output out/row-counts.txt.gpg out/row-counts.txt
+          rm out/row-counts.txt
+          echo "Encrypted with DETOUR_BACKUP_PASSPHRASE." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-backup-${{ env.STAMP }}
+          path: out/
+          retention-days: 30
+          if-no-files-found: error

@@ -10,9 +10,6 @@ from pydantic import BaseModel, Field, model_validator
 from detour_api.models.common import Latitude, Longitude, PlaceName, StrictModel
 from detour_api.models.images import Photo
 
-MealType = Literal["breakfast", "lunch", "dinner", "snack"]
-
-
 # -- trips -------------------------------------------------------------------------------------
 
 
@@ -436,7 +433,10 @@ class PlanStats(BaseModel):
     routed_transfers: int
     estimated_transfers: int
     day_utilisation_permille: int = Field(
-        description="Visits, meals and transfers as permille of the 09:00-22:00 window of all days"
+        description=(
+            "Visits, places to eat and transfers as permille of the 09:00-20:00 window of all "
+            "days (ADR 026)"
+        )
     )
     travel_share_permille: int = Field(description="Transfer time as permille of planned time")
     meals: int = 0

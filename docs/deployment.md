@@ -263,6 +263,20 @@ The backend streams stored photos to the app, so it needs the same two Storage s
 4. **Optional re-import** ("Import region", Austria) so the newly kept tags (`official_name:*`,
    `short_name:*`, `brand:*`, `alt_name`, `old_name`) are available to the resolver and search.
 
+## Phase 9: limits, backups, signing (2026-11-15)
+
+1. **Merge to `main`.** `start.sh` runs migration `0020`, which turns on row level security for
+   `public.alembic_version` (Supabase's advisor reported it open to its Data API roles). The API and
+   the migrations connect as the table's owner and are not affected. Production was at `0019` on
+   2026-11-15 (checked read-only), so migrations `0014` to `0019` have already run there.
+2. **Request limits** are on by default (`DETOUR_RATE_LIMIT_*`, `DETOUR_REGISTRATIONS_*`,
+   `DETOUR_IMAGE_REQUESTS_*` in `.env.example`; [`security.md`](security.md)). Nothing to set.
+3. **Backups:** follow [`backups.md`](backups.md), section 2 (one optional secret, then run "Back up
+   app data" once by hand).
+4. **Signing key (optional, one uninstall):** [`android-release.md`](android-release.md), section 5.
+5. **APK:** [`android-release.md`](android-release.md) replaces steps 8 and 9 above for every later
+   build and update.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | What to do |
@@ -273,6 +287,9 @@ The backend streams stored photos to the app, so it needs the same two Storage s
 | `password authentication failed` in logs | Password mismatch or unencoded special character | Reset the database password in Supabase (Database settings), rebuild the string, update Render |
 | App says "This build has no backend URL" | APK built without `DETOUR_API_URL` or `api_url` | Do steps 7 and 8 again |
 | App stays on "Waking the server…" longer than 2 minutes | Render service suspended or crashed | Check the service status and logs in Render |
+| App says "The database is paused or unavailable" | Supabase Free paused the project after a week without activity | Supabase dashboard: restore (unpause) the project; the daily backup workflow keeps it active |
+| A workflow fails within seconds, with no log | GitHub did not start the job: Actions minutes used up or a spending limit | Settings, Billing and plans, Usage (happened on 2026-11-15) |
+| `429` / "Too many requests" in the app | The API's request limits | Wait a minute; if it happens in normal use, raise `DETOUR_RATE_LIMIT_PER_MINUTE` on Render |
 | After changing `DETOUR_TOKEN_SECRET`, the app shows a new installation | Old tokens no longer verify | Expected: the app registers again by itself |
 | Map is grey but the backend is connected | Phone cannot reach `tiles.openfreemap.org` (for example a work network) | Try mobile data |
 
@@ -289,8 +306,10 @@ relying on them:
 
 ## Not done in Phase 1
 
-- A project-owned signing key for the APK (ADR 008). Until then each build is signed with the
-  public debug key.
-- Backups of the `app` schema, which is empty now (ADR 005, item 5).
+- A project-owned signing key for the APK (ADR 008). **Phase 9:** possible now and opt-in
+  ([`android-release.md`](android-release.md), section 5); until the owner adds the secrets each build
+  is signed with the public debug key.
+- Backups of the `app` schema (ADR 005, item 5). **Phase 9:** the daily "Back up app data" workflow
+  ([`backups.md`](backups.md)).
 - Notifying FOSSGIS (ADR 004): not needed; the owner decided on 2026-11-12 that the app is for the
   owner and one other person only (addendum to ADR 004).

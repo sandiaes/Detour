@@ -103,7 +103,7 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
 const EMPTY_TEXT: Record<TripTab, { title: string; text: string }> = {
   upcoming: {
     title: "No upcoming trips",
-    text: "Choose a destination and how many days you have. Detour proposes two different plans to compare.",
+    text: "Start a trip for any place, then add sights, restaurants and documents. Detour can also suggest itineraries.",
   },
   past: {
     title: "No past trips yet",
@@ -145,7 +145,7 @@ export function TripsScreen() {
         <ResourceNotices resource={trips} noun="trips" />
         <EmptyState
           title="No trips yet"
-          text="Choose a destination and how many days you have. Detour proposes two different plans to compare."
+          text="Start a trip for any place, then add sights, restaurants and documents. Detour can also suggest itineraries."
           action={{
             label: "New trip",
             icon: "add",

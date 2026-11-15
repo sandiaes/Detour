@@ -18,7 +18,7 @@ A local Docker Compose stack exists for any machine that can run it, but it is o
 | `services/api/src/detour_api/importer` | Region import, gazetteer import, report and gates (Phase 2) |
 | `services/api/src/detour_api/travel`, `adapters/valhalla.py` | Travel-time service, request planner, estimator and the FOSSGIS Valhalla adapter (Phase 3) |
 | `services/api/src/detour_api/planner`, `repo/planning.py` | Planning engine v1: scoring, duration table, sequencer, validator, reason templates (Phase 4, ADR 014) |
-| `.github/workflows` | `ci.yml`, `import-region.yml` (manual), `resolve-images.yml` (manual, ADR 022), `android-apk.yml`, and the throwaway Phase 0 spike workflows |
+| `.github/workflows` | `ci.yml`, `import-region.yml` (manual), `resolve-images.yml` (manual, ADR 022), `android-apk.yml`, `e2e-android.yml` (manual), `backup-app-data.yml` (daily and manual, Phase 9, [`backups.md`](backups.md)), `create-signing-key.yml` (manual, once, [`android-release.md`](android-release.md)), and the throwaway Phase 0 spike workflows |
 | `spikes`, `docs/spikes` | Phase 0 throwaway code and findings; not part of the product |
 
 ## What CI does
@@ -111,6 +111,18 @@ Photon's API documentation (it is not a live recording). The FOSSGIS Valhalla ad
 fixtures: real responses the owner recorded by hand (`*-recorded.json`) and a few documented-format ones (`*-documented.json`). The routing adapter stays off in the `test`
 environment unless a transport is injected, so no test or CI run can reach the server.
 
+## Phase 9 checks
+
+- `tests/test_journeys.py`: the manager-first journeys chained on the fixture database (fresh trip,
+  sight, town, pin, two restaurants, Optimize and undo, export and import, mark as past).
+- `tests/test_performance_api.py`: the API side of the performance pass; `pytest -s` prints the
+  numbers. `python scripts/measure_performance.py` (from `services/api`) times the engine, the
+  multi-city planner and Optimize on the largest fixtures. Results: [`test-plan-phase-9.md`](test-plan-phase-9.md).
+- `tests/test_abuse.py`: the API's request limits. The `api_env` fixture switches the limits off
+  (`rate_limit_enabled=False`), because the API tests make requests in bulk no phone makes.
+- `apps/mobile/plugins/*.test.js`: the permissions removed from the APK, Android backup off, and the
+  release-signing plugin.
+
 ## End-to-end test (Android emulator)
 
 `.github/workflows/e2e-android.yml` builds an x86_64 release APK with `DETOUR_E2E=1` (allows plain
@@ -124,7 +136,10 @@ uploaded as an artifact. Component tests (`npm test`) cover the same flow with a
 The same workflow has a `flow` input: `screenshot-tour` runs `apps/mobile/e2e/screenshot-tour.yaml`
 instead, which takes one screenshot of each screen the fixture backend can reach and uploads them in
 the artifact `e2e-android-report` (folder `screenshots`). It is how the design is looked at without a
-phone (`docs/design.md`, "Checking the design"). It has not been run yet.
+phone (`docs/design.md`, "Checking the design"). It has not been run yet: the first attempt
+(2026-11-15, Phase 9) was not started by GitHub Actions. Both flows were brought up to date with the
+manager-first screens in Phase 9 (`trip-flow.yaml` now starts a fresh trip and adds a sight with a
+day and time).
 
 ## The style lint
 

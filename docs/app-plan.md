@@ -26,7 +26,7 @@ Recorded on 2026-11-12 from the owner's answers.
 | D8 | OpenFreeMap tiles now, self-hosted PMTiles as rehearsed fallback | Approved. | Approved |
 | D9 | Photos on-device first; cloud backup decided in the photo phase | Approved. | Approved |
 | D10 | Restaurant prices from users only; default band limits set in Phase 8 | **Superseded by ADR 017** (2026-11-13): no prices, price bands, budgets or currencies for now. | Superseded |
-| D11 | Which open-source licence, and when the repository becomes public | **Apache-2.0** (ADR 007). The repository stays private until the owner decides to publish it. | Decided |
+| D11 | Which open-source licence, and when the repository becomes public | **Apache-2.0** (ADR 007). The repository was made public on 2026-11-15 (ADR 007 addendum); before that it stayed private until the owner decided to publish it. | Decided |
 | D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
 | D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
 | D15 | Past trips archive | Past trips are kept as a map and list of visited cities and attractions, without routing. See ADR 006. Built 2026-11-13, awaits acceptance. | Decided |
@@ -286,6 +286,18 @@ ADR 019).
 
 ### Phase 9 — MVP hardening and release
 
+**Status (2026-11-15): built in part, not complete.** Done in a cloud session (branch
+`claude/quirky-mccarthy-m4w5du`): the audit ([`audit-phase-9.md`](audit-phase-9.md)), resilience
+fixes (reconnection with backoff, a clear state per dependency, photo and Photon fallbacks), API
+request limits, location and cloud-backup removed from the APK, migration `0020` (RLS on
+`public.alembic_version`), the daily "Back up app data" workflow, an opt-in project signing key,
+`privacy.md`, `security.md`, `backups.md`, `android-release.md`, `known-limitations.md`,
+`ios-readiness.md`, the journeys and the performance pass ([`test-plan-phase-9.md`](test-plan-phase-9.md)),
+and both E2E flows brought up to date. **Open:** GitHub Actions stopped starting jobs on 2026-11-15
+(the private repository's minutes were used up); the owner then made the repository public (ADR 007
+addendum), after which the E2E screenshot tour, a new APK and the backups can run; no journey has been checked on a device; the owner's acceptance of ADRs 013 to 030 is
+recorded in the audit but no ADR status was changed; the PMTiles tile-switch rehearsal was not done.
+
 **Goal:** a build fit for the owner's own real trips, installed as a sideloaded APK (ADR 008).
 *Revised 2026-11-15:* the Play Console closed test is removed (ADR 008: no app stores), and the
 scope follows the manager-first direction (ADR 026). Meals, restaurant slots and Japan single-city
@@ -396,7 +408,10 @@ data change, history record, app); destinations (ADR 027), export and import (AD
 are built; saved ideas, notes and photos wait for the owner. The text below is older and still stands for the phases it names,
 except where ADR 026 retires them (Phase 8's slot costs, the imported restaurants).
 
-**Accept the built work (Phases 3 to 8 and the ADR 021 to 029 changes), then Phase 9 (MVP
+**Phase 9 is under way (2026-11-15, see its section above).** Next: get GitHub Actions running
+again, build the APK from the Phase 9 branch, do the phone check of `test-plan-phase-9.md`
+section 3, run the E2E screenshot tour, then record the acceptance of ADRs 013 to 030. The older text
+below is kept for the items it lists. **Accept the built work (Phases 3 to 8 and the ADR 021 to 029 changes), then Phase 9 (MVP
 hardening, revised 2026-11-15), when the owner asks for it (CLAUDE.md).** For Phase 8: confirm or change the slot costs of ADR 019 on a real imported city,
 add a restaurant from the map data, one from the wider search and one by hand on the phone, and
 decide whether removing an added restaurant is wanted. For Phase 7: confirm or change the stability costs and the 20 km / 25 km distances

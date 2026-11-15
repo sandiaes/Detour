@@ -155,7 +155,7 @@ class ProposedPlan(BaseModel):
 class ChangeSet(BaseModel):
     id: uuid.UUID
     itinerary_id: uuid.UUID
-    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops", "optimize"]
+    action: Literal["add_place", "remove_place", "edit_stops", "optimize"]
     target_name: str
     status: Literal["pending", "applied", "discarded", "expired"] = Field(
         description="pending: previewed, nothing changed yet. expired: the itinerary changed "
@@ -186,7 +186,7 @@ class ItineraryVersion(BaseModel):
     version: int
     replaced_at: datetime
     change_set_id: uuid.UUID | None = Field(description="Null when a hand edit replaced it")
-    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops", "optimize"] | None
+    action: Literal["add_place", "remove_place", "edit_stops", "optimize"] | None
     target_name: str | None
     restores_version: int | None = Field(
         default=None, description="Set when applying that change set restored an earlier version"

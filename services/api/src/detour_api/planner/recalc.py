@@ -89,6 +89,8 @@ REPLACED_NOTES = frozenset(
         "NEW_BASE_DAY",
         "VISITS_MOVED",
         "VISITS_DROPPED",
+        # Retired with ADR 026 (no template any more): notes of older plans that a
+        # recalculation drops.
         "RESTAURANT_ADDED",
         "MEAL_REPLACED",
     }

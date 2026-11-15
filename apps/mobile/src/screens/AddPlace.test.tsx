@@ -287,6 +287,28 @@ test("when nothing is found locally, a wider search can be asked for", async () 
   });
 });
 
+test("when Photon cannot be asked, the wider search says so instead of finding nothing", async () => {
+  await openPlan(
+    server({
+      "GET /v1/places/search": (c: { params: Record<string, unknown> }) => ({
+        query: "Hütte",
+        results: [],
+        external: c.params.include_external
+          ? { state: "unavailable", provider: "photon", results: [] }
+          : { state: "not_requested", provider: null, results: [] },
+      }),
+    }),
+  );
+  await search("Hütte");
+  await fireEvent.press(await screen.findByText("Search more widely"));
+  expect(
+    await screen.findByText(
+      "The wider search is not available right now. Drop a pin instead, or try again later.",
+    ),
+  ).toBeOnTheScreen();
+  expect(screen.queryByText(/found nothing either/)).toBeNull();
+});
+
 test("an addition that does not fit says which constraints conflict", async () => {
   const client = await openPlan(
     server({

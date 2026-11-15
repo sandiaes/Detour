@@ -48,8 +48,8 @@ OPTIMIZE_VERSION = "optimize-1.0.0"
 
 # A restaurant or café starts at most this long after the time the user chose, and never later than
 # 21:00 (owner decisions of 2026-11-14).
-MEAL_WINDOW_MIN = 60
-MEAL_LATEST_START = 21 * 60
+RESTAURANT_SHIFT_MIN = 60
+RESTAURANT_LATEST_START = 21 * 60
 # On a place trip a visit further than this from the trip's point keeps its day (ADR 029).
 FAR_STOP_M = 25_000
 # More stops than this are refused: the search is quadratic in them.
@@ -255,7 +255,9 @@ class _Search:
             if s.end is not None:
                 ends.append(s.end)
             if s.kind == "meal" and s.start is not None:
-                ends.append(min(s.start + MEAL_WINDOW_MIN, MEAL_LATEST_START) + s.duration)
+                ends.append(
+                    min(s.start + RESTAURANT_SHIFT_MIN, RESTAURANT_LATEST_START) + s.duration
+                )
         return max(ends)
 
     def _day_start(self, day: int) -> int:
@@ -448,7 +450,7 @@ def lay_out(
         elif s.kind == "meal":
             assert s.start is not None  # noqa: S101
             start = max(s.start, earliest)
-            if start > min(s.start + MEAL_WINDOW_MIN, MEAL_LATEST_START):
+            if start > min(s.start + RESTAURANT_SHIFT_MIN, RESTAURANT_LATEST_START):
                 return None
             end = start + s.duration
         else:

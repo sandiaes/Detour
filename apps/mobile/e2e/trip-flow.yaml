@@ -1,9 +1,14 @@
-# The one end-to-end flow (docs/development.md, "End-to-end test"): create a trip, compare the two
-# proposals, select one (it becomes the trip's active itinerary and the trip's overview opens, ADR
-# 021), read its days in the Itinerary tab, open a day on the map, and find the trip again in the list.
+# The one end-to-end flow (docs/development.md, "End-to-end test"), brought up to date with the
+# manager-first screens on 2026-11-15 (Phase 9; ADR 026, ADR 021 amendments): start a fresh, empty
+# trip, add a sight from the imported data on a chosen day and time, see it on the trip, open the
+# day's map with its key and credits, and find the trip again in the Upcoming list. The generator
+# (two proposals) is visited by the screenshot tour (screenshot-tour.yaml).
+#
 # It runs on an Android emulator against the seeded fixture backend (services/api/tests/e2e_seed.py:
-# the invented city Testburg, no real map data) with routing switched off, so every transfer is a
-# labelled estimate. Controls are found by testID, which React Native exposes as the resource id.
+# the invented city Testburg, no real map data) with routing and Photon switched off, so every
+# transfer is a labelled estimate. Controls are found by testID, which React Native exposes as the
+# resource id, or by their visible text. This version has NOT been run yet (docs/test-plan-phase-9.md):
+# the first run may need an id or a wait adjusted.
 appId: io.github.sandiaes.detour
 ---
 - launchApp:
@@ -19,7 +24,7 @@ appId: io.github.sandiaes.detour
       - waitForAnimationToEnd:
           timeout: 3000
 - assertVisible: "No trips yet"
-- tapOn: "Plan a trip"
+- tapOn: "New trip"
 - tapOn:
     id: "destination-input"
 - inputText: "Testburg"
@@ -31,42 +36,56 @@ appId: io.github.sandiaes.detour
 - tapOn:
     id: "destination-result-900101"
 - hideKeyboard
-# The form is longer than the screen: only elements on screen are visible to the test.
+# The main button is the empty trip (ADR 026); the form can be longer than the screen.
 - scrollUntilVisible:
     element:
-      id: "plan-trip"
+      id: "empty-trip"
 - tapOn:
-    id: "plan-trip"
+    id: "empty-trip"
 - runFlow: dismiss-system-dialogs.yaml
 - extendedWaitUntil:
-    visible: "How they differ"
+    visible:
+      id: "trip-cover"
     timeout: 60000
-- assertVisible: "Essentials"
+
+# Add a sight: the Add sheet, search, then the day and time (an empty plan is not recalculated).
+- tapOn:
+    id: "nav-add"
+- tapOn:
+    id: "add-sheet-place"
+- tapOn: "Search a sight or a town"
+- inputText: "museum"
+- runFlow: dismiss-system-dialogs.yaml
+- extendedWaitUntil:
+    visible: "Testburg Museum"
+    timeout: 30000
+- tapOn: "Testburg Museum"
+- hideKeyboard
 - scrollUntilVisible:
     element:
-      id: "select-essentials"
+      id: "add-at-time"
 - tapOn:
-    id: "select-essentials"
+    id: "add-at-time"
 - runFlow: dismiss-system-dialogs.yaml
 - extendedWaitUntil:
-    visible: "Your itinerary"
+    visible: "Testburg Museum"
     timeout: 30000
+
+# The overview is the itinerary (ADR 021, decision 77): day 1 with its map, key and credits.
 - tapOn:
-    id: "open-itinerary"
-- runFlow: dismiss-system-dialogs.yaml
+    id: "day-tab-1"
 - extendedWaitUntil:
-    visible: "Day 1.*"
+    visible:
+      id: "map-key"
     timeout: 30000
-# A day of the timeline opens the Map tab on that day, with its stops under the map.
-- tapOn:
-    id: "day-row-1"
-- scrollUntilVisible:
-    element: "Estimated"
 - tapOn:
     id: "map-key"
-- assertVisible: "Solid line: travel time routed"
 - assertVisible: "Data from OpenStreetMap"
 - back
+
+# The trip is in the Upcoming list.
+- tapOn:
+    id: "nav-trips"
 - extendedWaitUntil:
     visible: "Testburg"
     timeout: 20000

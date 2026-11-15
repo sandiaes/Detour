@@ -183,7 +183,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
             variant="secondary"
             size="sm"
             testID="add-restaurant"
-            hint="Search or enter a restaurant; Detour suggests the best day and meal"
+            hint="Search or enter a restaurant, then choose the day and time"
             onPress={() =>
               nav.push({
                 name: "addRestaurant",

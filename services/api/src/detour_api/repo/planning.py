@@ -383,7 +383,9 @@ def save_generation(
         distinct=generation.distinct,
         jaccard_permille=generation.jaccard_permille,
         max_jaccard_permille=max_jaccard_permille,
-        notes=[itineraries.render_note(n.code, n.params) for n in generation.notes],
+        notes=itineraries.render_notes(
+            [{"code": n.code, "params": n.params} for n in generation.notes]
+        ),
         itineraries=[itineraries.require_itinerary(conn, installation_id, i) for i in ids],
     )
 

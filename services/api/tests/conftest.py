@@ -155,6 +155,9 @@ def api_env(imported_template_name: str) -> Iterator[ApiEnv]:
         token_secret=TEST_SECRET,
         database_url=url,
         photon_daily_budget=PHOTON_BUDGET,
+        # The API tests make requests in bulk no phone makes; the limits have their own tests
+        # (test_abuse.py).
+        rate_limit_enabled=False,
     )
     installation_id, token = issue_token(TEST_SECRET.encode())
     try:

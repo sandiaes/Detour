@@ -47,6 +47,7 @@ export function ResourceNotices({
     return (
       <Notice inset={inset} tone="error" action={{ label: "Try again", onPress: resource.refresh }}>
         Could not refresh {noun}. {describeError(resource.error)}
+        {resource.savedAt ? ` Showing the copy saved ${formatAge(resource.savedAt, now)}.` : ""}
       </Notice>
     );
   }
