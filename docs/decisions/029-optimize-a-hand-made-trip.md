@@ -1,9 +1,10 @@
 # ADR 029 — Optimize a hand-made trip
 
 - **Status:** **Proposed** on 2026-11-14, at the owner's request, after the owner answered the
-  design questions (see "Owner decisions"). Documentation only: nothing is built. It is the **third**
-  manager feature, after destinations outside the imported regions (ADR 027) and trip export
-  (ADR 028).
+  design questions (see "Owner decisions"). **Revised on 2026-11-15** now that ADRs 027 and 028 are
+  built (see "Revision of 2026-11-15"): it awaits the owner's acceptance of the five points there.
+  Documentation only: nothing is built. It is the **third** manager feature, after destinations
+  outside the imported regions (ADR 027) and trip export (ADR 028).
 - **Date:** 2026-11-14
 - **Related:** [`026-trip-manager-first.md`](026-trip-manager-first.md),
   [`014-phase-4-planner-v1.md`](014-phase-4-planner-v1.md),
@@ -137,6 +138,59 @@ pipeline (ADR 018).
   locks and fixed stops.
 - It depends on ADR 026 (sights-only data, restaurants as user items) and, for trips outside
   imported regions, on ADR 027; travel times there come from the same adapter.
+
+## Revision of 2026-11-15 (after reading the code, ADRs 027 and 028 built)
+
+The code shows four things the first draft left open. They change no owner decision of 2026-11-14.
+
+1. **Manual plans and place trips are the main case, and today's pipeline refuses both.**
+   `repo/changes.py` `_head` answers `not_recalculable` for a manual itinerary and
+   `destination_not_plannable` for a place trip (ADR 027). Optimize needs neither the planner's
+   sight data nor the destination's region, only the plan's items and their points. So `optimize`
+   gets its own load step: it takes the itinerary of any profile and any destination kind, reads
+   the stored plan state, and leaves the other actions' checks as they are. A past trip is still
+   refused (`trip_archived`).
+2. **Rule 8 for trips without a `geo` city (ADR 027 item 14, ADR 029 rule 8).** A stop's "own city"
+   is decided as follows:
+   - *multi-city trip (ADR 024):* the nearest of the trip's stops (their stored points);
+   - *place trip:* a stop within **25 km** of the trip's point may move freely; one further away
+     (a day trip) **keeps its day**, and is offered in the sheet as fixed;
+   - *city or area trip:* no restriction, as today's planned itineraries.
+   The 25 km is a fixed constant in `planner/config.py`, recorded with the other planner numbers.
+3. **Undo.** `_restorable` today undoes only "the latest `add_place`". It is widened by one case:
+   the latest applied change set, when it is an `optimize` and the plan has no later version,
+   can be undone by restoring its base version (a new "Undo optimize" action on the trip, offered
+   until the plan changes). No new table: `app.change_set` already stores `base_version`,
+   `result_version` and the action; its action check constraint gains `optimize` (migration
+   `0017`).
+4. **Travel legs and manual plans.** A manual plan stores its legs as the user's order implies
+   (travel is written between consecutive stops by the travel-time service). Optimize recomputes the
+   legs of every day it changes, as rule 14 says, and writes them as the planner does, labelled
+   routed or estimated.
+
+### Build order (each step ends green: ruff, mypy, pytest, typecheck, lint, jest)
+
+1. **Search and checks** (`planner/optimize.py`, `planner/optimize_validator.py`): the objective,
+   2-opt and relocate within a day, relocate and swap between days, restaurants' 60-minute window
+   and 21:00 limit, fixed items, day length, city rule; golden and property tests on synthetic
+   fixtures. No database.
+2. **Pipeline:** the `optimize` action, the context loader, the preview (estimates first, then the
+   provider for the changed days), saving, apply, the widened undo, migration `0017`, OpenAPI and
+   the generated client.
+3. **App:** the sheet (scope, stops to keep, pre-selected from the documents), the preview with
+   the saving and the two notes, the Optimize rows (trip menu, Itinerary tab), "Undo optimize".
+4. **Docs in the same change:** architecture section 5, data model, design, brief, app plan,
+   CLAUDE.md.
+
+### Questions for the owner (recommendations first)
+
+| # | Question | Recommendation |
+|---|---|---|
+| 1 | Allow Optimize on manual plans and place trips by giving it its own load step (point 1)? | Yes: it is the main case. |
+| 2 | On a place trip, a stop more than **25 km** from the trip's point keeps its day (point 2)? | Yes; 25 km is a starting value, easy to change. |
+| 3 | Offer "Undo optimize" for the latest applied optimize, until the plan changes (point 3)? | Yes. |
+| 4 | Show the saving as minutes of travel and kilometres, and say which part is estimated (rule 14)? | Yes. |
+| 5 | Offer Optimize only from three stops with places (rule 19)? | Yes. |
 
 ## Owner decisions (2026-11-14)
 
