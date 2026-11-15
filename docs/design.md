@@ -44,9 +44,12 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    (two slim radio rows: within each day, or across all days) and has one "Keep in place" row (how
    many stops are kept) that opens a sheet with the stops by day: a stop a document is about starts
    selected, a locked stop is shown as kept; the screen itself never lists every stop. "Show a
-   shorter order" opens the ordinary change preview titled "A shorter order?", with the saving in
-   minutes and kilometres, whether times are estimated, "a shorter order, not necessarily the
-   shortest" and "opening hours are not known" shown open, then Accept or Discard. When nothing is shorter the screen says so and changes nothing. Right after an
+   shorter order" opens the change preview titled "A shorter order?" (owner, 2026-11-15): three flat
+   figures (time saved, distance shorter, days changed), then **Map** and **Details** tabs. Map is the
+   trip's Map tab for the *proposed* plan (day pills, map, stops; `ChangeSet.proposed`, built by
+   `proposedDays`); Details holds the notes (estimates, "a shorter order, not necessarily the
+   shortest", "opening hours are not known") and the list of changes. Discard and Accept sit at the
+   bottom. When nothing is shorter the screen says so and changes nothing. Right after an
    Optimize the trip menu offers **Undo Optimize** (until the plan changes).
    **"Change photo"** (the new-trip screen under the destination, and the trip menu) opens a sheet of up
    to 12 photos of the destination, three across, each with its author and licence, and "Automatic
@@ -121,7 +124,7 @@ of the borders that identify a control is asserted in `theme.test.ts`.
   `pill` (chips, badges, discs, switches).
 - **Borders** (`border`): `hairline` (dividers), `thin` 1 (control outlines in `outline`), `thick` 2
   (focus ring, tab underline, selected outline). Nothing at 1.5, 2.5 or 3.
-- **Shadows** (`shadow`): none by default; `card` for cards and floating map controls; `raised` for sheets.
+- **Shadows** (`shadow`): none by default; `card` for cards; `floating` for buttons and the key over a map (a soft iOS shadow and a 1 dp border, **no Android `elevation`**, which drew a black disc under the round map-key button); `raised` for sheets.
 - **Heights** (`size`): `control` 44 (buttons, inputs, selects, segmented control), `controlSm` 36
   (small buttons, chips, header icon buttons), `row` 56 (a row with a detail line), `rowCompact` 48,
   `tab` 44, `tabCompact` 40. A drawn height is a **minimum**, so text can scale.

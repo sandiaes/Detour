@@ -887,6 +887,8 @@ export interface components {
       diff: components["schemas"]["ChangeDiff"];
       /** Notes */
       notes: components["schemas"]["PlanNote"][];
+      /** @description Optimize previews only, while pending: the proposed order of the stops */
+      proposed?: components["schemas"]["ProposedPlan"] | null;
       /**
        * Created At
        * Format: date-time
@@ -2357,6 +2359,60 @@ export interface components {
        * @description With code planning_impossible: each reason no plan can be made
        */
       issues?: components["schemas"]["IssueBody"][];
+    };
+    /**
+     * ProposedPlan
+     * @description The order an Optimize preview proposes, for drawing it next to the current plan: the same
+     *     stops (by id) in their new days, order and times, and the travel between them.
+     */
+    ProposedPlan: {
+      /** Stops */
+      stops: components["schemas"]["ProposedStop"][];
+      /** Transfers */
+      transfers: components["schemas"]["ProposedTransfer"][];
+    };
+    /** ProposedStop */
+    ProposedStop: {
+      /**
+       * Item Id
+       * Format: uuid
+       */
+      item_id: string;
+      /** Day Index */
+      day_index: number;
+      /** Position */
+      position: number;
+      /** Start Time */
+      start_time: string | null;
+      /** End Time */
+      end_time: string | null;
+    };
+    /** ProposedTransfer */
+    ProposedTransfer: {
+      /**
+       * From Item Id
+       * Format: uuid
+       */
+      from_item_id: string;
+      /**
+       * To Item Id
+       * Format: uuid
+       */
+      to_item_id: string;
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "walk" | "drive";
+      /** Seconds */
+      seconds: number;
+      /** Meters */
+      meters: number;
+      /**
+       * Confidence
+       * @enum {string}
+       */
+      confidence: "routed" | "estimated";
     };
     /** ReadinessResponse */
     ReadinessResponse: {

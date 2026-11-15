@@ -200,6 +200,16 @@ export const shadow = {
     shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
+  // A control floating over a map. No Android `elevation`: it draws a hard dark disc under a round
+  // button on top of a map. A thin border says where the control ends instead.
+  floating: {
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    borderWidth: border.thin,
+    borderColor: colors.border,
+  },
   raised: {
     shadowColor: colors.shadow,
     shadowOpacity: 0.12,

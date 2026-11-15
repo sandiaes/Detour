@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.md,
-    ...shadow.card,
+    ...shadow.floating,
   },
   failure: {
     position: "absolute",

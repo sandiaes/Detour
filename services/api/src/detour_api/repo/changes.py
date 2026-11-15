@@ -29,6 +29,9 @@ from detour_api.models.changes import (
     DiffMove,
     DiffRetime,
     ItineraryVersion,
+    ProposedPlan,
+    ProposedStop,
+    ProposedTransfer,
 )
 from detour_api.planner.config import PlannerConfig
 from detour_api.planner.diff import PlanDiff
@@ -467,6 +470,27 @@ _CHANGE_COLUMNS = (
 )
 
 
+def _proposed(row: Any) -> ProposedPlan | None:
+    """The proposed order of an open Optimize preview, from the stored proposal."""
+    proposal = getattr(row, "proposal", None)
+    if row.action != "optimize" or row.status != "pending" or not proposal:
+        return None
+    day_of = {d["id"]: d["day_index"] for d in proposal["days"]}
+    return ProposedPlan(
+        stops=[
+            ProposedStop(
+                item_id=r["id"],
+                day_index=day_of[r["day_id"]],
+                position=r["position"],
+                start_time=None if r["start_minute"] is None else clock(r["start_minute"]),
+                end_time=None if r["end_minute"] is None else clock(r["end_minute"]),
+            )
+            for r in proposal["items"]
+        ],
+        transfers=[ProposedTransfer.model_validate(t) for t in proposal["transfers"]],
+    )
+
+
 def _change_set(row: Any) -> ChangeSet:
     return ChangeSet(
         id=row.id,
@@ -479,6 +503,7 @@ def _change_set(row: Any) -> ChangeSet:
         result_version=row.result_version,
         diff=ChangeDiff.model_validate(row.diff),
         notes=[itineraries.render_note(n["code"], n.get("params", {})) for n in row.notes],
+        proposed=_proposed(row),
         created_at=row.created_at,
         decided_at=row.decided_at,
     )

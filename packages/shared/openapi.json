@@ -4383,6 +4383,17 @@
             "type": "array",
             "title": "Notes"
           },
+          "proposed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposedPlan"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optimize previews only, while pending: the proposed order of the stops"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -7978,6 +7989,129 @@
           "detail"
         ],
         "title": "PlanningErrorBody"
+      },
+      "ProposedPlan": {
+        "properties": {
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedStop"
+            },
+            "type": "array",
+            "title": "Stops"
+          },
+          "transfers": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedTransfer"
+            },
+            "type": "array",
+            "title": "Transfers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stops",
+          "transfers"
+        ],
+        "title": "ProposedPlan",
+        "description": "The order an Optimize preview proposes, for drawing it next to the current plan: the same\nstops (by id) in their new days, order and times, and the travel between them."
+      },
+      "ProposedStop": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "day_index": {
+            "type": "integer",
+            "title": "Day Index"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "day_index",
+          "position",
+          "start_time",
+          "end_time"
+        ],
+        "title": "ProposedStop"
+      },
+      "ProposedTransfer": {
+        "properties": {
+          "from_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "From Item Id"
+          },
+          "to_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "To Item Id"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "drive"
+            ],
+            "title": "Mode"
+          },
+          "seconds": {
+            "type": "integer",
+            "title": "Seconds"
+          },
+          "meters": {
+            "type": "integer",
+            "title": "Meters"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "routed",
+              "estimated"
+            ],
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_item_id",
+          "to_item_id",
+          "mode",
+          "seconds",
+          "meters",
+          "confidence"
+        ],
+        "title": "ProposedTransfer"
       },
       "ReadinessResponse": {
         "properties": {

@@ -160,7 +160,7 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
                 title={sc.title}
                 detail={sc.detail}
                 density="compact"
-                inset="none"
+                inset="panel"
                 trailing={null}
                 accessibilityLabel={`${sc.title}. ${sc.detail}`}
                 testID={`scope-${sc.key}`}

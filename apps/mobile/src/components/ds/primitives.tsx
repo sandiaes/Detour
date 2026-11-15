@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
 
   iconButton: { borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
   iconButtonOnImage: { backgroundColor: colors.imageButton },
-  iconButtonOnMap: { backgroundColor: colors.surface, ...shadow.card },
+  iconButtonOnMap: { backgroundColor: colors.surface, ...shadow.floating },
 
   badge: {
     alignSelf: "flex-start",
