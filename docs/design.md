@@ -160,12 +160,12 @@ not asked; it is the destination.
   white ("Austria", "12 – 19 Mar 2026 · 8 days"), over a soft gradient. No destination or status
   line, and no header row above the photo.
 - **A white sheet curves over the cover's lower edge** and holds the tabs: Overview, Map,
-  Photos, Documents. The tabs stay at the top when the page scrolls. Only Map gives
+  Photos, Documents, which share the full width equally. The tabs stay at the top when the page scrolls. Only Map gives
   up the cover.
-- **Overview tab = the itinerary (screens 02, 12):** three compact figures in one line each,
-  **cities, places, restaurants** (icon, number, word; no number of days: the header says it);
+- **Overview tab = the itinerary (screens 02, 12):** three figures in one line each (a middle
+  size: 22 px number, 14 px word), **cities, places, restaurants** (icon, number, word; no number of days: the header says it);
   **Optimize** when the plan has three stops; then the trip's days as a **timeline**: a dot on a
-  thin rail, a small illustrated thumbnail, "Day 3 · Wed 14 Mar", the town, "4 activities · 2
+  thin rail, a small thumbnail (no photo "i" on it; the credit is on the place's own screen), "Day 3 · Wed 14 Mar", the town, "4 activities · 2
   restaurants". A day opens the **Map tab on that day**. There is no "Your itineraries" block and no
   separate Itinerary tab: the original proposals are in the trip menu and new ones in Trip settings.
 - **Map tab (screens 03, 14):** a compact header (small Back and menu buttons, the name) and the tabs close

@@ -440,3 +440,11 @@ acceptance; not checked on a device.
     tab with them; the Overview lists the days as the timeline, under the figures, with Optimize
     when it applies. The figures (cities, places, restaurants) are one line each and take half
     the height.
+
+## Amendment of 2026-11-15 (seventh): small review fixes
+
+Owner review, built: the Overview figures sit between the old stacked and the compact size; the
+day thumbnails on the Overview carry no photo credit "i" (`Cover credit={false}`; the place's own
+screen keeps it); the new-trip destination results use the shared drop-down list (`DropdownPanel`,
+`ChoiceRow`); the map centres on a day's single stop at zoom 14 instead of fitting an empty box;
+the four trip tabs fill the full width equally at the same text size.

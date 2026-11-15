@@ -125,6 +125,7 @@ export function Cover({
   children,
   scrim = false,
   creditInset = 0,
+  credit = true,
   style,
   testID,
 }: {
@@ -142,6 +143,8 @@ export function Cover({
   scrim?: boolean;
   /** Lifts the photo credit's "i" clear of a sheet that curves over the cover's lower edge. */
   creditInset?: number;
+  /** False for small thumbnails, where the "i" would crowd the picture; the place's own screen has it. */
+  credit?: boolean;
   style?: ViewStyle;
   testID?: string;
 }) {
@@ -191,7 +194,9 @@ export function Cover({
       )}
       {scrim ? <Scrim /> : null}
       {children}
-      {uri && photo && !givenUri ? <PhotoCredit photo={photo} inset={creditInset} /> : null}
+      {credit && uri && photo && !givenUri ? (
+        <PhotoCredit photo={photo} inset={creditInset} />
+      ) : null}
     </View>
   );
 }

@@ -166,9 +166,9 @@ export function StatRow({ stats, compact = false }: { stats: Stat[]; compact?: b
           accessible
           accessibilityLabel={s.spoken ?? `${s.value} ${s.label.toLowerCase()}`}
         >
-          <Icon name={s.icon} size={compact ? 16 : 18} color={colors.primary} />
+          <Icon name={s.icon} size={compact ? 18 : 18} color={colors.primary} />
           <Text style={[styles.statValue, compact && styles.statValueCompact]}>{s.value}</Text>
-          <Text style={styles.statLabel} numberOfLines={1}>
+          <Text style={[styles.statLabel, compact && styles.statLabelCompact]} numberOfLines={1}>
             {s.label}
           </Text>
         </View>
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
 
   tabBar: { borderBottomWidth: 1, borderBottomColor: colors.border },
   tabScroll: { paddingHorizontal: spacing.lg, gap: spacing.lg },
-  tabRow: { flexDirection: "row" },
+  tabRow: { flexDirection: "row", paddingHorizontal: 0, gap: 0 },
   tab: { minHeight: TOUCH, justifyContent: "flex-end", alignItems: "center" },
   tabFill: { flex: 1 },
   tabCompact: { minHeight: 40 },
@@ -374,13 +374,14 @@ const styles = StyleSheet.create({
   statCompact: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
   },
-  statValueCompact: { ...type.heading },
+  statValueCompact: { ...type.title },
   statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.border },
   statValue: { ...type.title, color: colors.text },
   statLabel: { ...type.caption, color: colors.muted },
+  statLabelCompact: { ...type.small },
 
   sectionHead: {
     flexDirection: "row",
