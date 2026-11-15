@@ -1,4 +1,4 @@
-import type { Day, Itinerary, ItinerarySummary, Trip } from "@detour/shared";
+import type { Day, Itinerary, ItinerarySummary, ItineraryVersion, Trip } from "@detour/shared";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -31,12 +31,14 @@ import {
   useAnnounceOnMount,
 } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
+import { useChangeActions } from "../data/changes";
 import { CoverPicker, type CoverSource } from "../components/ds/CoverPicker";
 import { isPlaceTrip, placeCoverSource } from "../domain/destinations";
 import { useResource } from "../data/DataProvider";
 import { useTripCounts } from "../data/tripCounts";
 import { PlanSummaryCard } from "../components/plan/PlanSummaryCard";
 import { dayTotals } from "../domain/itinerary";
+import { canOptimize, canUndoOptimize } from "../domain/optimize";
 import { type TripCounts, localToday, shortSpan } from "../domain/trips";
 import { type TripSection, useNavigation } from "../nav/Navigator";
 import { TOUCH, colors, radius, spacing, type } from "../theme";
@@ -248,6 +250,19 @@ export function TripOverviewScreen({
       call(c.GET("/v1/trips/{trip_id}/itineraries", { params: { path: { trip_id: tripId } } })),
     { ttlMs: 10 * 60_000 },
   );
+  const planId0 = trip?.status !== "past" ? (trip?.selected_itinerary_id ?? null) : null;
+  const versions = useResource<ItineraryVersion[]>(
+    planId0 ? keys.versions(planId0) : null,
+    (c) =>
+      call(
+        c.GET("/v1/itineraries/{itinerary_id}/versions", {
+          params: { path: { itinerary_id: planId0 as string } },
+        }),
+      ),
+    { ttlMs: 60_000 },
+  );
+  const changeActions = useChangeActions();
+  const [undoing, setUndoing] = useState<string | null>(null);
   const [section, setSectionState] = useState<TripSection>(initialSection);
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
@@ -296,6 +311,19 @@ export function TripOverviewScreen({
 
   const hasPlan = trip.selected_itinerary_id !== null;
   const planId = trip.selected_itinerary_id as string;
+  const optimizable = hasPlan && plan.data ? canOptimize(plan.data.days) : false;
+  const undoable = hasPlan && plan.data ? canUndoOptimize(versions.data, plan.data.version) : false;
+  const openOptimize = () => nav.push({ name: "optimize", tripId, itineraryId: planId });
+  const undoOptimize = async () => {
+    setMenu(false);
+    try {
+      const change = await changeActions.previewOptimizeUndo(planId);
+      nav.push({ name: "changePreview", tripId, itineraryId: planId, changeSetId: change.id });
+    } catch (e) {
+      setUndoing(describeError(e));
+    }
+  };
+
   const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
   // The day shown in the Itinerary and Map tabs: today's during the trip, else the first.
   const day =
@@ -390,6 +418,16 @@ export function TripOverviewScreen({
       <>
         <ResourceNotices resource={plan} noun="this itinerary" />
         {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
+        {undoing ? <Notice tone="error">{undoing}</Notice> : null}
+        {optimizable ? (
+          <ListRow
+            icon="route"
+            title="Optimize"
+            detail="Find a shorter order for your stops"
+            testID="itinerary-optimize"
+            onPress={openOptimize}
+          />
+        ) : null}
         <DayTimeline
           days={[...plan.data.days].sort((x, y) => x.day_index - y.day_index)}
           coverKey={trip.destination.ref}
@@ -430,6 +468,27 @@ export function TripOverviewScreen({
             }}
           />
         )}
+        {optimizable ? (
+          <ListRow
+            icon="route"
+            title="Optimize"
+            detail="Find a shorter order for your stops"
+            testID="menu-optimize"
+            onPress={() => {
+              setMenu(false);
+              openOptimize();
+            }}
+          />
+        ) : null}
+        {undoable ? (
+          <ListRow
+            icon="history"
+            title="Undo Optimize"
+            detail="Put the stops back in the order they had"
+            testID="menu-undo-optimize"
+            onPress={() => void undoOptimize()}
+          />
+        ) : null}
         <ListRow
           icon="export"
           title="Export trip"

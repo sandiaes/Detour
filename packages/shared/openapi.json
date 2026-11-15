@@ -2827,6 +2827,172 @@
         }
       }
     },
+    "/v1/itineraries/{itinerary_id}/optimize": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Preview a shorter order of the stops of a plan of any kind (ADR 029): within each day or across all days. Locked stops and the ones named in fixed_item_ids stay; restaurants and cafés keep their day. Returns the diff and the saving; nothing changes until it is applied. 409 no_better_order when the plan is already as short as the search can make it.",
+        "operationId": "preview_optimize",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itinerary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Itinerary Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSet"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/itineraries/{itinerary_id}/optimize/undo": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "summary": "Preview restoring the plan as it was before the latest applied Optimize, while nothing else changed it. 409 nothing_to_undo otherwise.",
+        "operationId": "preview_optimize_undo",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itinerary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Itinerary Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSet"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/itineraries/{itinerary_id}/place-suggestions": {
       "post": {
         "tags": [
@@ -4158,7 +4324,8 @@
               "add_place",
               "remove_place",
               "add_restaurant",
-              "edit_stops"
+              "edit_stops",
+              "optimize"
             ],
             "title": "Action"
           },
@@ -6805,7 +6972,8 @@
                   "add_place",
                   "remove_place",
                   "add_restaurant",
-                  "edit_stops"
+                  "edit_stops",
+                  "optimize"
                 ]
               },
               {
@@ -6824,6 +6992,18 @@
               }
             ],
             "title": "Target Name"
+          },
+          "restores_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restores Version",
+            "description": "Set when applying that change set restored an earlier version"
           }
         },
         "type": "object",
@@ -6856,6 +7036,36 @@
           "attribution"
         ],
         "title": "MapConfig"
+      },
+      "OptimizeRequest": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "within_days",
+              "across_days"
+            ],
+            "title": "Scope",
+            "description": "within_days: no stop changes day; across_days: visits may also change day"
+          },
+          "fixed_item_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 400,
+            "title": "Fixed Item Ids",
+            "description": "Stops to keep exactly where they are for this change only, such as the ones with a ticket (documents are on the phone, so the app names them)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scope"
+        ],
+        "title": "OptimizeRequest",
+        "description": "Preview a shorter order for the stops of a plan (ADR 029). Nothing changes until the change\nset is applied."
       },
       "Photo": {
         "properties": {

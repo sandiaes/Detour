@@ -114,7 +114,7 @@ class ChangeDiff(BaseModel):
 class ChangeSet(BaseModel):
     id: uuid.UUID
     itinerary_id: uuid.UUID
-    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops"]
+    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops", "optimize"]
     target_name: str
     status: Literal["pending", "applied", "discarded", "expired"] = Field(
         description="pending: previewed, nothing changed yet. expired: the itinerary changed "
@@ -141,8 +141,11 @@ class ItineraryVersion(BaseModel):
     version: int
     replaced_at: datetime
     change_set_id: uuid.UUID | None = Field(description="Null when a hand edit replaced it")
-    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops"] | None
+    action: Literal["add_place", "remove_place", "add_restaurant", "edit_stops", "optimize"] | None
     target_name: str | None
+    restores_version: int | None = Field(
+        default=None, description="Set when applying that change set restored an earlier version"
+    )
 
 
 class PlaceSuggestionRequest(StrictModel):
@@ -207,3 +210,18 @@ class StopsEdit(StrictModel):
     """A multi-city trip's new stops, in order (ADR 024): add, remove, reorder or change days."""
 
     stops: list[StopIn] = Field(description="2 to 6 cities; their days become the trip's length")
+
+
+class OptimizeRequest(StrictModel):
+    """Preview a shorter order for the stops of a plan (ADR 029). Nothing changes until the change
+    set is applied."""
+
+    scope: Literal["within_days", "across_days"] = Field(
+        description="within_days: no stop changes day; across_days: visits may also change day"
+    )
+    fixed_item_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        max_length=400,
+        description="Stops to keep exactly where they are for this change only, such as the ones "
+        "with a ticket (documents are on the phone, so the app names them)",
+    )

@@ -5,6 +5,7 @@ import type {
   ChangeSet,
   ChangeSetApplied,
   ChangeSetCreate,
+  OptimizeRequest,
   Itinerary,
   ItemCreate,
   ItinerarySummary,
@@ -77,6 +78,35 @@ export function useChangeActions() {
     [need, data],
   );
 
+  /** A shorter order of the plan's stops (ADR 029): previewed like any change, applied later. */
+  const previewOptimize = useCallback(
+    async (itineraryId: string, body: OptimizeRequest): Promise<ChangeSet> => {
+      const change = await call(
+        need().POST("/v1/itineraries/{itinerary_id}/optimize", {
+          params: { path: { itinerary_id: itineraryId } },
+          body,
+        }),
+      );
+      data.put(changeKey(change.id), change);
+      return change;
+    },
+    [need, data],
+  );
+
+  /** Restores the plan from before the latest Optimize, as a preview. */
+  const previewOptimizeUndo = useCallback(
+    async (itineraryId: string): Promise<ChangeSet> => {
+      const change = await call(
+        need().POST("/v1/itineraries/{itinerary_id}/optimize/undo", {
+          params: { path: { itinerary_id: itineraryId } },
+        }),
+      );
+      data.put(changeKey(change.id), change);
+      return change;
+    },
+    [need, data],
+  );
+
   /** Applies a previewed change. The new version of the plan comes back whole and is stored. */
   const apply = useCallback(
     async (tripId: string, changeSetId: string): Promise<ChangeSetApplied> => {
@@ -88,6 +118,7 @@ export function useChangeActions() {
       const { days: _days, ...summary } = result.itinerary;
       data.put(changeKey(changeSetId), result.change_set);
       data.put(keys.itinerary(result.itinerary.id), result.itinerary);
+      data.invalidate(keys.versions(result.itinerary.id));
       data.update<ItinerarySummary[]>(keys.itineraries(tripId), (list) =>
         list.map((s) => (s.id === summary.id ? summary : s)),
       );
@@ -177,6 +208,8 @@ export function useChangeActions() {
     updatePlace,
     suggestPlaces,
     preview,
+    previewOptimize,
+    previewOptimizeUndo,
     apply,
     discard,
     setLocked,

@@ -350,8 +350,15 @@ export function Stepper({
  * Plan-level explanations from the backend (opening hours not checked, durations are defaults, ...).
  * Collapsed by default because there are several, but never hidden: product brief, section 7.
  */
-export function PlanNotes({ notes }: { notes: { code: string; text: string }[] }) {
-  const [open, setOpen] = useState(false);
+export function PlanNotes({
+  notes,
+  defaultOpen = false,
+}: {
+  notes: { code: string; text: string }[];
+  /** Shown open: for a note the user must read before accepting (Optimize, ADR 029). */
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   if (notes.length === 0) return null;
   return (
     <View style={styles.notes}>

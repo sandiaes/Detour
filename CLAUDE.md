@@ -24,8 +24,9 @@ ADR 009 gates 1 to 3 are retired (4 to 6 keep their numbers). A past trip keeps 
 order, start and length in `app.trip_visit`; the past-trip screen has a Days tab); the new-trip screen
 leads with "Start with an empty trip" and "Suggest itineraries" is the second button; day lists show
 an idle stretch as "Free time". Next, in the owner's order: destinations outside the imported regions (**ADR 027, accepted and built**: a trip to any place found through Photon, the gazetteer or typed by hand is an empty `place` trip, migration `0016`; suggestions are refused for it), then trip export
-(**ADR 028, accepted and built**: `GET /v1/trips/{id}/export`, `POST /v1/trips/import`, a `.detour` zip file with optional documents, import as a new place trip with a manual plan; the app has Export trip, Back up all trips and Import a trip), then **Optimize a hand-made trip** (ADR 029, proposed: the engine reorders the user's
-stops for the least travel, within or across days, with a preview). The build order is in ADR 026; the
+(**ADR 028, accepted and built**: `GET /v1/trips/{id}/export`, `POST /v1/trips/import`, a `.detour` zip file with optional documents, import as a new place trip with a manual plan; the app has Export trip, Back up all trips and Import a trip), then **Optimize a hand-made trip** (**ADR 029, accepted and built**: `POST /v1/itineraries/{id}/optimize`
+and `.../optimize/undo`, a change-set action, migration `0017`; `planner/optimize.py` reorders the user's
+stops for the least travel, within or across days, never longer, with a preview and an undo). The build order is in ADR 026; the
 paragraphs below were written before this decision, so where they describe meals, meal windows,
 cuisines, imported restaurants or the slot engine they are out of date.
 

@@ -34,6 +34,14 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    forget it). A photo is never a map marker. **A photo fills its frame and the overflow is cropped**
    (ADR 022 amendment, decision e): a landscape photo is centred, a portrait photo is anchored about a
    third of the way down (`photoPlacement` in `Cover.tsx`); nothing is cropped in storage.
+   **Optimize (ADR 029).** The trip menu and the top of the Itinerary tab offer **Optimize** when the
+   plan has at least three stops with a place. A screen asks how far the order may change (within each
+   day, or across all days) and lists the stops to keep in place: a stop a document is about starts
+   selected, a locked stop is shown as kept. "Show a shorter order" opens the ordinary change preview
+   titled "A shorter order?", with the saving in minutes and kilometres, whether times are estimated,
+   "a shorter order, not necessarily the shortest" and "opening hours are not known" shown open, then
+   Accept or Discard. When nothing is shorter the screen says so and changes nothing. Right after an
+   Optimize the trip menu offers **Undo Optimize** (until the plan changes).
    **"Change photo"** (the new-trip screen under the destination, and the trip menu) opens a sheet of up
    to 12 photos of the destination, three across, each with its author and licence, and "Automatic
    photo" (`CoverPicker`). For a multi-city trip it has one tab per stop. A day of the Itinerary tab

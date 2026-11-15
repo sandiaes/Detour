@@ -528,6 +528,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/itineraries/{itinerary_id}/optimize": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Preview a shorter order of the stops of a plan of any kind (ADR 029): within each day or across all days. Locked stops and the ones named in fixed_item_ids stay; restaurants and cafés keep their day. Returns the diff and the saving; nothing changes until it is applied. 409 no_better_order when the plan is already as short as the search can make it. */
+    post: operations["preview_optimize"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/itineraries/{itinerary_id}/optimize/undo": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Preview restoring the plan as it was before the latest applied Optimize, while nothing else changed it. 409 nothing_to_undo otherwise. */
+    post: operations["preview_optimize_undo"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/itineraries/{itinerary_id}/place-suggestions": {
     parameters: {
       query?: never;
@@ -826,7 +860,7 @@ export interface components {
        * Action
        * @enum {string}
        */
-      action: "add_place" | "remove_place" | "add_restaurant" | "edit_stops";
+      action: "add_place" | "remove_place" | "add_restaurant" | "edit_stops" | "optimize";
       /** Target Name */
       target_name: string;
       /**
@@ -1883,9 +1917,14 @@ export interface components {
        */
       change_set_id: string | null;
       /** Action */
-      action: ("add_place" | "remove_place" | "add_restaurant" | "edit_stops") | null;
+      action: ("add_place" | "remove_place" | "add_restaurant" | "edit_stops" | "optimize") | null;
       /** Target Name */
       target_name: string | null;
+      /**
+       * Restores Version
+       * @description Set when applying that change set restored an earlier version
+       */
+      restores_version?: number | null;
     };
     /** MapConfig */
     MapConfig: {
@@ -1893,6 +1932,24 @@ export interface components {
       style_url: string;
       /** Attribution */
       attribution: components["schemas"]["AttributionLine"][];
+    };
+    /**
+     * OptimizeRequest
+     * @description Preview a shorter order for the stops of a plan (ADR 029). Nothing changes until the change
+     *     set is applied.
+     */
+    OptimizeRequest: {
+      /**
+       * Scope
+       * @description within_days: no stop changes day; across_days: visits may also change day
+       * @enum {string}
+       */
+      scope: "within_days" | "across_days";
+      /**
+       * Fixed Item Ids
+       * @description Stops to keep exactly where they are for this change only, such as the ones with a ticket (documents are on the phone, so the app names them)
+       */
+      fixed_item_ids?: string[];
     };
     /** Photo */
     Photo: {
@@ -4652,6 +4709,126 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlanningErrorBody"];
+        };
+      };
+    };
+  };
+  preview_optimize: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["OptimizeRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanningErrorBody"];
+        };
+      };
+    };
+  };
+  preview_optimize_undo: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        itinerary_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ChangeSet"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
         };
       };
     };

@@ -12,7 +12,7 @@ used at runtime.
 
 > **ADR 026 is proposed; all six of its build steps are built** (planner, data, history, app) and
 > await acceptance. Destinations (ADR 027) and trip export and import (ADR 028) are built;
-> Optimize (ADR 029) is next.
+> Optimize (ADR 029) is built too.
 
 First platform: Android. The architecture must allow an iPhone version without a rewrite.
 
@@ -37,7 +37,7 @@ sightseeing plans are an occasional help, not the main way in.
 | 7 | ~~Best day and time for that restaurant~~ | **Retired (ADR 026):** the user chooses the day and time; the Phase 8 slot engine is removed | Retired |
 | 8 | ~~Restaurants categorised by cuisine, meal type~~ | **Removed (ADR 026):** a restaurant is a name, a point and a kind (restaurant or café); Photon supplies no cuisine | Removed |
 | 9 | User-defined expected price or budget | **Removed for now** (owner, 2026-11-13; ADR 017): no budgets, currencies or prices | — |
-| 0b | **Optimize a hand-made trip** (ADR 029, proposed; third manager feature): the engine proposes a new order of the user's stops, within each day or across days, for the least travel; locked and ticketed stops stay, restaurants move at most 60 minutes and never start after 21:00 | Reorder search from the sequencer, travel times through the adapter, a preview with the saving | Planned |
+| 0b | **Optimize a hand-made trip** (ADR 029, accepted and built; third manager feature): the engine proposes a new order of the user's stops, within each day or across days, for the least travel; locked and ticketed stops stay, restaurants move at most 60 minutes and never start after 21:00 | Reorder search from the sequencer, travel times through the adapter, a preview with the saving, an undo | Built 2026-11-15, awaits acceptance |
 | 10 | Store travel photos linked to trip, day, city or item | Data model reserved; on-device first | Future (core to the history, owner's order) |
 | 11 | No LLM at runtime | Deterministic engine, reason codes, fixed templates | Always |
 | 12 | Free or open APIs preferred | Open data imported and self-hosted; a few free public services behind adapters | Always |
@@ -66,7 +66,7 @@ sightseeing plans are an occasional help, not the main way in.
    default they can change. No cuisine and no served meals are stored: Photon does not supply them
    (ADR 026). *(To change, ADR 026 steps 3 and 4: today the app also searches imported restaurants
    and proposes up to three day and meal slots, ADR 019.)*
-6. **Optimize (planned, ADR 029).** On a trip with at least three stops, ask the engine for a shorter
+6. **Optimize (ADR 029).** On a trip with at least three stops, ask the engine for a shorter
    order. Choose to reorder within each day or across all days, keep the stops with tickets in place,
    review the diff and the saving, apply or discard. Never longer than the current plan; opening
    hours are not known and the preview says so.

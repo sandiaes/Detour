@@ -445,13 +445,25 @@ makes them distinct even when their visits overlap more than 60 %.
 
 ### 5.4 Edits and recalculation
 
-> **Planned, ADR 029:** **Optimize** is a change-set action (`optimize`, scope `within_days` or
-> `across_days`) in a new `planner/optimize.py`. It reorders a hand-made or planned plan for the
-> least travel, starting from the current order and accepting only strict improvements, so it is
-> never longer. Every stop is kept; restaurants stay on their day within 60 minutes of their chosen
-> time and not after 21:00; locked and document-bearing (app-supplied `fixed_item_ids`) stops stay;
-> a stop stays in its own city's days. Travel uses cache and labelled estimates, then the provider
-> for the final days' legs. An independent revision validator checks the proposal.
+> **As built, [ADR 029](decisions/029-optimize-a-hand-made-trip.md):** **Optimize** is a change-set
+> action (`optimize`, migration `0017`) for a plan of any profile and any destination kind, through
+> `POST /v1/itineraries/{id}/optimize` (`scope` `within_days` or `across_days`, optional
+> `fixed_item_ids`) and `.../optimize/undo`. `planner/optimize.py` searches from the current order
+> and accepts only strictly improving moves (2-opt, relocate, swap; first improvement in index
+> order), so the proposal is never longer. Travel minutes are summed over the legs between
+> consecutive stops with a place (none across a free-time block). Every stop is kept. A restaurant
+> or café keeps its day and starts at its chosen time or up to 60 minutes later, never after 21:00;
+> locked and kept (`fixed_item_ids`) stops and free-time blocks keep day, start and end; a day may
+> not end later than the later of the day window end, its own current end and a restaurant's end at
+> its latest start. Empty days stay empty and a day with stops keeps at least one (a day boundary
+> has no travel, so otherwise the search would spread stops over empty days). A multi-city trip's
+> visit stays in the days of its nearest stop's city; on a place trip a visit further than 25 km
+> from the trip's point keeps its day. The search uses cached times and labelled estimates, then
+> the provider is asked for the legs of the changed days (current and proposed order, so the saving
+> compares like with like) and the search runs again, at most twice. `planner/optimize_validator.py`
+> checks every proposal independently. Applying makes a new version; undo restores the version
+> before it while nothing changed the plan since. It is deterministic and a heuristic: "a shorter
+> order, not necessarily the shortest".
 
 - **Add a city or location.** The new place becomes a mandatory visit. The engine re-solves with
   a **stability cost** that penalises moving existing items to another day or reordering them,

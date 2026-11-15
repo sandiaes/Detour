@@ -345,11 +345,11 @@ never holds an installation identifier. `provider_usage` is `(provider, usage_da
 |---|---|
 | `itinerary_id` | fk, `ON DELETE CASCADE` |
 | `base_version` | The itinerary version the preview was made from; apply refuses if it changed |
-| `action` | `add_place` (with `place_id` **or** `user_place_id`, and `duration_minutes` if given), `remove_place` (with `item_id`) or `edit_stops` (ADR 024). `add_restaurant` (Phase 8, ADR 019) is gone: its rows were deleted by `0014` |
+| `action` | `add_place` (with `place_id` **or** `user_place_id`, and `duration_minutes` if given), `remove_place` (with `item_id`) `edit_stops` (ADR 024) or `optimize` (ADR 029, migration `0017`; names no place, like `edit_stops`; with `restores_version` set it is an undo). `add_restaurant` (Phase 8, ADR 019) is gone: its rows were deleted by `0014` |
 | `slot_day` | The one day an add-place preview was restricted to (ADR 021, step 4); null otherwise. `slot_meal` and `after_item_id` were dropped by `0014` |
 | `target_name` | Snapshot of the place's name |
 | `status` | `pending` (previewed), `applied`, `discarded`, `expired` (the itinerary changed, or a newer preview replaced it); `decided_at` iff not pending; `result_version` iff applied |
-| `restores_version` | Set when applying restores that stored version exactly (removing the place the latest change added) |
+| `restores_version` | Set when applying restores that stored version exactly (removing the place the latest change added, or undoing an Optimize) |
 | `proposal` | The plan rows to write (same shape as a version's `state`); **cleared once decided** |
 | `diff`, `notes` | What the preview showed, kept after the decision |
 

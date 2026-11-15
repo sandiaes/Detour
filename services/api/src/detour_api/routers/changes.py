@@ -10,12 +10,13 @@ from detour_api.models.changes import (
     ChangeSetApplied,
     ChangeSetCreate,
     ItineraryVersion,
+    OptimizeRequest,
     PlaceSuggestionRequest,
     PlaceSuggestions,
     StopsEdit,
 )
 from detour_api.models.common import PlanningErrorBody
-from detour_api.planner import change_service, stop_service
+from detour_api.planner import change_service, optimize_service, stop_service
 from detour_api.repo import changes
 from detour_api.routers.responses import ERRORS
 
@@ -39,6 +40,38 @@ def preview_change(
         request.app.state.travel_time,
         request.app.state.settings,
     )
+
+
+@router.post(
+    "/itineraries/{itinerary_id}/optimize",
+    status_code=status.HTTP_201_CREATED,
+    summary="Preview a shorter order of the stops of a plan of any kind (ADR 029): within each day "
+    "or across all days. Locked stops and the ones named in fixed_item_ids stay; restaurants and "
+    "cafés keep their day. Returns the diff and the saving; nothing changes until it is applied. "
+    "409 no_better_order when the plan is already as short as the search can make it.",
+    responses={**ERRORS, 422: {"model": PlanningErrorBody}},
+)
+def preview_optimize(
+    session: SessionDep, request: Request, itinerary_id: uuid.UUID, body: OptimizeRequest
+) -> ChangeSet:
+    return optimize_service.preview_optimize(
+        session,
+        itinerary_id,
+        body,
+        request.app.state.travel_time,
+        request.app.state.settings,
+    )
+
+
+@router.post(
+    "/itineraries/{itinerary_id}/optimize/undo",
+    status_code=status.HTTP_201_CREATED,
+    summary="Preview restoring the plan as it was before the latest applied Optimize, while "
+    "nothing else changed it. 409 nothing_to_undo otherwise.",
+    responses=ERRORS,
+)
+def preview_optimize_undo(session: SessionDep, itinerary_id: uuid.UUID) -> ChangeSet:
+    return optimize_service.preview_undo(session, itinerary_id)
 
 
 @router.post(

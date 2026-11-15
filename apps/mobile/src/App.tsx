@@ -31,6 +31,7 @@ import { PhotosScreen } from "./screens/PhotosScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TripOverviewScreen } from "./screens/TripOverviewScreen";
 import { EditStopsScreen } from "./screens/EditStopsScreen";
+import { OptimizeScreen } from "./screens/OptimizeScreen";
 import { ImageCreditsScreen } from "./screens/ImageCreditsScreen";
 import { TripScreen } from "./screens/TripScreen";
 import { TripSettingsScreen } from "./screens/TripSettingsScreen";
@@ -102,6 +103,8 @@ function CurrentScreen({ route }: { route: Route }) {
           category={route.category}
         />
       );
+    case "optimize":
+      return <OptimizeScreen route={route} />;
     case "addPlace":
       return <AddPlaceScreen route={route} />;
     case "addRestaurant":

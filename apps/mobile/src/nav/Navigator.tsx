@@ -53,6 +53,8 @@ export type Route =
       /** The kind to start with (a tile on the empty Documents tab). */
       category?: DocCategory;
     }
+  /** Optimize a plan's order of stops (ADR 029). */
+  | { name: "optimize"; tripId: string; itineraryId: string }
   | { name: "addPlace"; tripId: string; itineraryId: string }
   | { name: "addRestaurant"; tripId: string; itineraryId: string }
   | { name: "changePreview"; tripId: string; itineraryId: string; changeSetId: string };

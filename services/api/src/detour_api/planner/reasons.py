@@ -110,6 +110,20 @@ NOTE_TEMPLATES: dict[str, str] = {
     "DISTINCT_ALLOCATION": "The two plans divide the days between different base cities.",
     # Multi-city trips (ADR 024).
     "STOPS_CHANGED": "Your cities change; the trip becomes {name}.",
+    # Optimize a hand-made trip (ADR 029).
+    "OPTIMIZED": (
+        "A shorter order: {saved} min less travel ({before} min before, {after} min after), "
+        "about {km} km less."
+    ),
+    "OPTIMIZE_ESTIMATED": (
+        "{estimated} of the {legs} travel times here are estimates from the straight-line "
+        "distance, not routed."
+    ),
+    "OPTIMIZE_NOT_SHORTEST": "A shorter order, not necessarily the shortest.",
+    "OPTIMIZE_NO_HOURS": "Opening hours are not known; a place may be closed on its new day.",
+    "OPTIMIZE_KEPT": "{count} stops stay exactly where they are (locked, or kept by you).",
+    "OPTIMIZE_FAR_KEPT": "{count} stops far from {name} keep their day.",
+    "OPTIMIZE_UNDONE": "The order from before Optimize is restored.",
     "STOP_REMOVED_ITEMS": "These leave the plan with their days: {items}.",
     "ARRIVAL_TIME_UNKNOWN": (
         "Day {day} starts in {to_name}; the journey from {from_name} is not included in the "

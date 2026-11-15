@@ -61,6 +61,13 @@ CHANGE_NOTES = frozenset(
         "MEAL_REPLACED",
         "STOP_REMOVED_ITEMS",
         "STOPS_CHANGED",
+        "OPTIMIZED",
+        "OPTIMIZE_ESTIMATED",
+        "OPTIMIZE_NOT_SHORTEST",
+        "OPTIMIZE_NO_HOURS",
+        "OPTIMIZE_KEPT",
+        "OPTIMIZE_FAR_KEPT",
+        "OPTIMIZE_UNDONE",
     }
 )
 
@@ -661,7 +668,8 @@ def list_versions(
     itineraries.require_itinerary(conn, installation_id, itinerary_id)
     rows = conn.execute(
         text(
-            "SELECT v.version, v.replaced_at, v.change_set_id, c.action, c.target_name"
+            "SELECT v.version, v.replaced_at, v.change_set_id, c.action, c.target_name,"
+            " c.restores_version"
             " FROM app.itinerary_version v LEFT JOIN app.change_set c ON c.id = v.change_set_id"
             " WHERE v.itinerary_id = :i ORDER BY v.version DESC"
         ),
@@ -674,6 +682,31 @@ def list_versions(
             change_set_id=r.change_set_id,
             action=r.action,
             target_name=r.target_name,
+            restores_version=r.restores_version,
         )
         for r in rows
     ]
+
+
+def itinerary_row(conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID) -> Any:
+    """The itinerary's row with its trip's status and destination; not found or a past trip is
+    refused. For the actions that read a plan of any profile (Optimize, ADR 029)."""
+    return _itinerary_row(conn, installation_id, itinerary_id)
+
+
+def latest_optimize(
+    conn: Connection, itinerary_id: uuid.UUID, version: int
+) -> tuple[int, State] | None:
+    """The version an applied Optimize replaced, if it is the latest change: the plan has not
+    changed since, and that change set was an Optimize itself, not an undo (ADR 029)."""
+    row = conn.execute(
+        text(
+            "SELECT base_version FROM app.change_set WHERE itinerary_id = :i AND status = 'applied'"
+            " AND action = 'optimize' AND restores_version IS NULL AND result_version = :v"
+        ),
+        {"i": itinerary_id, "v": version},
+    ).first()
+    if row is None:
+        return None
+    state = stored_version(conn, itinerary_id, row.base_version)
+    return None if state is None else (row.base_version, state)

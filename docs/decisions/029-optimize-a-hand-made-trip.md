@@ -1,10 +1,11 @@
 # ADR 029 — Optimize a hand-made trip
 
-- **Status:** **Proposed** on 2026-11-14, at the owner's request, after the owner answered the
+- **Status:** **Accepted** on 2026-11-15 (the owner accepted all five points of the revision as recommended; building). Was **Proposed** on 2026-11-14, at the owner's request, after the owner answered the
   design questions (see "Owner decisions"). **Revised on 2026-11-15** now that ADRs 027 and 028 are
   built (see "Revision of 2026-11-15"): it awaits the owner's acceptance of the five points there.
   Documentation only: nothing is built. It is the **third** manager feature, after destinations
   outside the imported regions (ADR 027) and trip export (ADR 028).
+- **Built:** 2026-11-15 (see "As built"); awaiting acceptance of the build.
 - **Date:** 2026-11-14
 - **Related:** [`026-trip-manager-first.md`](026-trip-manager-first.md),
   [`014-phase-4-planner-v1.md`](014-phase-4-planner-v1.md),
@@ -199,3 +200,47 @@ The code shows four things the first draft left open. They change no owner decis
 3. A stop never moves between cities of a multi-city trip.
 4. Dinner starts at the latest at 21:00.
 5. Build it third, after destinations (ADR 027) and export (ADR 028).
+
+## As built (2026-11-15, awaiting acceptance)
+
+Migration `0017_optimize_change_sets`. Backend and app tested on synthetic fixtures and fake
+servers; **not run against the production database** and not tried on a device. Travel times in the
+tests are labelled estimates: nothing called the routing provider.
+
+- **API.** `POST /v1/itineraries/{id}/optimize` (`scope`, `fixed_item_ids`) returns a change set
+  (action `optimize`) with the diff, the saving and the notes; applying and discarding are the
+  ordinary endpoints. `POST /v1/itineraries/{id}/optimize/undo` previews restoring the version from
+  before the latest applied Optimize, while nothing changed the plan since (`409 nothing_to_undo`
+  otherwise). `409 no_better_order` when nothing is shorter; `422 not_enough_stops` (under three
+  stops with a place), `422 too_many_stops` (over 200), `422 unknown_items`. `ItineraryVersion`
+  gained `restores_version`, so the app can tell an Optimize from its undo.
+- **Search** (`planner/optimize.py`), checks (`planner/optimize_validator.py`), service
+  (`planner/optimize_service.py`). Tests: `test_optimize.py` (search, rules, property tests on 12
+  seeded plans), `test_api_optimize.py` (both scopes, apply, undo, refusals, a place trip), and
+  `Optimize.test.tsx` in the app.
+- **App.** An Optimize screen (scope, stops to keep, pre-selected from the documents), an Optimize
+  row in the trip menu and at the top of the Itinerary tab, "Undo Optimize" in the trip menu, and the
+  ordinary change preview with its notes shown open for Optimize.
+- **Deviations from the draft.**
+  (a) **Empty days stay empty and a day with stops keeps at least one.** The draft did not say so;
+  without it a day boundary (which has no travel) makes the search spread a day's stops over the
+  trip's empty days. Found by the first API test.
+  (b) **A restaurant never starts earlier than the time the user chose**; it starts then, or up to
+  60 minutes later when the stops before it take longer (never after 21:00). The draft allowed 60
+  minutes either way; earlier never helps the route, and the independent check still accepts both.
+  (c) **A day's end limit** is the later of the day window end, the day's own end and a
+  restaurant's end at its latest start, so a dinner at 21:00 does not make the day "too long".
+  (d) **Legs are written for every day of an Optimize proposal**, also for unchanged days, so the
+  saving compares the same measure before and after; times of unchanged days are not touched. A
+  manual plan had no stored legs before.
+  (e) **Far stops on a place trip** keep their day and are named in a note ("N stops far from X keep
+  their day"); the sheet does not list them as fixed, as the draft said, because the rule is the
+  server's.
+  (f) **Estimates and modes.** The walk or drive mode comes from the planner's existing rule (up to
+  2 km straight line is walked), so an estimated walk of 1 km can take longer than an estimated
+  drive of 2.5 km; the search follows the labelled times it is given.
+  (g) A free-time block keeps its day and times and no leg is counted across it; a day with an item
+  that has no time is left exactly as it is.
+- **Not built / not verified.** No device check; no production run (migrations 0014 to 0017 are
+  still to be run on the real database); the shortest order is not claimed, only a shorter one.
+
