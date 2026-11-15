@@ -24,7 +24,7 @@ test("a first run with no trips explains what to do and offers the form", async 
     </Harness>,
   );
   expect(await screen.findByText("No trips yet")).toBeOnTheScreen();
-  await fireEvent.press(screen.getByText("Plan a trip"));
+  await fireEvent.press(screen.getByText("New trip"));
   expect(await screen.findByRole("header", { name: "Create new trip" })).toBeOnTheScreen();
 });
 

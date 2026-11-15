@@ -1,9 +1,16 @@
 import type { Trip } from "@detour/shared";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
-import { Button, EmptyState, LoadingState, Notice, ScreenHeader } from "../components/ds";
+import {
+  Button,
+  EmptyState,
+  KeyboardScrollView,
+  LoadingState,
+  Notice,
+  ScreenHeader,
+} from "../components/ds";
 import { StopList, type StopDraft, stopsProblem } from "../components/StopList";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
@@ -78,7 +85,7 @@ export function EditStopsScreen({ tripId }: { tripId: string }) {
 
   return (
     <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView contentContainerStyle={styles.content}>
         <ScreenHeader title="Edit cities" subtitle={trip.title} onBack={nav.back} />
         <View style={styles.pad}>
           <StopList stops={stops} onChange={setDraft} />
@@ -102,7 +109,7 @@ export function EditStopsScreen({ tripId }: { tripId: string }) {
             onPress={() => void save()}
           />
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
     </View>
   );
 }

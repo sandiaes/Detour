@@ -183,6 +183,7 @@ export function DocumentList({
       <StateView
         kind="empty"
         layout="inline"
+        tight
         icon="ticket"
         title="No documents yet"
         text="Add your tickets, reservations and other travel documents to keep everything in one place."

@@ -38,10 +38,27 @@ export type DurationCheck = {
  * refused by the server, so it blocks), the time to get there (a warning), and the end of the day
  * (a warning). Null when it fits or the stop has no start time.
  */
-export function checkDuration(day: Day, item: Item, minutes: number): DurationCheck | null {
-  const start = minutesOf(item.start_time);
+export function checkDuration(
+  day: Day,
+  item: Item,
+  minutes: number,
+  /** A new start time ("HH:MM") being tried instead of the stop's own. */
+  newStart?: string | null,
+): DurationCheck | null {
+  const start = minutesOf(newStart ?? item.start_time);
   if (start === null) return null;
   const end = start + minutes;
+  // A start that falls inside the stop before it is refused by the server too.
+  const before = day.items
+    .filter((i) => i.id !== item.id && i.type !== "free_time" && minutesOf(i.end_time) !== null)
+    .filter((i) => (minutesOf(i.start_time) ?? Infinity) < start)
+    .sort((a, b) => (minutesOf(b.end_time) as number) - (minutesOf(a.end_time) as number))[0];
+  if (before && (minutesOf(before.end_time) as number) > start) {
+    return {
+      level: "error",
+      text: `Starts at ${clockOf(start)}, before ${before.display_name} ends at ${clockOf(minutesOf(before.end_time) as number)}. Choose a later start or move that stop first.`,
+    };
+  }
   const next = day.items
     .filter((i) => i.id !== item.id && i.type !== "free_time" && minutesOf(i.start_time) !== null)
     .filter((i) => (minutesOf(i.start_time) as number) >= start)
@@ -55,7 +72,7 @@ export function checkDuration(day: Day, item: Item, minutes: number): DurationCh
       };
     }
     // The transfer is to the stop that follows in the plan; only its time to that one is known.
-    const followsInPlan = item.transfer?.to_item_id === next.id;
+    const followsInPlan = newStart == null && item.transfer?.to_item_id === next.id;
     if (followsInPlan && item.transfer) {
       const travel = Math.ceil(item.transfer.seconds / 60);
       if (end + travel > nextStart) {

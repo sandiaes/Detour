@@ -414,16 +414,35 @@ export function TripOverviewScreen({
         <ResourceNotices resource={plan} noun="this itinerary" />
         {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
         {undoing ? <Notice tone="error">{undoing}</Notice> : null}
-        {counts ? <StatRow stats={statsOf(counts)} /> : null}
+        {/* The figures' bottom hairline is the Optimize row's top one, so the row has the same
+            room above and below it. */}
         {optimizable ? (
-          <ListRow
-            inset="none"
-            icon="route"
-            title="Optimize"
-            detail="Find a shorter order for your stops"
-            testID="itinerary-optimize"
-            onPress={openOptimize}
-          />
+          counts ? (
+            <View>
+              <StatRow stats={statsOf(counts)} />
+              <ListRow
+                inset="none"
+                icon="route"
+                title="Optimize"
+                detail="Find a shorter order for your stops"
+                testID="itinerary-optimize"
+                onPress={openOptimize}
+              />
+            </View>
+          ) : (
+            <RowGroup>
+              <ListRow
+                inset="none"
+                icon="route"
+                title="Optimize"
+                detail="Find a shorter order for your stops"
+                testID="itinerary-optimize"
+                onPress={openOptimize}
+              />
+            </RowGroup>
+          )
+        ) : counts ? (
+          <StatRow stats={statsOf(counts)} />
         ) : null}
         <DayTimeline
           days={[...plan.data.days].sort((x, y) => x.day_index - y.day_index)}

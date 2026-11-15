@@ -1,6 +1,6 @@
 import type { CoverCandidate, DestinationResult, Trip } from "@detour/shared";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { StyleSheet, Switch, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, isOfflineError, planningIssues } from "../api/unwrap";
@@ -16,6 +16,7 @@ import {
   SelectField,
   Stepper,
   TextField,
+  KeyboardScrollView,
 } from "../components/ds";
 import { Cover } from "../components/ds/Cover";
 import { CoverPicker } from "../components/ds/CoverPicker";
@@ -258,7 +259,7 @@ export function CreateTripScreen() {
   };
   return (
     <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView contentContainerStyle={styles.content}>
         <ScreenHeader
           title="Create new trip"
           subtitle="Choose where you want to go; Detour helps you build the itinerary."
@@ -598,7 +599,7 @@ export function CreateTripScreen() {
             ) : null}
           </View>
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
     </View>
   );
 }

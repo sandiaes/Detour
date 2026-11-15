@@ -52,6 +52,13 @@ export type TextFieldProps = TextInputProps & {
   /** A line icon before the text (a magnifier on a search field). */
   icon?: IconName;
   suffix?: string;
+  /** A suffix that can be pressed (the unit of a length: "min", "h"). */
+  suffixAction?: {
+    label: string;
+    accessibilityLabel: string;
+    onPress: () => void;
+    testID?: string;
+  };
   error?: string | null;
   hint?: string | null;
   /** A muted fill, for a value that is a default rather than the user's own. */
@@ -66,6 +73,7 @@ export function TextField({
   label,
   icon,
   suffix,
+  suffixAction,
   error,
   hint,
   quiet = false,
@@ -110,6 +118,19 @@ export function TextField({
           ]}
         />
         {suffix ? <Text style={styles.suffix}>{suffix}</Text> : null}
+        {suffixAction ? (
+          <FocusPressable
+            accessibilityRole="button"
+            accessibilityLabel={suffixAction.accessibilityLabel}
+            onPress={suffixAction.onPress}
+            hitSlop={touchSlop(sizes.controlSm - spacing.sm, spacing.xs)}
+            style={({ pressed }) => [styles.unit, pressed && styles.pressed]}
+            testID={suffixAction.testID}
+          >
+            <Text style={styles.unitText}>{suffixAction.label}</Text>
+            <Icon name="down" size="xs" color={colors.muted} />
+          </FocusPressable>
+        ) : null}
         {onClear && hasText ? (
           <IconButton icon="close" label={clearLabel} size="sm" onPress={onClear} />
         ) : null}
@@ -398,6 +419,18 @@ const styles = StyleSheet.create({
   inputMultiline: { minHeight: sizes.multiline, textAlignVertical: "top" },
   inputQuiet: { color: colors.muted },
   suffix: { ...type.caption, color: colors.muted, marginRight: spacing.sm },
+  // The unit of a length, pressed to switch it: a small soft pill at the end of the box.
+  unit: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xxs,
+    minHeight: sizes.controlSm - spacing.sm,
+    paddingHorizontal: spacing.sm,
+    marginRight: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+  },
+  unitText: { ...type.caption, fontWeight: weight.semibold, color: colors.text },
   select: {
     flex: 1,
     flexDirection: "row",

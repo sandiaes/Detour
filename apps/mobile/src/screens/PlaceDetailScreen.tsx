@@ -7,6 +7,7 @@ import { Cover } from "../components/ds/Cover";
 import { DurationField } from "../components/ds/DurationField";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { parseClock } from "../domain/clock";
 import { checkDuration } from "../domain/duration";
 import {
   Badge,
@@ -24,7 +25,9 @@ import {
   SectionHeader,
   StatRow,
   TextField,
+  TimeField,
   WakingServer,
+  ConfirmSheet,
   useAnnounceOnMount,
 } from "../components/ds";
 import { dayTitle } from "../components/plan/DayPlan";
@@ -155,9 +158,10 @@ function EditDisplayName({
   );
 }
 
-/** Edit length: how long the user stays here. One free field, a pill that goes back to the usual
- * length, and a live check of what the new length would run into (a stop that follows, the trip
- * to it, the end of the day). A clash with the next stop cannot be saved. */
+/** Edit time: when the user arrives (a typed time or the roulette) and how long they stay (one
+ * free field, a pill that goes back to the usual length). A live check says what the new time
+ * would run into (the stop before or after, the trip to it, the end of the day). A clash with a
+ * neighbouring stop cannot be saved. */
 function EditLength({
   day,
   item,
@@ -172,23 +176,33 @@ function EditLength({
   const changes = useChangeActions();
   const [open, setOpen] = useState(false);
   const [minutes, setMinutes] = useState<number | null>(item.duration_minutes);
+  const ownStart = formatClock(item.start_time) ?? "";
+  const [startText, setStartText] = useState(ownStart);
   const [valid, setValid] = useState(true);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const hasDefault = item.default_duration_minutes != null;
   const effective = minutes ?? item.default_duration_minutes ?? item.duration_minutes;
-  const check = valid ? checkDuration(day, item, effective) : null;
+  const newStart = parseClock(startText);
+  // An item with no time may stay without one; otherwise the time must be a time of day.
+  const startValid = newStart !== null || (startText.trim() === "" && ownStart === "");
+  const startChanged = newStart !== null && newStart !== ownStart;
+  const check =
+    valid && startValid
+      ? checkDuration(day, item, effective, startChanged ? newStart : null)
+      : null;
 
   if (!open) {
     return (
       <Button
-        label="Edit length"
+        label="Edit time"
         icon="clock"
         variant="secondary"
         size="sm"
         testID="edit-length"
         onPress={() => {
           setMinutes(item.duration_minutes);
+          setStartText(ownStart);
           setValid(true);
           setProblem(null);
           setOpen(true);
@@ -196,15 +210,28 @@ function EditLength({
       />
     );
   }
-  const unchanged =
+  const lengthUnchanged =
     minutes === null
       ? item.duration_source === "category_default"
       : minutes === item.duration_minutes;
+  const unchanged = lengthUnchanged && !startChanged;
   const save = async () => {
     setBusy(true);
     setProblem(null);
     try {
-      await changes.setDuration(itineraryId, item.id, minutes);
+      // Only what changed is sent. A new start keeps the day in time order.
+      const position = startChanged
+        ? day.items.filter(
+            (o) =>
+              o.id !== item.id &&
+              o.start_time !== null &&
+              (formatClock(o.start_time) ?? "") <= newStart,
+          ).length + 1
+        : undefined;
+      await changes.setSchedule(itineraryId, item.id, {
+        ...(lengthUnchanged ? {} : { minutes }),
+        ...(startChanged ? { startTime: newStart, position } : {}),
+      });
       setOpen(false);
       onSaved();
     } catch (e) {
@@ -215,6 +242,7 @@ function EditLength({
   };
   return (
     <View style={styles.lengthEditor} testID="length-editor">
+      <TimeField label="Start time" value={startText} onChange={setStartText} testID="edit-start" />
       <DurationField
         label="Length of stay"
         minutes={minutes}
@@ -237,7 +265,7 @@ function EditLength({
           label="Save"
           size="sm"
           testID="save-length"
-          disabled={busy || !valid || check?.level === "error" || unchanged}
+          disabled={busy || !valid || !startValid || check?.level === "error" || unchanged}
           loading={busy}
           onPress={() => void save()}
         />
@@ -291,6 +319,10 @@ export function PlaceDetailScreen({
     ),
   );
   const items = useItemActions(tripId, itineraryId);
+  const changes = useChangeActions();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeProblem, setRemoveProblem] = useState<string | null>(null);
   const trip = trips.data?.find((t) => t.id === tripId);
 
   if (!plan.data) {
@@ -350,7 +382,11 @@ export function PlaceDetailScreen({
     [address, address ? null : town].filter(Boolean).join(", ") ||
     (item.lat !== null && item.lon !== null ? formatCoordinates(item.lat, item.lon) : null);
   const venue = item.restaurant?.venue_type ?? null;
-  const editable = plan.data.profile !== "manual" && trip?.status !== "past" && items.connected;
+  // A plan made by hand can be locked and edited too; its stops are taken out directly (nothing
+  // to recalculate), a generated plan shows a preview first.
+  const manual = plan.data.profile === "manual";
+  const editable = trip?.status !== "past" && items.connected;
+  const removable = manual ? item.type !== "free_time" : item.type === "visit";
   const lengthEditable = trip?.status !== "past" && items.connected && item.type !== "free_time";
   const tags = [
     item.locked ? "Locked" : null,
@@ -426,7 +462,9 @@ export function PlaceDetailScreen({
               {[STOP_KIND_LABEL[kind], town].filter(Boolean).join(" · ")}
             </Text>
           </View>
-          {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
+          {items.problem || removeProblem ? (
+            <Notice tone="error">{items.problem ?? removeProblem}</Notice>
+          ) : null}
           {tags.length > 0 ? (
             <View style={styles.tagRow}>
               {tags.map((t) => (
@@ -468,7 +506,7 @@ export function PlaceDetailScreen({
                 onSaved={plan.refresh}
               />
             ) : null}
-            {editable && item.type === "visit" ? (
+            {editable && removable ? (
               <>
                 <Button
                   label={item.locked ? "Unlock" : "Lock"}
@@ -487,8 +525,14 @@ export function PlaceDetailScreen({
                   size="sm"
                   disabled={items.actions.busyId === item.id || item.locked}
                   accessibilityLabel={`Remove ${item.display_name}`}
-                  hint={item.locked ? "Unlock it first." : "Shows what would change first."}
-                  onPress={() => items.actions.onRemove(item)}
+                  hint={
+                    item.locked
+                      ? "Unlock it first."
+                      : manual
+                        ? "Asks first."
+                        : "Shows what would change first."
+                  }
+                  onPress={() => (manual ? setConfirmRemove(true) : items.actions.onRemove(item))}
                 />
               </>
             ) : null}
@@ -532,6 +576,28 @@ export function PlaceDetailScreen({
           ) : null}
         </View>
       </ScrollView>
+      <ConfirmSheet
+        visible={confirmRemove}
+        title={`Remove ${item.display_name}?`}
+        message="It is taken off this day. You can add it again later."
+        confirmLabel="Yes, remove it"
+        cancelLabel="Keep it"
+        busy={removing}
+        confirmTestID="confirm-remove"
+        onCancel={() => setConfirmRemove(false)}
+        onConfirm={() => {
+          setRemoving(true);
+          setRemoveProblem(null);
+          changes
+            .removeItem(tripId, itineraryId, item.id)
+            .then(() => nav.back())
+            .catch((e: unknown) => setRemoveProblem(describeError(e)))
+            .finally(() => {
+              setRemoving(false);
+              setConfirmRemove(false);
+            });
+        }}
+      />
     </View>
   );
 }

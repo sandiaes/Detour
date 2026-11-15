@@ -10,7 +10,7 @@ import type {
 } from "@detour/shared";
 import { Camera, Map, Marker } from "@maplibre/maplibre-react-native";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
@@ -32,6 +32,7 @@ import {
   SelectField,
   StopMark,
   TextField,
+  KeyboardScrollView,
 } from "../components/ds";
 import { DurationField } from "../components/ds/DurationField";
 import { SuggestionCard } from "../components/ds/SuggestionCard";
@@ -414,7 +415,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   ) : null;
 
   return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardScrollView contentContainerStyle={styles.content}>
       <CompactHeader
         title="Add a place"
         subtitle={trip ? `${trip.title} · ${trip.destination.name}` : undefined}
@@ -715,7 +716,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
           <InlineStatus text="Adding a place needs a connection to the server." />
         ) : null}
       </View>
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }
 

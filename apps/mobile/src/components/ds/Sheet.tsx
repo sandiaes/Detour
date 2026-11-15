@@ -1,17 +1,10 @@
-import type { ReactNode } from "react";
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { type ComponentRef, type ReactNode, useRef } from "react";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TOUCH, colors, layout, radius, shadow, spacing, type } from "../../theme";
 import { Button } from "./Button";
+import { useKeyboardOverlap } from "./keyboard";
 import { IconButton } from "./primitives";
 
 /** A sheet that slides up from the bottom: a white surface with 24 dp corners, a grabber, a title
@@ -28,6 +21,9 @@ export function Sheet({
   children: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
+  // The keyboard lifts the sheet, so a field in it is never covered.
+  const root = useRef<ComponentRef<typeof View>>(null);
+  const keyboard = useKeyboardOverlap(root);
   return (
     <Modal
       visible={visible}
@@ -36,17 +32,19 @@ export function Sheet({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <KeyboardAvoidingView
-        style={styles.root}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View ref={root} style={[styles.root, { paddingBottom: keyboard.overlap }]}>
         <Pressable
           style={styles.backdrop}
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={onClose}
         />
-        <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]}>
+        <View
+          style={[
+            styles.sheet,
+            { paddingBottom: spacing.lg + (keyboard.visible ? 0 : insets.bottom) },
+          ]}
+        >
           <View style={styles.grabber} />
           <View style={styles.head}>
             <Text accessibilityRole="header" style={styles.title}>
@@ -56,7 +54,7 @@ export function Sheet({
           </View>
           {children}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

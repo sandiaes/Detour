@@ -1,6 +1,6 @@
 import type { Trip } from "@detour/shared";
 import { type ReactNode, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 import { call } from "../api/unwrap";
 import { CATEGORY_ICON, DEVICE_ONLY_NOTE, KindTile } from "../components/documents/DocumentList";
@@ -21,6 +21,7 @@ import {
   SelectField,
   TextField,
   Tile,
+  KeyboardScrollView,
 } from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
@@ -228,7 +229,7 @@ function Form({
   if (!existing && !picked) {
     return (
       <View style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScrollView contentContainerStyle={styles.content}>
           <ScreenHeader
             title="Add document"
             subtitle={`${trip.title} · ${shortSpan(trip)}`}
@@ -267,7 +268,7 @@ function Form({
               divider={false}
             />
           </View>
-        </ScrollView>
+        </KeyboardScrollView>
       </View>
     );
   }
@@ -281,7 +282,7 @@ function Form({
 
   return (
     <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView contentContainerStyle={styles.content}>
         <ScreenHeader
           title={existing ? "Edit document" : "Add document"}
           subtitle={`${trip.title} · ${shortSpan(trip)}`}
@@ -450,7 +451,7 @@ function Form({
           />
           {!existing ? <Text style={styles.note}>{DEVICE_ONLY_NOTE}</Text> : null}
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
     </View>
   );
 }
