@@ -9,7 +9,7 @@ import type {
   Trip,
 } from "@detour/shared";
 import { Camera, Map, Marker } from "@maplibre/maplibre-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
@@ -46,8 +46,18 @@ import {
   placeSuggestionWhere,
   travelImpact,
 } from "../domain/placeSuggestions";
+import { buildDayRows, isEatKind, stopKind } from "../domain/itinerary";
+import {
+  type Anchor,
+  LOCAL_RADIUS_M,
+  type RankedSight,
+  dayAnchor,
+  mergeSights,
+  searchAnchors,
+  tripAnchors,
+} from "../domain/searchAnchors";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { border, colors, layout, radius, spacing, type } from "../theme";
+import { TOUCH, border, colors, layout, radius, spacing, type } from "../theme";
 import { formatMeters, formatMinutes } from "../util/format";
 
 // Adding a place (Phase 7, ADR 018; redesigned in ADR 021, step 4). Find it (sights, towns and
@@ -59,8 +69,10 @@ type AddRoute = Extract<Route, { name: "addPlace" }>;
 
 export const SEARCH_DEBOUNCE_MS = 350;
 const MIN_QUERY = 2;
-/** Sights are searched within this distance of the trip's destination. */
-export const SIGHT_RADIUS_M = 50_000;
+/** Sights are searched within this distance of each of the trip's cities. */
+export const SIGHT_RADIUS_M = LOCAL_RADIUS_M;
+/** The known sights shown around the day's city on the pin map, so the user can find their way. */
+export const NEARBY_RADIUS_M = 3_000;
 /** What "default" means for a choice that is not an imported sight (a sight has its own typical
  * length, known to the server). */
 export function defaultMinutesFor(c: Choice): number | null {
@@ -77,7 +89,7 @@ export type Choice =
 
 type Mode = "search" | "address" | "pin";
 type Results = {
-  sights: PlaceSummary[];
+  sights: RankedSight[];
   towns: DestinationResult[];
 };
 
@@ -204,31 +216,61 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   const [working, setWorking] = useState<"find" | "preview" | "address" | null>(null);
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
 
+  // Where to look (owner, 2026-11-15): around the city of the day that was open, then around the
+  // trip's other cities; a multi-city trip opened on no day looks around each of its cities.
+  const anchors = useMemo(() => tripAnchors(trip), [trip]);
+  const focus = useMemo(
+    () => dayAnchor(trip, itinerary.data?.days, route.day),
+    [trip, itinerary.data, route.day],
+  );
+  const around = useMemo(() => searchAnchors(anchors, focus), [anchors, focus]);
+  const centre: Anchor | null = focus ?? anchors[0] ?? null;
+  // The day's city is known once the plan is read; until then a search would measure from the
+  // wrong city.
+  const placed = route.day === undefined || itinerary.data !== undefined || !!itinerary.error;
+
   const q = query.trim();
-  const key = q.toLowerCase();
-  const centre = trip?.destination;
-  const needsSearch = mode === "search" && q.length >= MIN_QUERY && results[key] === undefined;
+  // The results belong to the query and to the cities searched around.
+  const key = `${around.map((a) => a.name).join("|")}::${q.toLowerCase()}`;
+  const needsSearch =
+    mode === "search" && placed && q.length >= MIN_QUERY && results[key] === undefined;
   useEffect(() => {
-    if (!needsSearch || !client || !centre) return;
+    if (!needsSearch || !client || around.length === 0) return;
     let current = true;
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const near = { lat: centre.lat, lon: centre.lon, radius_m: SIGHT_RADIUS_M, limit: 8 };
-          const [sights, towns] = await Promise.all([
-            call(
-              client.GET("/v1/places/search", {
-                params: { query: { q, kind: "attraction", ...near } },
-              }),
-            ),
+          const [towns, ...sights] = await Promise.all([
             call(client.GET("/v1/destinations/search", { params: { query: { q, limit: 5 } } })),
+            ...around.map((a) =>
+              call(
+                client.GET("/v1/places/search", {
+                  params: {
+                    query: {
+                      q,
+                      kind: "attraction",
+                      lat: a.lat,
+                      lon: a.lon,
+                      radius_m: SIGHT_RADIUS_M,
+                      limit: 8,
+                    },
+                  },
+                }),
+              ),
+            ),
           ]);
           if (!current) return;
           setSearchError(null);
           setResults((r) => ({
             ...r,
             [key]: {
-              sights: sights.results.filter((p) => p.name),
+              sights: mergeSights(
+                around.map((anchor, n) => ({
+                  anchor,
+                  results: (sights[n]?.results ?? []).filter((p) => p.name),
+                })),
+                focus,
+              ),
               towns: towns.results.filter((t) => t.kind === "city"),
             },
           }));
@@ -241,7 +283,43 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
       current = false;
       clearTimeout(timer);
     };
-  }, [needsSearch, client, centre, q, key]);
+  }, [needsSearch, client, around, focus, q, key]);
+
+  // The pin map shows the plan's stops and the known sights around the day's city, so the user
+  // can find their way; a known sight can be chosen by tapping it.
+  const [nearby, setNearby] = useState<{ at: string; sights: PlaceSummary[] } | null>(null);
+  const nearbyAt = centre ? `${centre.lat},${centre.lon}` : "";
+  const needsNearby = mode === "pin" && placed && !!centre && nearby?.at !== nearbyAt;
+  useEffect(() => {
+    if (!needsNearby || !client || !centre) return;
+    let current = true;
+    void (async () => {
+      try {
+        const found = await call(
+          client.GET("/v1/places/search", {
+            params: {
+              query: {
+                kind: "attraction",
+                lat: centre.lat,
+                lon: centre.lon,
+                radius_m: NEARBY_RADIUS_M,
+                limit: 50,
+              },
+            },
+          }),
+        );
+        if (current) setNearby({ at: nearbyAt, sights: found.results.filter((p) => p.name) });
+      } catch {
+        // Only a help for finding one's way: the pin still works without it.
+        if (current) setNearby({ at: nearbyAt, sights: [] });
+      }
+    })();
+    return () => {
+      current = false;
+    };
+  }, [needsNearby, client, centre, nearbyAt]);
+  // A tap on a marker can also reach the map underneath; that tap must not drop a pin.
+  const markerTap = useRef(0);
 
   /** Places beyond the imported data, and addresses: Photon through the Detour server. */
   const external = async (text: string): Promise<ExternalPlace[] | "none" | "unavailable"> => {
@@ -378,6 +456,46 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
     }
   };
 
+  // The plan's stops on the pin map: the open day's with their numbers, the other days' plainer.
+  const planMarks = useMemo(() => {
+    const marks: {
+      id: string;
+      lat: number;
+      lon: number;
+      name: string;
+      eat: boolean;
+      day: number;
+      ordinal: number | null;
+    }[] = [];
+    for (const d of itinerary.data?.days ?? []) {
+      for (const row of buildDayRows(d)) {
+        if (row.kind !== "item" || row.item.lat === null || row.item.lon === null) continue;
+        marks.push({
+          id: row.item.id,
+          lat: row.item.lat,
+          lon: row.item.lon,
+          name: row.item.display_name,
+          eat: isEatKind(stopKind(row.item)),
+          day: d.day_index,
+          ordinal: d.day_index === route.day ? row.ordinal : null,
+        });
+      }
+    }
+    return marks;
+  }, [itinerary.data, route.day]);
+  const planned = useMemo(
+    () =>
+      new Set(
+        (itinerary.data?.days ?? []).flatMap((d) =>
+          d.items.map((i) => i.place_id).filter((id): id is string => !!id),
+        ),
+      ),
+    [itinerary.data],
+  );
+  const nearbyShown = (nearby?.at === nearbyAt ? nearby.sights : []).filter(
+    (p) => !planned.has(p.id),
+  );
+
   const found = results[key];
   const wider = wide[key];
   const nothingFound = found !== undefined && found.sights.length === 0 && found.towns.length === 0;
@@ -464,7 +582,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 {found && !nothingFound ? (
                   <DropdownPanel testID="search-results">
                     {found.sights.length ? <ChoiceGroupTitle title="Sights" /> : null}
-                    {found.sights.map((p) => (
+                    {found.sights.map(({ place: p, ...s }) => (
                       <ChoiceRow
                         key={p.id}
                         icon="sight"
@@ -476,9 +594,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                           p.names?.auto_generated ? "automatically romanized" : null,
                           p.category.replace(/_/g, " "),
                           p.city_name,
-                          p.distance_m != null
-                            ? `${formatMeters(p.distance_m)} from ${centre?.name ?? "the centre"}`
-                            : null,
+                          `${formatMeters(s.meters)} from ${s.from.name}`,
                         ]
                           .filter(Boolean)
                           .join(" · ")}
@@ -600,7 +716,9 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
           </View>
         ) : (
           <View style={styles.gap}>
-            <InlineStatus text="Tap the map where the place is, then name it." />
+            <InlineStatus
+              text={`Tap the map where the place is, then name it. The grey marks are known sights: tap one to choose it.${focus && anchors.length > 1 ? ` The map opens on ${focus.name}, the day's city.` : ""}`}
+            />
             {mapConfig && centre ? (
               <View style={styles.map}>
                 <Map
@@ -609,13 +727,64 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                   logo={false}
                   attribution={false}
                   onPress={(e) => {
+                    if (Date.now() - markerTap.current < 500) return;
                     const [lon, lat] = e.nativeEvent.lngLat;
-                    const name = customName;
+                    const name = choice?.kind === "pin" ? customName : "";
                     pick({ kind: "pin", lat, lon });
                     setCustomName(name);
                   }}
                 >
-                  <Camera initialViewState={{ center: [centre.lon, centre.lat], zoom: 12 }} />
+                  {/* Keyed by the city, so the camera opens on the day's city once the plan is read. */}
+                  <Camera
+                    key={nearbyAt}
+                    initialViewState={{ center: [centre.lon, centre.lat], zoom: 13 }}
+                  />
+                  {nearbyShown.map((p) => (
+                    <Marker
+                      key={p.id}
+                      id={`sight-${p.id}`}
+                      lngLat={[p.lon, p.lat]}
+                      anchor="center"
+                      onPress={() => {
+                        markerTap.current = Date.now();
+                        pick({ kind: "sight", place: p });
+                      }}
+                    >
+                      <View
+                        accessible
+                        accessibilityRole="button"
+                        accessibilityLabel={`Known sight: ${p.names?.display ?? p.name_en ?? p.name}`}
+                        accessibilityHint="Chooses this sight"
+                        style={styles.hit}
+                      >
+                        <StopMark kind="quiet" icon="sight" size="map" />
+                      </View>
+                    </Marker>
+                  ))}
+                  {planMarks.map((m) => (
+                    <Marker
+                      key={m.id}
+                      id={`plan-${m.id}`}
+                      lngLat={[m.lon, m.lat]}
+                      anchor="center"
+                      onPress={() => {
+                        markerTap.current = Date.now();
+                      }}
+                    >
+                      <View
+                        accessible
+                        accessibilityLabel={`In your plan, day ${m.day}: ${m.name}`}
+                        style={styles.hit}
+                      >
+                        <StopMark
+                          kind={m.eat ? "eat" : "sight"}
+                          size="map"
+                          label={m.ordinal ?? undefined}
+                          icon="sight"
+                        />
+                      </View>
+                    </Marker>
+                  ))}
                   {choice?.kind === "pin" ? (
                     <Marker id="pin" lngLat={[choice.lon, choice.lat]} anchor="bottom">
                       <View accessible accessibilityLabel="The pin you dropped">
@@ -632,16 +801,20 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
             {choice?.kind === "pin" ? (
               <InlineStatus text={`Pin at ${choice.lat.toFixed(5)}, ${choice.lon.toFixed(5)}`} />
             ) : null}
-            <TextField
-              label="Name of the place"
-              value={customName}
-              onChangeText={(t) => {
-                setCustomName(t);
-                setSavedId(null);
-                clearSuggestions();
-              }}
-              hint="Your own name for it, for example “Friend's flat”."
-            />
+            {choice?.kind === "sight" ? (
+              selected
+            ) : (
+              <TextField
+                label="Name of the place"
+                value={customName}
+                onChangeText={(t) => {
+                  setCustomName(t);
+                  setSavedId(null);
+                  clearSuggestions();
+                }}
+                hint="Your own name for it, for example “Friend's flat”."
+              />
+            )}
           </View>
         )}
 
@@ -802,6 +975,7 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: layout.gutter, paddingTop: spacing.xs, gap: layout.block },
   gap: { gap: spacing.sm },
   muted: { ...type.caption, color: colors.muted },
+  hit: { width: TOUCH, height: TOUCH, alignItems: "center", justifyContent: "center" },
   map: {
     height: 280,
     borderRadius: radius.lg,

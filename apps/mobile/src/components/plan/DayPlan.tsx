@@ -160,18 +160,6 @@ export function DayStrip({
 
 // ---- rows ------------------------------------------------------------------------------------
 
-/** No "Day 3 · Tue 1 Dec · 8 visits…" title: the strip above already names the day. Only a trip
- * that moves between base cities says where the day is based, in one quiet line. */
-function DayHead({ day, showBase }: { day: Day; showBase: boolean }) {
-  const base = showBase && day.base_city_name ? day.base_city_name : null;
-  if (!base) return null;
-  return (
-    <Text style={styles.dayBaseLine} accessibilityLabel={`${dayTitle(day)}. Based in ${base}.`}>
-      {base}
-    </Text>
-  );
-}
-
 function ArrivalRow({
   day,
   selectable,
@@ -332,7 +320,8 @@ export function TransferRow({ row }: { row: Extract<DayRow, { kind: "transfer" }
   );
 }
 
-/** The morning at the stay (ADR 030), written into a hairline like the travel between stops. */
+/** The morning at the stay (ADR 030), written into a hairline like the travel between stops:
+ * ———— ⌂ Walk from Hotel Alpen · 10 min · 800 m ————, centred. */
 export function StartRow({ day }: { day: Day }) {
   const start = day.start;
   if (!start) return null;
@@ -344,10 +333,13 @@ export function StartRow({ day }: { day: Day }) {
     (start.confidence === "routed" ? "." : ", a straight-line estimate and not a measured route.");
   return (
     <View style={styles.transfer} accessible accessibilityLabel={label} testID="stay-start">
-      <Icon name="home" size="xs" color={colors.muted} />
-      <Text style={styles.transferText} numberOfLines={2}>
-        {text}
-      </Text>
+      <View style={styles.transferLine} />
+      <View style={styles.startText}>
+        <Icon name="home" size="xs" color={colors.muted} />
+        <Text style={styles.transferText} numberOfLines={2}>
+          {text}
+        </Text>
+      </View>
       <View style={styles.transferLine} />
     </View>
   );
@@ -357,7 +349,6 @@ export function StartRow({ day }: { day: Day }) {
 export function DayPlanList({
   day,
   previousDay,
-  showBase,
   selectedId,
   onSelect,
   onDetails,
@@ -365,7 +356,6 @@ export function DayPlanList({
 }: {
   day: Day;
   previousDay?: Day;
-  showBase: boolean;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDetails?: (item: Item) => void;
@@ -376,7 +366,6 @@ export function DayPlanList({
   const transport = transportPoint(day, previousDay);
   return (
     <View style={styles.list}>
-      <DayHead day={day} showBase={showBase} />
       {day.arrival ? (
         <View onLayout={(e) => onRowLayout?.(`arrival-${day.id}`, e.nativeEvent.layout.y)}>
           <ArrivalRow
@@ -457,10 +446,6 @@ export function PlanDayView({
   );
   const day = sorted[position];
   const previousDay = position > 0 ? sorted[position - 1] : undefined;
-  const showBase = useMemo(
-    () => new Set(sorted.map((d) => d.base_city_name ?? "")).size > 1,
-    [sorted],
-  );
   // The selection belongs to one day; another day starts with nothing selected.
   const [selection, setSelection] = useState<{ dayId: string; id: string } | null>(() => {
     if (!initialSelectedId || !day) return null;
@@ -490,7 +475,6 @@ export function PlanDayView({
     <DayPlanList
       day={day}
       previousDay={previousDay}
-      showBase={showBase}
       selectedId={selectedId}
       onSelect={select}
       onDetails={onDetails}
@@ -614,12 +598,6 @@ const styles = StyleSheet.create({
   // The list sits 8 dp from the screen edge and every row pads its content by 8 dp, so text is on
   // the 16 dp gutter and a selected row's soft rounded tint has room around it.
   list: { paddingHorizontal: spacing.sm },
-  dayBaseLine: {
-    ...type.caption,
-    color: colors.muted,
-    paddingTop: spacing.sm,
-    paddingHorizontal: spacing.sm,
-  },
   empty: {
     ...type.label,
     color: colors.muted,
@@ -681,4 +659,6 @@ const styles = StyleSheet.create({
   },
   transferLine: { flex: 1, height: border.hairline, backgroundColor: colors.border },
   transferText: { ...type.caption, color: colors.muted },
+  // The stay's line: the house and the words together in the middle, a hairline either side.
+  startText: { flexShrink: 1, flexDirection: "row", alignItems: "center", gap: spacing.xs },
 });

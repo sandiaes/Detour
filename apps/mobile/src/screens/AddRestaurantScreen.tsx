@@ -6,7 +6,7 @@ import type {
   UserPlace,
 } from "@detour/shared";
 import { Camera, Map, Marker } from "@maplibre/maplibre-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
@@ -40,6 +40,7 @@ import {
   parseCoordinate,
   venueLabel,
 } from "../domain/restaurants";
+import { dayAnchor, tripAnchors } from "../domain/searchAnchors";
 import { type Route, useNavigation } from "../nav/Navigator";
 import { border, colors, layout, radius, spacing, type, weight } from "../theme";
 
@@ -85,7 +86,6 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   const trip = trips.data?.find((t) => t.id === route.tripId);
   const client = state.phase === "ready" ? state.connection.client : null;
   const mapConfig = state.phase === "ready" ? state.connection.config.map : null;
-  const centre = trip?.destination;
   const itinerary = useResource<Itinerary>(keys.itinerary(route.itineraryId), (c) =>
     call(
       c.GET("/v1/itineraries/{itinerary_id}", {
@@ -93,6 +93,13 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
       }),
     ),
   );
+  // Searched around the city of the day that was open (a multi-city trip, ADR 024), else the
+  // trip's first city (owner, 2026-11-15).
+  const centre = useMemo(
+    () => dayAnchor(trip, itinerary.data?.days, route.day) ?? tripAnchors(trip)[0] ?? null,
+    [trip, itinerary.data, route.day],
+  );
+  const placed = route.day === undefined || itinerary.data !== undefined || !!itinerary.error;
   const [mode, setMode] = useState<"search" | "hand">("search");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Record<string, RestaurantSearchResponse>>({});
@@ -107,8 +114,9 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
 
   const q = query.trim();
-  const key = q.toLowerCase();
-  const needsSearch = mode === "search" && q.length >= MIN_QUERY && results[key] === undefined;
+  const key = `${centre?.name ?? ""}::${q.toLowerCase()}`;
+  const needsSearch =
+    mode === "search" && placed && q.length >= MIN_QUERY && results[key] === undefined;
   useEffect(() => {
     if (!needsSearch || !client || !centre) return;
     let current = true;
@@ -395,6 +403,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
                 }}
               >
                 <Camera
+                  key={centre.name}
                   initialViewState={{
                     center: [lon ?? centre.lon, lat ?? centre.lat],
                     zoom: 12,

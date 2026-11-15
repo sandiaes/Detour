@@ -522,6 +522,22 @@ device or in screenshots**.
     start time is that day's **first free time**: from 09:00, the first gap that fits the stop, else
     after the last stop and the trip from it. Choosing another day updates the time until the user sets
     one. This replaces the fixed 13:00 suggestion for restaurants and cafés.
+95. **Adding a place looks around the day's city (owner request of 2026-11-15; built, awaiting
+    acceptance).** On a multi-city trip (ADR 024) the search for sights asked only around the trip's
+    first city, within 50 km, so the sights of a later city (Florence after Rome) were never found.
+    Add a place now searches around **each** of the trip's cities (one request per city, at most six),
+    the city of the open day first; that city's sights lead the list and every distance is measured
+    from it ("1.2 km from Florence"). With no day open, a sight is measured from the nearest of the
+    trip's cities. The wider search, the address search and Add a restaurant are centred on the day's
+    city too. No API change (`domain/searchAnchors.ts`).
+96. **The pin map shows where things are.** "Pin on map" opens on the open day's city (zoom 13) and
+    shows the plan's stops (the open day's numbered, the other days' with the sight mark) and the
+    known sights within 3 km of the city as quiet grey marks; tapping a known sight chooses it, as if
+    found by search. Marks do not follow the map when it is moved.
+97. **No city line above a day's stops.** The quiet line naming a multi-city day's base city
+    (decision of step 3) is removed: the day pills say which day it is, and the journey row says when
+    the city changes. The morning row from a stay (ADR 030) is centred between two hairlines, like
+    the travel between stops.
 
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the

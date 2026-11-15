@@ -341,8 +341,8 @@ not asked; it is the destination.
 - **Coming back keeps your place.** Back from a stop's details returns to the same day and the
   same selected stop (kept in the route), never to the first day.
 - **No day title above the stops.** The pills say which day it is; there is no "Day 3, Wed 14 Mar,
-  8 visits, 2 meals, 4 h at the sights, 1 h travelling" block. A trip
-  that moves between base cities shows the day's base city as one quiet line.
+  8 visits, 2 meals, 4 h at the sights, 1 h travelling" block, and no line naming the day's base
+  city (ADR 021, decision 97): the journey row ("To Florence") says when the city changes.
 - **A stop is a hairline row** (a stop the user added is not marked; a locked stop has a small lock in a soft-green disc beside its name): the time (start over end), a numbered disc that matches the map
   marker, the name in small bold, the **kind icon** and the kind and length in caption ("Attraction ·
   2 h", "Restaurant · 1 h 15 min"), a chevron to the place's details. The names are English where
@@ -417,7 +417,12 @@ anything changes. Outside a trip it starts a new trip.
 
 **Add a place** is built from drop-downs (ADR 021, decisions 69 and 70): a compact header, slim
 tabs (Search, Address, Pin on map), and a boxed search field whose results open as one rounded list
-under it, grouped under small headings ("Sights", "Towns and cities"). Choosing a result closes the
+under it, grouped under small headings ("Sights", "Towns and cities"). Sights are searched around
+each of the trip's cities, the open day's city first: its sights lead and each distance is measured
+from it ("1.2 km from Florence"; with no day open, from the nearest of the trip's cities; ADR 021,
+decision 95). **Pin on map** opens on the open day's city and shows the plan's stops (that day's
+numbered) and the known sights within 3 km as grey marks; tapping one chooses that sight (decision
+96). Choosing a result closes the
 list and the field shows only the choice, with its kind and town; pressing it searches again. Then
 **How long**: one boxed field (minutes, or "1h30"; the unit "min" at its end is pressed to switch to "h", hours such as 1.5; the text is selected on first entry and typing replaces it) and a pill for the default ("Typical length" for
 a sight; "Default · 2 h" for a town, 1 h for any other place); typing replaces the default. Then
@@ -477,8 +482,8 @@ searches a hotel, apartment or address (Photon through the server), or **Pin on 
 then **From** and **To** day steppers (the first days that have no stay); Save, Cancel and, when
 editing, a red ghost "Remove this stay" with a confirmation sheet. On the map a stay is a navy
 rounded-square house mark (not numbered) with a line to the day's first stop, and the key says "Your
-stay". The day list opens with a hairline row, house icon first: "Walk from Hotel Alpen · 10 min ·
-800 m". No leg back at night.
+stay". The day list opens with that leg written into a hairline like the travel between stops, centred
+with a line either side: "——— ⌂ Walk from Hotel Alpen · 10 min · 800 m ———". No leg back at night.
 
 ### Trip settings, Export, Import, Settings, Image credits
 
