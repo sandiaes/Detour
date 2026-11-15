@@ -12,7 +12,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
 import { AttributionBar } from "../components/AttributionBar";
-import { ChooseSlot, type ChosenSlot, EATING_START } from "../components/ChooseSlot";
+import { ChooseSlot, type ChosenSlot } from "../components/ChooseSlot";
 import {
   Bullets,
   Button,
@@ -449,7 +449,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
             <ChooseSlot
               days={itinerary.data.days}
               startDate={trip?.start_date ?? null}
-              defaultTime={EATING_START}
+              initialDay={route.day}
               minutes={null}
               defaultMinutes={
                 VENUE_DEFAULT_MINUTES[

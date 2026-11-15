@@ -231,6 +231,36 @@ describe("a plan made by hand", () => {
   });
 });
 
+describe("edit day", () => {
+  test("the day can be changed with the time, and the stop is placed in time order", async () => {
+    const client = await open(
+      "i1",
+      server({
+        "GET /v1/itineraries/{itinerary_id}": () => {
+          const p = plan();
+          p.profile = "manual";
+          return p;
+        },
+        "PATCH /v1/items/{item_id}": (c: { params: { item_id: string }; body: unknown }) => ({
+          id: c.params.item_id,
+          ...(c.body as object),
+        }),
+      }),
+    );
+    await fireEvent.press(await screen.findByTestId("edit-length"));
+    expect(screen.getByTestId("edit-day")).toHaveTextContent(/Day 1/);
+    expect(screen.getByTestId("save-length")).toBeDisabled();
+    await fireEvent.press(screen.getByTestId("edit-day"));
+    await fireEvent.press(screen.getByTestId("edit-day-2"));
+    expect(screen.getByTestId("save-length")).toBeEnabled();
+    await fireEvent.press(screen.getByTestId("save-length"));
+    const body = client.calls.find((c) => c.method === "PATCH")?.body as Record<string, unknown>;
+    expect(body.day_index).toBe(2);
+    expect(body.position).toEqual(expect.any(Number));
+    expect(body.duration_minutes).toBeUndefined();
+  });
+});
+
 describe("edit length", () => {
   const patch = () => ({
     "PATCH /v1/items/{item_id}": (c: { params: { item_id: string }; body: unknown }) => ({

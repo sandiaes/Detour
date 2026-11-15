@@ -163,7 +163,7 @@ export function useChangeActions() {
     [need, data],
   );
 
-  /** Changes when a stop starts and/or how long it lasts. `minutes` undefined leaves the length
+  /** Changes when a stop starts, how long it lasts and/or which day it is on (`dayIndex`). `minutes` undefined leaves the length
    * alone, null goes back to the default length; `startTime` ("HH:MM") and `position` (where the
    * stop now sits in the day's time order) are sent only when given. The plan is read again
    * afterwards: the end time of the stop changes. */
@@ -171,11 +171,17 @@ export function useChangeActions() {
     async (
       itineraryId: string,
       itemId: string,
-      change: { minutes?: number | null; startTime?: string; position?: number },
+      change: {
+        minutes?: number | null;
+        startTime?: string;
+        position?: number;
+        dayIndex?: number;
+      },
     ): Promise<void> => {
       const body: ItemUpdate = {};
       if (change.startTime !== undefined) body.start_time = `${change.startTime}:00`;
       if (change.position !== undefined) body.position = change.position;
+      if (change.dayIndex !== undefined) body.day_index = change.dayIndex;
       if (change.minutes === null) body.use_default_duration = true;
       else if (change.minutes !== undefined) body.duration_minutes = change.minutes;
       await call(

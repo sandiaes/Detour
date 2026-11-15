@@ -2517,6 +2517,12 @@ export interface components {
        */
       stops_version: number;
       /**
+       * Uses Car
+       * @description False: Optimize considers walking only, never driving
+       * @default true
+       */
+      uses_car: boolean;
+      /**
        * Created At
        * Format: date-time
        */
@@ -2573,6 +2579,12 @@ export interface components {
       duration_days: number;
       /** Start Date */
       start_date?: string | null;
+      /**
+       * Uses Car
+       * @description False: Optimize considers walking only, never driving
+       * @default true
+       */
+      uses_car: boolean;
     };
     /**
      * TripFile
@@ -2628,6 +2640,8 @@ export interface components {
       start_date?: string | null;
       /** Selected Itinerary Id */
       selected_itinerary_id?: string | null;
+      /** Uses Car */
+      uses_car?: boolean | null;
     };
     /**
      * TripVisit

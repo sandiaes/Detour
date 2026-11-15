@@ -1,15 +1,15 @@
 import type { CoverCandidate, DestinationResult, Trip } from "@detour/shared";
 import { useEffect, useState } from "react";
-import { StyleSheet, Switch, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, isOfflineError, planningIssues } from "../api/unwrap";
 import {
   Button,
+  Chip,
   ChoiceRow,
   DropdownPanel,
   InlineStatus,
-  ListRow,
   Notice,
   ScreenHeader,
   SearchField,
@@ -99,8 +99,10 @@ export function CreateTripScreen() {
   const [days, setDays] = useState(3);
   const [startDate, setStartDate] = useState("");
   const [calendar, setCalendar] = useState(false);
-  // Saved for later (docs/design.md): chosen here, not sent, and the plans do not use it yet.
+  // Public transport is saved for later (docs/design.md): chosen here, not sent, and the plans do
+  // not use it yet. The car is sent: without it Optimize only considers walking.
   const [publicTransport, setPublicTransport] = useState(false);
+  const [usesCar, setUsesCar] = useState(true);
   const [working, setWorking] = useState<"creating" | "planning" | "starting" | null>(null);
   const [mode, setMode] = useState<"generate" | "empty">("generate");
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
@@ -226,12 +228,13 @@ export function CreateTripScreen() {
                 stops: stops.map((x) => ({ city_id: x.cityId, days: x.days })),
                 duration_days: stops.reduce((n, x) => n + x.days, 0),
                 start_date: startDate.trim() || null,
+                uses_car: usesCar,
               }
             : // The trip is named after its destination: the country, region or city. A place
               // with no sight data is an empty trip whose destination is a snapshot (ADR 027).
               tripBody(
                 point ? { ...chosen, ...point } : chosen,
-                { days, startDate: startDate.trim() || null },
+                { days, startDate: startDate.trim() || null, usesCar },
                 !isPlannable(chosen),
               ),
         );
@@ -510,21 +513,31 @@ export function CreateTripScreen() {
             onClose={() => setCalendar(false)}
           />
 
-          <ListRow
-            icon="transport"
-            title="Public transport"
-            detail="Saved for later. The plans do not use it yet."
-            inset="none"
-            trailing={
-              <Switch
-                accessibilityLabel="Public transport"
-                value={publicTransport}
-                onValueChange={setPublicTransport}
-                trackColor={{ true: colors.primary, false: colors.outline }}
-                thumbColor={colors.surface}
+          <View style={styles.block}>
+            <Text style={styles.label}>Getting around</Text>
+            <View style={styles.row}>
+              <Chip
+                label="Car"
+                icon="transport"
+                selected={usesCar}
+                onPress={() => setUsesCar((v) => !v)}
+                accessibilityLabel="Car"
+                testID="uses-car"
               />
-            }
-          />
+              <Chip
+                label="Public transport"
+                icon="transport"
+                selected={publicTransport}
+                onPress={() => setPublicTransport((v) => !v)}
+                accessibilityLabel="Public transport"
+                testID="public-transport"
+              />
+            </View>
+            <Text style={styles.hint}>
+              Without a car, Optimize only considers walking. Public transport is saved for later:
+              the plans do not use it yet.
+            </Text>
+          </View>
 
           {stops && stopsProblem(stops) ? (
             <Notice tone="warning" label="Cities">

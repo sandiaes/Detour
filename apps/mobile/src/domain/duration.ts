@@ -8,6 +8,35 @@ import { clockOf, minutesOf } from "./itinerary";
 export const MAX_STAY_MINUTES = 1440;
 /** The usual end of a day (ADR 026, proposed): a stop that ends later gets a warning, not a block. */
 export const DAY_END_MINUTES = 20 * 60;
+/** The usual start of a day (ADR 026, proposed). */
+export const DAY_START_MINUTES = 9 * 60;
+
+/**
+ * The earliest "HH:MM" on `day` where a stop of `minutes` fits without touching another timed stop
+ * (and its trip to the next one): from the start of the day, the first gap that is long enough,
+ * else right after the last stop. Free time is not a stop. `except` leaves one stop out (the one
+ * being moved).
+ */
+export function firstAvailableTime(day: Day | undefined, minutes: number, except?: string): string {
+  const timed = (day?.items ?? [])
+    .filter((i) => i.id !== except && i.type !== "free_time")
+    .map((i) => ({
+      start: minutesOf(i.start_time),
+      end: minutesOf(i.end_time),
+      travel: i.transfer ? Math.ceil(i.transfer.seconds / 60) : 0,
+    }))
+    .filter(
+      (i): i is { start: number; end: number; travel: number } =>
+        i.start !== null && i.end !== null,
+    )
+    .sort((a, b) => a.start - b.start);
+  let at = DAY_START_MINUTES;
+  for (const stop of timed) {
+    if (at + minutes <= stop.start) break;
+    at = Math.max(at, stop.end + stop.travel);
+  }
+  return clockOf(Math.min(at, 23 * 60 + 59));
+}
 
 /**
  * Minutes from what the user typed: "90", "1:30", "1h30", "1 h 30 min", "2h", "45 min". Null when

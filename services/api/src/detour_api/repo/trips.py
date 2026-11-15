@@ -27,7 +27,7 @@ _TRIP_COLUMNS = """
     t.id, t.title, t.destination_kind, t.destination_ref, t.destination_name,
     ST_Y(t.destination_point) AS dlat, ST_X(t.destination_point) AS dlon, t.duration_days,
     t.start_date, t.selected_itinerary_id, t.status, t.archived_at, t.is_seed, t.created_at, t.updated_at,
-    t.stops_version, t.destination_country
+    t.stops_version, t.destination_country, t.uses_car
 """
 
 
@@ -93,6 +93,7 @@ def _trip(row: Any, cover: Photo | None = None, stops: list[TripStop] | None = N
         cover_image=cover,
         stops=stops or [],
         stops_version=row.stops_version,
+        uses_car=row.uses_car,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -157,9 +158,10 @@ def create_trip(
             """
             INSERT INTO app.trip (id, installation_id, title, destination_kind, destination_ref,
                 destination_name, destination_point, duration_days, start_date, is_seed,
-                destination_country)
+                destination_country, uses_car)
             VALUES (:id, :inst, :title, :kind, :ref, :dname,
-                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :days, :start, :seed, :country)
+                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :days, :start, :seed, :country,
+                :car)
             """
         ),
         {
@@ -175,6 +177,7 @@ def create_trip(
             "start": body.start_date,
             "seed": is_seed,
             "country": (body.destination_country or "").upper() or None,
+            "car": body.uses_car,
         },
     )
     if stops:
@@ -252,6 +255,11 @@ def update_trip(
     if "start_date" in changed:
         sets.append("start_date = :start")
         params["start"] = body.start_date
+    if "uses_car" in changed:
+        if body.uses_car is None:
+            raise invalid("uses_car_required", "uses_car cannot be cleared")
+        sets.append("uses_car = :car")
+        params["car"] = body.uses_car
     if "selected_itinerary_id" in changed:
         _select_itinerary(conn, trip_id, body.selected_itinerary_id)
         sets.append("selected_itinerary_id = :sel")

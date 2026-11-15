@@ -14,6 +14,7 @@ from detour_api.planner.optimize import (
 )
 from detour_api.planner.optimize_validator import validate
 from detour_api.planner.travel import FixedTravelSource, TravelLookup
+from detour_api.travel.types import Coord
 
 STEP = 0.02  # about 2.2 km of latitude
 
@@ -248,3 +249,12 @@ def test_an_empty_day_stays_empty_and_a_day_keeps_a_stop() -> None:
     out = run(stops, [1, 2, 3], "across_days")[1]
     assert out.days[2] == ()  # type: ignore[attr-defined]
     assert out.days[3] and out.days[1]  # type: ignore[attr-defined]
+
+
+def test_without_a_car_every_leg_is_walked_however_long() -> None:
+    far = (Coord.from_degrees(0.0, 0.0), Coord.from_degrees(0.0, 1.0))  # about 110 km apart
+    driving = TravelLookup(FixedTravelSource(), 2_000)
+    walking = TravelLookup(FixedTravelSource(), 10**9)  # optimize_service.WALK_EVERYWHERE_M
+    assert driving.mode(*far) == "drive"
+    assert walking.mode(*far) == "walk"
+    assert walking.get(*far).seconds > driving.get(*far).seconds

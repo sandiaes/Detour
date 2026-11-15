@@ -33,6 +33,7 @@ from detour_api.travel.service import TravelTimeService
 log = structlog.get_logger("detour.optimize")
 
 MIN_STOPS = 3
+WALK_EVERYWHERE_M = 10**9
 
 
 def preview_optimize(
@@ -88,7 +89,8 @@ def preview_optimize(
 
     rules = optimize.rules_of(config)
     source = ServiceTravelSource(travel, max_seconds=settings.recalc_provider_max_seconds)
-    lookup = TravelLookup(source, config.walk_max_m)
+    # Without a car every leg is walked, however long (the mode rule of planner/travel.py).
+    lookup = TravelLookup(source, config.walk_max_m if trip.uses_car else WALK_EVERYWHERE_M)
     day_numbers = [d.index for d in days]
     outcome = optimize.optimize(
         stops,

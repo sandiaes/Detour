@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { AppContent } from "../App";
 import { createFakeClient, offline } from "../testing/fakeClient";
@@ -142,6 +142,7 @@ test("a place with no sight data becomes an empty place trip with a gazetteer re
     destination_country: "AT",
     duration_days: 3,
     start_date: null,
+    uses_car: true,
   });
   expect(client.calls.some((c) => c.path.endsWith("/itineraries/generate"))).toBe(false);
 });
@@ -287,6 +288,7 @@ test("the whole flow: search, choose, set details, plan, land on the two proposa
     destination_ref: "900101",
     duration_days: 4,
     start_date: `${nextMonth()}-15`,
+    uses_car: true,
   });
   expect(client.count("POST /v1/trips/{trip_id}/itineraries/generate")).toBe(1);
   // The generated plans were stored, so opening the proposals made no extra plan requests.
@@ -320,9 +322,22 @@ test("an empty trip is created without proposals and opens on its own plan", asy
 test("public transport is shown but marked as not used yet, and there is no travel style", async () => {
   const client = await openForm();
   expect(screen.queryByRole("radio", { name: "Balanced" })).toBeNull();
-  expect(screen.getByText(/Saved for later/)).toBeOnTheScreen();
+  expect(screen.getByText(/saved for later/)).toBeOnTheScreen();
   // Not part of the trip sent to the server.
   expect(client.count("POST /v1/trips")).toBe(0);
+});
+
+test("the Car pill starts on and is sent as chosen; off means Optimize only walks", async () => {
+  const client = await openForm();
+  expect(screen.getByTestId("uses-car")).toBeSelected();
+  await fireEvent.press(screen.getByTestId("uses-car"));
+  expect(screen.getByTestId("uses-car")).not.toBeSelected();
+  await typeDestination("Vie");
+  await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
+  await fireEvent.press(screen.getByRole("button", { name: "Start a fresh trip" }));
+  await waitFor(() => expect(client.count("POST /v1/trips")).toBe(1));
+  const create = client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips");
+  expect(create?.body).toMatchObject({ uses_car: false });
 });
 
 test("the start date can be cleared again from the calendar", async () => {

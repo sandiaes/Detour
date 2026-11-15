@@ -1,6 +1,6 @@
 import type { Day, Item } from "@detour/shared";
 
-import { checkDuration, parseMinutes } from "./duration";
+import { checkDuration, firstAvailableTime, parseMinutes } from "./duration";
 
 function item(id: string, start: string | null, minutes: number, extra: Partial<Item> = {}): Item {
   return {
@@ -52,4 +52,37 @@ test("ending after the usual end of the day is a warning; an untimed stop never 
   expect(checkDuration(dayOf(late), late, 90)?.level).toBe("warning");
   const untimed = item("u", null, 30);
   expect(checkDuration(dayOf(untimed), untimed, 500)).toBeNull();
+});
+
+test("the first free time of a day: the start of the day, or after the stops that are there", () => {
+  const timed = (id: string, start: string, end: string, travel = 0) =>
+    item(id, start, 0, {
+      end_time: end,
+      transfer: travel ? ({ seconds: travel * 60 } as Item["transfer"]) : null,
+    });
+  expect(firstAvailableTime(undefined, 60)).toBe("09:00");
+  expect(firstAvailableTime(dayOf(), 60)).toBe("09:00");
+  // A gap before the first stop that is long enough is used.
+  expect(firstAvailableTime(dayOf(timed("a", "11:00", "12:00")), 60)).toBe("09:00");
+  // Too short a gap: after the stop and the trip from it (10 minutes).
+  expect(firstAvailableTime(dayOf(timed("a", "09:30", "11:00", 10)), 60)).toBe("11:10");
+  // The first gap that fits between two stops.
+  expect(
+    firstAvailableTime(
+      dayOf(
+        timed("a", "09:00", "10:00"),
+        timed("b", "10:30", "12:00"),
+        timed("c", "15:00", "16:00"),
+      ),
+      90,
+    ),
+  ).toBe("12:00");
+  // Free time is not a stop; a stop with no time is ignored; the moved stop does not block itself.
+  expect(
+    firstAvailableTime(
+      dayOf(item("f", "09:00", 90, { type: "free_time", end_time: "10:30" }), item("n", null, 30)),
+      60,
+    ),
+  ).toBe("09:00");
+  expect(firstAvailableTime(dayOf(timed("a", "09:00", "10:00")), 60, "a")).toBe("09:00");
 });

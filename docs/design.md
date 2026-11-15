@@ -290,8 +290,10 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
    multi-city trip the duration is the cities' total and cannot be set on its own. The start
    date opens a **month calendar** in a sheet (Monday first, today ringed, "Clear the date"); a date
    is chosen, never typed.
-3. **Public transport:** a switch (there is no travel style: it did nothing).
-4. A line: public transport is saved for later; the plans do not use it yet.
+3. **Getting around:** two pills, **Car** (on by default, sent with the trip; off means Optimize
+   only considers walking) and **Public transport** (saved for later; the plans do not use it yet).
+   There is no travel style: it did nothing.
+4. A line under the pills saying so.
 5. Two buttons, full width:
    - **Start a fresh trip** (`primary`, the main action): creates the trip and an empty plan, one empty day
      per trip day, chosen as its itinerary at once. No proposals. The trip opens on its overview.
@@ -384,7 +386,7 @@ edited name offers "Use the usual name"); one line with the kind icon,
 the kind and the town ("Attraction · Vienna"); two flat figures for the day
 ("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit" or "Set by you"); one quiet line with the
 address (no label); for places to eat the kind and, when Photon gave one, the address (*ADR 026: the meal, venue and cuisine lines go*); small buttons Show
-on map, **Edit time**, Lock, Remove (red outline) and Add a document. Lock and Remove are offered on a plan made by hand too (Remove asks first in a `ConfirmSheet`; on a generated plan it shows the change preview). Edit time opens the start time (`TimeField`) and one length field (minutes or
+on map, **Edit time**, Lock, Remove (red outline) and Add a document. Lock and Remove are offered on a plan made by hand too (Remove asks first in a `ConfirmSheet`; on a generated plan it shows the change preview). Edit time opens a **Day** drop-down (move the stop to another day), the start time (`TimeField`) and one length field (minutes or
 "1h30"), a "Default" pill that goes back to the usual length, Save and Cancel, and a live check: a
 length that runs into the next timed stop is a conflict and cannot be saved; too little time for
 the trip to the next stop, or an end after 20:00, is a warning that can be saved; the place's documents; the data source. No opening hours, no
@@ -417,7 +419,8 @@ list and the field shows only the choice, with its kind and town; pressing it se
 **How long**: one boxed field (minutes, or "1h30"; the unit "min" at its end is pressed to switch to "h", hours such as 1.5; the text is selected on first entry and typing replaces it) and a pill for the default ("Typical length" for
 a sight; "Default · 2 h" for a town, 1 h for any other place); typing replaces the default. Then
 either "Find the best day" (`primary`) with up to three suggested days, or, for "Choose day and
-time" and for an empty trip, a **Day drop-down**, a start time field and "Add to day N at HH:MM".
+time" and for an empty trip, a **Day drop-down** (the day that was open, else day 1), a start time field
+(the first free time of that day, until the user sets one) and "Add to day N at HH:MM".
 Add a restaurant or café uses the same day drop-down and fields; its default pill is 1 h 15 min
 for a restaurant and 45 min for a café (*proposed*).
 

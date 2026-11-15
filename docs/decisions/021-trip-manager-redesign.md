@@ -506,6 +506,23 @@ device or in screenshots**.
     does not need (`CoverHeader`, `DateField`, `DayPills`, `CoverCard`, `MapButton`) are not built;
     `docs/design.md`, "Where the build differs from the audit's plan", says why.
 
+92. **Car pill (owner request of 2026-11-15; built, awaiting acceptance).** The new-trip screen has a
+    "Getting around" row of two pills, **Car** (on by default) and **Public transport** (saved for
+    later, as before). The choice is stored on the trip (`app.trip.uses_car`, migration `0018`;
+    `Trip.uses_car`, `TripCreate.uses_car`, `TripUpdate.uses_car`). Without a car, **Optimize** treats
+    every leg as a walk, however long (travel times come from the pedestrian profile or the labelled
+    estimate); generating and recalculating are unchanged, and a trip file does not carry the flag
+    yet (an imported trip has a car).
+93. **Edit time also changes the day.** Edit time on a place has a **Day** drop-down (as in Add a
+    place) above the start time. The new day is checked like the new time (a clash with a stop there
+    blocks Save), and the stop is placed in time order in that day (`ItemUpdate.day_index` with a
+    `position`; the API already moved items between days).
+94. **Add a place starts where the user is.** Choose day and time (Add a place, Add a restaurant, and
+    an empty trip) opens on the day that was open on the map or day list (day 1 when none), and the
+    start time is that day's **first free time**: from 09:00, the first gap that fits the stop, else
+    after the last stop and the trip from it. Choosing another day updates the time until the user sets
+    one. This replaces the fixed 13:00 suggestion for restaurants and cafés.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until

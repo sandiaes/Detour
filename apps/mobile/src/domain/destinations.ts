@@ -79,13 +79,14 @@ export function manualPoint(lat: string, lon: string): { lat: number; lon: numbe
  * trip with a gazetteer reference; a plannable one stays a city or area trip. */
 export function tripBody(
   choice: Choice,
-  start: { days: number; startDate: string | null },
+  start: { days: number; startDate: string | null; usesCar?: boolean },
   asPlace: boolean,
 ): TripCreate {
   const base = {
     title: choice.name,
     duration_days: start.days,
     start_date: start.startDate,
+    uses_car: start.usesCar ?? true,
   };
   if (choice.kind === "place" || asPlace) {
     const ref =
