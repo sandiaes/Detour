@@ -90,7 +90,7 @@ Since then: opening hours are out of scope (ADR 003); travel times come from the
 server through a cached adapter (ADR 004); hosting is Supabase Free, a Render free web service
 and a GitHub Actions import job (ADR 005); past trips are kept as an archive (ADR 006); the
 licence is Apache-2.0 (ADR 007); there are no app stores (ADR 008); region readiness gates are
-set (ADR 009). The repository stays private until the owner decides to publish it.
+set (ADR 009). The repository was made public on 2026-11-15 (ADR 007 addendum).
 
 Details: [`docs/app-plan.md`](docs/app-plan.md), section 1.
 

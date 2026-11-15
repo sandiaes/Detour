@@ -1,11 +1,19 @@
 # Creates the project's own Android signing key once (ADR 008, "Signing"; docs/android-release.md,
 # "Your own signing key"). The owner cannot install Java on the work PC, so keytool runs here.
 #
-# Run by hand ONCE: Actions -> "Create signing key" -> Run workflow. It uploads an artifact
-# "signing-key" (kept for 1 day) with four text files whose contents go into four repository
-# secrets, and the keystore itself to keep in a password manager. Delete the run (or at least the
-# artifact) after copying them: anyone who can read the repository's Actions can download it
-# until then. Running it again makes a DIFFERENT key, and an APK signed with another key cannot be
+# The repository is public (2026-11-15): GitHub shows Actions logs to everyone and lets anyone with
+# read access download artifacts. So the key is never uploaded readable. The workflow writes it
+# straight into the four repository secrets the "Android APK" workflow reads, through a token the
+# owner creates for this one run, and uploads only a copy encrypted with DETOUR_BACKUP_PASSPHRASE
+# (for the password manager; it is needed only if the secrets are ever lost).
+#
+# Needs two repository secrets:
+#   DETOUR_SECRETS_TOKEN      a fine-grained personal access token for this repository only, with
+#                             the permission "Secrets: Read and write"; delete it after the run.
+#   DETOUR_BACKUP_PASSPHRASE  the passphrase of the backups (docs/backups.md).
+#
+# Run by hand ONCE: Actions -> "Create signing key" -> Run workflow, type CREATE. Running it again
+# makes a DIFFERENT key and overwrites the secrets: an APK signed with another key cannot be
 # installed over the current one without uninstalling (which deletes the documents on the phone).
 name: Create signing key
 
@@ -24,6 +32,9 @@ jobs:
   key:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.DETOUR_SECRETS_TOKEN }}
+      PASSPHRASE: ${{ secrets.DETOUR_BACKUP_PASSPHRASE }}
     steps:
       - name: Check
         env:
@@ -33,38 +44,58 @@ jobs:
             echo "::error::Type CREATE in the confirm box to make a new key."
             exit 1
           fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Repository secret DETOUR_SECRETS_TOKEN is not set (docs/android-release.md, section 5)."
+            exit 1
+          fi
+          if [ -z "$PASSPHRASE" ]; then
+            echo "::error::Repository secret DETOUR_BACKUP_PASSPHRASE is not set (docs/backups.md)."
+            exit 1
+          fi
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-      - name: Generate
+      - name: Generate and store in the repository secrets
         run: |
           set -euo pipefail
           umask 077
-          mkdir -p out
+          work="$RUNNER_TEMP/key"
+          mkdir -p "$work" out
           password=$(openssl rand -base64 30 | tr -d '/+=' | cut -c1-32)
           echo "::add-mask::$password"
-          keytool -genkeypair -v -storetype PKCS12 -keystore out/detour-release.keystore \
+          keytool -genkeypair -v -storetype PKCS12 -keystore "$work/detour-release.keystore" \
             -alias detour -keyalg RSA -keysize 4096 -validity 10000 \
             -storepass "$password" -keypass "$password" \
             -dname "CN=Detour, O=Detour (personal build)" > /dev/null 2>&1
-          base64 -w0 out/detour-release.keystore > out/DETOUR_KEYSTORE_BASE64.txt
-          printf '%s' "$password" > out/DETOUR_KEYSTORE_PASSWORD.txt
-          printf '%s' "detour" > out/DETOUR_KEY_ALIAS.txt
-          printf '%s' "$password" > out/DETOUR_KEY_PASSWORD.txt
-          keytool -list -v -keystore out/detour-release.keystore -storepass "$password" \
-            | grep -E "SHA256:" | head -1 | sed 's/^\s*/Certificate fingerprint /' > out/fingerprint.txt
-          cat out/fingerprint.txt
+          keystore_b64=$(base64 -w0 "$work/detour-release.keystore")
+          echo "::add-mask::$keystore_b64"
+          # gh encrypts each value with the repository's public key before sending it; the values
+          # go in on standard input, never on a command line.
+          printf '%s' "$keystore_b64" | gh secret set DETOUR_KEYSTORE_BASE64 --repo "$GITHUB_REPOSITORY"
+          printf '%s' "$password" | gh secret set DETOUR_KEYSTORE_PASSWORD --repo "$GITHUB_REPOSITORY"
+          printf '%s' "detour" | gh secret set DETOUR_KEY_ALIAS --repo "$GITHUB_REPOSITORY"
+          printf '%s' "$password" | gh secret set DETOUR_KEY_PASSWORD --repo "$GITHUB_REPOSITORY"
+          # The encrypted copy for the password manager: the keystore and its password together.
+          printf '%s' "$password" > "$work/password.txt"
+          tar -C "$work" -cf "$work/signing-key.tar" detour-release.keystore password.txt
+          printf '%s' "$PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+            --output out/signing-key.tar.gpg "$work/signing-key.tar"
+          fingerprint=$(keytool -list -v -keystore "$work/detour-release.keystore" \
+            -storepass "$password" | grep -E "SHA256:" | head -1 | sed 's/^\s*//')
+          rm -rf "$work"
           {
             echo "### Signing key created"
             echo
-            echo "Download the artifact **signing-key**, put each DETOUR_*.txt file's contents into the"
-            echo "repository secret of the same name, keep detour-release.keystore and the password in a"
-            echo "password manager, then delete this run. $(cat out/fingerprint.txt)"
+            echo "The four DETOUR_KEY* secrets are set. Certificate fingerprint: $fingerprint"
+            echo
+            echo "Download the artifact **signing-key-backup** (encrypted with DETOUR_BACKUP_PASSPHRASE)"
+            echo "and keep it with the passphrase. Then delete the token DETOUR_SECRETS_TOKEN."
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
-          name: signing-key
+          name: signing-key-backup
           path: out/
-          retention-days: 1
+          retention-days: 7
           if-no-files-found: error

@@ -18,7 +18,9 @@ between this branch and the phone:
    Actions minutes of a private repository (about 2,000, ADR 005) are used up: 197 runs since
    2026-11-12, CI alone about 12 billed minutes a run. **Owner:** open GitHub, Settings, Billing and
    plans, Usage, and check Actions. Until it starts again no new APK can be built, the E2E workflow
-   cannot run, and the daily backup (section 7) will not run.
+   cannot run, and the daily backup (section 7) will not run. **Update, same day:** the owner
+   confirmed the limit was hit and decided to make the repository public (free standard runners;
+   ADR 007 addendum). The workflows were made safe for public logs and artifacts first.
 2. **No device check was possible here.** The owner reports "everything is wrong" on the phone, with
    no detail. The last APK that built (run 26, 17:21 UTC, commit `6df77d0`) is nearly current, so it is
    not an old app against a new API. The defects found and fixed in this phase (section 8) are the ones
@@ -101,7 +103,7 @@ cuisine, meal type and restaurant slot.
 |---|---|---|---|---|
 | OpenFreeMap tiles, OpenMapTiles, OpenStreetMap | Map credit line from `/v1/config`; Settings lists every licence | n/a (the app loads tiles) | none stated | OK |
 | GeoNames (CC BY 4.0) | Settings, from `geo.licence` | import workflow User-Agent | n/a | OK |
-| Photon | OSM credit (results are OSM data) | `Detour-backend/0.2 (+https://github.com/sandiaes/Detour)` | own budget 300 a day | **The contact URL is a private repository: outsiders get a 404**, so it identifies nothing. Owner: make the repository public, or give a contact address for the User-Agent (it is never added without asking) |
+| Photon | OSM credit (results are OSM data) | `Detour-backend/0.2 (+https://github.com/sandiaes/Detour)` | own budget 300 a day | The contact URL pointed to a private repository (a 404 for outsiders); **resolved by publishing the repository** (2026-11-15) |
 | FOSSGIS Valhalla | not required by their rules for a backend | same pattern | 1/s, burst 10, own budget 1,500 a day | Same User-Agent finding |
 | Wikimedia (Wikidata, Commons) | photo credit on every photo and "Image credits" | `Detour-bot/0.1 (+...)` | own budget 3,000 a day | Wikimedia's policy asks for contact information; same finding |
 

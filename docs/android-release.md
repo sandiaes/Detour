@@ -24,8 +24,13 @@ computer. Written in Phase 9 (2026-11-15); the first-time backend setup is in
    (kept 14 days).
 
 **If the run fails within seconds with no log**, the jobs were not started: usually the month's
-Actions minutes of the private repository are used up (about 2,000, ADR 005) or a spending limit
-blocks them. Check Settings, Billing and plans, Usage. This happened on 2026-11-15 (audit).
+Actions minutes are used up or a spending limit blocks them. Check Settings, Billing and plans,
+Usage. This happened on 2026-11-15 while the repository was private (about 2,000 minutes a month);
+the owner then made it public, where standard runners are free (ADR 007 addendum).
+
+**The repository is public**, so the run's log and its artifact (the APK) can be seen by anyone: the
+APK contains the backend's address. That is acceptable (the API has request limits, [`security.md`](security.md)),
+but never put anything secret into the `api_url` input.
 
 ## 3. Install it (first time)
 
@@ -58,16 +63,22 @@ that installs over Detour (ADR 008, [`security.md`](security.md)). Moving to you
 
 1. **Before anything else: More, Back up all trips, with documents**, and save the file off the phone.
    Switching keys needs one uninstall, which deletes the documents and the installation token.
-2. Actions, **Create signing key**, Run workflow, type `CREATE`. Run it **once**: a second run makes a
-   different key.
-3. Open the run, download the artifact `signing-key` (kept one day). Unzip it on any computer or the
-   phone.
-4. Repository Settings, Secrets and variables, Actions, **Secrets**: create four secrets and paste the
-   contents of the file of the same name: `DETOUR_KEYSTORE_BASE64`, `DETOUR_KEYSTORE_PASSWORD`,
-   `DETOUR_KEY_ALIAS`, `DETOUR_KEY_PASSWORD`.
-5. Keep `detour-release.keystore` and the password in your password manager. Losing them means
-   every later build needs another uninstall.
-6. Delete the "Create signing key" run (its page, the three dots, Delete workflow run).
+2. The repository is public, so the key never appears in a log or a readable artifact: the workflow
+   writes it straight into the repository's secrets. For that it needs a token for one run.
+   GitHub, your picture, **Settings, Developer settings, Personal access tokens, Fine-grained
+   tokens, Generate new token**: name `detour-secrets`, expiration 1 day, repository access
+   **Only select repositories: Detour**, permissions **Secrets: Read and write**. Copy the token.
+3. Repository Settings, Secrets and variables, Actions, **New repository secret**:
+   `DETOUR_SECRETS_TOKEN` with the token. `DETOUR_BACKUP_PASSPHRASE` must exist too
+   ([`backups.md`](backups.md)).
+4. Actions, **Create signing key**, Run workflow, type `CREATE`. Run it **once**: a second run makes a
+   different key and replaces the secrets.
+5. The run's summary says the four secrets `DETOUR_KEYSTORE_BASE64`, `DETOUR_KEYSTORE_PASSWORD`,
+   `DETOUR_KEY_ALIAS`, `DETOUR_KEY_PASSWORD` are set and shows the certificate fingerprint. Download
+   the artifact `signing-key-backup` (kept 7 days; encrypted with the backup passphrase) and keep it
+   in your password manager with the passphrase. It is needed only if the secrets are ever lost;
+   then every later build would need another uninstall.
+6. Delete the token: the `DETOUR_SECRETS_TOKEN` secret, and the token itself under Fine-grained tokens.
 7. Build the APK (section 2). The summary now shows your certificate, not "Android Debug".
 8. On the phone: uninstall Detour, install the new APK, open it (it registers a new installation),
    then **More, Import a trip** and choose the backup file. Your trips come back as new copies with

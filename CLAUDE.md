@@ -47,9 +47,11 @@ code without a template is not shown); the daily "Back up app data" workflow; an
 signing key ("Create signing key" workflow, `plugins/withReleaseSigning.js`); `privacy.md`,
 `security.md`, `backups.md`, `android-release.md`, `known-limitations.md`, `ios-readiness.md`; both E2E
 flows brought up to date. **Production** (read-only check): migrations `0014` to `0019` have run (at
-`0019`), Austria and Italy are available. **Blocked:** GitHub Actions has not started any job since
-about 18:16 UTC on 2026-11-15 (likely the private repository's minutes), so no APK, E2E run or backup
-can run; no journey has been checked on a device (checked by tests only).
+`0019`), Austria and Italy are available. GitHub Actions stopped starting jobs on 2026-11-15
+(the private repository's minutes were used up); the owner then decided to **make the repository
+public** (ADR 007 addendum): workflows must never log or upload anything secret or personal (the
+backup is always encrypted, the signing key goes straight into secrets). No journey has been checked
+on a device (checked by tests only).
 
 **Owner's UI requests of 2026-11-15** (ADR 021, decisions 92 to 94, built, awaiting acceptance): a Car pill on the new-trip screen (`app.trip.uses_car`, migration `0018`; off means Optimize only walks), a Day drop-down in Edit time, and Add a place opening on the open day at its first free time.
 

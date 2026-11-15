@@ -11,9 +11,9 @@ restore it, and what is not covered. Written in Phase 9 (2026-11-15).
 | Contains | The whole `app` schema: every installation's trips, plans, versions, own places, stays, visits, change sets | Your trips as `.detour` files: each trip's chosen plan (or past record), stops, times, cities, and, if chosen, **the documents** |
 | Documents on the phone | **No** (they are never on the server) | **Yes**, when "Include documents" is on |
 | Runs | Every day at 02:17 UTC, and by hand | When you tap it |
-| Kept | 30 days, as workflow artifacts in the private repository | Wherever you save the file |
+| Kept | 30 days, as encrypted workflow artifacts (in a public repository anyone with read access can download them, hence the encryption) | Wherever you save the file |
 | Restores into | The same database, replacing `app` | A new copy of each trip, under the phone's installation (ADR 028) |
-| Encryption | Optional: set the secret `DETOUR_BACKUP_PASSPHRASE` | None: the file is a plain zip (ADR 028); keep it private |
+| Encryption | Always: AES-256 with the secret `DETOUR_BACKUP_PASSPHRASE` (the run fails without it; the repository is public) | None: the file is a plain zip (ADR 028); keep it private |
 
 Use both. Before the 2026-11-17 trip, and before any reinstall or key change, do **More, Back up
 all trips** with documents and keep the file off the phone (Drive, email to yourself, a computer).
@@ -26,22 +26,27 @@ Workflow: [`.github/workflows/backup-app-data.yml`](../.github/workflows/backup-
 
 1. The secret `DETOUR_IMPORT_DATABASE_URL` already exists if a region was imported (the Supabase
    *session pooler* string, port 5432). The backup uses the same one.
-2. Optional, recommended: GitHub, Settings, Secrets and variables, Actions, New repository secret
-   `DETOUR_BACKUP_PASSPHRASE` with a long random passphrase from your password manager. Without it
-   the dump is stored unencrypted (the workflow warns).
+2. **Required:** GitHub, the repository, Settings, Secrets and variables, Actions, New repository
+   secret `DETOUR_BACKUP_PASSPHRASE` with a long random passphrase from your password manager. The
+   run refuses to upload anything without it: the repository is public (2026-11-15), and GitHub
+   shows Actions logs to everyone and lets anyone with read access download artifacts (GitHub Docs,
+   "Setting repository visibility" and "Downloading workflow artifacts", read 2026-11-15). The run's
+   public summary shows only the schema version and the dump's size.
 3. Merge the workflow into `main`: scheduled workflows run only from the default branch.
 4. Run it once by hand: Actions, "Back up app data", Run workflow. The run's summary lists the schema
-   version and the row count of every `app` table; the artifact `app-backup-<date>` holds
-   `app.dump` (or `app.dump.gpg`), `schema-version.txt` and `row-counts.txt`.
+   version; the artifact `app-backup-<date>` holds `app.dump.gpg`, `row-counts.txt.gpg` (the row
+   count of every `app` table) and `schema-version.txt`.
 
 **Also keeps Supabase awake:** the daily connection counts as activity, so a Free project is not
 paused after a week without use.
 
-**Not running?** Scheduled runs need Actions minutes (a private repository has about 2,000 a
-month, ADR 005; the backup uses about 1 minute a day). On 2026-11-15 Actions stopped starting jobs
-for this repository (see [`audit-phase-9.md`](audit-phase-9.md)), so check Settings, Billing and plans.
-GitHub may also disable a schedule in a repository without activity for a long time (not checked
-on GitHub's pages; re-enable it on the workflow's page if that happens).
+**Not running?** Standard runners are free in a public repository ("The use of standard GitHub-hosted
+runners is free: In public repositories", GitHub Docs, Actions billing, read 2026-11-15). But "In a
+public repository, scheduled workflows are automatically disabled when no repository activity has
+occurred in 60 days" (GitHub Docs, "Disabling and enabling a workflow", read 2026-11-15): after two
+months without a commit, open Actions, "Back up app data", and **Enable workflow**. On 2026-11-15,
+while the repository was still private, Actions stopped starting jobs (minutes used up; see
+[`audit-phase-9.md`](audit-phase-9.md)).
 
 ## 3. Restoring the database
 

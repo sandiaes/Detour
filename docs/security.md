@@ -99,16 +99,32 @@ Deleting a trip deletes its plans, stops, stays and visits on the server and its
 phone. Uninstalling deletes everything on the phone. Removing the server data of an installation is a
 two-statement SQL step (see [`privacy.md`](privacy.md), section 5).
 
-## 3. Supabase notes
+## 3. The repository is public (2026-11-15, ADR 007 addendum)
+
+- The code, the documents and the whole git history are public. Checked before the switch: no
+  secret anywhere in the history. The owner's commit email addresses are in it.
+- **Actions logs, run summaries and artifacts are public.** Workflows must never print or upload
+  anything secret or personal: the backup is encrypted and its summary carries no counts; the signing
+  key goes straight into the secrets; the database URL is passed as an environment variable and never
+  echoed; GitHub masks secret values in logs. The APK artifact contains the backend's address, which
+  is therefore public: the request limits (section 2.2) are what protects the API.
+- **Secrets stay private.** Workflows that use them run on `push`, `schedule` and
+  `workflow_dispatch` only; CI has no `pull_request` trigger, so a fork's pull request runs nothing
+  with this repository's secrets.
+- Recommended settings (GitHub, the repository, Settings): under Actions, General, keep "Require
+  approval for all external contributors" for fork pull requests; under Code security, turn on
+  secret scanning and push protection (offered for public repositories).
+
+## 4. Supabase notes
 
 The API connects as the database owner through the session pooler; Row Level Security is not used
 because no client talks to Supabase directly (the app only calls the Detour API). The Supabase anon
 and service keys are therefore not in the app. If anything ever calls Supabase's REST API directly,
 RLS must be enabled first.
 
-## 4. Open items for the owner
+## 5. Open items for the owner
 
 1. Decide when to switch to the project's own signing key (one uninstall; export first).
-2. Give the providers a reachable contact: the User-Agent links to a private repository.
-3. Confirm the API address is not published anywhere public (it is the only thing standing between
-   strangers and the request limits).
+2. The providers' contact: the User-Agent links to the repository, which resolves now that it is
+   public.
+3. Keep the request limits on: the API address is public (in the APK artifact).

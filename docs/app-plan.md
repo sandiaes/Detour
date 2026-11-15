@@ -26,7 +26,7 @@ Recorded on 2026-11-12 from the owner's answers.
 | D8 | OpenFreeMap tiles now, self-hosted PMTiles as rehearsed fallback | Approved. | Approved |
 | D9 | Photos on-device first; cloud backup decided in the photo phase | Approved. | Approved |
 | D10 | Restaurant prices from users only; default band limits set in Phase 8 | **Superseded by ADR 017** (2026-11-13): no prices, price bands, budgets or currencies for now. | Superseded |
-| D11 | Which open-source licence, and when the repository becomes public | **Apache-2.0** (ADR 007). The repository stays private until the owner decides to publish it. | Decided |
+| D11 | Which open-source licence, and when the repository becomes public | **Apache-2.0** (ADR 007). The repository was made public on 2026-11-15 (ADR 007 addendum); before that it stayed private until the owner decided to publish it. | Decided |
 | D12 | Opening hours | **Out of scope.** No closed-place warning. See ADR 003. | Decided |
 | D13 | Attraction selection | Wayside shrines and crosses, boundary stones, bomb craters and most memorials are not imported. See ADR 003. | Decided |
 | D15 | Past trips archive | Past trips are kept as a map and list of visited cities and attractions, without routing. See ADR 006. Built 2026-11-13, awaits acceptance. | Decided |
@@ -294,8 +294,8 @@ request limits, location and cloud-backup removed from the APK, migration `0020`
 `privacy.md`, `security.md`, `backups.md`, `android-release.md`, `known-limitations.md`,
 `ios-readiness.md`, the journeys and the performance pass ([`test-plan-phase-9.md`](test-plan-phase-9.md)),
 and both E2E flows brought up to date. **Open:** GitHub Actions stopped starting jobs on 2026-11-15
-(likely the private repository's minutes), so the E2E screenshot tour, a new APK and the backups
-cannot run; no journey has been checked on a device; the owner's acceptance of ADRs 013 to 030 is
+(the private repository's minutes were used up); the owner then made the repository public (ADR 007
+addendum), after which the E2E screenshot tour, a new APK and the backups can run; no journey has been checked on a device; the owner's acceptance of ADRs 013 to 030 is
 recorded in the audit but no ADR status was changed; the PMTiles tile-switch rehearsal was not done.
 
 **Goal:** a build fit for the owner's own real trips, installed as a sideloaded APK (ADR 008).
