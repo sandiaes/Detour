@@ -279,19 +279,22 @@ The backend streams stored photos to the app, so it needs the same two Storage s
 
 ## Keeping it awake (ADR 005 addendum, 2026-11-15)
 
-The "Keep awake" workflow (`.github/workflows/keep-awake.yml`) calls `/v1/health/ready` every 5 minutes,
-so Render does not spin the API down (idle limit 15 minutes) and Supabase sees a real query.
+An UptimeRobot monitor calls `/v1/health/ready` every 5 minutes, so Render does not spin the API down
+(idle limit 15 minutes) and Supabase sees a real query. You create it once; nothing in the repository
+or the API changes.
 
-1. It uses the repository variable `DETOUR_API_URL` (step 7). Nothing else to set up.
-2. Merge it to `main`: schedules run from the default branch only. Check **Actions**, **Keep awake**,
-   **Run workflow** once.
-3. The service now runs all month (744 of Render's 750 free hours per workspace): do not add a second
+1. Create a free account at <https://uptimerobot.com> (no card needed). Use **Add new monitor**.
+2. Type **HTTP(s)** (or **Keyword**). **URL:** `https://<your-service>.onrender.com/v1/health/ready`.
+   **Interval:** 5 minutes (the Free plan's shortest).
+3. **Request method: GET** if the form offers a choice. The routes answer GET only, so a HEAD request
+   would show as an error. If only HEAD is offered, use a **Keyword** monitor for the word `ok`, which
+   reads the page. (The method was not confirmed from UptimeRobot's pages: check the form.)
+4. Add your e-mail as the alert contact. A "down" alert with HTTP 503 means the database is paused or
+   unreachable: restore it in the Supabase dashboard.
+5. The service now runs all month (744 of Render's 750 free hours per workspace): do not add a second
    Free web service to the workspace.
-4. A red run with HTTP 503 means the database is paused or unreachable: restore it in the Supabase
-   dashboard. GitHub switches the schedule off after 60 days without a commit: re-enable it on the
-   Actions page.
-5. GitHub may skip or delay runs, so the first request can still be slow now and then. An external
-   monitor can be added once its terms are read (ADR 005 addendum).
+6. After a day, open the Render dashboard: the service should show no spin-downs. If it still sleeps,
+   Render does not count the pings as traffic: tell the project owner's assistant.
 
 ## Troubleshooting
 
@@ -314,10 +317,10 @@ so Render does not spin the API down (idle limit 15 minutes) and Supabase sees a
 From the pages read on 2026-11-12 (ADR 005 has the full list). They can change; re-read before
 relying on them:
 
-- Render free: sleeps after 15 idle minutes (the "Keep awake" workflow pings every 5 minutes),
+- Render free: sleeps after 15 idle minutes (an UptimeRobot monitor pings every 5 minutes),
   750 instance hours a month, 512 MB RAM, restarts at
   any time, no persistent disk.
-- Supabase Free: 500 MB database, "may be paused" after low activity over 7 days (the "Keep awake" workflow queries it every 5 minutes), no automatic backups.
+- Supabase Free: 500 MB database, "may be paused" after low activity over 7 days (the UptimeRobot monitor queries it every 5 minutes), no automatic backups.
 - GitHub Actions in a private repository: the APK build costs about 14 of the roughly 2,000
   monthly minutes.
 

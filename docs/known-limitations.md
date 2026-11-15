@@ -46,7 +46,7 @@ language model) are in the [product brief](product-brief.md), section 8.
 
 | Limitation | Effect |
 |---|---|
-| Render free: sleeps after 15 idle minutes | The "Keep awake" workflow pings every 5 minutes; if GitHub skips runs the first request takes about a minute ("Waking the server"). It uses 744 of the 750 free hours: no second Free web service in the workspace |
-| Supabase Free: may pause after low activity over 7 days | "The database is paused…": unpause it in the Supabase dashboard; "Keep awake" and the daily backup keep it active |
-| GitHub Actions: free in the public repository, but a schedule is switched off after 60 days without a commit | Re-enable "Back up app data" and "Keep awake" on their Actions pages after a quiet two months |
+| Render free: sleeps after 15 idle minutes | An UptimeRobot monitor pings every 5 minutes; if it is missing or a check fails the first request takes about a minute ("Waking the server"). It uses 744 of the 750 free hours: no second Free web service in the workspace |
+| Supabase Free: may pause after low activity over 7 days | "The database is paused…": unpause it in the Supabase dashboard; the UptimeRobot monitor and the daily backup keep it active |
+| GitHub Actions: free in the public repository, but a schedule is switched off after 60 days without a commit | Re-enable "Back up app data" on its Actions page after a quiet two months |
 | Signed with the public debug key until the owner adds a key | [`android-release.md`](android-release.md), section 5 |
