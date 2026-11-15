@@ -214,10 +214,10 @@ function Scrim() {
     >
       <Defs>
         <LinearGradient id="cover-scrim" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#0d1828" stopOpacity={0.5} />
-          <Stop offset="0.28" stopColor="#0d1828" stopOpacity={0} />
-          <Stop offset="0.5" stopColor="#0d1828" stopOpacity={0} />
-          <Stop offset="1" stopColor="#0d1828" stopOpacity={0.62} />
+          <Stop offset="0" stopColor={colors.scrim} stopOpacity={0.5} />
+          <Stop offset="0.28" stopColor={colors.scrim} stopOpacity={0} />
+          <Stop offset="0.5" stopColor={colors.scrim} stopOpacity={0} />
+          <Stop offset="1" stopColor={colors.scrim} stopOpacity={0.62} />
         </LinearGradient>
       </Defs>
       <Rect x="0" y="0" width="100%" height="100%" fill="url(#cover-scrim)" />
@@ -268,7 +268,7 @@ export function PhotoCredit({
         style={creditStyles.button}
         testID="photo-credit-toggle"
       >
-        <Icon name="info" size={14} color={colors.onImage} />
+        <Icon name="info" size="xs" color={colors.onImage} />
       </Pressable>
     </View>
   );
@@ -288,17 +288,17 @@ const creditStyles = StyleSheet.create({
   button: {
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(20, 36, 58, 0.72)",
+    backgroundColor: colors.imageOverlay,
   },
   bubble: {
     flexShrink: 1,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.sm,
-    backgroundColor: "rgba(20, 36, 58, 0.86)",
+    backgroundColor: colors.imageOverlay,
   },
   text: { ...typeScale.caption, color: colors.onImage, textDecorationLine: "underline" },
 });

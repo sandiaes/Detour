@@ -2,11 +2,9 @@ import type { Day } from "@detour/shared";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { spacing } from "../theme";
+import { layout } from "../theme";
 import { formatClock, formatDayLabel, formatMinutes } from "../util/format";
-import { Button } from "./Button";
-import { BoxField } from "./ds/BoxField";
-import { ChoiceRow, Dropdown } from "./ds/Dropdown";
+import { Button, ChoiceRow, SelectField, TextField } from "./ds";
 import { DurationField } from "./ds/DurationField";
 
 // Putting a place on a day at a time the user picks, with no proposal. It is the only way to fill
@@ -77,7 +75,7 @@ export function ChooseSlot({
 
   return (
     <View style={styles.gap} testID="choose-slot">
-      <Dropdown
+      <SelectField
         label="Day"
         placeholder="Choose a day"
         icon="calendar"
@@ -99,9 +97,10 @@ export function ChooseSlot({
             }}
           />
         ))}
-      </Dropdown>
-      <BoxField
+      </SelectField>
+      <TextField
         label="Start time"
+        icon="clock"
         value={timeText}
         onChangeText={setTimeText}
         keyboardType="numbers-and-punctuation"
@@ -124,8 +123,6 @@ export function ChooseSlot({
       <Button
         label={time ? `Add to day ${day} at ${time}` : "Add to the plan"}
         testID="add-at-time"
-        variant="ink"
-        size="compact"
         fill
         disabled={disabled || !canSubmit}
         loading={working}
@@ -148,5 +145,5 @@ export function ChooseSlot({
 }
 
 const styles = StyleSheet.create({
-  gap: { gap: spacing.md },
+  gap: { gap: layout.block },
 });

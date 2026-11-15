@@ -1,15 +1,27 @@
 import type { Trip } from "@detour/shared";
 import { type ReactNode, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call } from "../api/unwrap";
-import { Button } from "../components/Button";
 import { CATEGORY_ICON, DEVICE_ONLY_NOTE, KindTile } from "../components/documents/DocumentList";
 import { CalendarSheet } from "../components/ds/Calendar";
-import { ChoiceRow, Dropdown } from "../components/ds/Dropdown";
-import { Icon, type IconName } from "../components/ds/Icon";
-import { Badge, IconButton } from "../components/ds/primitives";
-import { Chip, EmptyState, LoadingState, Notice, ScreenHeader } from "../components/ui";
+import {
+  Button,
+  Card,
+  ChoiceRow,
+  Chip,
+  EmptyState,
+  FieldShell,
+  type IconName,
+  InlineStatus,
+  ListRow,
+  LoadingState,
+  Notice,
+  ScreenHeader,
+  SelectField,
+  TextField,
+  Tile,
+} from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useActivePlan } from "../data/tripCounts";
@@ -29,7 +41,7 @@ import {
   titleFromFileName,
 } from "../documents/model";
 import { useNavigation } from "../nav/Navigator";
-import { card, colors, docTones, radius, spacing, type } from "../theme";
+import { colors, docTones, layout, radius, spacing, type, weight } from "../theme";
 import { localToday, shortSpan } from "../domain/trips";
 import { formatDate, formatDayLabel } from "../util/format";
 
@@ -217,7 +229,11 @@ function Form({
     return (
       <View style={styles.fill}>
         <ScrollView contentContainerStyle={styles.content}>
-          <FormHeader title="Add document" subtitle={`${trip.title} · ${shortSpan(trip)}`} />
+          <ScreenHeader
+            title="Add document"
+            subtitle={`${trip.title} · ${shortSpan(trip)}`}
+            onBack={nav.back}
+          />
           <View style={styles.body}>
             {problem ? <Notice tone="error">{problem}</Notice> : null}
             <Text style={styles.lead}>
@@ -241,14 +257,15 @@ function Form({
                 testID="take-photo"
               />
             </View>
-            {busy === "pick" ? <Text style={styles.muted}>Opening the file picker…</Text> : null}
-            <View style={styles.privacy}>
-              <Icon name="shield" size={20} color={colors.primary} />
-              <View style={styles.fileText}>
-                <Text style={styles.privacyTitle}>Your documents stay private</Text>
-                <Text style={styles.muted}>{DEVICE_ONLY_NOTE}</Text>
-              </View>
-            </View>
+            {busy === "pick" ? <InlineStatus text="Opening the file picker…" busy /> : null}
+            <ListRow
+              icon="shield"
+              title="Your documents stay private"
+              detail={DEVICE_ONLY_NOTE}
+              density="compact"
+              inset="none"
+              divider={false}
+            />
           </View>
         </ScrollView>
       </View>
@@ -265,9 +282,10 @@ function Form({
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <FormHeader
+        <ScreenHeader
           title={existing ? "Edit document" : "Add document"}
           subtitle={`${trip.title} · ${shortSpan(trip)}`}
+          onBack={nav.back}
         />
         <View style={styles.body}>
           {problem ? <Notice tone="error">{problem}</Notice> : null}
@@ -283,7 +301,7 @@ function Form({
                   label="Replace file"
                   icon="refresh"
                   variant="secondary"
-                  size="compact"
+                  size="sm"
                   testID="replace-file"
                   loading={busy === "pick"}
                   onPress={() => void pick()}
@@ -292,8 +310,7 @@ function Form({
             }
           />
 
-          <View style={styles.gap}>
-            <Text style={styles.label}>Document type</Text>
+          <FieldShell label="Document type">
             <View style={styles.row}>
               {CATEGORIES.map((c) => (
                 <Chip
@@ -305,36 +322,21 @@ function Form({
                 />
               ))}
             </View>
-          </View>
+          </FieldShell>
 
-          <View style={styles.gap}>
-            <Text style={styles.label}>Title</Text>
-            <View style={styles.input}>
-              <TextInput
-                accessibilityLabel="Title"
-                accessibilityHint="For example “Train to Salzburg” or “Museum tickets”."
-                value={title}
-                onChangeText={setTitle}
-                maxLength={80}
-                placeholder="For example “Train to Salzburg”"
-                placeholderTextColor={colors.muted}
-                style={styles.inputText}
-              />
-              {title ? (
-                <IconButton
-                  icon="close"
-                  label="Clear the title"
-                  compact
-                  onPress={() => setTitle("")}
-                />
-              ) : null}
-            </View>
-          </View>
+          <TextField
+            label="Title"
+            accessibilityLabel="Title"
+            accessibilityHint="For example “Train to Salzburg” or “Museum tickets”."
+            value={title}
+            onChangeText={setTitle}
+            maxLength={80}
+            placeholder="For example “Train to Salzburg”"
+            onClear={() => setTitle("")}
+            clearLabel="Clear the title"
+          />
 
-          <View style={styles.gap}>
-            <Text style={styles.label}>
-              Related to <Text style={styles.optional}>(optional)</Text>
-            </Text>
+          <FieldShell label="Related to (optional)">
             <View style={styles.row}>
               {kinds.map((k) => (
                 <Chip
@@ -363,7 +365,7 @@ function Form({
               </View>
             ) : null}
             {kind === "place" ? (
-              <Dropdown
+              <SelectField
                 label="Attraction"
                 placeholder="Choose an attraction"
                 value={place?.name ?? null}
@@ -383,7 +385,7 @@ function Form({
                     }}
                   />
                 ))}
-              </Dropdown>
+              </SelectField>
             ) : null}
             {kind === "leg"
               ? legOptions.map((l) => (
@@ -396,38 +398,20 @@ function Form({
                   />
                 ))
               : null}
-          </View>
+          </FieldShell>
 
-          <View style={styles.gap}>
-            <Text style={styles.label}>
-              Date <Text style={styles.optional}>(optional)</Text>
-            </Text>
-            <View style={styles.input}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={date ? `Date, ${formatDate(date)}` : "Date, not set"}
-                accessibilityHint="Opens a calendar"
-                onPress={() => setCalendar(true)}
-                hitSlop={{ top: 2, bottom: 2 }}
-                style={styles.dateField}
-                testID="document-date"
-              >
-                <Icon name="calendar" size={18} color={colors.muted} />
-                <Text style={[styles.inputText, styles.dateText, !date && styles.placeholder]}>
-                  {date ? formatDate(date) : "Choose a date"}
-                </Text>
-              </Pressable>
-              {date ? (
-                <IconButton
-                  icon="close"
-                  label="Clear the date"
-                  compact
-                  testID="clear-document-date"
-                  onPress={() => setDate("")}
-                />
-              ) : null}
-            </View>
-          </View>
+          <SelectField
+            label="Date (optional)"
+            placeholder="Choose a date"
+            icon="calendar"
+            value={date ? formatDate(date) : null}
+            accessibilityLabel={date ? `Date, ${formatDate(date)}` : "Date, not set"}
+            accessibilityHint="Opens a calendar"
+            onPress={() => setCalendar(true)}
+            onClear={() => setDate("")}
+            clearLabel="Clear the date"
+            testID="document-date"
+          />
           <CalendarSheet
             visible={calendar}
             title="Date of the document"
@@ -444,35 +428,20 @@ function Form({
             onClose={() => setCalendar(false)}
           />
 
-          <View style={styles.gap}>
-            <Text style={styles.label}>
-              Notes <Text style={styles.optional}>(optional)</Text>
-            </Text>
-            <View style={[styles.input, styles.notesBox]}>
-              <TextInput
-                accessibilityLabel="Notes (optional)"
-                value={notes}
-                onChangeText={setNotes}
-                maxLength={NOTES_MAX}
-                multiline
-                textAlignVertical="top"
-                placeholder="For example: outbound flight, confirmation email from the airline"
-                placeholderTextColor={colors.muted}
-                style={[styles.inputText, styles.notes]}
-                testID="document-notes"
-              />
-              <Text
-                style={styles.counter}
-                accessibilityLabel={`${notes.length} of ${NOTES_MAX} characters`}
-              >
-                {notes.length}/{NOTES_MAX}
-              </Text>
-            </View>
-          </View>
+          <TextField
+            label="Notes (optional)"
+            accessibilityLabel="Notes (optional)"
+            value={notes}
+            onChangeText={setNotes}
+            maxLength={NOTES_MAX}
+            multiline
+            placeholder="For example: outbound flight, confirmation email from the airline"
+            hint={`${notes.length}/${NOTES_MAX} characters`}
+            testID="document-notes"
+          />
 
           <Button
             label="Save document"
-            variant="ink"
             fill
             testID="save-document"
             disabled={!ready}
@@ -482,22 +451,6 @@ function Form({
           {!existing ? <Text style={styles.note}>{DEVICE_ONLY_NOTE}</Text> : null}
         </View>
       </ScrollView>
-    </View>
-  );
-}
-
-/** A compact top bar: Back, the title centred, and the trip under it (reference screen 16). */
-function FormHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  const nav = useNavigation();
-  return (
-    <View style={styles.formHeader}>
-      <View style={styles.formHeaderBack}>
-        <IconButton icon="back" label="Back" compact onPress={nav.back} />
-      </View>
-      <View accessible accessibilityRole="header" accessibilityLabel={title}>
-        <Text style={styles.formTitle}>{title}</Text>
-      </View>
-      <Text style={styles.formSubtitle}>{subtitle}</Text>
     </View>
   );
 }
@@ -522,28 +475,19 @@ function OptionCard({
 }) {
   const colour = docTones[tone];
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${detail}${disabled ? " Coming later." : ""}`}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      testID={testID}
-      style={({ pressed }) => [styles.option, pressed && styles.pressed]}
-    >
-      <View style={[styles.optionTile, { backgroundColor: colour.bg }]}>
-        <Icon name={icon} size={22} color={colour.fg} />
-      </View>
-      <View style={styles.fileText}>
-        <Text style={styles.optionTitle}>{title}</Text>
-        <Text style={styles.muted}>{detail}</Text>
-      </View>
-      {disabled ? (
-        <Badge label="Coming later" />
-      ) : (
-        <Icon name="chevronRight" size={16} color={colors.muted} />
-      )}
-    </Pressable>
+    <Card padded={false}>
+      <ListRow
+        leading={<Tile icon={icon} fg={colour.fg} bg={colour.bg} />}
+        title={title}
+        detail={detail}
+        disabled={disabled}
+        onPress={onPress}
+        inset="panel"
+        divider={false}
+        accessibilityLabel={`${title}. ${detail}${disabled ? " Coming later." : ""}`}
+        testID={testID}
+      />
+    </Card>
   );
 }
 
@@ -562,80 +506,43 @@ function FileRow({
   action: ReactNode;
 }) {
   return (
-    <View style={styles.file}>
-      {uri ? (
-        <Image
-          source={{ uri }}
-          style={styles.filePicture}
-          resizeMode="cover"
-          accessibilityIgnoresInvertColors
-          testID="file-picture"
-        />
-      ) : (
-        <KindTile category={category} size={56} />
-      )}
-      <View style={styles.fileText}>
-        <View accessible accessibilityLabel={`File: ${name}. ${line}`}>
-          <Text style={styles.fileName} numberOfLines={2}>
-            {name}
-          </Text>
-          <Text style={styles.muted}>{line}</Text>
+    <Card>
+      <View style={styles.file}>
+        {uri ? (
+          <Image
+            source={{ uri }}
+            style={styles.filePicture}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+            testID="file-picture"
+          />
+        ) : (
+          <KindTile category={category} size="lg" />
+        )}
+        <View style={styles.fileText}>
+          <View accessible accessibilityLabel={`File: ${name}. ${line}`}>
+            <Text style={styles.fileName} numberOfLines={2}>
+              {name}
+            </Text>
+            <Text style={styles.muted}>{line}</Text>
+          </View>
+          {action}
         </View>
-        {action}
       </View>
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  pressed: { opacity: 0.85 },
   content: { paddingBottom: spacing.xxl },
-  body: { paddingHorizontal: spacing.lg, gap: spacing.lg },
-  gap: { gap: spacing.sm },
+  body: { paddingHorizontal: layout.gutter, gap: layout.section },
   row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  label: { ...type.caption, fontWeight: "700", color: colors.text },
   muted: { ...type.caption, color: colors.muted },
-  note: { ...type.caption, color: colors.muted },
-  lead: { ...type.small, color: colors.muted },
-  optional: { fontWeight: "400", color: colors.muted },
-  formHeader: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.md },
-  formHeaderBack: { marginLeft: -spacing.md, alignSelf: "flex-start" },
-  formTitle: { ...type.title, color: colors.text },
-  formSubtitle: { ...type.caption, color: colors.muted, marginTop: spacing.xxs },
+  note: { ...type.caption, color: colors.muted, textAlign: "center" },
+  lead: { ...type.label, color: colors.muted },
   cards: { gap: spacing.sm },
-  option: {
-    ...card,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    minHeight: 64,
-    padding: spacing.md,
-  },
-  optionTile: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  optionTitle: { ...type.small, fontWeight: "700", color: colors.text },
-  privacy: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
-  },
-  privacyTitle: { ...type.small, fontWeight: "700", color: colors.text },
-  file: {
-    ...card,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: spacing.md,
-  },
+  file: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   filePicture: {
     width: 56,
     height: 56,
@@ -643,30 +550,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   fileText: { flex: 1, gap: spacing.xs },
-  fileName: { ...type.small, fontWeight: "700", color: colors.text },
-  // Boxed fields, as in the reference: white, a hairline, softly rounded, one slim line.
-  input: {
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: 44,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.xs,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  inputText: { ...type.small, color: colors.text, flex: 1, paddingVertical: spacing.sm },
-  dateField: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    minHeight: 44,
-  },
-  dateText: { paddingVertical: 0 },
-  placeholder: { color: colors.muted },
-  notesBox: { flexDirection: "column", alignItems: "stretch", paddingRight: spacing.md },
-  notes: { minHeight: 72, paddingHorizontal: 0 },
-  counter: { ...type.caption, color: colors.muted, textAlign: "right", paddingBottom: spacing.sm },
+  fileName: { ...type.label, fontWeight: weight.semibold, color: colors.text },
 });

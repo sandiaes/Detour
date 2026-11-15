@@ -1,29 +1,36 @@
 import type { ItinerarySummary, Trip } from "@detour/shared";
 import { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
-import { Cover } from "../components/ds/Cover";
-import { Icon, type IconName } from "../components/ds/Icon";
-import { Badge, IconButton } from "../components/ds/primitives";
-import { ResourceNotices } from "../components/ResourceNotices";
 import {
+  Badge,
+  Bullets,
+  Button,
   Card,
+  CompactHeader,
   EmptyState,
   ErrorState,
+  Icon,
+  IconButton,
+  InlineStatus,
+  ListRow,
   LoadingState,
+  MetaLine,
   Notice,
-  CompactHeader,
-  PlanNotes,
+  SectionHeader,
+  StateView,
   WakingServer,
-} from "../components/ui";
+} from "../components/ds";
+import { Cover } from "../components/ds/Cover";
+import { PlanNotes } from "../components/plan/PlanNotes";
+import { ResourceNotices } from "../components/ResourceNotices";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { PROFILE_EMPHASIS, PROFILE_LABEL, buildComparison, planNames } from "../domain/compare";
 import { useNavigation } from "../nav/Navigator";
 import { PastTripScreen } from "./PastTripScreen";
-import { TOUCH, card, colors, radius, spacing, type } from "../theme";
+import { border, colors, layout, radius, spacing, type, weight } from "../theme";
 import { formatSeconds, formatTripSpan, pluralise } from "../util/format";
 
 /** Notes that need no space of their own: the profile is described on its card, the overlap in the
@@ -60,9 +67,7 @@ function ComparisonTable({ a, b }: { a: ItinerarySummary; b: ItinerarySummary })
   const nameB = PROFILE_LABEL[b.profile];
   return (
     <View style={styles.compare}>
-      <Text accessibilityRole="header" style={styles.sectionTitle}>
-        How they differ
-      </Text>
+      <SectionHeader title="How they differ" />
       <View
         style={styles.tableHead}
         accessible={false}
@@ -84,20 +89,7 @@ function ComparisonTable({ a, b }: { a: ItinerarySummary; b: ItinerarySummary })
           <Text style={styles.cell}>{row.b}</Text>
         </View>
       ))}
-      {differences.map((text) => (
-        <Text key={text} style={styles.difference}>
-          • {text}
-        </Text>
-      ))}
-    </View>
-  );
-}
-
-function Fact({ icon, text }: { icon: IconName; text: string }) {
-  return (
-    <View style={styles.fact}>
-      <Icon name={icon} size={16} color={colors.muted} />
-      <Text style={styles.factText}>{text}</Text>
+      <Bullets items={differences} />
     </View>
   );
 }
@@ -121,11 +113,11 @@ function PlanCard({
   const names = planNames(plan, trip.destination.name);
   const s = plan.stats;
   return (
-    <View style={styles.planCard} testID={`plan-${plan.profile}`}>
+    <Card testID={`plan-${plan.profile}`}>
       <Cover
         seedKey={`${trip.destination.ref}:${plan.profile}`}
         photo={trip.cover_image}
-        height={150}
+        height={140}
         rounded={radius.md}
       >
         {names.badge || selected ? (
@@ -146,11 +138,11 @@ function PlanCard({
         <Text style={styles.body}>{PROFILE_EMPHASIS[plan.profile]}</Text>
         {s ? (
           <View style={styles.facts}>
-            <Fact icon="sight" text={pluralise(s.visits, "place")} />
+            <MetaLine icon="sight" text={pluralise(s.visits, "place")} />
             {(s.meals ?? 0) > 0 ? (
-              <Fact icon="restaurant" text={pluralise(s.meals ?? 0, "restaurant")} />
+              <MetaLine icon="restaurant" text={pluralise(s.meals ?? 0, "restaurant")} />
             ) : null}
-            <Fact icon="route" text={`${formatSeconds(s.travel_seconds)} travelling`} />
+            <MetaLine icon="route" text={`${formatSeconds(s.travel_seconds)} travelling`} />
           </View>
         ) : null}
         {plan.notes
@@ -171,7 +163,7 @@ function PlanCard({
               testID={`view-details-${plan.profile}`}
               label="View details"
               variant="secondary"
-              size="compact"
+              size="sm"
               fill
               onPress={onView}
               accessibilityLabel={`View the details of the ${label} plan`}
@@ -181,8 +173,7 @@ function PlanCard({
             <Button
               testID={`select-${plan.profile}`}
               label={selected ? "Selected" : "Choose this itinerary"}
-              variant="ink"
-              size="compact"
+              size="sm"
               fill
               accessibilityLabel={
                 selected ? `The ${label} plan is selected` : `Select the ${label} plan`
@@ -194,7 +185,7 @@ function PlanCard({
           </View>
         </View>
       </View>
-    </View>
+    </Card>
   );
 }
 
@@ -303,23 +294,18 @@ export function TripScreen({ tripId }: { tripId: string }) {
       );
   } else if (shown.length === 0) {
     content = (
-      <View style={styles.pad}>
-        <Card>
-          <Text style={styles.planTitle}>Not planned yet</Text>
-          <Text style={styles.body}>
-            Detour will propose two different plans to compare: one of the best-known sights, one
-            that covers more.
-          </Text>
-          <Button
-            label="Plan this trip"
-            loading={busy === "generate"}
-            onPress={() => void plan()}
-          />
-          {busy === "generate" ? (
-            <Text style={styles.note}>Planning… this usually takes a few seconds.</Text>
-          ) : null}
-        </Card>
-      </View>
+      <StateView
+        kind="empty"
+        layout="inline"
+        icon="route"
+        title="Not planned yet"
+        text="Detour will propose two different plans to compare: one of the best-known sights, one that covers more."
+      >
+        <Button label="Plan this trip" loading={busy === "generate"} onPress={() => void plan()} />
+        {busy === "generate" ? (
+          <InlineStatus text="Planning… this usually takes a few seconds." />
+        ) : null}
+      </StateView>
     );
   } else {
     content = (
@@ -338,29 +324,24 @@ export function TripScreen({ tripId }: { tripId: string }) {
         </View>
         {pair ? (
           <View style={styles.pad}>
-            <Pressable
-              accessibilityRole="button"
+            <ListRow
+              icon="list"
+              title="Compare itineraries"
+              detail="See how the two plans differ"
+              inset="none"
               accessibilityLabel="Compare itineraries"
-              accessibilityState={{ expanded: comparing }}
               accessibilityHint="Shows how the two plans differ"
+              trailing={<Icon name={comparing ? "up" : "down"} size="sm" color={colors.muted} />}
               onPress={() => setComparing((v) => !v)}
-              style={({ pressed }) => [styles.compareRow, pressed && styles.pressed]}
               testID="compare-toggle"
-            >
-              <Icon name="list" size={20} color={colors.primary} />
-              <View style={styles.flex}>
-                <Text style={styles.compareTitle}>Compare itineraries</Text>
-                <Text style={styles.compareText}>See how the two plans differ</Text>
-              </View>
-              <Icon name={comparing ? "close" : "chevronRight"} size={16} color={colors.muted} />
-            </Pressable>
+            />
             {comparing ? (
               <ComparisonTable a={pair[0] as ItinerarySummary} b={pair[1] as ItinerarySummary} />
             ) : null}
           </View>
         ) : null}
         <View style={styles.adjustLine}>
-          <Icon name="info" size={16} color={colors.muted} />
+          <Icon name="info" size="sm" color={colors.muted} />
           <Text style={styles.note}>You can always adjust your itinerary later.</Text>
         </View>
       </View>
@@ -383,7 +364,7 @@ export function TripScreen({ tripId }: { tripId: string }) {
             <IconButton
               icon="settings"
               label="Trip settings"
-              compact
+              size="sm"
               testID="trip-settings"
               onPress={() => nav.push({ name: "tripSettings", tripId })}
             />
@@ -391,12 +372,16 @@ export function TripScreen({ tripId }: { tripId: string }) {
         />
         <Text style={styles.intro}>{subtitle}</Text>
         <View style={styles.spanLine}>
-          <Icon name="calendar" size={18} color={colors.muted} />
+          <Icon name="calendar" size="sm" color={colors.muted} />
           <Text style={styles.spanText}>{span}</Text>
         </View>
-        <ResourceNotices resource={trips} noun="trips" />
-        {problem ? <Notice tone="error">{problem}</Notice> : null}
-        {plans.data !== undefined ? <ResourceNotices resource={plans} noun="plans" /> : null}
+        <ResourceNotices resource={trips} noun="trips" inset />
+        {problem ? (
+          <Notice inset tone="error">
+            {problem}
+          </Notice>
+        ) : null}
+        {plans.data !== undefined ? <ResourceNotices resource={plans} noun="plans" inset /> : null}
         {content}
         {shown[0] ? <PlanNotes notes={shown[0].notes.filter(isGeneralNote)} /> : null}
       </ScrollView>
@@ -408,67 +393,46 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   flex: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
-  pressed: { opacity: 0.8 },
-  stack: { gap: spacing.xl },
-  pad: { paddingHorizontal: spacing.lg },
+  stack: { gap: layout.section },
+  pad: { paddingHorizontal: layout.gutter, gap: layout.block },
   intro: {
-    ...type.small,
+    ...type.label,
     color: colors.muted,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
+    paddingHorizontal: layout.gutter,
     paddingBottom: spacing.sm,
   },
   spanLine: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingHorizontal: layout.gutter,
+    paddingBottom: layout.block,
   },
-  spanText: { ...type.small, fontWeight: "600", color: colors.text },
-  sectionTitle: { ...type.heading, color: colors.text },
-  // Each proposal is a card: the cover inside it, then the text, facts and two slim buttons.
-  planCard: { ...card, gap: spacing.md, padding: spacing.sm },
+  spanText: { ...type.label, fontWeight: weight.semibold, color: colors.text },
   planBadge: { position: "absolute", top: spacing.sm, left: spacing.sm },
-  planBody: { gap: spacing.sm, paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
-  planTitle: { ...type.heading, color: colors.text },
-  planTagline: { ...type.small, color: colors.muted },
-  body: { ...type.small, color: colors.text },
+  planBody: { gap: spacing.sm, paddingTop: spacing.xs },
+  planTitle: { ...type.cardTitle, color: colors.text },
+  planTagline: { ...type.caption, color: colors.muted },
+  body: { ...type.label, color: colors.text },
   facts: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.lg, rowGap: spacing.xs },
-  fact: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  factText: { ...type.caption, color: colors.muted },
-  note: { ...type.small, color: colors.muted },
+  note: { ...type.caption, color: colors.muted },
   actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
-  compareRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    minHeight: TOUCH,
-    paddingVertical: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  compareTitle: { ...type.small, fontWeight: "700", color: colors.text },
-  compareText: { ...type.caption, color: colors.muted },
-  compare: { gap: spacing.xs, paddingTop: spacing.md },
+  compare: { gap: spacing.xs, paddingTop: layout.block },
   adjustLine: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-    marginTop: spacing.lg,
   },
   tableHead: { flexDirection: "row", gap: spacing.sm },
   tableRow: {
     flexDirection: "row",
     gap: spacing.sm,
     paddingVertical: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: border.hairline,
     borderTopColor: colors.border,
   },
-  cellLabel: { flex: 1.1, ...type.small, color: colors.muted },
-  cell: { flex: 1, ...type.small, color: colors.text },
-  headText: { fontWeight: "700", color: colors.text },
-  difference: { ...type.small, color: colors.text },
+  cellLabel: { flex: 1.1, ...type.label, color: colors.muted },
+  cell: { flex: 1, ...type.label, color: colors.text },
+  headText: { fontWeight: weight.bold, color: colors.text },
 });

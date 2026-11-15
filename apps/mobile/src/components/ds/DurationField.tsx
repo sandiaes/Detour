@@ -4,8 +4,8 @@ import { StyleSheet, View } from "react-native";
 import { parseMinutes } from "../../domain/duration";
 import { spacing } from "../../theme";
 import { formatMinutes } from "../../util/format";
-import { Chip } from "../ui";
-import { BoxField } from "./BoxField";
+import { TextField } from "./fields";
+import { Chip } from "./primitives";
 
 // How long to stay: one free field (minutes, or "1h30") and, where the place has a usual length,
 // a pill that goes back to it. Replaces the fixed 30/60/90 pills (owner request, 2026-11-15).
@@ -58,7 +58,7 @@ export function DurationField({
     <View style={styles.wrap}>
       <View style={styles.row}>
         <View style={styles.field}>
-          <BoxField
+          <TextField
             label={label}
             testID={testID}
             accessibilityLabel={`${label}, in minutes`}
@@ -93,7 +93,7 @@ export function DurationField({
 
 const styles = StyleSheet.create({
   wrap: {},
-  // The pill sits on the baseline of the box, below the small label.
+  // The pill sits level with the box, below the small label.
   row: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm },
   field: { flex: 1 },
 });

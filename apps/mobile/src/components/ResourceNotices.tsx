@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Resource } from "../data/DataProvider";
 import { describeError } from "../api/unwrap";
 import { formatAge } from "../util/format";
-import { Notice } from "./ui";
+import { Notice } from "./ds";
 
 /**
  * The notices that sit above data already on screen: a saved copy shown offline, a refresh that
@@ -12,9 +12,12 @@ import { Notice } from "./ui";
 export function ResourceNotices({
   resource,
   noun,
+  inset = false,
 }: {
   resource: Omit<Resource<unknown>, "setData">;
   noun: string;
+  /** With the screen gutter, for a parent without padding. */
+  inset?: boolean;
 }) {
   // The age of a saved copy is worked out once, when the notice first appears.
   const [now] = useState(Date.now);
@@ -22,6 +25,7 @@ export function ResourceNotices({
   if (resource.offline) {
     return (
       <Notice
+        inset={inset}
         tone="warning"
         label="Offline"
         action={{ label: "Try again", onPress: resource.refresh }}
@@ -33,7 +37,7 @@ export function ResourceNotices({
   }
   if (resource.waking && resource.fromCache) {
     return (
-      <Notice tone="info" label="Waking the server">
+      <Notice inset={inset} tone="info" label="Waking the server">
         The free host is starting up, which can take about a minute. Your saved {noun} are shown
         meanwhile.
       </Notice>
@@ -41,7 +45,7 @@ export function ResourceNotices({
   }
   if (resource.error) {
     return (
-      <Notice tone="error" action={{ label: "Try again", onPress: resource.refresh }}>
+      <Notice inset={inset} tone="error" action={{ label: "Try again", onPress: resource.refresh }}>
         Could not refresh {noun}. {describeError(resource.error)}
       </Notice>
     );

@@ -122,7 +122,7 @@ test("search your saved places, pick one, choose the day and time", async () => 
 
 test("a restaurant entered by hand is saved as typed, with its kind, and added", async () => {
   const client = await openScreen();
-  await fireEvent.press(screen.getByTestId("hand-mode"));
+  await fireEvent.press(screen.getByTestId("restaurant-mode-hand"));
   expect(screen.getByTestId("add-at-time")).toBeDisabled();
   await fireEvent.changeText(screen.getByLabelText("Name"), "Mein Lokal");
   // Typed coordinates (a decimal comma is accepted); an out-of-range value is refused.
@@ -148,7 +148,7 @@ test("a restaurant entered by hand is saved as typed, with its kind, and added",
 
 test("a café is chosen as the kind, and tapping the map fills in the coordinates", async () => {
   const client = await openScreen();
-  await fireEvent.press(screen.getByTestId("hand-mode"));
+  await fireEvent.press(screen.getByTestId("restaurant-mode-hand"));
   await fireEvent.changeText(screen.getByLabelText("Name"), "Kaffeehaus");
   await fireEvent.press(screen.getByTestId("venue-cafe"));
   expect(screen.getByTestId("venue-cafe")).toBeSelected();

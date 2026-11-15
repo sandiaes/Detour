@@ -3,11 +3,10 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { call } from "../api/unwrap";
-import { Icon, type IconName } from "../components/ds/Icon";
-import { ListRow, RowGroup, Sheet } from "../components/ds/primitives";
+import { Icon, type IconName, ListRow, RowGroup, Sheet } from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
-import { TOUCH, colors, spacing, type } from "../theme";
+import { TOUCH, colors, radius, size as sizes, spacing, type, weight } from "../theme";
 import { type RootName, type Route, useNavigation } from "./Navigator";
 
 // The bottom navigation (ADR 021): Trips, Explore, Add, Photos, More. Add is contextual: outside a
@@ -63,7 +62,7 @@ export function BottomNav() {
         onPress={() => nav.switchRoot({ name: t.key })}
         testID={`nav-${t.key}`}
       >
-        <Icon name={t.icon} color={selected ? colors.primary : colors.muted} />
+        <Icon name={t.icon} size="lg" color={selected ? colors.selected : colors.muted} />
         <Text style={[styles.label, selected && styles.labelActive]}>{t.label}</Text>
         {/* Selected is shown by colour, weight and this bar, and announced. */}
         <View style={[styles.marker, selected && styles.markerActive]} />
@@ -87,7 +86,7 @@ export function BottomNav() {
           testID="nav-add"
         >
           <View style={styles.addDisc}>
-            <Icon name="add" color={colors.onPrimary} strokeWidth={2.2} />
+            <Icon name="add" size="lg" color={colors.onPrimary} />
           </View>
           <Text style={styles.label}>Add</Text>
         </Pressable>
@@ -166,19 +165,19 @@ const styles = StyleSheet.create({
   },
   item: {
     flex: 1,
-    minHeight: TOUCH + 8,
+    minHeight: TOUCH + spacing.sm,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xxs,
   },
-  label: { ...type.caption, fontSize: 12, color: colors.muted, fontWeight: "500" },
-  labelActive: { color: colors.primary, fontWeight: "700" },
-  marker: { height: 3, width: 20, borderRadius: 2, backgroundColor: "transparent" },
-  markerActive: { backgroundColor: colors.primary },
+  label: { ...type.micro, color: colors.muted, fontWeight: weight.medium },
+  labelActive: { color: colors.selected, fontWeight: weight.bold },
+  marker: { height: 3, width: 20, borderRadius: radius.pill, backgroundColor: "transparent" },
+  markerActive: { backgroundColor: colors.selected },
   addDisc: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: sizes.controlSm,
+    height: sizes.controlSm,
+    borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primary,

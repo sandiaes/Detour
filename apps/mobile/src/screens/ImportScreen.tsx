@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xl },
   pad: { paddingHorizontal: spacing.lg, gap: spacing.lg },
   body: { ...type.body, color: colors.text },
-  heading: { ...type.heading, color: colors.text },
+  heading: { ...type.headline, color: colors.text },
   title: { ...type.body, color: colors.text, fontWeight: "600" },
-  small: { ...type.small, color: colors.muted },
+  small: { ...type.label, color: colors.muted },
 });

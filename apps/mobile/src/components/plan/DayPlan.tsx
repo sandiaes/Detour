@@ -13,7 +13,18 @@ import {
   stopKind,
   transportPoint,
 } from "../../domain/itinerary";
-import { TOUCH, colors, radius, shadow, spacing, type } from "../../theme";
+import {
+  border,
+  colors,
+  layout,
+  radius,
+  shadow,
+  size as sizes,
+  spacing,
+  touchSlop,
+  type,
+  weight,
+} from "../../theme";
 import {
   formatClock,
   formatDate,
@@ -22,9 +33,7 @@ import {
   formatSeconds,
   pluralise,
 } from "../../util/format";
-import { Icon } from "../ds/Icon";
-import { KindIcon } from "../ds/KindIcon";
-import { EmptyState } from "../ui";
+import { EmptyState, Icon, KindIcon, StopMark } from "../ds";
 import { ItineraryMap } from "../ItineraryMap";
 
 // One day of a plan (ADR 021, step 3): a day selector, the day's stops in time order, and the map.
@@ -122,7 +131,7 @@ export function DayStrip({
             accessibilityLabel={`Day ${d.day_index}${date ? `, ${date}` : ""}`}
             accessibilityState={{ selected: active }}
             onPress={() => onChange(d.day_index)}
-            hitSlop={{ top: 2, bottom: 2 }}
+            hitSlop={touchSlop(sizes.control)}
             style={[styles.dayPill, active && styles.dayPillActive]}
             testID={`day-tab-${d.day_index}`}
           >
@@ -182,12 +191,10 @@ function ArrivalRow({
         accessible
         disabled={!selectable}
         onPress={onSelect}
-        style={[styles.body, styles.cardRow]}
+        style={styles.select}
         testID={`arrival-${day.day_index}`}
       >
-        <View style={[styles.disc, styles.discTransport]}>
-          <Icon name="transport" size={14} color={colors.onPrimary} />
-        </View>
+        <StopMark kind="transport" icon="transport" />
         <View style={styles.cardText}>
           <Text style={styles.title}>
             {day.base_city_name ? `To ${day.base_city_name}` : "Travel"}
@@ -237,22 +244,16 @@ export function StopRow({
             testID={`stop-${item.id}`}
           >
             {ordinal ? (
-              // Sights are round and teal, places to eat rounded-square and orange, and the words
+              // Sights are round and green, places to eat rounded-square and orange, and the words
               // below say it too: never colour alone.
-              <View style={[styles.disc, eat && styles.discEat]}>
-                <Text style={styles.discText} maxFontSizeMultiplier={1.3}>
-                  {ordinal}
-                </Text>
-              </View>
+              <StopMark kind={eat ? "eat" : "sight"} label={ordinal} />
             ) : (
-              <View style={[styles.disc, styles.discQuiet]}>
-                <Icon name="clock" size={14} color={colors.muted} />
-              </View>
+              <StopMark kind="quiet" icon="clock" />
             )}
             <View style={styles.cardText}>
               <Text style={styles.title}>{item.display_name}</Text>
               <View style={styles.kindLine}>
-                <KindIcon kind={stop} size={13} />
+                <KindIcon kind={stop} size="xs" />
                 <Text
                   testID={`kind-${stop}`}
                   style={[styles.kind, eat ? styles.kindEat : styles.kindSight]}
@@ -271,7 +272,7 @@ export function StopRow({
               style={styles.chevron}
               testID={`details-${item.id}`}
             >
-              <Icon name="chevronRight" size={16} color={colors.muted} />
+              <Icon name="chevronRight" size="sm" color={colors.muted} />
             </Pressable>
           ) : null}
         </View>
@@ -511,114 +512,111 @@ export function PlanDayView({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  embedded: { gap: spacing.sm, marginHorizontal: -spacing.lg },
+  embedded: { gap: spacing.sm, marginHorizontal: -layout.gutter },
   scrollContent: { paddingBottom: spacing.xxl },
   // The map is the smaller part: the stops beneath it are what is read and tapped.
   // Clipped, so a marker dragged past the map's edge never draws over the tabs or the stops.
   mapArea: { flex: 0.8, minHeight: 150, overflow: "hidden", zIndex: 0 },
+  // The stops sit on a sheet whose top corners curve over the map's lower edge.
   sheet: {
     flex: 1.5,
     zIndex: 1,
-    marginTop: -radius.lg,
+    marginTop: -radius.xl,
     backgroundColor: colors.background,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingTop: spacing.xs,
     ...shadow.raised,
   },
   sheetContent: { paddingBottom: spacing.xl },
-
   // Never shrinks or clips: its height is its pills' height plus the padding.
   strip: { flexGrow: 0, flexShrink: 0 },
   stripContent: {
     flexGrow: 1,
     alignItems: "center",
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.gutter,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
   },
-  // Compact pills with the stops' own type: day in small semibold, date in caption.
+  // Day pills: the day in 14 pt semibold, the date in 13; the chosen one filled green.
   dayPill: {
     flex: 1,
     minWidth: 84,
-    height: 44,
+    minHeight: sizes.control,
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xxs,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
     backgroundColor: colors.surfaceMuted,
   },
-  dayPillActive: { backgroundColor: colors.ink },
-  dayPillTitle: { ...type.small, fontWeight: "600", color: colors.text, textAlign: "center" },
-  dayPillDate: { ...type.caption, lineHeight: 16, color: colors.muted, textAlign: "center" },
+  dayPillActive: { backgroundColor: colors.selected },
+  dayPillTitle: {
+    ...type.label,
+    fontWeight: weight.semibold,
+    color: colors.text,
+    textAlign: "center",
+  },
+  dayPillDate: { ...type.micro, color: colors.muted, textAlign: "center" },
   dayPillTextActive: { color: colors.onPrimary },
-
-  // The list sits 8 dp from the screen edge and every row pads its content by 12 dp, so text is
-  // 20 dp in and a selected row's soft rounded tint has the same room all around it.
+  // The list sits 8 dp from the screen edge and every row pads its content by 8 dp, so text is on
+  // the 16 dp gutter and a selected row's soft rounded tint has room around it.
   list: { paddingHorizontal: spacing.sm },
   dayBaseLine: {
     ...type.caption,
     color: colors.muted,
     paddingTop: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   empty: {
-    ...type.small,
+    ...type.label,
     color: colors.muted,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
-
-  // A stop is a flat row. Selected: a light tint, announced as selected.
+  // A stop is a flat row. Selected: a soft tint, announced as selected.
   // No hairline of its own: the travel line between two stops is the divider.
   row: {
     flexDirection: "row",
     gap: spacing.md,
-    paddingLeft: spacing.md,
+    paddingLeft: spacing.sm,
     borderRadius: radius.md,
   },
-  rowSelected: { backgroundColor: colors.surfaceMuted },
+  rowSelected: { backgroundColor: colors.selectedSoft },
   timeCol: { width: 40, paddingTop: spacing.md },
-  time: { ...type.caption, fontWeight: "700", color: colors.text },
+  time: { ...type.caption, fontWeight: weight.bold, color: colors.text },
   timeEnd: { ...type.caption, color: colors.muted },
   body: { flex: 1 },
   cardRow: { flexDirection: "row", alignItems: "center" },
   select: {
     flex: 1,
-    minHeight: TOUCH + 8,
+    minHeight: sizes.row,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     paddingVertical: spacing.sm,
   },
-  chevron: { width: 40, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },
-  disc: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.marker,
+  chevron: {
+    width: sizes.control,
+    minHeight: sizes.rowCompact,
     alignItems: "center",
     justifyContent: "center",
   },
-  discEat: { backgroundColor: colors.eat, borderRadius: 7 },
-  discTransport: { backgroundColor: colors.ink, borderRadius: 7 },
-  discQuiet: { backgroundColor: colors.surfaceMuted },
-  discText: { color: colors.onPrimary, fontWeight: "600", fontSize: 12 },
   cardText: { flex: 1, gap: 1 },
-  title: { ...type.small, fontWeight: "600", color: colors.text },
+  title: { ...type.label, fontWeight: weight.semibold, color: colors.text },
   kindLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  kind: { ...type.caption, fontWeight: "500" },
+  kind: { ...type.caption, fontWeight: weight.medium },
   kindSight: { color: colors.primary },
   kindEat: { color: colors.accentText },
   meta: { ...type.caption, color: colors.muted },
-  tags: { ...type.caption, fontWeight: "700", color: colors.primary },
-
+  tags: { ...type.caption, fontWeight: weight.bold, color: colors.primary },
   transfer: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
     minHeight: 28,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
-  transferLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  transferLine: { flex: 1, height: border.hairline, backgroundColor: colors.border },
   transferText: { ...type.caption, color: colors.muted },
 });

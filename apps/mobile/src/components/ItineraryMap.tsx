@@ -8,7 +8,7 @@ import {
   type CameraRef,
 } from "@maplibre/maplibre-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useProgressiveCount } from "../data/useProgressive";
 import {
@@ -20,17 +20,14 @@ import {
   transportFeature,
   transportPoint,
 } from "../domain/itinerary";
-import { colors, radius, shadow, spacing, type } from "../theme";
+import { TOUCH, border, colors, radius, shadow, spacing, type } from "../theme";
 import { formatSeconds } from "../util/format";
 import { AttributionBar } from "./AttributionBar";
-import { Button } from "./Button";
-import { Icon } from "./ds/Icon";
-import { Notice } from "./ui";
+import { Button, IconButton, MapChip, Notice, StopMark } from "./ds";
 
 /** The touch target of a marker; the drawn marker inside it is smaller (docs/design.md). */
-export const MARKER_SIZE = 48;
-const DOT = 26;
-const DOT_SELECTED = 34;
+/** Each marker keeps a 48 dp touch area around the drawn mark. */
+export const MARKER_SIZE = TOUCH;
 
 const PADDING = { top: 56, right: 48, bottom: 48, left: 48 };
 
@@ -162,15 +159,12 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
               accessibilityState={{ selected: selectedId === transport.id }}
               style={styles.hit}
             >
-              <View
-                style={[
-                  styles.dot,
-                  styles.dotTransport,
-                  selectedId === transport.id && styles.dotSelected,
-                ]}
-              >
-                <Icon name="transport" size={14} color={colors.onPrimary} />
-              </View>
+              <StopMark
+                kind="transport"
+                icon="transport"
+                size="map"
+                selected={selectedId === transport.id}
+              />
             </View>
           </Marker>
         ) : null}
@@ -193,17 +187,12 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
                 accessibilityState={{ selected: isSelected }}
                 style={styles.hit}
               >
-                <View
-                  style={[
-                    styles.dot,
-                    isEatKind(p.kind) && styles.dotEat,
-                    isSelected && styles.dotSelected,
-                  ]}
-                >
-                  <Text style={styles.dotText} maxFontSizeMultiplier={1.3}>
-                    {p.ordinal}
-                  </Text>
-                </View>
+                <StopMark
+                  kind={isEatKind(p.kind) ? "eat" : "sight"}
+                  label={p.ordinal}
+                  size="map"
+                  selected={isSelected}
+                />
               </View>
             </Marker>
           );
@@ -225,39 +214,29 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
             The map could not load. This happens without a connection or when the map host is down.
             The day list still works.
           </Notice>
-          <Button label="Show the day list" variant="secondary" onPress={onShowList} />
+          <Button label="Show the day list" variant="secondary" size="sm" onPress={onShowList} />
         </View>
       ) : null}
       {status === "loading" ? (
-        <View style={styles.loadingTag} accessibilityLiveRegion="polite">
-          <Text style={styles.loadingText}>Loading the map…</Text>
-        </View>
+        <MapChip text="Loading the map…" live />
       ) : null}
       {points.length > shownCount ? (
-        <View style={styles.loadingTag}>
-          <Text style={styles.loadingText}>
-            Placing stops {shownCount} of {points.length}…
-          </Text>
-        </View>
+        <MapChip text={`Placing stops ${shownCount} of ${points.length}…`} />
       ) : null}
       {points.length === 0 && !transport ? (
-        <View style={styles.loadingTag}>
-          <Text style={styles.loadingText}>Nothing is planned on this day.</Text>
-        </View>
+        <MapChip text="Nothing is planned on this day." />
       ) : null}
 
       <View style={styles.keyCorner}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Map key"
-          accessibilityState={{ expanded: keyOpen }}
+        <IconButton
+          icon={keyOpen ? "close" : "list"}
+          label="Map key"
+          hint={keyOpen ? "Hides the key" : "Shows what the marks mean"}
+          variant="onMap"
+          size="sm"
           onPress={() => setKeyOpen((o) => !o)}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          style={styles.keyButton}
           testID="map-key"
-        >
-          <Icon name={keyOpen ? "close" : "list"} size={18} />
-        </Pressable>
+        />
         {keyOpen ? <Legend /> : null}
       </View>
 
@@ -265,7 +244,7 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
       <AttributionBar
         lines={map.attribution}
         userInteractionCount={interactions}
-        bottomOffset={radius.lg + spacing.xs}
+        bottomOffset={radius.xl + spacing.xs}
       />
     </View>
   );
@@ -276,19 +255,19 @@ export function Legend() {
     <View style={styles.legend} accessibilityLiveRegion="polite">
       <View style={styles.legendRow}>
         <View style={styles.legendKey}>
-          <View style={[styles.keyMarker, styles.keySight]} />
+          <StopMark kind="sight" size="key" />
         </View>
         <Text style={styles.legendText}>Attraction</Text>
       </View>
       <View style={styles.legendRow}>
         <View style={styles.legendKey}>
-          <View style={[styles.keyMarker, styles.keyEat]} />
+          <StopMark kind="eat" size="key" />
         </View>
         <Text style={styles.legendText}>Restaurant or café</Text>
       </View>
       <View style={styles.legendRow}>
         <View style={styles.legendKey}>
-          <View style={[styles.keyMarker, styles.keyTransport]} />
+          <StopMark kind="transport" size="key" />
         </View>
         <Text style={styles.legendText}>Travel to a new base city</Text>
       </View>
@@ -306,46 +285,14 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   clip: { overflow: "hidden" },
   hit: { width: MARKER_SIZE, height: MARKER_SIZE, alignItems: "center", justifyContent: "center" },
-  // Small flat discs with a thin white edge: sights round and teal, places to eat square-ish and
-  // orange, travel navy. The selected stop is larger and navy. No heavy rings.
-  dot: {
-    width: DOT,
-    height: DOT,
-    borderRadius: DOT / 2,
-    backgroundColor: colors.marker,
-    borderWidth: 2,
-    borderColor: colors.onPrimary,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadow.card,
-  },
-  dotEat: { backgroundColor: colors.eat, borderRadius: 8 },
-  dotTransport: { backgroundColor: colors.ink, borderRadius: 8 },
-  dotSelected: {
-    width: DOT_SELECTED,
-    height: DOT_SELECTED,
-    borderRadius: DOT_SELECTED / 2,
-    backgroundColor: colors.markerSelected,
-  },
-  dotText: { color: colors.onPrimary, fontWeight: "600", fontSize: 12 },
   failure: {
     position: "absolute",
     top: spacing.md,
-    left: 0,
-    right: 0,
+    left: spacing.md,
+    right: spacing.md,
     gap: spacing.sm,
     alignItems: "flex-start",
   },
-  loadingTag: {
-    position: "absolute",
-    top: spacing.sm,
-    left: spacing.sm,
-    backgroundColor: "rgba(255,255,255,0.94)",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-  },
-  loadingText: { ...type.caption, color: colors.text },
   keyCorner: {
     position: "absolute",
     top: spacing.sm,
@@ -354,31 +301,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     maxWidth: 270,
   },
-  // A small flat button: 36 dp drawn, 48 dp to touch (hit slop).
-  keyButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadow.card,
-  },
   legend: {
     gap: spacing.sm,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    padding: spacing.md,
     ...shadow.card,
   },
   // Every key sits in the same 20 dp column, so the words line up.
   legendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 20 },
   legendKey: { width: 20, alignItems: "center", justifyContent: "center" },
-  keyMarker: { width: 14, height: 14 },
-  keySight: { backgroundColor: colors.marker, borderRadius: 7 },
-  keyEat: { backgroundColor: colors.eat, borderRadius: 4 },
-  keyTransport: { backgroundColor: colors.ink, borderRadius: 4 },
   legendText: { ...type.caption, color: colors.text, flexShrink: 1 },
-  swatch: { width: 20, height: 0, borderTopWidth: 2, borderColor: colors.outline },
+  swatch: { width: 20, height: 0, borderTopWidth: border.thick, borderColor: colors.outline },
 });

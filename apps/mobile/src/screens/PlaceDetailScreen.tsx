@@ -1,35 +1,34 @@
 import type { Day, Itinerary, Item, PlaceDetail, Trip, UserPlace } from "@detour/shared";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
 import { Cover } from "../components/ds/Cover";
 import { DurationField } from "../components/ds/DurationField";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { checkDuration } from "../domain/duration";
-import { KindIcon } from "../components/ds/KindIcon";
-import { Icon, type IconName } from "../components/ds/Icon";
 import {
   Badge,
-  IconButton,
-  PlannedFeature,
-  SectionTitle,
-  StatRow,
-} from "../components/ds/primitives";
-import { dayTitle } from "../components/plan/DayPlan";
-import { VENUE_LABEL } from "../domain/restaurants";
-import {
+  Button,
+  CompactHeader,
+  CoverBar,
   EmptyState,
   ErrorState,
-  Field,
+  InfoRow,
+  KindIcon,
   LoadingState,
+  MetaLine,
   Notice,
-  ScreenHeader,
+  PlannedFeature,
+  SectionHeader,
+  StatRow,
+  TextField,
   WakingServer,
   useAnnounceOnMount,
-} from "../components/ui";
+} from "../components/ds";
+import { dayTitle } from "../components/plan/DayPlan";
+import { VENUE_LABEL } from "../domain/restaurants";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { useItemActions } from "../data/itemActions";
@@ -38,7 +37,7 @@ import { placeKey } from "../documents/model";
 import { useResource } from "../data/DataProvider";
 import { STOP_KIND_LABEL, isEatKind, stopKind } from "../domain/itinerary";
 import { useNavigation } from "../nav/Navigator";
-import { colors, radius, spacing, type } from "../theme";
+import { border, colors, layout, radius, spacing, type, weight } from "../theme";
 import { formatClock, formatDate, formatMinutes } from "../util/format";
 
 // One stop of a plan (ADR 021, step 3): what Detour knows about it, and nothing it does not.
@@ -64,26 +63,6 @@ export function findItem(plan: Itinerary, itemId: string): { day: Day; item: Ite
     if (item) return { day, item };
   }
   return null;
-}
-
-/** A hairline row: a small label, the value beside it. */
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.fact} accessible accessibilityLabel={`${label}: ${value}.`}>
-      <Text style={styles.factLabel}>{label}</Text>
-      <Text style={styles.factValue}>{value}</Text>
-    </View>
-  );
-}
-
-/** A quiet line with a small icon and no label: when it is, or where. */
-function MetaLine({ icon, text }: { icon: IconName; text: string }) {
-  return (
-    <View style={styles.metaLine} accessible accessibilityLabel={text}>
-      <Icon name={icon} size={16} color={colors.muted} />
-      <Text style={styles.metaText}>{text}</Text>
-    </View>
-  );
 }
 
 /** Edit display name (ADR 025): the user's own name for this one place. The original name stays
@@ -125,7 +104,7 @@ function EditDisplayName({
           label="Edit display name"
           icon="note"
           variant="secondary"
-          size="compact"
+          size="sm"
           testID="edit-display-name"
           onPress={() => setDraft(current)}
         />
@@ -133,7 +112,7 @@ function EditDisplayName({
           <Button
             label="Use the usual name"
             variant="secondary"
-            size="compact"
+            size="sm"
             disabled={busy}
             testID="reset-display-name"
             onPress={() => void send(null)}
@@ -146,7 +125,7 @@ function EditDisplayName({
   const trimmed = draft.trim();
   return (
     <View style={styles.nameEditor} testID="display-name-editor">
-      <Field
+      <TextField
         label="Display name"
         value={draft}
         onChangeText={setDraft}
@@ -158,7 +137,8 @@ function EditDisplayName({
       <View style={styles.nameActions}>
         <Button
           label="Save"
-          size="compact"
+          size="sm"
+          loading={busy}
           disabled={busy || trimmed.length === 0}
           testID="save-display-name"
           onPress={() => void send(trimmed)}
@@ -166,7 +146,7 @@ function EditDisplayName({
         <Button
           label="Cancel"
           variant="secondary"
-          size="compact"
+          size="sm"
           disabled={busy}
           onPress={() => setDraft(null)}
         />
@@ -205,7 +185,7 @@ function EditLength({
         label="Edit length"
         icon="clock"
         variant="secondary"
-        size="compact"
+        size="sm"
         testID="edit-length"
         onPress={() => {
           setMinutes(item.duration_minutes);
@@ -255,7 +235,7 @@ function EditLength({
       <View style={styles.nameActions}>
         <Button
           label="Save"
-          size="compact"
+          size="sm"
           testID="save-length"
           disabled={busy || !valid || check?.level === "error" || unchanged}
           loading={busy}
@@ -264,17 +244,13 @@ function EditLength({
         <Button
           label="Cancel"
           variant="secondary"
-          size="compact"
+          size="sm"
           disabled={busy}
           onPress={() => setOpen(false)}
         />
       </View>
     </View>
   );
-}
-
-function FactCard({ children }: { children: ReactNode }) {
-  return <View style={styles.factCard}>{children}</View>;
 }
 
 export function PlaceDetailScreen({
@@ -320,7 +296,7 @@ export function PlaceDetailScreen({
   if (!plan.data) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Place" onBack={nav.back} />
+        <CompactHeader title="Place" onBack={nav.back} />
         {plan.status === "error" ? (
           <ErrorState text={describeError(plan.error)} onRetry={plan.refresh} />
         ) : plan.waking ? (
@@ -334,7 +310,7 @@ export function PlaceDetailScreen({
   if (!found) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Place" onBack={nav.back} />
+        <CompactHeader title="Place" onBack={nav.back} />
         <EmptyState
           title="Not in the plan any more"
           text="This stop was removed or moved when the plan changed."
@@ -402,19 +378,17 @@ export function PlaceDetailScreen({
         contentContainerStyle={styles.scroll}
         scrollEventThrottle={32}
         onScroll={(e) => {
-          const past = e.nativeEvent.contentOffset.y >= 200 - radius.lg;
+          const past = e.nativeEvent.contentOffset.y >= COVER_HEIGHT - radius.xl;
           if (past !== stuck) setStuck(past);
         }}
       >
         <Cover
           seedKey={item.place_id ?? item.user_place_id ?? item.id}
           photo={item.image}
-          height={200 + insets.top}
-          creditInset={radius.lg}
+          height={COVER_HEIGHT + insets.top}
+          creditInset={radius.xl}
         >
-          <View style={[styles.heroTop, { paddingTop: insets.top + spacing.xs }]}>
-            <IconButton icon="back" label="Back" onImage onPress={nav.back} />
-          </View>
+          <CoverBar top={insets.top} onBack={nav.back} />
         </Cover>
 
         <View style={styles.body}>
@@ -447,7 +421,7 @@ export function PlaceDetailScreen({
             accessible
             accessibilityLabel={[STOP_KIND_LABEL[kind], town].filter(Boolean).join(", ")}
           >
-            <KindIcon kind={kind} size={16} />
+            <KindIcon kind={kind} size="sm" />
             <Text style={[styles.kindText, eat && styles.kindTextEat]}>
               {[STOP_KIND_LABEL[kind], town].filter(Boolean).join(" · ")}
             </Text>
@@ -462,16 +436,9 @@ export function PlaceDetailScreen({
           ) : null}
 
           <StatRow stats={[dayFigure, lengthFigure]} />
-          {where ? (
-            <View style={styles.metaBlock}>
-              <MetaLine icon="pin" text={where} />
-            </View>
-          ) : null}
-
+          {where ? <MetaLine icon="pin" text={where} /> : null}
           {meal ? (
-            <FactCard>
-              <Fact label="Type" value={venue ? VENUE_LABEL[venue] : "Not specified"} />
-            </FactCard>
+            <InfoRow label="Type" value={venue ? VENUE_LABEL[venue] : "Not specified"} />
           ) : null}
 
           <View style={styles.actions}>
@@ -479,7 +446,7 @@ export function PlaceDetailScreen({
               label="Show on map"
               icon="map"
               variant="secondary"
-              size="compact"
+              size="sm"
               testID="show-on-map"
               onPress={() =>
                 nav.push({
@@ -507,7 +474,7 @@ export function PlaceDetailScreen({
                   label={item.locked ? "Unlock" : "Lock"}
                   icon={item.locked ? "unlock" : "lock"}
                   variant="secondary"
-                  size="compact"
+                  size="sm"
                   disabled={items.actions.busyId === item.id}
                   accessibilityLabel={`${item.locked ? "Unlock" : "Lock"} ${item.display_name}`}
                   onPress={() => items.actions.onToggleLock(item)}
@@ -516,7 +483,8 @@ export function PlaceDetailScreen({
                   label="Remove"
                   icon="trash"
                   variant="secondary"
-                  size="compact"
+                  tone="danger"
+                  size="sm"
                   disabled={items.actions.busyId === item.id || item.locked}
                   accessibilityLabel={`Remove ${item.display_name}`}
                   hint={item.locked ? "Unlock it first." : "Shows what would change first."}
@@ -528,7 +496,7 @@ export function PlaceDetailScreen({
 
           {trip ? (
             <View style={styles.section} testID="place-documents">
-              <SectionTitle title={eat ? "Bookings and documents" : "Tickets and documents"} />
+              <SectionHeader title={eat ? "Bookings and documents" : "Tickets and documents"} />
               <DocumentList
                 trip={trip}
                 filter={(link) => link.kind === "place" && link.key === placeKey(item)}
@@ -568,15 +536,16 @@ export function PlaceDetailScreen({
   );
 }
 
+const COVER_HEIGHT = 200;
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
-  heroTop: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   kindLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  kindText: { ...type.small, fontWeight: "600", color: colors.primary },
+  kindText: { ...type.label, fontWeight: weight.semibold, color: colors.primary },
   kindTextEat: { color: colors.accentText },
-  title: { ...type.display, fontSize: 26, lineHeight: 32, color: colors.text },
-  localName: { ...type.small, color: colors.muted, marginTop: spacing.xxs },
+  title: { ...type.hero, color: colors.text },
+  localName: { ...type.label, color: colors.muted, marginTop: spacing.xxs },
   nameNote: { ...type.caption, color: colors.muted, marginTop: spacing.xxs, fontStyle: "italic" },
   nameActions: {
     flexDirection: "row",
@@ -588,31 +557,21 @@ const styles = StyleSheet.create({
   lengthEditor: { alignSelf: "stretch", width: "100%", gap: spacing.sm },
   // A sheet whose top corners curve over the cover's lower edge, like the trip's tabs.
   body: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-    marginTop: -radius.lg,
+    paddingHorizontal: layout.gutter,
+    paddingTop: layout.section,
+    gap: layout.block,
+    marginTop: -radius.xl,
     backgroundColor: colors.background,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
   },
   tagRow: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
-  metaBlock: { gap: spacing.xs },
-  metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  metaText: { ...type.small, color: colors.muted, flex: 1 },
-  factCard: {
-    borderTopWidth: StyleSheet.hairlineWidth,
+  section: {
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: border.hairline,
     borderTopColor: colors.border,
   },
-  fact: {
-    flexDirection: "row",
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  factLabel: { ...type.small, color: colors.muted, width: 72 },
-  factValue: { ...type.small, color: colors.text, flex: 1 },
-  section: { gap: spacing.xs },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, alignItems: "center" },
   source: { ...type.caption, color: colors.muted },
 });

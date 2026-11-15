@@ -1,5 +1,5 @@
 import type { TripVisit } from "@detour/shared";
-
+import { dayTones } from "../theme";
 import { formatMinutes } from "../util/format";
 
 // What a past trip shows (ADR 006, ADR 026): the archived cities and stops on a map, as a day
@@ -137,21 +137,19 @@ export function visitedPoints(visits: TripVisit[]): PastPoint[] {
     .sort((a, b) => Number(b.kind === "city") - Number(a.kind === "city"));
 }
 
-/** One colour per day, so a day's stops read together on the map and in the lists. They repeat
- * after eight days; every use also says the day in words. Each is dark enough for a white edge. */
-export const DAY_COLORS = [
-  "#2b6b64",
-  "#d9772b",
-  "#3b6fd4",
-  "#8a52c4",
-  "#c8447a",
-  "#7a8b2a",
-  "#c4443a",
-  "#1f8fa3",
-] as const;
+/** One colour per day, so a day's stops read together on the map and in the lists (`dayTones` in
+ * theme.ts). They repeat after eight days; every use also says the day in words. */
+export const DAY_COLORS = dayTones.map((t) => t.fg);
+
+function dayIndex(day: number): number {
+  return ((((Math.trunc(day) || 1) - 1) % dayTones.length) + dayTones.length) % dayTones.length;
+}
 
 export function dayColor(day: number): string {
-  const i =
-    ((((Math.trunc(day) || 1) - 1) % DAY_COLORS.length) + DAY_COLORS.length) % DAY_COLORS.length;
-  return DAY_COLORS[i] as string;
+  return (dayTones[dayIndex(day)] as (typeof dayTones)[number]).fg;
+}
+
+/** The soft ground of a day's colour, for a tile behind its icon. */
+export function daySoft(day: number): string {
+  return (dayTones[dayIndex(day)] as (typeof dayTones)[number]).bg;
 }

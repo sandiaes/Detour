@@ -162,6 +162,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   rowBody: { flex: 1, gap: spacing.xxs },
   rowTitle: { ...type.body, color: colors.text },
-  small: { ...type.small, color: colors.muted },
-  warning: { ...type.small, color: colors.text, marginTop: spacing.sm },
+  small: { ...type.label, color: colors.muted },
+  warning: { ...type.label, color: colors.text, marginTop: spacing.sm },
 });

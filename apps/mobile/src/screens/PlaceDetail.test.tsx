@@ -103,7 +103,7 @@ test("an attraction shows when and where without labels, and no opening hours or
     expect(screen.queryByText(gone)).toBeNull();
   }
   expect(screen.queryByText("Why it is in the plan")).toBeNull();
-  expect(screen.queryByText("• A well-known sight.")).toBeNull();
+  expect(screen.queryByText("A well-known sight.")).toBeNull();
   expect(screen.getByText("Data: © OpenStreetMap contributors (ODbL-1.0).")).toBeOnTheScreen();
   // Nothing invented: no price, rating or description.
   expect(screen.queryByText(/€|EUR|price|rating|★/i)).toBeNull();

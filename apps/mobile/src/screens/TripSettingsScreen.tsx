@@ -257,8 +257,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { paddingBottom: spacing.xxl, gap: spacing.md },
   pad: { paddingHorizontal: spacing.lg },
-  heading: { ...type.heading, color: colors.text },
+  heading: { ...type.headline, color: colors.text },
   body: { ...type.body, color: colors.text },
-  note: { ...type.small, color: colors.muted },
+  note: { ...type.label, color: colors.muted },
   confirm: { gap: spacing.sm },
 });

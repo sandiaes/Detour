@@ -1,6 +1,6 @@
 import { type StopKind, isEatKind } from "../../domain/itinerary";
 import { colors } from "../../theme";
-import { Icon, type IconName } from "./Icon";
+import { Icon, type IconName, type IconSize } from "./Icon";
 
 // The small icon that says what a place is, used wherever a place is listed (day list, place
 // detail, search results, proposals): a fork and knife for a restaurant, a coffee cup for a café,
@@ -16,11 +16,11 @@ const NAME: Record<StopKind, IconName> = {
 
 export function KindIcon({
   kind,
-  size = 14,
+  size = "xs",
   color,
 }: {
   kind: StopKind;
-  size?: number;
+  size?: IconSize;
   color?: string;
 }) {
   return (

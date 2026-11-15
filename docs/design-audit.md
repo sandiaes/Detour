@@ -638,3 +638,65 @@ records them as an ADR 021 amendment (decisions 78 onward).
    spacing, component specifications, interaction states, approved exceptions), ADR 021 amended.
 
 No backend, API, planner, routing or data change is part of any phase.
+
+---
+
+## 15. Progress and handoff (2026-11-15, end of session 1)
+
+The owner accepted the recommendations for D1 to D6 (green main actions and selection; buttons and
+fields at radius 12, pills only for chips, badges and filters; page `#fcfcfb`; confirmations in a
+sheet; 48 dp touch targets with 36–44 dp drawn controls; a Maestro screenshot tour). The owner
+asked to stop after phase 3 and continue in a new session. **This commit is work in progress and
+the app does not build yet** (see "Not done" below); it was committed as is at the owner's request.
+
+### Done
+
+- **Phase 2, tokens and shared components.** `theme.ts`: colours (`selected`, `danger`,
+  `primaryPressed`, overlays, `dayTones`), the type scale (hero 26, title 24, headline 18, cardTitle
+  16, body 15, label 14, caption 13, micro 12; the old `display`, `heading` and `small` names were
+  renamed everywhere), `weight`, `layout`, `radius` (6, 8, 12, 16, 24, pill), `border`, `size`,
+  `touchSlop`, `icon` (14, 16, 20, 24), `opacity`, `textOnImage`. `components/ds/`: `Button`
+  (primary, secondary, ghost, destructive; `tone="danger"`; md 44 / sm 36; focus ring), `fields.tsx`
+  (`FieldShell`, `TextField`, `SearchField`, `SelectField`, `DropdownPanel`, `ChoiceRow`,
+  `ChoiceGroupTitle`, `Stepper`), `primitives.tsx` (`IconButton` plain / onImage / onMap, `Badge`,
+  `Tabs`, `SegmentedControl`, `Chip`, `Radio`, `Checkbox`, `StatRow`, `SectionHeader`, `ListRow`,
+  `RowGroup`, `InfoRow`, `MetaLine`, `Bullets`, `Card`, `Section`, `Tile`, `StopMark`), `Sheet.tsx`
+  (`Sheet`, `ConfirmSheet`), `states.tsx` (`StateView`, `LoadingState`, `EmptyState`, `ErrorState`,
+  `WakingServer`, `PlannedFeature`, `InlineStatus`, `Notice` without an outer margin, `inset` opt-in),
+  `headers.tsx` (`ScreenHeader`, `CompactHeader`, `CoverBar`, `useAnnounceOnMount`), `map.tsx`
+  (`MapChip`), and the barrel `ds/index.ts`. Icons `minus`, `import`, `external`, `alert` added; the
+  `strokeWidth` override removed. `PlanNotes` moved to `components/plan/PlanNotes.tsx`. Removed:
+  `components/ui.tsx`, `components/Button.tsx`, `ds/BoxField.tsx`, `ds/Dropdown.tsx`,
+  `plan/PlanSummaryCard.tsx` (unused). Past-trip day colours moved to `theme.ts`, three darkened to
+  reach 4.5:1 with white (A3).
+- **Phase 3, navigation, headers, layout.** Bottom bar, server banner (now a `Notice`), resource
+  notices (`inset`), Trips, More (no double inset), Explore, Photos.
+- **Ahead of plan, before the owner's message** (to be reviewed in the next session, not
+  re-done): phase 4 — Create trip, Add a city sheet, stop list, Add a place, Add a restaurant (now
+  the compact header and a segmented control), Choose slot, Add / edit document, Edit cities,
+  Optimize; phase 5 — trip overview, proposals, plan screen, day plan, both maps, map attribution,
+  place detail, change preview, past trip, documents list, calendar, Change photo, suggestion card,
+  length field.
+- **Tests:** `components/ds/components.test.tsx` (new, 15 tests) and `theme.test.ts` (new contrast
+  checks for `danger`, `selected`, the day colours, `touchSlop`) pass: 28 and 68 tests. Test edits
+  that follow the design, not behaviour: the Trips touch-size test counts hit slop; "✓ Selected"
+  is now a badge "Selected"; bullet lines are matched without the "• " character; Add a
+  restaurant's mode switch has the test ID `restaurant-mode-hand`.
+
+### Not done (start here in the next session)
+
+1. **The build is broken in seven screens** that still import the removed `components/ui` and
+   `components/Button` and use `Card` as the old flat block (13 type errors):
+   `TripSettingsScreen`, `DocumentScreen`, `TripDocumentsScreen`, `ExportScreen`, `ImportScreen`,
+   `SettingsScreen`, `ImageCreditsScreen`. For each: import from `../components/ds`; old `Card` →
+   `Section`; `variant="ink"` → default; `variant="quiet"` → `ghost`; `size="compact"` → `sm`;
+   `KindTile size={32}` → `size="sm"`; top-level notices `inset`. Then phase 6 proper: confirmations
+   through `ConfirmSheet` with `destructive` buttons and `tone="danger"` entry points (A1), facts as
+   `InfoRow`, Settings and Image credits as `ListRow`s.
+2. `components/ds/ds.test.tsx` still passes `compact` to `StatRow` (prop removed).
+3. The full jest suite, `npm run lint`, `npm run format:check` and `npm run typecheck` have **not**
+   been run on this state; only the two suites above. Prettier was run on most changed files, not all.
+4. Phase 7: the style lint test, the Maestro screenshot tour (D6), `docs/design.md` rewritten to the
+   new tokens and components, an ADR 021 amendment (decisions 78 onward recording D1–D6), the
+   exceptions of section 13 confirmed.
+5. Nothing has been checked on a device or in screenshots.

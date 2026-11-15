@@ -1,8 +1,7 @@
 import { ScrollView, StyleSheet, View } from "react-native";
 
-import { PlannedFeature } from "../components/ds/primitives";
-import { ScreenHeader } from "../components/ui";
-import { spacing } from "../theme";
+import { PlannedFeature, ScreenHeader } from "../components/ds";
+import { layout } from "../theme";
 
 /**
  * Explore (ADR 021): a place in the navigation for finding places outside a trip. Not built: it
@@ -27,5 +26,5 @@ export function ExploreScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: spacing.lg },
+  content: { paddingHorizontal: layout.gutter },
 });

@@ -6,15 +6,28 @@ import type {
   UserPlace,
 } from "@detour/shared";
 import { Camera, Map, Marker } from "@maplibre/maplibre-react-native";
-import { type ReactNode, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
 import { AttributionBar } from "../components/AttributionBar";
-import { Button } from "../components/Button";
 import { ChooseSlot, type ChosenSlot, EATING_START } from "../components/ChooseSlot";
-import { Chip, Field, Notice, ScreenHeader } from "../components/ui";
+import {
+  Bullets,
+  Button,
+  ChoiceGroupTitle,
+  ChoiceRow,
+  Chip,
+  CompactHeader,
+  DropdownPanel,
+  InlineStatus,
+  Notice,
+  SearchField,
+  SegmentedControl,
+  StopMark,
+  TextField,
+} from "../components/ds";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
@@ -27,7 +40,7 @@ import {
   venueLabel,
 } from "../domain/restaurants";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { border, colors, layout, radius, spacing, type, weight } from "../theme";
 
 type AddRoute = Extract<Route, { name: "addRestaurant" }>;
 
@@ -229,44 +242,43 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <ScreenHeader
+      <CompactHeader
         title="Add a restaurant or café"
         subtitle={trip ? `${trip.title} · ${trip.destination.name}` : undefined}
         onBack={nav.back}
       />
       <View style={styles.section}>
-        <Text style={styles.lead}>
-          Find a restaurant or café or enter it yourself, then choose its day and time. Opening
-          hours are not checked.
-        </Text>
-        <View style={styles.row}>
-          <Chip
-            label="Search"
-            selected={mode === "search"}
-            onPress={() => {
+        <SegmentedControl<"search" | "hand">
+          items={[
+            { key: "search", label: "Search" },
+            { key: "hand", label: "Enter by hand" },
+          ]}
+          value={mode}
+          onChange={(next) => {
+            if (next === mode) return;
+            if (next === "search") {
               setMode("search");
               setChoice(null);
               reset();
-            }}
-          />
-          <Chip
-            label="Enter by hand"
-            selected={mode === "hand"}
-            testID="hand-mode"
-            onPress={() => {
+            } else {
               setMode("hand");
               setChoice({ kind: "hand" });
               setSavedId(null);
               setForm(EMPTY_FORM);
               reset();
-            }}
-          />
-        </View>
+            }
+          }}
+          testID="restaurant-mode"
+        />
+        <Text style={styles.lead}>
+          Find a restaurant or café or enter it yourself, then choose its day and time. Opening
+          hours are not checked.
+        </Text>
       </View>
 
       {mode === "search" ? (
         <View style={styles.section}>
-          <Field
+          <SearchField
             label="Restaurant or café name"
             value={query}
             onChangeText={(t) => {
@@ -274,48 +286,59 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
               setChoice(null);
               reset();
             }}
-            autoCorrect={false}
+            onClear={() => {
+              setQuery("");
+              setChoice(null);
+              reset();
+            }}
             hint="At least two letters. Places you saved are searched first."
           />
           {searchError ? <Notice tone="error">{searchError}</Notice> : null}
           {q.length >= MIN_QUERY && found === undefined && !searchError ? (
-            <Text style={styles.muted}>Searching…</Text>
+            <InlineStatus text="Searching…" busy />
           ) : null}
           {found?.your_places.length ? (
-            <ResultGroup title="Saved by you">
+            <DropdownPanel>
+              <ChoiceGroupTitle title="Saved by you" />
               {found.your_places.map((p) => (
-                <ResultRow
+                <ChoiceRow
                   key={p.id}
+                  icon={p.kind === "cafe" ? "cafe" : "restaurant"}
                   title={p.name}
                   meta={venueLabel(p.kind)}
                   selected={choice?.kind === "saved" && choice.place.id === p.id}
                   onPress={() => pick({ kind: "saved", place: p })}
                 />
               ))}
-            </ResultGroup>
+            </DropdownPanel>
           ) : null}
           {nothingFound ? (
             <View style={styles.gap}>
-              <Text style={styles.muted}>Nothing you saved matches “{q}”.</Text>
+              <InlineStatus text={`Nothing you saved matches “${q}”.`} />
               {wider === undefined ? (
                 <Button
                   label="Search more widely"
+                  icon="search"
                   variant="secondary"
+                  size="sm"
                   hint="Asks an OpenStreetMap search service through the Detour server"
                   onPress={() => void searchWider()}
                 />
               ) : widerResults.length === 0 ? (
-                <Text style={styles.muted}>
-                  {wider.external.state === "ok" || wider.external.state === "cached"
-                    ? "The wider search found no restaurant or café either."
-                    : "The wider search is not available right now."}{" "}
-                  You can enter it by hand.
-                </Text>
+                <InlineStatus
+                  text={`${
+                    wider.external.state === "ok" || wider.external.state === "cached"
+                      ? "The wider search found no restaurant or café either."
+                      : "The wider search is not available right now."
+                  } You can enter it by hand.`}
+                />
               ) : (
-                <ResultGroup title="Found on the map (OpenStreetMap, via Photon)">
+                <DropdownPanel>
+                  <ChoiceGroupTitle title="Found on the map (OpenStreetMap, via Photon)" />
                   {widerResults.map((p, n) => (
-                    <ResultRow
+                    <ChoiceRow
                       key={`${p.ref ?? n}`}
+                      icon={p.venue_type === "cafe" ? "cafe" : "restaurant"}
                       title={p.name}
                       meta={[venueLabel(p.venue_type), p.city, p.country]
                         .filter(Boolean)
@@ -324,11 +347,12 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
                       onPress={() => pick({ kind: "external", place: p })}
                     />
                   ))}
-                </ResultGroup>
+                </DropdownPanel>
               )}
               <Button
                 label="Enter it by hand"
-                variant="secondary"
+                variant="ghost"
+                size="sm"
                 onPress={() => {
                   setMode("hand");
                   setChoice({ kind: "hand" });
@@ -342,7 +366,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
 
       {editable ? (
         <View style={styles.section}>
-          <Field label="Name" value={form.name} onChangeText={(t) => edit({ name: t })} />
+          <TextField label="Name" value={form.name} onChangeText={(t) => edit({ name: t })} />
           <Text style={styles.label}>Kind</Text>
           <View style={styles.row}>
             {VENUES.map((v) => (
@@ -356,7 +380,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
             ))}
           </View>
           <Text style={styles.label}>Where it is</Text>
-          <Text style={styles.muted}>Tap the map, or type the coordinates.</Text>
+          <InlineStatus text="Tap the map, or type the coordinates." />
           {mapConfig && centre ? (
             <View style={styles.map}>
               <Map
@@ -377,7 +401,9 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
                 />
                 {lat !== null && lon !== null ? (
                   <Marker id="pin" lngLat={[lon, lat]} anchor="bottom">
-                    <View style={styles.pin} accessible accessibilityLabel="The pin" />
+                    <View accessible accessibilityLabel="The pin">
+                      <StopMark kind="eat" icon="restaurant" size="map" selected />
+                    </View>
                   </Marker>
                 ) : null}
               </Map>
@@ -388,7 +414,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
           )}
           <View style={styles.row}>
             <View style={styles.half}>
-              <Field
+              <TextField
                 label="Latitude"
                 value={form.lat}
                 onChangeText={(t) => edit({ lat: t })}
@@ -397,7 +423,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
               />
             </View>
             <View style={styles.half}>
-              <Field
+              <TextField
                 label="Longitude"
                 value={form.lon}
                 onChangeText={(t) => edit({ lon: t })}
@@ -412,11 +438,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
       {problem ? (
         <View style={styles.section}>
           <Notice tone="error">{problem.message}</Notice>
-          {problem.issues.map((i) => (
-            <Text key={i} style={styles.issue}>
-              • {i}
-            </Text>
-          ))}
+          <Bullets items={problem.issues} />
         </View>
       ) : null}
 
@@ -442,12 +464,10 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
               onSubmit={(slot) => void addAt(slot)}
             />
           ) : (
-            <Text style={styles.muted}>Reading the plan…</Text>
+            <InlineStatus text="Reading the plan…" busy />
           )}
           {!changes.connected ? (
-            <Text style={styles.muted}>
-              Adding a restaurant or café needs a connection to the server.
-            </Text>
+            <InlineStatus text="Adding a restaurant or café needs a connection to the server." />
           ) : null}
         </View>
       ) : null}
@@ -455,80 +475,20 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   );
 }
 
-function ResultGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <View style={styles.gap}>
-      <Text style={styles.label} accessibilityRole="header">
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function ResultRow({
-  title,
-  meta,
-  selected,
-  onPress,
-}: {
-  title: string;
-  meta: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}${meta ? `, ${meta}` : ""}`}
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[styles.result, selected && styles.resultSelected]}
-    >
-      <Text style={styles.resultTitle}>
-        {selected ? "✓ " : ""}
-        {title}
-      </Text>
-      {meta ? <Text style={styles.muted}>{meta}</Text> : null}
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xxl },
   fill: { flex: 1 },
-  section: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.sm },
-  lead: { ...type.body, color: colors.text },
+  section: { paddingHorizontal: layout.gutter, paddingBottom: layout.block, gap: spacing.sm },
+  lead: { ...type.caption, color: colors.muted },
   row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   half: { flex: 1, minWidth: 140 },
   gap: { gap: spacing.sm },
-  heading: { ...type.heading, color: colors.text },
-  label: { ...type.small, fontWeight: "700", color: colors.text },
-  small: { ...type.small, color: colors.text },
-  muted: { ...type.small, color: colors.muted },
-  issue: { ...type.small, color: colors.text },
-  result: {
-    minHeight: TOUCH,
-    justifyContent: "center",
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  resultSelected: { backgroundColor: colors.surfaceMuted },
-  resultTitle: { ...type.heading, color: colors.text },
+  label: { ...type.caption, fontWeight: weight.medium, color: colors.muted },
   map: {
     height: 240,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: border.hairline,
     borderColor: colors.border,
-  },
-  pin: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.markerSelected,
-    borderWidth: 3,
-    borderColor: colors.onPrimary,
   },
 });

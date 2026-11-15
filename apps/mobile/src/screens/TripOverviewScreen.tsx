@@ -5,12 +5,18 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { call, describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
-import { Cover } from "../components/ds/Cover";
-import { Icon } from "../components/ds/Icon";
 import {
+  Button,
+  Card,
+  CompactHeader,
+  CoverBar,
+  EmptyState,
+  ErrorState,
+  Icon,
   IconButton,
   ListRow,
+  LoadingState,
+  Notice,
   PlannedFeature,
   RowGroup,
   Sheet,
@@ -18,18 +24,11 @@ import {
   StatRow,
   type TabItem,
   Tabs,
-} from "../components/ds/primitives";
-import { ResourceNotices } from "../components/ResourceNotices";
-import {
-  Card,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  Notice,
-  ScreenHeader,
   WakingServer,
   useAnnounceOnMount,
-} from "../components/ui";
+} from "../components/ds";
+import { Cover } from "../components/ds/Cover";
+import { ResourceNotices } from "../components/ResourceNotices";
 import { keys, useTripActions } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { CoverPicker, type CoverSource } from "../components/ds/CoverPicker";
@@ -40,7 +39,18 @@ import { dayTotals } from "../domain/itinerary";
 import { canOptimize, canUndoOptimize } from "../domain/optimize";
 import { type TripCounts, localToday, shortSpan } from "../domain/trips";
 import { type TripSection, useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, radius, spacing, type } from "../theme";
+import {
+  border,
+  colors,
+  layout,
+  opacity,
+  radius,
+  size as sizes,
+  spacing,
+  textOnImage,
+  type,
+  weight,
+} from "../theme";
 import { pluralise } from "../util/format";
 import { useBackend } from "../api/BackendProvider";
 import { PlanDayView, dayTitle } from "../components/plan/DayPlan";
@@ -142,8 +152,8 @@ function DayTimeline({
               <Cover
                 seedKey={`${coverKey}:${base ?? day.day_index}`}
                 photo={firstPhoto(day)}
-                height={56}
-                rounded={radius.sm + 2}
+                height={sizes.thumb}
+                rounded={radius.md}
                 credit={false}
                 style={styles.thumb}
               />
@@ -152,7 +162,7 @@ function DayTimeline({
                 {base ? <Text style={styles.dayBase}>{base}</Text> : null}
                 <Text style={styles.dayMeta}>{contents}</Text>
               </View>
-              <Icon name="chevronRight" size={16} color={colors.muted} />
+              <Icon name="chevronRight" size="sm" color={colors.muted} />
             </View>
           </Pressable>
         );
@@ -206,6 +216,7 @@ function ChoosePlanCard({ trip }: { trip: Trip }) {
       </Text>
       <Button
         label="See the proposals"
+        size="sm"
         testID="open-proposals"
         onPress={() => nav.push({ name: "trip", tripId: trip.id })}
       />
@@ -302,7 +313,7 @@ export function TripOverviewScreen({
   if (trips.data === undefined) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Trip" onBack={nav.back} />
+        <CompactHeader title="Trip" onBack={nav.back} />
         {trips.status === "error" ? (
           <ErrorState text={describeError(trips.error)} onRetry={trips.refresh} />
         ) : trips.waking ? (
@@ -316,7 +327,7 @@ export function TripOverviewScreen({
   if (!trip) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Trip" onBack={nav.back} />
+        <CompactHeader title="Trip" onBack={nav.back} />
         <EmptyState
           title="Trip not found"
           text="It may have been deleted."
@@ -389,7 +400,7 @@ export function TripOverviewScreen({
   } else if (!hasPlan) {
     content = (
       <>
-        {section === "overview" && counts ? <StatRow stats={statsOf(counts)} compact /> : null}
+        {section === "overview" && counts ? <StatRow stats={statsOf(counts)} /> : null}
         <ChoosePlanCard trip={trip} />
       </>
     );
@@ -403,9 +414,10 @@ export function TripOverviewScreen({
         <ResourceNotices resource={plan} noun="this itinerary" />
         {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
         {undoing ? <Notice tone="error">{undoing}</Notice> : null}
-        {counts ? <StatRow stats={statsOf(counts)} compact /> : null}
+        {counts ? <StatRow stats={statsOf(counts)} /> : null}
         {optimizable ? (
           <ListRow
+            inset="none"
             icon="route"
             title="Optimize"
             detail="Find a shorter order for your stops"
@@ -427,6 +439,7 @@ export function TripOverviewScreen({
       <RowGroup>
         {isPlaceTrip(trip) ? null : (
           <ListRow
+            inset="none"
             icon="history"
             title={hasPlan ? "Original proposals" : "Proposals"}
             detail={
@@ -443,6 +456,7 @@ export function TripOverviewScreen({
         )}
         {coverSources(trip).length === 0 ? null : (
           <ListRow
+            inset="none"
             icon="photos"
             title="Change photo"
             detail="Choose the trip's cover from photos of the destination"
@@ -455,6 +469,7 @@ export function TripOverviewScreen({
         )}
         {optimizable ? (
           <ListRow
+            inset="none"
             icon="route"
             title="Optimize"
             detail="Find a shorter order for your stops"
@@ -467,6 +482,7 @@ export function TripOverviewScreen({
         ) : null}
         {undoable ? (
           <ListRow
+            inset="none"
             icon="history"
             title="Undo Optimize"
             detail="Put the stops back in the order they had"
@@ -475,6 +491,7 @@ export function TripOverviewScreen({
           />
         ) : null}
         <ListRow
+          inset="none"
           icon="export"
           title="Export trip"
           detail="A file with this trip, to keep or share"
@@ -485,6 +502,7 @@ export function TripOverviewScreen({
           }}
         />
         <ListRow
+          inset="none"
           icon="settings"
           title="Trip settings"
           detail={
@@ -529,32 +547,23 @@ export function TripOverviewScreen({
     // Above the map in drawing order too (zIndex and elevation), with its own background: markers
     // dragged past the map's edge can never show over the back button, the title or the tabs.
     <View style={styles.compactHeadWrap}>
-      <View style={styles.compactHead}>
-        <IconButton icon="back" label="Back" compact onPress={nav.back} />
-        <View
-          ref={titleRef}
-          style={styles.flex}
-          accessible
-          accessibilityRole="header"
-          accessibilityLabel={trip.title}
-        >
-          <Text style={styles.compactTitle} numberOfLines={1}>
-            {trip.title}
-          </Text>
-        </View>
-        <IconButton
-          icon="dots"
-          label="Trip menu"
-          hint="Original proposals and trip settings"
-          compact
-          testID="trip-menu"
-          onPress={() => setMenu(true)}
-        />
-      </View>
+      <CompactHeader
+        title={trip.title}
+        onBack={nav.back}
+        right={
+          <IconButton
+            icon="dots"
+            label="Trip menu"
+            hint="Original proposals and trip settings"
+            size="sm"
+            testID="trip-menu"
+            onPress={() => setMenu(true)}
+          />
+        }
+      />
       {tabsFor(false)}
     </View>
   );
-
   // Only the Map tab leaves the cover behind (it needs the room): a compact header, the tabs, then
   // the map of one day with its stops beneath. Overview and Itinerary share one layout: the trip's
   // header, its photo, then the tabs and their content on a sheet.
@@ -562,7 +571,7 @@ export function TripOverviewScreen({
     return (
       <View style={styles.fill}>
         {compactHead}
-        {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
+        {items.problem ? <Notice inset tone="error">{items.problem}</Notice> : null}
         {planView("map")}
         {menuSheet}
         {pickerSheet}
@@ -590,17 +599,20 @@ export function TripOverviewScreen({
           creditInset={SHEET_RADIUS}
           testID="trip-cover"
         >
-          <View style={[styles.heroTop, { paddingTop: insets.top + spacing.xs }]}>
-            <IconButton icon="back" label="Back" onImage onPress={nav.back} />
-            <IconButton
-              icon="dots"
-              label="Trip menu"
-              hint="Original proposals and trip settings"
-              onImage
-              testID="trip-menu"
-              onPress={() => setMenu(true)}
-            />
-          </View>
+          <CoverBar
+            top={insets.top}
+            onBack={nav.back}
+            right={
+              <IconButton
+                icon="dots"
+                label="Trip menu"
+                hint="Original proposals and trip settings"
+                variant="onImage"
+                testID="trip-menu"
+                onPress={() => setMenu(true)}
+              />
+            }
+          />
           <View
             ref={titleRef}
             style={styles.heroText}
@@ -619,8 +631,10 @@ export function TripOverviewScreen({
         {/* The tabs and what follows sit on a white sheet whose top corners curve over the photo. */}
         <View style={[styles.sheetTop, stuck && { paddingTop: insets.top }]}>{tabs}</View>
         <View style={styles.sheetBody}>
-          <ResourceNotices resource={trips} noun="trips" />
-          <View style={styles.body2}>{content}</View>
+          <View style={styles.body2}>
+            <ResourceNotices resource={trips} noun="trips" />
+            {content}
+          </View>
         </View>
       </ScrollView>
       {menuSheet}
@@ -630,35 +644,24 @@ export function TripOverviewScreen({
 }
 
 const COVER_HEIGHT = 260;
-const SHEET_RADIUS = 28;
-const textShadow = {
-  textShadowColor: "rgba(13, 24, 40, 0.55)",
-  textShadowRadius: 6,
-  textShadowOffset: { width: 0, height: 1 },
-};
+const SHEET_RADIUS = radius.xl;
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   flex: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
-  pressed: { opacity: 0.8 },
+  pressed: { opacity: opacity.pressed },
   // The trip's name, dates and length sit on its photo, bottom left, above the curve of the sheet
   // (reference screen 02). Back and the menu sit on it at the top.
-  heroTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.sm,
-  },
   heroText: {
     position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
+    left: layout.gutter,
+    right: layout.gutter,
     bottom: SHEET_RADIUS + spacing.sm,
     gap: spacing.xxs,
   },
-  heroTitle: { ...type.display, color: colors.onImage, ...textShadow },
-  heroMeta: { ...type.small, fontWeight: "600", color: colors.onImage, ...textShadow },
+  heroTitle: { ...type.hero, ...textOnImage },
+  heroMeta: { ...type.label, fontWeight: weight.semibold, ...textOnImage },
   sheetTop: {
     marginTop: -SHEET_RADIUS,
     backgroundColor: colors.background,
@@ -667,37 +670,24 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   sheetBody: { backgroundColor: colors.background },
-  body2: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.sm },
-  cardTitle: { ...type.heading, color: colors.text, paddingTop: spacing.xs },
-  body: { ...type.body, color: colors.text },
-  meta: { ...type.small, color: colors.muted },
-  planHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
+  body2: {
+    paddingHorizontal: layout.gutter,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    gap: layout.block,
   },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  cardTitle: { ...type.cardTitle, color: colors.text },
+  body: { ...type.label, color: colors.text },
   timeline: {},
-  compactHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xs,
-  },
   compactHeadWrap: { zIndex: 3, elevation: 3, backgroundColor: colors.background },
-  compactTitle: { ...type.heading, color: colors.text },
-  dayRow: { flexDirection: "row", paddingHorizontal: spacing.lg, minHeight: TOUCH },
+  dayRow: { flexDirection: "row", minHeight: sizes.row },
   rail: { width: 20, alignItems: "center" },
-  railLine: { flex: 1, width: StyleSheet.hairlineWidth * 2, backgroundColor: colors.outline },
+  railLine: { flex: 1, width: border.thick, backgroundColor: colors.border },
   railLineHidden: { backgroundColor: "transparent" },
   railDot: {
     width: 10,
     height: 10,
-    borderRadius: 5,
+    borderRadius: radius.pill,
     backgroundColor: colors.primary,
   },
   dayCard: {
@@ -706,12 +696,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     marginLeft: spacing.sm,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  dayCardRule: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  thumb: { width: 56 },
-  dayText: { flex: 1, gap: spacing.xxs },
-  dayTitle: { ...type.small, fontWeight: "700", color: colors.text },
-  dayBase: { ...type.small, color: colors.text },
+  dayCardRule: { borderBottomWidth: border.hairline, borderBottomColor: colors.border },
+  thumb: { width: sizes.thumb },
+  dayText: { flex: 1, gap: 1 },
+  dayTitle: { ...type.label, fontWeight: weight.bold, color: colors.text },
+  dayBase: { ...type.label, color: colors.text },
   dayMeta: { ...type.caption, color: colors.muted },
 });

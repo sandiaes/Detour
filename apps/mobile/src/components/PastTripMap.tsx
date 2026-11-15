@@ -1,23 +1,18 @@
 import type { ClientConfig } from "@detour/shared";
 import { Camera, Map, Marker, type CameraRef } from "@maplibre/maplibre-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useProgressiveCount } from "../data/useProgressive";
 import { type PastPoint, VISIT_KIND_LABEL, dayColor } from "../domain/pastTrip";
 import { boundsOf } from "../domain/itinerary";
-import { colors, radius, shadow, spacing, type } from "../theme";
+import { TOUCH, border, colors, layout, spacing, type, weight } from "../theme";
 import { AttributionBar } from "./AttributionBar";
-import { Button } from "./Button";
-import { Icon } from "./ds/Icon";
-import { Notice } from "./ui";
+import { Button, IconButton, MapChip, Notice, StopMark, Tile } from "./ds";
 
 const PADDING = { top: 72, right: 56, bottom: 72, left: 56 };
-const CITY_SIZE = 26;
-const ATTRACTION_SIZE = 22;
-const SELECTED_SIZE = 32;
 /** Android's minimum touch target; the markers are drawn smaller inside it. */
-const TOUCH_SIZE = 48;
+
 
 type Props = {
   points: PastPoint[];
@@ -94,15 +89,13 @@ export function PastTripMap({ points, map, onShowList }: Props) {
                   accessibilityState={{ selected: selectedId === p.id }}
                   style={styles.hit}
                 >
-                  <View
-                    style={[
-                      isCity ? styles.city : styles.attraction,
-                      !isCity && { backgroundColor: dayColor(p.day) },
-                      selectedId === p.id && styles.selected,
-                    ]}
-                  >
-                    {isCity ? <Icon name="city" size={14} color={colors.onPrimary} /> : null}
-                  </View>
+                  <StopMark
+                    kind={isCity ? "city" : "sight"}
+                    icon={isCity ? "city" : undefined}
+                    color={isCity ? undefined : dayColor(p.day)}
+                    size="map"
+                    selected={selectedId === p.id}
+                  />
                 </View>
               </Marker>
             );
@@ -124,20 +117,14 @@ export function PastTripMap({ points, map, onShowList }: Props) {
               The map could not load. This happens without a connection or when the map host is
               down. The list still works.
             </Notice>
-            <Button label="Show the list" variant="secondary" onPress={onShowList} />
+            <Button label="Show the list" variant="secondary" size="sm" onPress={onShowList} />
           </View>
         ) : null}
         {status === "loading" ? (
-          <View style={styles.tag} accessibilityLiveRegion="polite">
-            <Text style={styles.tagText}>Loading the map…</Text>
-          </View>
+          <MapChip text="Loading the map…" live />
         ) : null}
         {points.length > shownCount ? (
-          <View style={styles.tag}>
-            <Text style={styles.tagText}>
-              Placing visits {shownCount} of {points.length}…
-            </Text>
-          </View>
+          <MapChip text={`Placing visits ${shownCount} of ${points.length}…`} />
         ) : null}
 
         <AttributionBar lines={map.attribution} userInteractionCount={interactions} />
@@ -146,18 +133,11 @@ export function PastTripMap({ points, map, onShowList }: Props) {
       <View style={styles.panel} accessibilityLiveRegion="polite">
         {selected ? (
           <View style={styles.selectedRow}>
-            <View
-              style={[
-                styles.selectedDot,
-                { backgroundColor: selected.kind === "city" ? colors.ink : dayColor(selected.day) },
-              ]}
-            >
-              <Icon
-                name={selected.kind === "city" ? "city" : "sight"}
-                size={16}
-                color={colors.onPrimary}
-              />
-            </View>
+            <Tile
+              icon={selected.kind === "city" ? "city" : "sight"}
+              fg={colors.onPrimary}
+              bg={selected.kind === "city" ? colors.ink : dayColor(selected.day)}
+            />
             <View style={styles.selectedText}>
               <Text style={styles.title} numberOfLines={2}>
                 {selected.name}
@@ -166,15 +146,13 @@ export function PastTripMap({ points, map, onShowList }: Props) {
                 {VISIT_KIND_LABEL[selected.kind]} · Day {selected.day}
               </Text>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close details"
-              hitSlop={12}
+            <IconButton
+              icon="close"
+              label="Close details"
+              size="sm"
+              color={colors.muted}
               onPress={() => setSelectedId(null)}
-              style={styles.close}
-            >
-              <Icon name="close" size={18} color={colors.muted} />
-            </Pressable>
+            />
           </View>
         ) : (
           <ScrollView
@@ -185,7 +163,7 @@ export function PastTripMap({ points, map, onShowList }: Props) {
           >
             {dayList.map((d) => (
               <View key={d} style={styles.dayChip} accessible accessibilityLabel={`Day ${d}`}>
-                <View style={[styles.dayDot, { backgroundColor: dayColor(d) }]} />
+                <StopMark kind="sight" size="key" color={dayColor(d)} />
                 <Text style={styles.legendText}>Day {d}</Text>
               </View>
             ))}
@@ -199,82 +177,29 @@ export function PastTripMap({ points, map, onShowList }: Props) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   clip: { overflow: "hidden" },
-  hit: {
-    width: TOUCH_SIZE,
-    height: TOUCH_SIZE,
-    minHeight: TOUCH_SIZE,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // The same small flat markers as a plan's map: cities navy and square-ish, attractions teal and
-  // round, a thin white edge, a light shadow; the chosen one larger.
-  city: {
-    width: CITY_SIZE,
-    height: CITY_SIZE,
-    borderRadius: 8,
-    backgroundColor: colors.ink,
-    borderWidth: 2,
-    borderColor: colors.onPrimary,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadow.card,
-  },
-  attraction: {
-    width: ATTRACTION_SIZE,
-    height: ATTRACTION_SIZE,
-    borderRadius: ATTRACTION_SIZE / 2,
-    backgroundColor: colors.marker,
-    borderWidth: 2,
-    borderColor: colors.onPrimary,
-    ...shadow.card,
-  },
-  selected: {
-    width: SELECTED_SIZE,
-    height: SELECTED_SIZE,
-    borderRadius: SELECTED_SIZE / 2,
-    backgroundColor: colors.markerSelected,
-  },
+  hit: { width: TOUCH, height: TOUCH, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },
   failure: {
     position: "absolute",
     top: spacing.md,
-    left: 0,
-    right: 0,
+    left: spacing.md,
+    right: spacing.md,
     gap: spacing.sm,
     alignItems: "flex-start",
   },
-  tag: {
-    position: "absolute",
-    top: spacing.md,
-    right: spacing.md,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-  },
-  tagText: { ...type.caption, color: colors.text },
   panel: {
     backgroundColor: colors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: border.hairline,
     borderTopColor: colors.border,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.gutter,
     paddingVertical: spacing.md,
     minHeight: 64,
     justifyContent: "center",
   },
-  title: { ...type.body, fontWeight: "700", color: colors.text },
+  title: { ...type.label, fontWeight: weight.bold, color: colors.text },
   meta: { ...type.caption, color: colors.muted },
   selectedRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  selectedDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   selectedText: { flex: 1, gap: 1 },
-  close: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   days: { flexDirection: "row", gap: spacing.md, alignItems: "center" },
   dayChip: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  dayDot: { width: 12, height: 12, borderRadius: 6 },
   legendText: { ...type.caption, color: colors.muted, flexShrink: 1 },
 });

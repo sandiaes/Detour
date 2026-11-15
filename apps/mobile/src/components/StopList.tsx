@@ -1,14 +1,22 @@
 import type { DestinationResult } from "@detour/shared";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError } from "../api/unwrap";
-import { colors, radius, spacing, type } from "../theme";
+import { border, colors, spacing, type, weight } from "../theme";
 import { pluralise } from "../util/format";
-import { Button } from "./Button";
-import { Icon } from "./ds/Icon";
-import { IconButton, Sheet } from "./ds/primitives";
+import {
+  Button,
+  ChoiceRow,
+  DropdownPanel,
+  IconButton,
+  InlineStatus,
+  SearchField,
+  Sheet,
+  Stepper,
+  StopMark,
+} from "./ds";
 
 /** One city of a multi-city trip being edited (ADR 024). */
 export type StopDraft = { cityId: number; name: string; detail: string; days: number };
@@ -70,9 +78,7 @@ export function StopList({
     <View style={s.list} testID="stop-list">
       {stops.map((stop, i) => (
         <View key={`${stop.cityId}-${i}`} style={s.row} testID={`stop-${i}`}>
-          <View style={s.number}>
-            <Text style={s.numberText}>{i + 1}</Text>
-          </View>
+          <StopMark kind="city" label={i + 1} />
           <View style={s.body}>
             <Text style={s.name} numberOfLines={1}>
               {stop.name}
@@ -82,45 +88,24 @@ export function StopList({
                 {stop.detail}
               </Text>
             ) : null}
-            <View style={s.days}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Fewer days in ${stop.name}`}
-                accessibilityState={{ disabled: stop.days <= 1 }}
-                disabled={stop.days <= 1}
-                hitSlop={8}
-                onPress={() => setDays(i, stop.days - 1)}
-                style={s.step}
-                testID={`stop-${i}-fewer`}
-              >
-                <Text style={[s.stepText, stop.days <= 1 && s.stepOff]}>−</Text>
-              </Pressable>
-              <Text
-                style={s.daysText}
-                accessibilityLabel={`${stop.name}: ${pluralise(stop.days, "day")}`}
-              >
-                {pluralise(stop.days, "day")}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`More days in ${stop.name}`}
-                accessibilityState={{ disabled: total >= MAX_TRIP_DAYS }}
-                disabled={total >= MAX_TRIP_DAYS}
-                hitSlop={8}
-                onPress={() => setDays(i, stop.days + 1)}
-                style={s.step}
-                testID={`stop-${i}-more`}
-              >
-                <Text style={[s.stepText, total >= MAX_TRIP_DAYS && s.stepOff]}>+</Text>
-              </Pressable>
-            </View>
+            <Stepper
+              value={stop.days}
+              min={1}
+              max={stop.days + Math.max(0, MAX_TRIP_DAYS - total)}
+              onChange={(d) => setDays(i, d)}
+              format={(d) => pluralise(d, "day")}
+              accessibilityLabel={`${stop.name}: ${pluralise(stop.days, "day")}`}
+              decreaseLabel={`Fewer days in ${stop.name}`}
+              increaseLabel={`More days in ${stop.name}`}
+              testID={`stop-${i}`}
+            />
           </View>
           <View style={s.actions}>
             {i > 0 ? (
               <IconButton
                 icon="up"
                 label={`Move ${stop.name} earlier`}
-                compact
+                size="sm"
                 onPress={() => onChange(moveStop(stops, i, i - 1))}
                 testID={`stop-${i}-up`}
               />
@@ -129,7 +114,7 @@ export function StopList({
               <IconButton
                 icon="down"
                 label={`Move ${stop.name} later`}
-                compact
+                size="sm"
                 onPress={() => onChange(moveStop(stops, i, i + 1))}
                 testID={`stop-${i}-down`}
               />
@@ -137,7 +122,7 @@ export function StopList({
             <IconButton
               icon="close"
               label={`Remove ${stop.name}`}
-              compact
+              size="sm"
               onPress={() => onChange(stops.filter((_, n) => n !== i))}
               testID={`stop-${i}-remove`}
             />
@@ -152,7 +137,7 @@ export function StopList({
           label="Add another city"
           icon="add"
           variant="secondary"
-          size="compact"
+          size="sm"
           onPress={() => setSearching(true)}
           testID="add-city"
         />
@@ -209,57 +194,50 @@ export function CitySearchSheet({
   const answer = answers[key];
   return (
     <Sheet visible title="Add a city" onClose={onClose}>
-      <View style={s.searchRow}>
-        <Icon name="search" size={18} color={colors.muted} />
-        <TextInput
-          accessibilityLabel="City"
-          placeholder="City, for example Salzburg"
-          placeholderTextColor={colors.muted}
-          value={query}
-          onChangeText={setQuery}
-          autoFocus
-          autoCorrect={false}
-          style={s.searchInput}
-          testID="city-search-input"
-        />
-      </View>
+      <SearchField
+        label="City"
+        accessibilityLabel="City"
+        placeholder="City, for example Salzburg"
+        value={query}
+        onChangeText={setQuery}
+        onClear={() => setQuery("")}
+        autoFocus
+        testID="city-search-input"
+      />
       {typeof answer === "string" ? (
-        <Text style={s.detail}>{answer}</Text>
+        <InlineStatus text={answer} />
       ) : answer === undefined ? (
         q.length >= 2 ? (
-          <Text style={s.detail}>Searching…</Text>
+          <InlineStatus text="Searching…" busy />
         ) : null
       ) : answer.filter((r) => r.kind === "city").length === 0 ? (
-        <Text style={s.detail}>No city matches “{q}” in the imported regions.</Text>
+        <InlineStatus text={`No city matches “${q}” in the imported regions.`} />
       ) : (
-        answer
-          .filter((r) => r.kind === "city")
-          .map((r) => {
-            const ok = r.planning_available && !r.unavailable_reason;
-            return (
-              <Pressable
-                key={r.ref}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !ok }}
-                disabled={!ok}
-                onPress={() => onChoose(r)}
-                style={[s.result, !ok && s.resultOff]}
-                testID={`city-result-${r.ref}`}
-              >
-                <Text style={s.name}>{r.name}</Text>
-                <Text style={s.detail}>
-                  {[r.admin1_name, r.country_name].filter(Boolean).join(", ")}
-                  {ok ? "" : " · Not available yet: this region's data has not been imported."}
-                </Text>
-              </Pressable>
-            );
-          })
+        <DropdownPanel>
+          {answer
+            .filter((r) => r.kind === "city")
+            .map((r) => {
+              const ok = r.planning_available && !r.unavailable_reason;
+              return (
+                <ChoiceRow
+                  key={r.ref}
+                  icon="city"
+                  title={r.name}
+                  meta={[r.admin1_name, r.country_name].filter(Boolean).join(", ")}
+                  selected={false}
+                  disabled={!ok}
+                  disabledLabel="Not imported"
+                  accessibilityLabel={`${r.name}, ${[r.admin1_name, r.country_name].filter(Boolean).join(", ")}${ok ? "" : ". Not available yet: this region's data has not been imported."}`}
+                  onPress={() => onChoose(r)}
+                  testID={`city-result-${r.ref}`}
+                />
+              );
+            })}
+        </DropdownPanel>
       )}
     </Sheet>
   );
 }
-
-const RULE = StyleSheet.hairlineWidth;
 
 const s = StyleSheet.create({
   list: { gap: spacing.sm },
@@ -268,51 +246,12 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingVertical: spacing.sm,
-    borderBottomWidth: RULE,
+    borderBottomWidth: border.hairline,
     borderBottomColor: colors.border,
   },
-  number: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.ink,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  numberText: { ...type.caption, color: colors.onPrimary, fontWeight: "700" },
-  body: { flex: 1, gap: 2 },
-  name: { ...type.small, color: colors.text, fontWeight: "600" },
+  body: { flex: 1, gap: spacing.xxs },
+  name: { ...type.label, color: colors.text, fontWeight: weight.semibold },
   detail: { ...type.caption, color: colors.muted },
-  days: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: 2 },
-  step: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.outline,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepText: { ...type.body, color: colors.text },
-  stepOff: { color: colors.border },
-  daysText: { ...type.caption, color: colors.text, minWidth: 48, textAlign: "center" },
   actions: { flexDirection: "row", alignItems: "center" },
   total: { ...type.caption, color: colors.muted },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderBottomWidth: RULE,
-    borderBottomColor: colors.outline,
-    minHeight: 48,
-  },
-  searchInput: { flex: 1, ...type.body, color: colors.text },
-  result: {
-    minHeight: 48,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: RULE,
-    borderBottomColor: colors.border,
-    gap: 2,
-  },
-  resultOff: { opacity: 0.6 },
 });

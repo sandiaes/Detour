@@ -1,10 +1,22 @@
 import type { CoverCandidate, DestinationResult, Trip } from "@detour/shared";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, isOfflineError, planningIssues } from "../api/unwrap";
-import { Button } from "../components/Button";
+import {
+  Button,
+  ChoiceRow,
+  DropdownPanel,
+  InlineStatus,
+  ListRow,
+  Notice,
+  ScreenHeader,
+  SearchField,
+  SelectField,
+  Stepper,
+  TextField,
+} from "../components/ds";
 import { Cover } from "../components/ds/Cover";
 import { CoverPicker } from "../components/ds/CoverPicker";
 import {
@@ -14,13 +26,9 @@ import {
   evenSplit,
   stopsProblem,
 } from "../components/StopList";
-import { Icon } from "../components/ds/Icon";
-import { ChoiceRow, DropdownPanel } from "../components/ds/Dropdown";
-import { IconButton } from "../components/ds/primitives";
-import { Notice, useAnnounceOnMount } from "../components/ui";
 import { useTripActions } from "../data/actions";
 import { useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, radius, spacing, type } from "../theme";
+import { colors, layout, radius, spacing, type, weight } from "../theme";
 import { formatDate, isValidIsoDate, pluralise } from "../util/format";
 import { CalendarSheet } from "../components/ds/Calendar";
 import { localToday } from "../domain/trips";
@@ -242,425 +250,355 @@ export function CreateTripScreen() {
   };
 
   const offline = !actions.connected && state.phase === "error";
-
+  const clearDestination = () => {
+    setChosen(null);
+    setStops(null);
+    setCreated(null);
+    setCoverChoice(null);
+  };
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.top}>
-          <IconButton icon="back" label="Back" onPress={nav.back} />
-        </View>
-        <View style={styles.head}>
-          <TitleText />
-          <Text style={styles.subtitle}>
-            Tell us where you want to go and we&apos;ll help you build the perfect itinerary.
-          </Text>
-        </View>
-
-        {offline ? (
-          <Notice tone="warning" label="Offline">
-            Planning a trip needs a connection. Your saved trips can still be read.
-          </Notice>
-        ) : null}
-
-        <View style={styles.section}>
-          <View style={styles.row}>
-            <Icon name="pin" size={22} color={colors.text} />
-            <View style={styles.rowBody}>
-              <Text style={styles.rowLabel}>Destination</Text>
-              {chosen ? (
-                <>
-                  <Text style={styles.chosenName}>{chosen.name}</Text>
-                  <Text style={styles.hint}>
-                    {chosen.kind === "area" ? "Area" : chosen.kind === "place" ? "Place" : "City"}
-                    {describeResult(chosen) ? ` · ${describeResult(chosen)}` : ""}
-                  </Text>
-                </>
-              ) : (
-                <TextInput
-                  testID="destination-input"
-                  accessibilityLabel="Destination"
-                  accessibilityHint="Any place, for example Vienna, Tyrol or Hallstatt."
-                  placeholder="Any place, for example Vienna"
-                  placeholderTextColor={colors.muted}
-                  value={query}
-                  onChangeText={setQuery}
-                  autoCorrect={false}
-                  autoCapitalize="words"
-                  returnKeyType="search"
-                  style={styles.input}
-                />
-              )}
-            </View>
+        <ScreenHeader
+          title="Create new trip"
+          subtitle="Choose where you want to go; Detour helps you build the itinerary."
+          onBack={nav.back}
+        />
+        <View style={styles.body}>
+          {offline ? (
+            <Notice tone="warning" label="Offline">
+              Planning a trip needs a connection. Your saved trips can still be read.
+            </Notice>
+          ) : null}
+          <View style={styles.block}>
             {chosen ? (
-              <IconButton
-                icon="close"
-                label="Clear destination"
-                onPress={() => {
-                  setChosen(null);
-                  setStops(null);
-                  setCreated(null);
-                  setCoverChoice(null);
-                }}
+              <SelectField
+                label="Destination"
+                placeholder="Any place"
+                icon={chosen.kind === "city" ? "city" : "pin"}
+                value={chosen.name}
+                detail={`${chosen.kind === "area" ? "Area" : chosen.kind === "place" ? "Place" : "City"}${describeResult(chosen) ? ` · ${describeResult(chosen)}` : ""}`}
+                onClear={clearDestination}
+                clearLabel="Clear destination"
               />
+            ) : (
+              <SearchField
+                label="Destination"
+                testID="destination-input"
+                accessibilityLabel="Destination"
+                accessibilityHint="Any place, for example Vienna, Tyrol or Hallstatt."
+                placeholder="Any place, for example Vienna"
+                value={query}
+                onChangeText={setQuery}
+                onClear={() => setQuery("")}
+                autoCapitalize="words"
+              />
+            )}
+            {chosen?.kind === "area" && plannable ? (
+              <Text style={styles.hint}>
+                The plans choose base cities in the area and divide the days between them.
+              </Text>
             ) : null}
-          </View>
-          {chosen?.kind === "area" && plannable ? (
-            <Text style={styles.hint}>
-              The plans choose base cities in the area and divide the days between them.
-            </Text>
-          ) : null}
-          {chosen && !plannable ? (
-            <Text style={styles.hint} testID="not-plannable">
-              {notPlannableReason(chosen)}
-            </Text>
-          ) : null}
-          {manual ? (
-            <View style={styles.coords}>
-              <TextInput
-                testID="manual-lat"
-                accessibilityLabel="Latitude"
-                placeholder="Latitude, e.g. 47.5622"
-                placeholderTextColor={colors.muted}
-                value={manualLat}
-                onChangeText={setManualLat}
-                keyboardType="numbers-and-punctuation"
-                style={[styles.input, styles.coord]}
-              />
-              <TextInput
-                testID="manual-lon"
-                accessibilityLabel="Longitude"
-                placeholder="Longitude, e.g. 13.6493"
-                placeholderTextColor={colors.muted}
-                value={manualLon}
-                onChangeText={setManualLon}
-                keyboardType="numbers-and-punctuation"
-                style={[styles.input, styles.coord]}
-              />
-            </View>
-          ) : null}
-          {!chosen ? (
-            <SearchResults
-              search={search}
-              waking={waking}
-              query={q}
-              onChoose={setChosen}
-              wide={wide[key]}
-              onWiden={() => void searchWider()}
-              onManual={() => setChosen(manualChoice(q))}
-              online={client !== null}
-            />
-          ) : (
-            <>
-              <Cover
-                seedKey={chosen.ref}
-                uri={cover && apiUrl ? `${apiUrl}${cover.preview_url}` : null}
-                height={120}
-                rounded={radius.md}
-                style={styles.cover}
-                testID="create-cover"
-              />
-              {hasPhotos ? (
-                <View style={styles.coverActions}>
-                  <Button
-                    label="Change photo"
-                    icon="photos"
-                    variant="secondary"
-                    size="compact"
-                    hint="Choose the trip's photo from photos of the destination"
-                    disabled={!actions.connected}
-                    onPress={() => setPicker(true)}
-                    testID="change-photo"
+            {chosen && !plannable ? (
+              <Text style={styles.hint} testID="not-plannable">
+                {notPlannableReason(chosen)}
+              </Text>
+            ) : null}
+            {manual ? (
+              <View style={styles.pair}>
+                <View style={styles.half}>
+                  <TextField
+                    label="Latitude"
+                    testID="manual-lat"
+                    accessibilityLabel="Latitude"
+                    placeholder="e.g. 47.5622"
+                    value={manualLat}
+                    onChangeText={setManualLat}
+                    keyboardType="numbers-and-punctuation"
                   />
-                  {cover ? (
-                    <Text style={styles.hint} numberOfLines={1}>
-                      Photo: {cover.credit.author}, {cover.credit.licence}
-                    </Text>
-                  ) : null}
                 </View>
-              ) : null}
-              {chosen.kind === "city" && plannable ? (
-                stops ? (
-                  <StopList
-                    stops={stops}
-                    onChange={(next) => {
-                      setCreated(null);
-                      if (next.length >= 2) {
-                        setStops(next);
-                        return;
-                      }
-                      // One city left: an ordinary city trip of that city again.
-                      const only = next[0];
-                      setStops(null);
-                      if (only) {
-                        setDays(only.days);
-                        if (String(only.cityId) !== chosen.ref) {
-                          setChosen({ ...chosen, ref: String(only.cityId), name: only.name });
+                <View style={styles.half}>
+                  <TextField
+                    label="Longitude"
+                    testID="manual-lon"
+                    accessibilityLabel="Longitude"
+                    placeholder="e.g. 13.6493"
+                    value={manualLon}
+                    onChangeText={setManualLon}
+                    keyboardType="numbers-and-punctuation"
+                  />
+                </View>
+              </View>
+            ) : null}
+            {!chosen ? (
+              <SearchResults
+                search={search}
+                waking={waking}
+                query={q}
+                onChoose={setChosen}
+                wide={wide[key]}
+                onWiden={() => void searchWider()}
+                onManual={() => setChosen(manualChoice(q))}
+                online={client !== null}
+              />
+            ) : (
+              <>
+                <Cover
+                  seedKey={chosen.ref}
+                  uri={cover && apiUrl ? `${apiUrl}${cover.preview_url}` : null}
+                  height={120}
+                  rounded={radius.lg}
+                  testID="create-cover"
+                />
+                {hasPhotos ? (
+                  <View style={styles.row}>
+                    <Button
+                      label="Change photo"
+                      icon="photos"
+                      variant="secondary"
+                      size="sm"
+                      hint="Choose the trip's photo from photos of the destination"
+                      disabled={!actions.connected}
+                      onPress={() => setPicker(true)}
+                      testID="change-photo"
+                    />
+                    {cover ? (
+                      <Text style={styles.credit} numberOfLines={1}>
+                        Photo: {cover.credit.author}, {cover.credit.licence}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : null}
+                {chosen.kind === "city" && plannable ? (
+                  stops ? (
+                    <StopList
+                      stops={stops}
+                      onChange={(next) => {
+                        setCreated(null);
+                        if (next.length >= 2) {
+                          setStops(next);
+                          return;
                         }
-                      }
+                        // One city left: an ordinary city trip of that city again.
+                        const only = next[0];
+                        setStops(null);
+                        if (only) {
+                          setDays(only.days);
+                          if (String(only.cityId) !== chosen.ref) {
+                            setChosen({ ...chosen, ref: String(only.cityId), name: only.name });
+                          }
+                        }
+                      }}
+                    />
+                  ) : (
+                    <Button
+                      label="Add another city"
+                      icon="add"
+                      variant="ghost"
+                      size="sm"
+                      hint="Plan a trip through several cities in your order"
+                      onPress={() => setAddingCity(true)}
+                      testID="add-city"
+                    />
+                  )
+                ) : null}
+                {addingCity ? (
+                  <CitySearchSheet
+                    onClose={() => setAddingCity(false)}
+                    onChoose={(r) => {
+                      setAddingCity(false);
+                      setCreated(null);
+                      const split = evenSplit(days, 2);
+                      setStops([
+                        {
+                          cityId: Number(chosen.ref),
+                          name: chosen.name,
+                          detail: describeResult(chosen),
+                          days: split[0] ?? 1,
+                        },
+                        {
+                          cityId: Number(r.ref),
+                          name: r.name,
+                          detail: describeResult(r),
+                          days: split[1] ?? 1,
+                        },
+                      ]);
                     }}
                   />
-                ) : (
-                  <Button
-                    label="Add another city"
-                    icon="add"
-                    variant="quiet"
-                    size="compact"
-                    hint="Plan a trip through several cities in your order"
-                    onPress={() => setAddingCity(true)}
-                    testID="add-city"
+                ) : null}
+                {picker ? (
+                  <CoverPicker
+                    visible
+                    sources={
+                      stops
+                        ? stops.map((x) => ({
+                            kind: "city" as const,
+                            ref: String(x.cityId),
+                            name: x.name,
+                          }))
+                        : [
+                            {
+                              kind: chosen.kind === "area" ? ("area" as const) : ("city" as const),
+                              ref: chosen.ref.replace(/^geonames:/, ""),
+                              name: chosen.name,
+                            },
+                          ]
+                    }
+                    load={actions.coverCandidates}
+                    chosen={cover?.commons_file ?? null}
+                    onChoose={(c) => setCoverChoice(c)}
+                    onClose={() => setPicker(false)}
                   />
-                )
-              ) : null}
-              {addingCity ? (
-                <CitySearchSheet
-                  onClose={() => setAddingCity(false)}
-                  onChoose={(r) => {
-                    setAddingCity(false);
-                    setCreated(null);
-                    const split = evenSplit(days, 2);
-                    setStops([
-                      {
-                        cityId: Number(chosen.ref),
-                        name: chosen.name,
-                        detail: describeResult(chosen),
-                        days: split[0] ?? 1,
-                      },
-                      {
-                        cityId: Number(r.ref),
-                        name: r.name,
-                        detail: describeResult(r),
-                        days: split[1] ?? 1,
-                      },
-                    ]);
-                  }}
-                />
-              ) : null}
-              {picker ? (
-                <CoverPicker
-                  visible
-                  sources={
-                    stops
-                      ? stops.map((x) => ({
-                          kind: "city" as const,
-                          ref: String(x.cityId),
-                          name: x.name,
-                        }))
-                      : [
-                          {
-                            kind: chosen.kind === "area" ? ("area" as const) : ("city" as const),
-                            ref: chosen.ref.replace(/^geonames:/, ""),
-                            name: chosen.name,
-                          },
-                        ]
-                  }
-                  load={actions.coverCandidates}
-                  chosen={cover?.commons_file ?? null}
-                  onChoose={(c) => setCoverChoice(c)}
-                  onClose={() => setPicker(false)}
-                />
-              ) : null}
-            </>
-          )}
-        </View>
+                ) : null}
+              </>
+            )}
+          </View>
 
-        <View style={styles.pair}>
-          <View style={[styles.row, styles.half]}>
-            <Icon name="calendar" size={22} color={colors.text} />
-            <View style={styles.rowBody}>
-              <Text style={styles.rowLabel}>Start date (optional)</Text>
-              <Pressable
-                accessibilityRole="button"
+          <View style={styles.pair}>
+            <View style={styles.half}>
+              <SelectField
+                label="Start date (optional)"
+                placeholder="Choose a date"
+                icon="calendar"
+                value={startDate ? formatDate(startDate).slice(4) : null}
                 accessibilityLabel={
                   startDate ? `Start date, ${formatDate(startDate)}` : "Start date, not set"
                 }
                 accessibilityHint="Opens a calendar to choose the first day"
                 onPress={() => setCalendar(true)}
-                style={styles.dateButton}
-                hitSlop={{ top: 8, bottom: 8 }}
                 testID="start-date"
-              >
-                <Text style={[styles.input, !startDate && styles.placeholder]}>
-                  {startDate ? formatDate(startDate).slice(4) : "Choose a date"}
-                </Text>
-              </Pressable>
+              />
+            </View>
+            <View style={styles.half}>
+              <Text style={styles.label}>Duration</Text>
+              <View style={styles.duration}>
+                {stops ? (
+                  <Text style={styles.total} testID="route-total">
+                    {pluralise(
+                      stops.reduce((n, x) => n + x.days, 0),
+                      "day",
+                    )}
+                  </Text>
+                ) : (
+                  <Stepper
+                    value={days}
+                    min={1}
+                    max={MAX_DAYS}
+                    onChange={setDays}
+                    format={(n) => pluralise(n, "day")}
+                    accessibilityLabel="Days"
+                    decreaseLabel="Fewer days"
+                    increaseLabel="More days"
+                  />
+                )}
+              </View>
             </View>
           </View>
-          <View style={[styles.row, styles.half, styles.halfRule]}>
-            <View style={styles.rowBody}>
-              <Text style={styles.rowLabel}>Duration</Text>
-              {stops ? (
-                <Text style={styles.input} testID="route-total">
-                  {pluralise(
-                    stops.reduce((n, x) => n + x.days, 0),
-                    "day",
-                  )}
-                </Text>
-              ) : (
-                <DaysStepper value={days} onChange={setDays} />
-              )}
-            </View>
-          </View>
-        </View>
-        <CalendarSheet
-          visible={calendar}
-          value={startDate}
-          today={localToday()}
-          onPick={(iso) => {
-            setStartDate(iso);
-            setCalendar(false);
-          }}
-          onClear={() => {
-            setStartDate("");
-            setCalendar(false);
-          }}
-          onClose={() => setCalendar(false)}
-        />
-
-        <View style={[styles.row, styles.transportRow]}>
-          <Icon name="transport" size={22} color={colors.text} />
-          <View style={styles.rowBody}>
-            <Text style={styles.rowTitle}>Public transport</Text>
-          </View>
-          <Switch
-            accessibilityLabel="Public transport"
-            value={publicTransport}
-            onValueChange={setPublicTransport}
-            trackColor={{ true: colors.primary, false: colors.outline }}
-            thumbColor={colors.surface}
-            style={styles.switch}
+          <CalendarSheet
+            visible={calendar}
+            value={startDate}
+            today={localToday()}
+            onPick={(iso) => {
+              setStartDate(iso);
+              setCalendar(false);
+            }}
+            onClear={() => {
+              setStartDate("");
+              setCalendar(false);
+            }}
+            onClose={() => setCalendar(false)}
           />
-        </View>
-        <Text style={styles.later}>
-          Public transport is saved for later. The plans do not use it yet.
-        </Text>
 
-        {stops && stopsProblem(stops) ? (
-          <Notice tone="warning" label="Cities">
-            {stopsProblem(stops)}
-          </Notice>
-        ) : null}
-        {problem ? (
-          <Notice tone="error">
-            {problem.message}
-            {problem.issues.length > 0 ? ` ${problem.issues.join(" ")}` : ""}
-            {created ? " The trip was saved; you can try again." : ""}
-          </Notice>
-        ) : null}
-        {working === "planning" ? (
-          <Notice tone="info" label="Planning">
-            Choosing sights and working out travel times. This usually takes a few seconds.
-          </Notice>
-        ) : null}
+          <ListRow
+            icon="transport"
+            title="Public transport"
+            detail="Saved for later. The plans do not use it yet."
+            inset="none"
+            trailing={
+              <Switch
+                accessibilityLabel="Public transport"
+                value={publicTransport}
+                onValueChange={setPublicTransport}
+                trackColor={{ true: colors.primary, false: colors.outline }}
+                thumbColor={colors.surface}
+              />
+            }
+          />
 
-        <View style={styles.actions}>
-          <Button
-            testID="empty-trip"
-            label="Start a fresh trip"
-            icon="add"
-            variant="ink"
-            size="compact"
-            fill
-            loading={working !== null && mode === "empty"}
-            disabled={
-              !chosen ||
-              needsPoint ||
-              offline ||
-              (stops !== null && stopsProblem(stops) !== null) ||
-              (working !== null && mode !== "empty")
-            }
-            hint={
-              chosen ? "No proposals: you add the places yourself" : "Choose a destination first"
-            }
-            onPress={() => void submit("empty")}
-          />
-          <Button
-            testID="plan-trip"
-            label={
-              created && problem && mode === "generate"
-                ? "Try planning again"
-                : "Generate itineraries"
-            }
-            icon="route"
-            variant="secondary"
-            size="compact"
-            fill
-            loading={working !== null && mode === "generate"}
-            disabled={
-              !chosen ||
-              !plannable ||
-              offline ||
-              (stops !== null && stopsProblem(stops) !== null) ||
-              (working !== null && mode !== "generate")
-            }
-            hint={
-              !chosen
-                ? "Choose a destination first"
-                : !plannable
-                  ? (notPlannableReason(chosen) ?? "")
-                  : "Two different sightseeing plans to compare, with no restaurants"
-            }
-            onPress={() => void submit("generate")}
-          />
-          {created && problem ? (
-            <Button
-              label="Open the trip without a plan"
-              variant="quiet"
-              size="compact"
-              onPress={() => nav.replace({ name: "tripOverview", tripId: created.id })}
-            />
+          {stops && stopsProblem(stops) ? (
+            <Notice tone="warning" label="Cities">
+              {stopsProblem(stops)}
+            </Notice>
           ) : null}
+          {problem ? (
+            <Notice tone="error">
+              {problem.message}
+              {problem.issues.length > 0 ? ` ${problem.issues.join(" ")}` : ""}
+              {created ? " The trip was saved; you can try again." : ""}
+            </Notice>
+          ) : null}
+          {working === "planning" ? (
+            <Notice tone="info" label="Planning">
+              Choosing sights and working out travel times. This usually takes a few seconds.
+            </Notice>
+          ) : null}
+          <View style={styles.actions}>
+            <Button
+              testID="empty-trip"
+              label="Start a fresh trip"
+              icon="add"
+              fill
+              loading={working !== null && mode === "empty"}
+              disabled={
+                !chosen ||
+                needsPoint ||
+                offline ||
+                (stops !== null && stopsProblem(stops) !== null) ||
+                (working !== null && mode !== "empty")
+              }
+              hint={
+                chosen ? "No proposals: you add the places yourself" : "Choose a destination first"
+              }
+              onPress={() => void submit("empty")}
+            />
+            <Button
+              testID="plan-trip"
+              label={
+                created && problem && mode === "generate"
+                  ? "Try planning again"
+                  : "Generate itineraries"
+              }
+              icon="route"
+              variant="secondary"
+              fill
+              loading={working !== null && mode === "generate"}
+              disabled={
+                !chosen ||
+                !plannable ||
+                offline ||
+                (stops !== null && stopsProblem(stops) !== null) ||
+                (working !== null && mode !== "generate")
+              }
+              hint={
+                !chosen
+                  ? "Choose a destination first"
+                  : !plannable
+                    ? (notPlannableReason(chosen) ?? "")
+                    : "Two different sightseeing plans to compare, with no restaurants"
+              }
+              onPress={() => void submit("generate")}
+            />
+            {created && problem ? (
+              <Button
+                label="Open the trip without a plan"
+                variant="ghost"
+                size="sm"
+                onPress={() => nav.replace({ name: "tripOverview", tripId: created.id })}
+              />
+            ) : null}
+          </View>
         </View>
       </ScrollView>
-    </View>
-  );
-}
-
-function TitleText() {
-  const ref = useAnnounceOnMount();
-  return (
-    <View ref={ref} accessible accessibilityRole="header" accessibilityLabel="Create new trip">
-      <Text style={styles.title}>Create new trip</Text>
-    </View>
-  );
-}
-
-function DaysStepper({ value, onChange }: { value: number; onChange: (n: number) => void }) {
-  const text = pluralise(value, "day");
-  return (
-    <View style={styles.stepper}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Fewer days"
-        accessibilityState={{ disabled: value <= 1 }}
-        disabled={value <= 1}
-        onPress={() => onChange(value - 1)}
-        style={styles.stepButton}
-      >
-        <Text style={[styles.stepText, value <= 1 && styles.stepOff]}>−</Text>
-      </Pressable>
-      <View
-        accessible
-        accessibilityRole="adjustable"
-        accessibilityLabel="Days"
-        accessibilityValue={{ min: 1, max: MAX_DAYS, now: value, text }}
-        accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
-        onAccessibilityAction={(e) => {
-          if (e.nativeEvent.actionName === "increment" && value < MAX_DAYS) onChange(value + 1);
-          if (e.nativeEvent.actionName === "decrement" && value > 1) onChange(value - 1);
-        }}
-      >
-        <Text style={styles.stepValue}>{text}</Text>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="More days"
-        accessibilityState={{ disabled: value >= MAX_DAYS }}
-        disabled={value >= MAX_DAYS}
-        onPress={() => onChange(value + 1)}
-        style={styles.stepButton}
-      >
-        <Text style={[styles.stepText, value >= MAX_DAYS && styles.stepOff]}>+</Text>
-      </Pressable>
     </View>
   );
 }
@@ -704,14 +642,15 @@ function SearchResults({
 }) {
   if (search.phase === "idle") {
     return query.length === 0 ? null : (
-      <Text style={styles.hint}>Type at least {MIN_QUERY_LENGTH} letters.</Text>
+      <InlineStatus text={`Type at least ${MIN_QUERY_LENGTH} letters.`} />
     );
   }
   if (search.phase === "searching") {
     return (
-      <Text style={styles.hint} accessibilityLiveRegion="polite">
-        {waking ? "Waking the server. This can take about a minute…" : "Searching…"}
-      </Text>
+      <InlineStatus
+        busy
+        text={waking ? "Waking the server. This can take about a minute…" : "Searching…"}
+      />
     );
   }
   if (search.phase === "error") {
@@ -726,11 +665,11 @@ function SearchResults({
   }
   const more = Array.isArray(wide) ? wide : [];
   return (
-    <View style={styles.results} accessibilityLiveRegion="polite">
+    <View style={styles.results}>
       {search.results.length === 0 && wide === undefined ? (
-        <Text style={styles.hint}>
-          Nothing in the imported data matches “{query}”. Search more widely to find any place.
-        </Text>
+        <InlineStatus
+          text={`Nothing in the imported data matches “${query}”. Search more widely to find any place.`}
+        />
       ) : null}
       {search.results.length + more.length > 0 ? (
         <DropdownPanel testID="destination-results">
@@ -742,19 +681,18 @@ function SearchResults({
           ))}
         </DropdownPanel>
       ) : null}
-      {wide === "none" ? <Text style={styles.hint}>No wider result for “{query}”.</Text> : null}
+      {wide === "none" ? <InlineStatus text={`No wider result for “${query}”.`} /> : null}
       {wide === "unavailable" ? (
-        <Text style={styles.hint}>
-          The wider search is not available right now. You can still enter the place by hand.
-        </Text>
+        <InlineStatus text="The wider search is not available right now. You can still enter the place by hand." />
       ) : null}
-      <View style={styles.coverActions}>
+      <View style={styles.row}>
         {wide === undefined ? (
           <Button
             testID="search-wider"
             label="Search more widely"
+            icon="search"
             variant="secondary"
-            size="compact"
+            size="sm"
             hint="Look for any place in the world, not only the imported regions"
             disabled={!online}
             onPress={onWiden}
@@ -763,8 +701,8 @@ function SearchResults({
         <Button
           testID="enter-by-hand"
           label="Enter it by hand"
-          variant="quiet"
-          size="compact"
+          variant="ghost"
+          size="sm"
           hint="Type the name and the coordinates yourself"
           onPress={onManual}
         />
@@ -773,74 +711,19 @@ function SearchResults({
   );
 }
 
-const RULE = StyleSheet.hairlineWidth;
-
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { paddingBottom: spacing.xxl },
-  top: { paddingHorizontal: spacing.sm, paddingTop: spacing.sm },
-  head: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.xs },
-  title: { ...type.title, color: colors.text },
-  subtitle: { ...type.small, color: colors.muted },
-  section: { paddingHorizontal: spacing.lg, gap: spacing.md, marginBottom: spacing.lg },
-  // A field is an icon, a small label and a value over a hairline: no boxes.
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    minHeight: TOUCH + 12,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: RULE,
-    borderBottomColor: colors.border,
-  },
-  rowBody: { flex: 1, gap: 2 },
-  rowLabel: { ...type.caption, color: colors.muted },
-  rowTitle: { ...type.body, color: colors.text },
-  input: { ...type.body, color: colors.text, minHeight: 32, paddingVertical: 0 },
-  dateButton: { minHeight: 32, justifyContent: "center" },
-  placeholder: { color: colors.muted },
-  chosenName: { ...type.heading, color: colors.text },
-  cover: { marginTop: spacing.xs },
-  coords: { flexDirection: "row", gap: spacing.md },
-  coord: { flex: 1, borderBottomWidth: RULE, borderBottomColor: colors.border },
-  coverActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
-  pair: {
-    flexDirection: "row",
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  half: { flex: 1, borderBottomWidth: RULE },
-  halfRule: { marginLeft: spacing.lg },
-  hint: { ...type.small, color: colors.muted },
-  error: {
-    ...type.small,
-    color: colors.errorText,
-    fontWeight: "600",
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
+  body: { paddingHorizontal: layout.gutter, gap: layout.section },
+  block: { gap: layout.block },
+  label: { ...type.caption, color: colors.muted, fontWeight: weight.medium },
+  hint: { ...type.caption, color: colors.muted },
+  credit: { ...type.caption, color: colors.muted, flexShrink: 1 },
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  pair: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
+  half: { flex: 1, gap: spacing.xs },
+  duration: { minHeight: 44, justifyContent: "center" },
+  total: { ...type.body, color: colors.text },
   results: { gap: spacing.sm },
-  pressed: { opacity: 0.85 },
-  reason: { ...type.small, color: colors.errorText, fontWeight: "600" },
-
-  transportRow: {
-    marginHorizontal: spacing.lg,
-    borderTopWidth: RULE,
-    borderTopColor: colors.border,
-  },
-  switch: { minHeight: TOUCH },
-  later: {
-    ...type.caption,
-    color: colors.muted,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  actions: { paddingHorizontal: spacing.lg, gap: spacing.sm },
-
-  stepper: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  stepButton: { width: 36, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },
-  stepText: { fontSize: 24, color: colors.text },
-  stepOff: { color: colors.outline },
-  stepValue: { ...type.body, color: colors.text, minWidth: 64, textAlign: "center" },
+  actions: { gap: spacing.sm },
 });

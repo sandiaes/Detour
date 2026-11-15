@@ -96,7 +96,9 @@ test("each interactive control is at least 48 dp tall", async () => {
   const flat = Array.isArray(newTrip.props.style)
     ? Object.assign({}, ...newTrip.props.style.flat(3).filter(Boolean))
     : newTrip.props.style;
-  expect(flat.minHeight).toBeGreaterThanOrEqual(48);
+  // Drawn at 44 dp; its hit slop makes the touch 48 dp (docs/design.md, "Touch").
+  const slop = newTrip.props.hitSlop ?? {};
+  expect(flat.minHeight + (slop.top ?? 0) + (slop.bottom ?? 0)).toBeGreaterThanOrEqual(48);
 });
 
 test("while the free host wakes and nothing is saved, a clear waking state is shown", async () => {

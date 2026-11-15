@@ -1,19 +1,30 @@
 import type { Itinerary, Trip } from "@detour/shared";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ApiError, call, describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
-import { Icon } from "../components/ds/Icon";
-import { ListRow, Sheet } from "../components/ds/primitives";
-import { CompactHeader, EmptyState, ErrorState, LoadingState, Notice } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Checkbox,
+  ChoiceGroupTitle,
+  CompactHeader,
+  EmptyState,
+  ErrorState,
+  InlineStatus,
+  ListRow,
+  LoadingState,
+  Notice,
+  Radio,
+  Sheet,
+} from "../components/ds";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
 import { MIN_OPTIMIZE_STOPS, optimizeStops, preselected } from "../domain/optimize";
 import { useTripDocuments } from "../documents/DocumentsProvider";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { TOUCH, colors, spacing, type } from "../theme";
+import { colors, layout, spacing, type, weight } from "../theme";
 import { pluralise } from "../util/format";
 
 type OptimizeRoute = Extract<Route, { name: "optimize" }>;
@@ -137,30 +148,27 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
           How far the order may change
         </Text>
         <View accessibilityRole="radiogroup" style={styles.group}>
-          {SCOPES.map((s) => {
-            const on = scope === s.key;
+          {SCOPES.map((sc) => {
+            const on = scope === sc.key;
             return (
-              <Pressable
-                key={s.key}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on, checked: on }}
-                accessibilityLabel={`${s.title}. ${s.detail}`}
-                testID={`scope-${s.key}`}
-                onPress={() => setScope(s.key)}
-                style={styles.choice}
-              >
-                <View style={[styles.radio, on && styles.radioOn]}>
-                  {on ? <View style={styles.radioDot} /> : null}
-                </View>
-                <View style={styles.choiceText}>
-                  <Text style={styles.choiceTitle}>{s.title}</Text>
-                  <Text style={styles.small}>{s.detail}</Text>
-                </View>
-              </Pressable>
+              <ListRow
+                key={sc.key}
+                role="radio"
+                selected={on}
+                checked={on}
+                leading={<Radio on={on} />}
+                title={sc.title}
+                detail={sc.detail}
+                density="compact"
+                inset="none"
+                trailing={null}
+                accessibilityLabel={`${sc.title}. ${sc.detail}`}
+                testID={`scope-${sc.key}`}
+                onPress={() => setScope(sc.key)}
+              />
             );
           })}
         </View>
-
         <ListRow
           icon="lock"
           title="Keep in place"
@@ -169,20 +177,18 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
           onPress={() => setPicking(true)}
         />
 
-        {problem ? <Notice tone="error">{problem}</Notice> : null}
         <View style={styles.pad}>
+          {problem ? <Notice tone="error">{problem}</Notice> : null}
           <Button
             label="Show a shorter order"
             testID="optimize-run"
-            variant="ink"
-            size="compact"
             fill
             loading={busy}
             disabled={busy || !actions.connected}
             onPress={() => void preview()}
           />
           {!actions.connected ? (
-            <Text style={styles.small}>Optimize needs a connection to the server.</Text>
+            <InlineStatus text="Optimize needs a connection to the server." />
           ) : null}
         </View>
       </ScrollView>
@@ -199,38 +205,26 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
               const newDay = i === 0 || stops[i - 1]?.day !== s.day;
               return (
                 <View key={s.id}>
-                  {newDay ? <Text style={styles.dayHead}>Day {s.day}</Text> : null}
-                  <Pressable
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: on, disabled: s.locked }}
+                  {newDay ? <ChoiceGroupTitle title={`Day ${s.day}`} /> : null}
+                  <ListRow
+                    role="checkbox"
+                    checked={on}
+                    leading={<Checkbox on={on} />}
+                    title={s.name}
+                    density="compact"
+                    inset="none"
+                    disabled={s.locked}
+                    disabledLabel="Locked"
+                    trailing={s.hasDocument && !s.locked ? <Badge label="Document" /> : undefined}
                     accessibilityLabel={`${s.name}, day ${s.day}${s.locked ? ", locked" : s.hasDocument ? ", has a document" : ""}`}
                     testID={`keep-${s.id}`}
-                    disabled={s.locked}
                     onPress={() => toggle(s.id)}
-                    style={styles.stop}
-                  >
-                    <View style={[styles.box, on && styles.boxOn]}>
-                      {on ? <Icon name="check" size={14} color={colors.onPrimary} /> : null}
-                    </View>
-                    <Text style={styles.stopName} numberOfLines={1}>
-                      {s.name}
-                    </Text>
-                    {s.locked || s.hasDocument ? (
-                      <Text style={styles.tag}>{s.locked ? "Locked" : "Document"}</Text>
-                    ) : null}
-                  </Pressable>
+                  />
                 </View>
               );
             })}
           </ScrollView>
-          <Button
-            label="Done"
-            variant="ink"
-            size="compact"
-            fill
-            testID="keep-done"
-            onPress={() => setPicking(false)}
-          />
+          <Button label="Done" fill testID="keep-done" onPress={() => setPicking(false)} />
         </Sheet>
       ) : null}
     </View>
@@ -239,58 +233,16 @@ export function OptimizeScreen({ route }: { route: OptimizeRoute }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { paddingBottom: spacing.xxl, gap: spacing.md },
-  pad: { paddingHorizontal: spacing.lg, gap: spacing.sm },
-  intro: { ...type.small, color: colors.muted, paddingHorizontal: spacing.lg },
-  label: { ...type.small, fontWeight: "700", color: colors.text, paddingHorizontal: spacing.lg },
-  group: {
-    marginHorizontal: spacing.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+  content: { paddingBottom: spacing.xxl, gap: layout.block },
+  pad: { paddingHorizontal: layout.gutter, gap: spacing.sm },
+  intro: { ...type.label, color: colors.muted, paddingHorizontal: layout.gutter },
+  label: {
+    ...type.label,
+    fontWeight: weight.semibold,
+    color: colors.text,
+    paddingHorizontal: layout.gutter,
   },
-  choice: {
-    minHeight: TOUCH,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  choiceText: { flex: 1, gap: 1 },
-  choiceTitle: { ...type.small, color: colors.text, fontWeight: "600" },
+  group: { marginHorizontal: layout.gutter },
   small: { ...type.caption, color: colors.muted },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.outline,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  radioOn: { borderColor: colors.ink },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.ink },
   stops: { maxHeight: 340 },
-  dayHead: { ...type.caption, fontWeight: "700", color: colors.muted, paddingTop: spacing.sm },
-  stop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    minHeight: TOUCH,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  stopName: { ...type.small, color: colors.text, flex: 1 },
-  tag: { ...type.caption, color: colors.muted },
-  box: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: colors.outline,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  boxOn: { backgroundColor: colors.ink, borderColor: colors.ink },
 });

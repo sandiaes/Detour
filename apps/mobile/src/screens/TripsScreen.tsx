@@ -3,17 +3,19 @@ import { useState } from "react";
 import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError, isOfflineError } from "../api/unwrap";
-import { Button } from "../components/Button";
-import { Cover } from "../components/ds/Cover";
-import { Badge, type BadgeTone, Tabs } from "../components/ds/primitives";
-import { ResourceNotices } from "../components/ResourceNotices";
 import {
+  Badge,
+  type BadgeTone,
+  Button,
   EmptyState,
   ErrorState,
   LoadingState,
+  Tabs,
   WakingServer,
   useAnnounceOnMount,
-} from "../components/ui";
+} from "../components/ds";
+import { Cover } from "../components/ds/Cover";
+import { ResourceNotices } from "../components/ResourceNotices";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import {
@@ -25,7 +27,7 @@ import {
   tripsInTab,
 } from "../domain/trips";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { colors, radius, spacing, type } from "../theme";
+import { colors, layout, opacity, radius, spacing, textOnImage, type, weight } from "../theme";
 
 /** A past trip opens on its map of visited places (ADR 006); every other trip on its overview,
  * which shows the active plan or leads to the proposals (ADR 021). */
@@ -35,10 +37,10 @@ export function tripRoute(trip: Trip): Route {
 }
 
 const PHASE_TONE: Record<TripPhase, BadgeTone> = {
-  planning: "solid",
+  planning: "onImage",
   upcoming: "primary",
   inProgress: "accent",
-  past: "solid",
+  past: "onImage",
 };
 
 const CARD_HEIGHT = 168;
@@ -158,15 +160,10 @@ export function TripsScreen() {
             <TripCard trip={item} onPress={() => nav.push(tripRoute(item))} />
           )}
           ListHeaderComponent={<ResourceNotices resource={trips} noun="trips" />}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>{empty.title}</Text>
-              <Text style={styles.emptyText}>{empty.text}</Text>
-            </View>
-          }
+          ListEmptyComponent={<EmptyState layout="inline" title={empty.title} text={empty.text} />}
           ListFooterComponent={
             tab === "upcoming" ? (
-              <Button label="New trip" icon="add" variant="ink" fill onPress={create} />
+              <Button label="New trip" icon="add" fill onPress={create} />
             ) : undefined
           }
           contentContainerStyle={styles.list}
@@ -209,10 +206,10 @@ export function TripsScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  brand: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs },
-  list: { padding: spacing.lg, gap: spacing.lg },
+  brand: { paddingHorizontal: layout.gutter, paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  list: { padding: layout.gutter, gap: spacing.lg },
   card: { minHeight: 48 },
-  pressed: { opacity: 0.88 },
+  pressed: { opacity: opacity.pressed },
   cardBadge: { position: "absolute", top: spacing.md, right: spacing.md },
   // The name, dates and length sit on the photo, bottom left, over the cover's soft gradient;
   // the right is left to the photo credit's "i".
@@ -223,9 +220,6 @@ const styles = StyleSheet.create({
     bottom: spacing.md,
     gap: spacing.xxs,
   },
-  cardTitle: { ...type.title, color: colors.onImage },
-  cardMeta: { ...type.small, color: colors.onImage, fontWeight: "500" },
-  empty: { paddingVertical: spacing.xxl, gap: spacing.sm, alignItems: "center" },
-  emptyTitle: { ...type.heading, color: colors.text, textAlign: "center" },
-  emptyText: { ...type.body, color: colors.muted, textAlign: "center" },
+  cardTitle: { ...type.headline, fontWeight: weight.bold, ...textOnImage },
+  cardMeta: { ...type.caption, fontWeight: weight.medium, ...textOnImage },
 });
