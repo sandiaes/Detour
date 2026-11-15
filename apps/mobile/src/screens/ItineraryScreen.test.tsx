@@ -82,14 +82,15 @@ test("restaurant and café stops show only their kind and length (ADR 026)", asy
   ).toBeOnTheScreen();
 });
 
-test("an area plan names each day's base city and starts a new base with the journey", async () => {
+test("an area plan starts a new base with the journey, with no city line above the stops", async () => {
   await openDays();
-  expect(await screen.findByText("Vienna")).toBeOnTheScreen();
+  // The day pills name the day; no line repeats the base city (owner, 2026-11-15).
+  expect(await screen.findByRole("tab", { name: "Day 2, Sun 2 May" })).toBeOnTheScreen();
+  expect(screen.queryByText("Vienna")).toBeNull();
   await fireEvent.press(screen.getByRole("tab", { name: "Day 2, Sun 2 May" }));
-  expect(await screen.findByText("Graz")).toBeOnTheScreen();
-  expect(screen.getByText("To Graz")).toBeOnTheScreen();
+  expect(await screen.findByText("To Graz")).toBeOnTheScreen();
+  expect(screen.queryByText("Graz")).toBeNull();
   expect(screen.getByText("Drive from Vienna · 2 h 20 min · 191 km")).toBeOnTheScreen();
-  expect(screen.getByLabelText("Day 2 · Sun 2 May. Based in Graz.")).toBeOnTheScreen();
   expect(
     screen.getByRole("button", {
       name:

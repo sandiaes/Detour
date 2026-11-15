@@ -609,3 +609,101 @@ test("an empty trip has no suggestion button: the day and time are chosen", asyn
   expect(client.count(ITEM_PATH)).toBe(1);
   expect(client.count("POST /v1/itineraries/{itinerary_id}/place-suggestions")).toBe(0);
 });
+
+// A trip to Vienna and then Graz, opened on day 2 (owner, 2026-11-15).
+const twoCities = makeTrip({
+  title: "Vienna to Graz",
+  destination: { kind: "route", ref: null, name: "Vienna to Graz", lat: 48.2082, lon: 16.3738 },
+  stops: [
+    {
+      position: 1,
+      city_id: 900101,
+      name: "Vienna",
+      country_iso2: "AT",
+      lat: 48.2082,
+      lon: 16.3738,
+      days: 1,
+    },
+    {
+      position: 2,
+      city_id: 900102,
+      name: "Graz",
+      country_iso2: "AT",
+      lat: 47.0707,
+      lon: 15.4395,
+      days: 1,
+    },
+  ],
+} as never);
+
+const CLOCK_TOWER = {
+  ...SIGHT,
+  id: "00000000-0000-4000-8000-00000000ab02",
+  name: "Uhrturm",
+  category: "tower",
+  lat: 47.0736,
+  lon: 15.4375,
+  city_id: 900102,
+  city_name: "Graz",
+  match: "contains",
+};
+
+async function openDay2(client: ReturnType<typeof server>) {
+  await render(
+    <Harness client={client} initial={{ ...planRoute, day: 2 }}>
+      <AppContent />
+    </Harness>,
+  );
+  await fireEvent.press(await screen.findByTestId("add-place"));
+  expect(await screen.findByText("Add a place")).toBeOnTheScreen();
+}
+
+test("a multi-city trip searches around the day's city first and measures from it", async () => {
+  const client = server({
+    "GET /v1/trips": () => [twoCities],
+    "GET /v1/places/search": (c: { params: { lat: number } }) => ({
+      query: "Tu",
+      results: c.params.lat < 48 ? [CLOCK_TOWER] : [{ ...SIGHT, match: "exact" }],
+      external: { state: "not_requested", provider: null, results: [] },
+    }),
+  });
+  await openDay2(client);
+  await search("Tu");
+  const asked = client.calls
+    .filter((c) => c.path === "/v1/places/search")
+    .map((c) => (c.params as { lat: number }).lat);
+  // Graz, the day's city, then Vienna: a sight in another of the trip's cities is still found.
+  expect(asked).toEqual([47.0707, 48.2082]);
+  const rows = await screen.findAllByLabelText(/, (tower|theme park)/);
+  expect(rows[0]).toHaveAccessibleName(/^Uhrturm/);
+  expect(screen.getByLabelText(/Uhrturm.*from Graz/)).toBeOnTheScreen();
+  // Prater is in Vienna, measured from Graz all the same: the day is in Graz.
+  expect(screen.getByLabelText(/Prater.*km from Graz/)).toBeOnTheScreen();
+});
+
+test("the pin map opens on the day's city with its known sights and the plan's stops", async () => {
+  const client = server({
+    "GET /v1/trips": () => [twoCities],
+    "GET /v1/places/search": () => ({
+      query: null,
+      results: [CLOCK_TOWER],
+      external: { state: "not_requested", provider: null, results: [] },
+    }),
+  });
+  await openDay2(client);
+  await fireEvent.press(screen.getByRole("tab", { name: "Pin on map" }));
+  const nearby = client.calls.find((c) => c.path === "/v1/places/search");
+  expect(nearby?.params).toMatchObject({
+    kind: "attraction",
+    lat: 47.0707,
+    lon: 15.4395,
+    radius_m: 3000,
+  });
+  expect(await screen.findByLabelText("Known sight: Uhrturm")).toBeOnTheScreen();
+  expect(screen.getAllByLabelText(/^In your plan, day 2: /).length).toBeGreaterThan(0);
+  // Tapping a known sight chooses it; no pin is dropped and no name is asked.
+  await fireEvent.press(screen.getByTestId(`marker-sight-${CLOCK_TOWER.id}`));
+  expect(screen.getByTestId("chosen-place")).toBeOnTheScreen();
+  expect(screen.queryByLabelText("Name of the place")).toBeNull();
+  expect(screen.getByTestId("find-days")).toBeEnabled();
+});
