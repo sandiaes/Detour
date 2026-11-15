@@ -140,7 +140,7 @@ test("a cover chosen on the new-trip screen is set right after the trip is creat
   fireEvent.press(await screen.findByTestId("change-photo"));
   fireEvent.press(await screen.findByTestId("cover-candidate-Stephansdom.jpg"));
   expect(await screen.findByText("Photo: Author of Stephansdom.jpg, CC BY 4.0")).toBeTruthy();
-  fireEvent.press(screen.getByText("Start with an empty trip"));
+  fireEvent.press(screen.getByText("Start a fresh trip"));
   await screen.findByTestId("trip-cover");
   expect(order).toEqual(["create", "cover Stephansdom.jpg"]);
 });

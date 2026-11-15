@@ -213,7 +213,7 @@ test("a place shows only its own documents, and a new one starts linked to it", 
 
 test("Add on a trip offers a document", async () => {
   await show({ name: "tripOverview", tripId: TRIP_ID });
-  await screen.findByRole("header", { name: "Your itineraries" });
+  await screen.findByTestId("day-row-1");
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   await fireEvent.press(await screen.findByTestId("add-sheet-document"));
   expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();

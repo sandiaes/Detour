@@ -125,10 +125,12 @@ test("the sheet sends the scope and the stops kept, then opens the preview", asy
     "GET /v1/change-sets/{change_set_id}": () => change(),
   });
   await show(sheet, client, createMemoryDocumentStore([doc("name:Belvedere")]));
+  await fireEvent.press(await screen.findByTestId("keep-summary"));
   const belvedere = await screen.findByTestId("keep-i2");
   expect(belvedere.props.accessibilityState.checked).toBe(true);
   expect(screen.getByTestId("keep-i1").props.accessibilityState.checked).toBe(false);
   await fireEvent.press(screen.getByTestId("keep-i1"));
+  await fireEvent.press(screen.getByTestId("keep-done"));
   await fireEvent.press(screen.getByTestId("scope-across_days"));
   await fireEvent.press(screen.getByTestId("optimize-run"));
   expect(await screen.findByText("A shorter order?")).toBeTruthy();
@@ -159,7 +161,7 @@ test("the trip menu and the itinerary offer Optimize, and the undo after one", a
     "GET /v1/change-sets/{change_set_id}": () =>
       change({ target_name: "Undo Optimize", restores_version: 2 }),
   });
-  await show({ name: "tripOverview", tripId: TRIP_ID, section: "itinerary" }, client);
+  await show({ name: "tripOverview", tripId: TRIP_ID, section: "overview" }, client);
   expect(await screen.findByTestId("itinerary-optimize")).toBeTruthy();
   await fireEvent.press((await screen.findAllByTestId("trip-menu"))[0] as never);
   expect(await screen.findByTestId("menu-optimize")).toBeTruthy();
@@ -172,7 +174,7 @@ test("a plan with fewer than three stops is not offered Optimize", async () => {
   const small = plan();
   small.days = [{ ...small.days[0]!, items: small.days[0]!.items.slice(0, 2) }];
   await show(
-    { name: "tripOverview", tripId: TRIP_ID, section: "itinerary" },
+    { name: "tripOverview", tripId: TRIP_ID, section: "overview" },
     server({ "GET /v1/itineraries/{itinerary_id}": () => small }),
   );
   await screen.findAllByTestId("trip-menu");

@@ -285,6 +285,11 @@ class ItemUpdate(StrictModel):
 
     start_time: time | None = None
     duration_minutes: int | None = Field(default=None, ge=1, le=1440)
+    use_default_duration: bool | None = Field(
+        default=None,
+        description="true: go back to the stop's default length (it is no longer marked as set "
+        "by the user); wins over duration_minutes",
+    )
     locked: bool | None = None
     position: int | None = Field(default=None, ge=1)
     day_index: int | None = Field(default=None, ge=1, description="Move to another day")
@@ -338,6 +343,10 @@ class Item(BaseModel):
     end_time: time | None
     duration_minutes: int
     duration_source: Literal["category_default", "user"]
+    default_duration_minutes: int | None = Field(
+        default=None,
+        description="The length 'use the default' would give this stop; null when none is known",
+    )
     origin: Literal["engine", "user"]
     locked: bool
     reasons: list[str] = Field(description="Reason codes")

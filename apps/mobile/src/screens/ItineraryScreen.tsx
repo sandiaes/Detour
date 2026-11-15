@@ -209,6 +209,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
         mode={route.view === "map" ? "map" : "list"}
         map={mapConfig}
         initialSelectedId={route.itemId ?? null}
+        onSelectionChange={(id) => nav.replace({ ...route, itemId: id })}
         onDetails={openDetails}
         onShowList={() => setView("days")}
         header={

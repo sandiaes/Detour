@@ -162,6 +162,21 @@ export function useChangeActions() {
     [need, data],
   );
 
+  /** Sets how long a stop lasts (minutes), or goes back to its default length (null). The plan is
+   * read again afterwards: the end time of the stop changes. */
+  const setDuration = useCallback(
+    async (itineraryId: string, itemId: string, minutes: number | null): Promise<void> => {
+      await call(
+        need().PATCH("/v1/items/{item_id}", {
+          params: { path: { item_id: itemId } },
+          body: minutes === null ? { use_default_duration: true } : { duration_minutes: minutes },
+        }),
+      );
+      data.invalidate(keys.itinerary(itineraryId));
+    },
+    [need, data],
+  );
+
   /** Locks or unlocks an item: a locked item is never moved or removed by a recalculation. */
   const setLocked = useCallback(
     async (itineraryId: string, itemId: string, locked: boolean): Promise<void> => {
@@ -213,6 +228,7 @@ export function useChangeActions() {
     apply,
     discard,
     setLocked,
+    setDuration,
     addItem,
     connected: client !== null,
   };

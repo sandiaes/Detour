@@ -8,12 +8,12 @@ export type DayRow =
 /** An idle stretch shorter than this is slack, not free time (ADR 026, decision 5). */
 export const MIN_FREE_MINUTES = 30;
 
-function minutesOf(time: string | null | undefined): number | null {
+export function minutesOf(time: string | null | undefined): number | null {
   const m = /^(\d{2}):(\d{2})/.exec(time ?? "");
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
-function clockOf(minutes: number): string {
+export function clockOf(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 

@@ -61,7 +61,13 @@ function CurrentScreen({ route }: { route: Route }) {
     case "tripOverview":
       // Keyed so that another trip never reuses this one's tab state.
       return (
-        <TripOverviewScreen key={route.tripId} tripId={route.tripId} section={route.section} />
+        <TripOverviewScreen
+          key={route.tripId}
+          tripId={route.tripId}
+          section={route.section}
+          day={route.day}
+          itemId={route.itemId}
+        />
       );
     case "createTrip":
       return <CreateTripScreen />;
@@ -114,10 +120,10 @@ function CurrentScreen({ route }: { route: Route }) {
   }
 }
 
-/** The cover of a trip's Overview, Itinerary and other tabs runs under the status bar, so a fade
+/** The cover of a trip's Overview, Itinerary and other tabs, and of a place's details, runs under the status bar, so a fade
  * there would wash over the photo; everywhere else the screen starts below it. */
 function coverUnderStatusBar(route: Route): boolean {
-  return route.name === "tripOverview" && route.section !== "map";
+  return (route.name === "tripOverview" && route.section !== "map") || route.name === "placeDetail";
 }
 
 /** A trip file opened with the app (ADR 028): a content or file link goes to the import screen. */

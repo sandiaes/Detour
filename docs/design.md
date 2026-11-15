@@ -34,17 +34,18 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    forget it). A photo is never a map marker. **A photo fills its frame and the overflow is cropped**
    (ADR 022 amendment, decision e): a landscape photo is centred, a portrait photo is anchored about a
    third of the way down (`photoPlacement` in `Cover.tsx`); nothing is cropped in storage.
-   **Optimize (ADR 029).** The trip menu and the top of the Itinerary tab offer **Optimize** when the
-   plan has at least three stops with a place. A screen asks how far the order may change (within each
-   day, or across all days) and lists the stops to keep in place: a stop a document is about starts
-   selected, a locked stop is shown as kept. "Show a shorter order" opens the ordinary change preview
-   titled "A shorter order?", with the saving in minutes and kilometres, whether times are estimated,
-   "a shorter order, not necessarily the shortest" and "opening hours are not known" shown open, then
-   Accept or Discard. When nothing is shorter the screen says so and changes nothing. Right after an
+   **Optimize (ADR 029).** The trip menu and the top of the Overview offer **Optimize** when the
+   plan has at least three stops with a place. A compact screen asks how far the order may change
+   (two slim radio rows: within each day, or across all days) and has one "Keep in place" row (how
+   many stops are kept) that opens a sheet with the stops by day: a stop a document is about starts
+   selected, a locked stop is shown as kept; the screen itself never lists every stop. "Show a
+   shorter order" opens the ordinary change preview titled "A shorter order?", with the saving in
+   minutes and kilometres, whether times are estimated, "a shorter order, not necessarily the
+   shortest" and "opening hours are not known" shown open, then Accept or Discard. When nothing is shorter the screen says so and changes nothing. Right after an
    Optimize the trip menu offers **Undo Optimize** (until the plan changes).
    **"Change photo"** (the new-trip screen under the destination, and the trip menu) opens a sheet of up
    to 12 photos of the destination, three across, each with its author and licence, and "Automatic
-   photo" (`CoverPicker`). For a multi-city trip it has one tab per stop. A day of the Itinerary tab
+   photo" (`CoverPicker`). For a multi-city trip it has one tab per stop. A day of the Overview
    shows the photo of its first visit that has one. **More, Image credits** lists the author, licence
    and page of every photo the app holds.
 5. **Honest about what is not built.** A control that does nothing yet says so in words
@@ -119,8 +120,8 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
 
 1. **Destination:** a pin icon, the search field (any place), results as
    hairline rows. Every result can be chosen (ADR 027); one with no sight data (outside the
-   available regions, from Photon, or typed by hand) says so and offers only **Start with an empty
-   trip**, "Suggest itineraries" being disabled with the reason. **Search more widely** asks Photon
+   available regions, from Photon, or typed by hand) says so and offers only **Start a fresh
+   trip**, "Generate itineraries" being disabled with the reason. **Search more widely** asks Photon
    for any place; **Enter it by hand** takes a name and typed coordinates (a decimal comma is
    accepted). A place trip has no "Add another city", no proposals in its menu or settings, and
    "Change photo" only when the place is in the gazetteer (otherwise the illustration stays). Once chosen, the name with its kind and
@@ -135,16 +136,15 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
    multi-city trip the duration is the cities' total and cannot be set on its own. The start
    date opens a **month calendar** in a sheet (Monday first, today ringed, "Clear the date"); a date
    is chosen, never typed.
-3. **Travel style:** Relaxed, Balanced, Active (chips).
-4. **Public transport:** a switch.
-5. A line: travel style and public transport are saved for later; the plans do not use them yet.
-6. Two buttons:
-   - **Start with an empty trip** (dark, the main action): creates the trip and an empty plan, one empty day
+3. **Public transport:** a switch (there is no travel style: it did nothing).
+4. A line: public transport is saved for later; the plans do not use it yet.
+5. Two compact buttons, full width, small text:
+   - **Start a fresh trip** (dark, the main action): creates the trip and an empty plan, one empty day
      per trip day, chosen as its itinerary at once. No proposals. The trip opens on its overview.
-   - **Suggest itineraries** (outlined): creates the trip and the two proposals to compare. Sights
+   - **Generate itineraries** (outlined): creates the trip and the two proposals to compare. Sights
      only, with a midday gap, no restaurants.
 
-   The empty trip comes first (ADR 026, built). A trip whose dates are all in the past is created
+   The fresh trip comes first (ADR 026, built). A trip whose dates are all in the past is created
    the same way (the calendar does not block past dates); the user fills it and marks it past, and
    it is not archived by itself (the two-day rule applies only to trips made before their last day).
 
@@ -159,17 +159,15 @@ not asked; it is the destination.
   the trip menu sit on it at the top; the trip's **name, dates and length** sit on it bottom left in
   white ("Austria", "12 – 19 Mar 2026 · 8 days"), over a soft gradient. No destination or status
   line, and no header row above the photo.
-- **A white sheet curves over the cover's lower edge** and holds the tabs: Overview, Itinerary,
-  Map, Photos, Documents. The tabs stay at the top when the page scrolls. Overview and Itinerary
-  share this layout; only Map gives up the cover.
-- **Overview tab:** three flat figures, **cities, places, restaurants** (no number of days: the
-  header says it); then "Your itineraries": the active plan as a card (small cover, name, what it is, places,
-  restaurants, travel time, badge "Active") and the other proposal as a second card with no badge;
-  both fit on the first screen. Nothing else: no first days, no notes and reservations block.
-- **Itinerary tab (screen 12):** the same header, cover and tabs as Overview, then the trip's days
-  as a **timeline**: a dot on a thin rail, a small illustrated
-  thumbnail, "Day 3 · Wed 14 Mar", the town, "4 activities · 2 restaurants". A day opens the **Map
-  tab on that day**.
+- **A white sheet curves over the cover's lower edge** and holds the tabs: Overview, Map,
+  Photos, Documents. The tabs stay at the top when the page scrolls. Only Map gives
+  up the cover.
+- **Overview tab = the itinerary (screens 02, 12):** three compact figures in one line each,
+  **cities, places, restaurants** (icon, number, word; no number of days: the header says it);
+  **Optimize** when the plan has three stops; then the trip's days as a **timeline**: a dot on a
+  thin rail, a small illustrated thumbnail, "Day 3 · Wed 14 Mar", the town, "4 activities · 2
+  restaurants". A day opens the **Map tab on that day**. There is no "Your itineraries" block and no
+  separate Itinerary tab: the original proposals are in the trip menu and new ones in Trip settings.
 - **Map tab (screens 03, 14):** a compact header (small Back and menu buttons, the name) and the tabs close
   together, then the map (clipped to its area; the attribution "i" sits above the sheet's curve) of the day, then **the day pills**, then the day's stops. It uses the whole screen.
 - **Photos:** a planned feature.
@@ -182,14 +180,17 @@ not asked; it is the destination.
 - **Day pills sit under the map, above the stops** (screen 14): rounded pills, 44 dp tall, that share the width
   (and scroll sideways when there are many days), the chosen one dark with white text, in the stops' own type size. "Day 1" over
   "Thu, 12 Mar", or just "Day 1" when the trip has no dates; the text is **centred** in every pill.
+- **Coming back keeps your place.** Back from a stop's details returns to the same day and the
+  same selected stop (kept in the route), never to the first day.
 - **No day title above the stops.** The pills say which day it is; there is no "Day 3, Wed 14 Mar,
   8 visits, 2 meals, 4 h at the sights, 1 h travelling" block. A trip
   that moves between base cities shows the day's base city as one quiet line.
 - **A stop is a hairline row:** the time (start over end), a numbered disc that matches the map
   marker, the name in small bold, the **kind icon** and the kind and length in caption ("Attraction ·
-  2 h", "Lunch · Restaurant · 1 h"), a chevron to the place's details. The names are English where
-  the source has an English name; the local name is on the place's details. Selecting a stop tints its row and
-  highlights its marker, and the map moves to it; nothing opens under it. Lock and Remove are on the place's details.
+  2 h", "Restaurant · 1 h 15 min"), a chevron to the place's details. The names are English where
+  the source has an English name; the local name is on the place's details. Selecting a stop gives
+  its row a soft rounded tint (the list is 8 dp from the screen edge and a row pads its content by
+  12 dp, so the time, the disc and the chevron all have the same room) and highlights its marker, and the map moves to it; nothing opens under it. Lock and Remove are on the place's details.
 - **A journey to the next city whose time is not known** (into or out of Japan, ADR 024) reads
   "Travel from Tokyo · time not calculated: public transport is not built yet"; its transport marker
   stays, with no line to it.
@@ -221,15 +222,19 @@ A past trip's map uses the same markers: cities navy with a city icon, attractio
 
 ### Place detail (screen 04)
 
-Cover (only the Back button over it), then a white sheet whose top corners curve over its lower edge.
+Cover (only the Back button over it) that runs under the status bar to the top of the screen, like a
+trip's cover, with no fade over it; then a white sheet whose top corners curve over its lower edge.
 On it: the name the server resolved (ADR 025) and, under it in the muted small style, the original
 local name when it differs; a name Detour romanized itself adds "Automatically romanized" in italics;
 then "Edit display name" (a compact outlined button opening a one-line field with Save and Cancel; an
 edited name offers "Use the usual name"); one line with the kind icon,
-the kind and the town ("Attraction · Vienna"); two flat figures (as on the overview) for the day
-("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit"); one quiet line with the
+the kind and the town ("Attraction · Vienna"); two flat figures for the day
+("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit" or "Set by you"); one quiet line with the
 address (no label); for places to eat the kind and, when Photon gave one, the address (*ADR 026: the meal, venue and cuisine lines go*); slim icon pills Show
-on map, Lock, Remove and Add a document; the place's documents; the data source. No opening hours, no
+on map, **Edit length**, Lock, Remove and Add a document. Edit length opens one field (minutes or
+"1h30"), a "Default" pill that goes back to the usual length, Save and Cancel, and a live check: a
+length that runs into the next timed stop is a conflict and cannot be saved; too little time for
+the trip to the next stop, or an end after 20:00, is a warning that can be saved; the place's documents; the data source. No opening hours, no
 "why it is in the plan", no rating, price or description (CLAUDE.md rule 5).
 
 ### Proposals (screen 14)
@@ -251,6 +256,17 @@ has neither), "Add to Day 1" (a proposal is not edited).
 Add is contextual. On a trip: Place and Restaurant, with up to three suggested days or meal slots
 from the recalculation, each a hairline row with its reasons; the preview shows the diff before
 anything changes. Outside a trip it starts a new trip.
+
+**Add a place** is built from drop-downs (ADR 021, decisions 69 and 70): a compact header, slim
+tabs (Search, Address, Pin on map), and a boxed search field whose results open as one rounded list
+under it, grouped under small headings ("Sights", "Towns and cities"). Choosing a result closes the
+list and the field shows only the choice, with its kind and town; pressing it searches again. Then
+**How long**: one boxed field (minutes, or "1h30") and a pill for the default ("Typical length" for
+a sight; "Default · 2 h" for a town, 1 h for any other place); typing replaces the default. Then
+either "Find the best day" (dark, compact) with up to three suggested days, or, for "Choose day and
+time" and for an empty trip, a **Day drop-down**, a start time field and "Add to day N at HH:MM".
+Add a restaurant or café uses the same day drop-down and fields; its default pill is 1 h 15 min
+for a restaurant and 45 min for a café (*proposed*).
 
 ### Documents (screens 15, 16)
 
@@ -332,7 +348,7 @@ the screen reader announcing a screen's title on arrival.
   ("not recalculable"). Adding a place to an empty day by hand needs its own flow: choose the day,
   say how long to stay (a manual item has no default length), and place it by hand. It needs the
   owner's approval and an amendment to ADR 021 before it is built.
-- **Travel style and public transport** are stored nowhere. Using them needs a field on the trip
+- **Public transport** is stored nowhere (the travel-style choice was removed). Using it needs a field on the trip
   and a rule in the planner, with an ADR.
 - **Photos are not checked on a device.** The crop rule and the "Change photo" sheet are tested by
   component tests only; a look on a small phone and a tablet is still owed (brief, Part 2a).

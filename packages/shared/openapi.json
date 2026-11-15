@@ -6399,6 +6399,18 @@
             ],
             "title": "Duration Source"
           },
+          "default_duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Duration Minutes",
+            "description": "The length 'use the default' would give this stop; null when none is known"
+          },
           "origin": {
             "type": "string",
             "enum": [
@@ -6609,6 +6621,18 @@
               }
             ],
             "title": "Duration Minutes"
+          },
+          "use_default_duration": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Default Duration",
+            "description": "true: go back to the stop's default length (it is no longer marked as set by the user); wins over duration_minutes"
           },
           "locked": {
             "anyOf": [

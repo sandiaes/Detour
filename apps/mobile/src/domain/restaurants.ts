@@ -19,3 +19,7 @@ export function parseCoordinate(text: string, axis: "lat" | "lon"): number | nul
   const limit = axis === "lat" ? 90 : 180;
   return Math.abs(value) <= limit ? value : null;
 }
+
+/** The length offered first for a restaurant or café the user adds (ADR 026, proposed; the same
+ * numbers as the server's, which it uses when "default" is chosen). */
+export const VENUE_DEFAULT_MINUTES: Record<Venue, number> = { restaurant: 75, cafe: 45 };

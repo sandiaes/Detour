@@ -46,7 +46,6 @@ async function openTrip(client = server(), cache = createMemoryStore()) {
 test("two proposals are shown as two cards, and the comparison is one tap away", async () => {
   await openTrip();
   expect(await screen.findByRole("header", { name: "Choose your itinerary" })).toBeOnTheScreen();
-  expect(screen.getByText("Classic Vienna")).toBeOnTheScreen();
   expect(screen.getByText("Vienna & beyond")).toBeOnTheScreen();
   expect(screen.getByText("5 places")).toBeOnTheScreen();
   expect(screen.getByText("8 places")).toBeOnTheScreen();
@@ -67,8 +66,7 @@ test("selecting a plan opens the trip's overview on it, and Back from there goes
   const client = await openTrip();
   await fireEvent.press(await screen.findByRole("button", { name: "Select the Essentials plan" }));
   // The chosen plan is now the trip's active itinerary (ADR 021).
-  expect(await screen.findByRole("header", { name: "Your itineraries" })).toBeOnTheScreen();
-  expect(screen.getByText("Classic Vienna")).toBeOnTheScreen();
+  expect(await screen.findByTestId("day-row-1")).toBeOnTheScreen();
   const patch = client.calls.find((c) => c.method === "PATCH");
   expect(patch?.body).toEqual({ selected_itinerary_id: ESSENTIALS_ID });
   expect(patch?.params).toMatchObject({ trip_id: TRIP_ID });
