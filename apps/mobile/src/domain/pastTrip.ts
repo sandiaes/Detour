@@ -136,3 +136,22 @@ export function visitedPoints(visits: TripVisit[]): PastPoint[] {
     }))
     .sort((a, b) => Number(b.kind === "city") - Number(a.kind === "city"));
 }
+
+/** One colour per day, so a day's stops read together on the map and in the lists. They repeat
+ * after eight days; every use also says the day in words. Each is dark enough for a white edge. */
+export const DAY_COLORS = [
+  "#2b6b64",
+  "#d9772b",
+  "#3b6fd4",
+  "#8a52c4",
+  "#c8447a",
+  "#7a8b2a",
+  "#c4443a",
+  "#1f8fa3",
+] as const;
+
+export function dayColor(day: number): string {
+  const i =
+    ((((Math.trunc(day) || 1) - 1) % DAY_COLORS.length) + DAY_COLORS.length) % DAY_COLORS.length;
+  return DAY_COLORS[i] as string;
+}

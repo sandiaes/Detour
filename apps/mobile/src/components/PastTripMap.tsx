@@ -1,10 +1,10 @@
 import type { ClientConfig } from "@detour/shared";
 import { Camera, Map, Marker, type CameraRef } from "@maplibre/maplibre-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useProgressiveCount } from "../data/useProgressive";
-import { type PastPoint, VISIT_KIND_LABEL } from "../domain/pastTrip";
+import { type PastPoint, VISIT_KIND_LABEL, dayColor } from "../domain/pastTrip";
 import { boundsOf } from "../domain/itinerary";
 import { colors, radius, shadow, spacing, type } from "../theme";
 import { AttributionBar } from "./AttributionBar";
@@ -39,6 +39,11 @@ export function PastTripMap({ points, map, onShowList }: Props) {
   const [attempt, setAttempt] = useState(0);
   const [interactions, setInteractions] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const dayList = useMemo(
+    () =>
+      [...new Set(points.filter((p) => p.kind !== "city").map((p) => p.day))].sort((a, b) => a - b),
+    [points],
+  );
   const selected = points.find((p) => p.id === selectedId) ?? null;
 
   // Visits were cleared or restored: fit the camera to what is shown.
@@ -92,6 +97,7 @@ export function PastTripMap({ points, map, onShowList }: Props) {
                   <View
                     style={[
                       isCity ? styles.city : styles.attraction,
+                      !isCity && { backgroundColor: dayColor(p.day) },
                       selectedId === p.id && styles.selected,
                     ]}
                   >
@@ -139,25 +145,51 @@ export function PastTripMap({ points, map, onShowList }: Props) {
 
       <View style={styles.panel} accessibilityLiveRegion="polite">
         {selected ? (
-          <>
-            <Text style={styles.title}>{selected.name}</Text>
-            <Text style={styles.meta}>
-              {VISIT_KIND_LABEL[selected.kind]} · day {selected.day}
-            </Text>
-          </>
-        ) : (
-          <View style={styles.legend}>
-            <View style={styles.legendRow}>
-              <View style={[styles.city, styles.key]} />
-              <Text style={styles.legendText}>City</Text>
-              <View style={[styles.attraction, styles.key]} />
-              <Text style={styles.legendText}>Attraction</Text>
+          <View style={styles.selectedRow}>
+            <View
+              style={[
+                styles.selectedDot,
+                { backgroundColor: selected.kind === "city" ? colors.ink : dayColor(selected.day) },
+              ]}
+            >
+              <Icon
+                name={selected.kind === "city" ? "city" : "sight"}
+                size={16}
+                color={colors.onPrimary}
+              />
             </View>
-            <Text style={styles.meta}>Tap a marker for details.</Text>
-            <Text style={styles.legendText}>
-              Past trips keep the places, not the routes or travel times.
-            </Text>
+            <View style={styles.selectedText}>
+              <Text style={styles.title} numberOfLines={2}>
+                {selected.name}
+              </Text>
+              <Text style={styles.meta}>
+                {VISIT_KIND_LABEL[selected.kind]} · Day {selected.day}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close details"
+              hitSlop={12}
+              onPress={() => setSelectedId(null)}
+              style={styles.close}
+            >
+              <Icon name="close" size={18} color={colors.muted} />
+            </Pressable>
           </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.days}
+            accessibilityLabel="Colours by day"
+          >
+            {dayList.map((d) => (
+              <View key={d} style={styles.dayChip} accessible accessibilityLabel={`Day ${d}`}>
+                <View style={[styles.dayDot, { backgroundColor: dayColor(d) }]} />
+                <Text style={styles.legendText}>Day {d}</Text>
+              </View>
+            ))}
+          </ScrollView>
         )}
       </View>
     </View>
@@ -202,7 +234,6 @@ const styles = StyleSheet.create({
     borderRadius: SELECTED_SIZE / 2,
     backgroundColor: colors.markerSelected,
   },
-  key: { width: 14, height: 14, borderWidth: 1.5, shadowOpacity: 0, elevation: 0 },
   failure: {
     position: "absolute",
     top: spacing.md,
@@ -227,11 +258,23 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    gap: spacing.xxs,
+    minHeight: 64,
+    justifyContent: "center",
   },
-  title: { ...type.small, fontWeight: "700", color: colors.text },
+  title: { ...type.body, fontWeight: "700", color: colors.text },
   meta: { ...type.caption, color: colors.muted },
-  legend: { gap: spacing.xs },
-  legendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  selectedRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  selectedDot: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectedText: { flex: 1, gap: 1 },
+  close: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  days: { flexDirection: "row", gap: spacing.md, alignItems: "center" },
+  dayChip: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  dayDot: { width: 12, height: 12, borderRadius: 6 },
   legendText: { ...type.caption, color: colors.muted, flexShrink: 1 },
 });

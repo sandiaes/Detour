@@ -66,14 +66,14 @@ test("the map has no routes: no line layer, no source, no travel time anywhere",
   expect(maplibre.layers).toEqual([]);
   expect(maplibre.sources).toEqual({});
   expect(screen.queryByText(/walk|drive|routed|estimated/i)).toBeNull();
-  expect(screen.getByText(/Routes and travel times are not kept/)).toBeOnTheScreen();
+  expect(screen.queryByText(/Routes and travel times are not kept/)).toBeNull();
 });
 
 test("tapping a marker shows its name, kind and day", async () => {
   await open();
   await fireEvent.press(await screen.findByTestId("marker-v-leoben"));
   expect(screen.getAllByText("Leoben").length).toBeGreaterThan(0);
-  expect(screen.getByText("City · day 3")).toBeOnTheScreen();
+  expect(screen.getByText("City · Day 3")).toBeOnTheScreen();
 });
 
 test("the list is grouped by city, each city once, with the attractions by day", async () => {
@@ -124,21 +124,12 @@ test("a city can be cleared too", async () => {
   expect(client.count("PATCH /v1/trips/{trip_id}/visits/{visit_id}")).toBe(1);
 });
 
-test("the size of what is stored is shown", async () => {
-  await open();
-  expect(await screen.findByText(/Stored: 4\.5 kB\./)).toBeOnTheScreen();
-});
-
 test("a past trip needs no plan, route or travel-time request", async () => {
   const client = await open();
   await screen.findByText("2 cities and 3 attractions visited");
   await fireEvent.press(screen.getByRole("tab", { name: "Show the list by city" }));
   const paths = new Set(client.calls.map((c) => `${c.method} ${c.path}`));
-  expect([...paths].sort()).toEqual([
-    "GET /v1/trips",
-    "GET /v1/trips/{trip_id}/archive",
-    "GET /v1/trips/{trip_id}/visits",
-  ]);
+  expect([...paths].sort()).toEqual(["GET /v1/trips", "GET /v1/trips/{trip_id}/visits"]);
 });
 
 test("when every visit is skipped the map says so and offers the list", async () => {

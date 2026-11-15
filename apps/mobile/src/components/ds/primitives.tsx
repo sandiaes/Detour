@@ -119,7 +119,7 @@ export function Tabs<K extends string>({
         onPress={() => onChange(item.key)}
         testID={testID ? `${testID}-${item.key}` : undefined}
         hitSlop={compact ? { top: 4, bottom: 4 } : undefined}
-        style={[styles.tab, compact && styles.tabCompact, !scrollable && styles.tabFill]}
+        style={[styles.tab, compact && styles.tabCompact, !scrollable && styles.tabAuto]}
       >
         <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={1}>
           {text}
@@ -166,9 +166,11 @@ export function StatRow({ stats, compact = false }: { stats: Stat[]; compact?: b
           accessible
           accessibilityLabel={s.spoken ?? `${s.value} ${s.label.toLowerCase()}`}
         >
-          <Icon name={s.icon} size={compact ? 18 : 18} color={colors.primary} />
-          <Text style={[styles.statValue, compact && styles.statValueCompact]}>{s.value}</Text>
-          <Text style={[styles.statLabel, compact && styles.statLabelCompact]} numberOfLines={1}>
+          <View style={compact ? styles.statTop : styles.statStack}>
+            <Icon name={s.icon} size={18} color={colors.primary} />
+            <Text style={[styles.statValue, compact && styles.statValueCompact]}>{s.value}</Text>
+          </View>
+          <Text style={styles.statLabel} numberOfLines={1}>
             {s.label}
           </Text>
         </View>
@@ -343,9 +345,10 @@ const styles = StyleSheet.create({
 
   tabBar: { borderBottomWidth: 1, borderBottomColor: colors.border },
   tabScroll: { paddingHorizontal: spacing.lg, gap: spacing.lg },
-  tabRow: { flexDirection: "row", paddingHorizontal: 0, gap: 0 },
+  tabRow: { flexDirection: "row", justifyContent: "space-between", gap: 0 },
   tab: { minHeight: TOUCH, justifyContent: "flex-end", alignItems: "center" },
-  tabFill: { flex: 1 },
+  // Equal gutters at both edges, the same space between the labels: balanced, whatever their length.
+  tabAuto: { paddingHorizontal: spacing.xs },
   tabCompact: { minHeight: 40 },
   tabText: {
     ...type.small,
@@ -370,18 +373,14 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
     paddingVertical: spacing.md,
   },
-  // One line per figure: icon, number, word. Half the height of the stacked figure.
-  statCompact: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-  },
-  statValueCompact: { ...type.title },
+  // The original stacked figure, tighter: icon and number side by side, the word under them.
+  statCompact: { gap: 0, paddingVertical: spacing.sm },
+  statStack: { alignItems: "center", gap: spacing.xxs },
+  statTop: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  statValueCompact: { ...type.heading },
   statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.border },
   statValue: { ...type.title, color: colors.text },
   statLabel: { ...type.caption, color: colors.muted },
-  statLabelCompact: { ...type.small },
 
   sectionHead: {
     flexDirection: "row",

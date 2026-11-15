@@ -448,3 +448,7 @@ day thumbnails on the Overview carry no photo credit "i" (`Cover credit={false}`
 screen keeps it); the new-trip destination results use the shared drop-down list (`DropdownPanel`,
 `ChoiceRow`); the map centres on a day's single stop at zoom 14 instead of fitting an empty box;
 the four trip tabs fill the full width equally at the same text size.
+
+Further corrections the same day: tabs balanced at both edges, the map's tab line at the same height as the others,
+the Overview figures stacked and tighter, and the past trip without its two notes, with a colour per day on the map
+and in the Days and List tabs, and a cleaner marker panel.

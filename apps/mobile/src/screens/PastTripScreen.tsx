@@ -1,4 +1,4 @@
-import type { ArchiveInfo, Trip, TripVisit } from "@detour/shared";
+import type { Trip, TripVisit } from "@detour/shared";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -22,6 +22,7 @@ import { useResource } from "../data/DataProvider";
 import {
   type VisitGroup,
   VISIT_KIND_LABEL,
+  dayColor,
   dayRecord,
   groupVisitsByCity,
   stopRecordLine,
@@ -30,7 +31,7 @@ import {
 } from "../domain/pastTrip";
 import { useNavigation } from "../nav/Navigator";
 import { colors, spacing, type } from "../theme";
-import { formatBytes, formatDayLabel, formatTripSpan, pluralise } from "../util/format";
+import { formatDayLabel, formatTripSpan, pluralise } from "../util/format";
 
 type Row =
   | { type: "city"; key: string; group: VisitGroup }
@@ -74,9 +75,6 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const visits = useResource<TripVisit[]>(keys.visits(tripId), (c) =>
     call(c.GET("/v1/trips/{trip_id}/visits", { params: { path: { trip_id: tripId } } })),
-  );
-  const archive = useResource<ArchiveInfo>(keys.archive(tripId), (c) =>
-    call(c.GET("/v1/trips/{trip_id}/archive", { params: { path: { trip_id: tripId } } })),
   );
   const [view, setView] = useState<"map" | "days" | "list">("map");
   const [busy, setBusy] = useState<string | null>(null);
@@ -169,10 +167,6 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
         {counts.skipped > 0 ? (
           <Text style={styles.meta}>{pluralise(counts.skipped, "visit")} marked as skipped</Text>
         ) : null}
-        <Text style={styles.meta}>
-          Routes and travel times are not kept for past trips.
-          {archive.data ? ` Stored: ${formatBytes(archive.data.size_bytes)}.` : ""}
-        </Text>
       </View>
       <RowGroup>
         <ListRow
@@ -260,9 +254,14 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
         }
         renderItem={({ item }) =>
           item.type === "day" ? (
-            <Text accessibilityRole="header" style={styles.dayHeading}>
-              {formatDayLabel(item.startDate, item.day)}
-            </Text>
+            <View style={styles.dayHeadRow}>
+              <View style={[styles.dayBadge, { backgroundColor: dayColor(item.day) }]}>
+                <Text style={styles.dayBadgeText}>{item.day}</Text>
+              </View>
+              <Text accessibilityRole="header" style={styles.dayHeading}>
+                {formatDayLabel(item.startDate, item.day)}
+              </Text>
+            </View>
           ) : item.type === "city" ? (
             <CityHeader
               group={item.group}
@@ -377,11 +376,22 @@ function VisitRow({
 }) {
   return (
     <View style={styles.visitRow}>
-      <KindIcon
-        kind={visit.kind === "city" ? "other" : visit.kind}
-        size={16}
-        color={visit.confirmed ? undefined : colors.muted}
-      />
+      <View
+        style={[
+          styles.visitIcon,
+          {
+            backgroundColor: visit.confirmed
+              ? `${dayColor(visit.day_number)}1f`
+              : colors.surfaceMuted,
+          },
+        ]}
+      >
+        <KindIcon
+          kind={visit.kind === "city" ? "other" : visit.kind}
+          size={16}
+          color={visit.confirmed ? dayColor(visit.day_number) : colors.muted}
+        />
+      </View>
       <View style={styles.rowText}>
         <Text style={[styles.visitName, !visit.confirmed && styles.skipped]}>{visit.name}</Text>
         <Text style={styles.meta}>
@@ -414,30 +424,53 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  // A row is an icon on a soft tile in the day's colour, the name and a quiet line, and a small
+  // outlined action: no boxes, one hairline between rows.
   visitRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    marginLeft: spacing.lg + 2,
+    marginLeft: spacing.lg,
     paddingRight: spacing.lg,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  dayHeading: {
-    ...type.body,
-    fontWeight: "700",
-    color: colors.text,
-    marginTop: spacing.md,
+  visitIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayHeadRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: spacing.lg,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs,
+    paddingBottom: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  dayBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayBadgeText: { ...type.caption, fontWeight: "700", color: colors.onPrimary },
+  dayHeading: { ...type.body, fontWeight: "700", color: colors.text },
   rowText: { flex: 1, gap: 1 },
   cityName: { ...type.body, fontWeight: "700", color: colors.text },
   visitName: { ...type.small, fontWeight: "600", color: colors.text },
-  action: { minHeight: 48, minWidth: 56, alignItems: "center", justifyContent: "center" },
+  action: {
+    minHeight: 48,
+    minWidth: 56,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   actionInactive: { opacity: 0.55 },
   actionText: { ...type.small, fontWeight: "600", color: colors.primary },
   // Skipped is also written in the line below the name: never colour or strike-through alone.

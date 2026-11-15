@@ -551,7 +551,7 @@ export function TripOverviewScreen({
           onPress={() => setMenu(true)}
         />
       </View>
-      {tabsFor(true)}
+      {tabsFor(false)}
     </View>
   );
 
