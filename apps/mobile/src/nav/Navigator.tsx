@@ -63,6 +63,7 @@ export type Route =
     }
   /** Optimize a plan's order of stops (ADR 029). */
   | { name: "optimize"; tripId: string; itineraryId: string }
+  | { name: "stays"; tripId: string }
   /** `day`: the day that was open, where "Choose day and time" starts (day 1 when none). */
   | { name: "addPlace"; tripId: string; itineraryId: string; day?: number }
   | { name: "addRestaurant"; tripId: string; itineraryId: string; day?: number }

@@ -332,6 +332,27 @@ export function TransferRow({ row }: { row: Extract<DayRow, { kind: "transfer" }
   );
 }
 
+/** The morning at the stay (ADR 030), written into a hairline like the travel between stops. */
+export function StartRow({ day }: { day: Day }) {
+  const start = day.start;
+  if (!start) return null;
+  const to = day.items.find((i) => i.id === start.to_item_id);
+  const text = `${modeLabel(start.mode)} from ${start.name} · ${formatSeconds(start.seconds)} · ${formatMeters(start.meters)}`;
+  const label =
+    `${modeLabel(start.mode)} from your stay, ${start.name}${to ? ` to ${to.display_name}` : ""}, ` +
+    `${formatSeconds(start.seconds)}, ${formatMeters(start.meters)}, ${confidenceLabel(start.confidence)}` +
+    (start.confidence === "routed" ? "." : ", a straight-line estimate and not a measured route.");
+  return (
+    <View style={styles.transfer} accessible accessibilityLabel={label} testID="stay-start">
+      <Icon name="home" size="xs" color={colors.muted} />
+      <Text style={styles.transferText} numberOfLines={2}>
+        {text}
+      </Text>
+      <View style={styles.transferLine} />
+    </View>
+  );
+}
+
 /** A day's stops in time order. Plain views: a day has at most 40 stops. */
 export function DayPlanList({
   day,
@@ -366,6 +387,7 @@ export function DayPlanList({
           />
         </View>
       ) : null}
+      <StartRow day={day} />
       {rows.length === 0 ? <Text style={styles.empty}>Nothing is planned on this day.</Text> : null}
       {rows.map((row) =>
         row.kind === "item" ? (

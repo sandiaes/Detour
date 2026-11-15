@@ -37,6 +37,9 @@ class SequencingProblem:
     travel_weight: int
     # Per-day limits overriding day_minutes (one entry per day), or None.
     day_limits: tuple[int, ...] | None = None
+    # Minutes from each day's stay to each node (one row per day), or None without stays (ADR 030):
+    # a day's travel then also counts the leg from its stay to its first visit.
+    start_travel: tuple[tuple[int, ...], ...] | None = None
 
     def limit(self, k: int) -> int:
         return self.day_minutes if self.day_limits is None else self.day_limits[k]
@@ -54,6 +57,7 @@ class _State:
     def __init__(self, p: SequencingProblem) -> None:
         self.p = p
         self.T = p.travel
+        self.S = p.start_travel
         self.routes: list[list[int]] = [[] for _ in range(p.days)]
         self.length = [0] * p.days  # visit minutes + travel minutes of each day
         # Nodes that can fit in a day at all, best value first, then index.
@@ -66,29 +70,34 @@ class _State:
 
     # -- route arithmetic ----------------------------------------------------------------------
 
-    def route_travel(self, r: list[int]) -> int:
-        T = self.T
-        return sum(T[a][b] for a, b in itertools.pairwise(r))
+    def head(self, k: int, v: int) -> int:
+        """Minutes from day ``k``'s stay to node ``v`` (0 without stays)."""
+        return 0 if self.S is None else self.S[k][v]
 
-    def ins_delta(self, r: list[int], pos: int, v: int) -> int:
+    def route_travel(self, r: list[int], k: int) -> int:
+        T = self.T
+        total = sum(T[a][b] for a, b in itertools.pairwise(r))
+        return total + self.head(k, r[0]) if r else total
+
+    def ins_delta(self, r: list[int], pos: int, v: int, k: int) -> int:
         T = self.T
         if not r:
-            return 0
+            return self.head(k, v)
         if pos == 0:
-            return T[v][r[0]]
+            return T[v][r[0]] + self.head(k, v) - self.head(k, r[0])
         if pos == len(r):
             return T[r[-1]][v]
         a, b = r[pos - 1], r[pos]
         return T[a][v] + T[v][b] - T[a][b]
 
-    def rem_delta(self, r: list[int], i: int) -> int:
+    def rem_delta(self, r: list[int], i: int, k: int) -> int:
         """Travel minutes saved by removing r[i]."""
         T = self.T
         n = len(r)
         if n == 1:
-            return 0
+            return self.head(k, r[0])
         if i == 0:
-            return T[r[0]][r[1]]
+            return T[r[0]][r[1]] + self.head(k, r[0]) - self.head(k, r[1])
         if i == n - 1:
             return T[r[-2]][r[-1]]
         return T[r[i - 1]][r[i]] + T[r[i]][r[i + 1]] - T[r[i - 1]][r[i + 1]]
@@ -104,7 +113,7 @@ class _State:
         r = self.routes[k]
         best: tuple[int, int] | None = None
         for pos in range(len(r) + 1):
-            delta = self.ins_delta(r, pos, v)
+            delta = self.ins_delta(r, pos, v, k)
             if not self.fits(k, self.length[k] + p.duration[v] + delta):
                 continue
             gain = p.value[v] - p.travel_weight * delta
@@ -129,7 +138,7 @@ class _State:
             if choice is None:
                 break
             _, v, k, pos = choice
-            self.length[k] += self.p.duration[v] + self.ins_delta(self.routes[k], pos, v)
+            self.length[k] += self.p.duration[v] + self.ins_delta(self.routes[k], pos, v, k)
             self.routes[k].insert(pos, v)
             self.unplanned.discard(v)
             del cache[v]
@@ -146,11 +155,11 @@ class _State:
             again = True
             while again:
                 again = False
-                base = self.route_travel(r)
+                base = self.route_travel(r, k)
                 for i in range(len(r) - 1):
                     for j in range(i + 1, len(r)):
                         cand = r[:i] + r[i : j + 1][::-1] + r[j + 1 :]
-                        t = self.route_travel(cand)
+                        t = self.route_travel(cand, k)
                         if t < base and self.fits(k, self.length[k] - base + t):
                             self.length[k] += t - base
                             r[:] = cand
@@ -164,14 +173,14 @@ class _State:
         p = self.p
         for k, r in enumerate(self.routes):
             for i, v in enumerate(r):
-                saved = self.rem_delta(r, i)
+                saved = self.rem_delta(r, i, k)
                 rest = r[:i] + r[i + 1 :]
                 for k2 in range(p.days):
                     target = rest if k2 == k else self.routes[k2]
                     for pos in range(len(target) + 1):
                         if k2 == k and pos == i:
                             continue
-                        cost = self.ins_delta(target, pos, v)
+                        cost = self.ins_delta(target, pos, v, k2)
                         if cost >= saved:
                             continue
                         if k2 == k:
@@ -207,7 +216,7 @@ class _State:
                     if p.value[v] <= p.value[a]:
                         continue
                     cand = [*r[:i], v, *r[i + 1 :]]
-                    d_travel = self.route_travel(cand) - self.route_travel(r)
+                    d_travel = self.route_travel(cand, k) - self.route_travel(r, k)
                     gain = p.value[v] - p.value[a] - p.travel_weight * d_travel
                     new_len = self.length[k] - p.duration[a] + p.duration[v] + d_travel
                     if gain > 0 and self.fits(k, new_len):

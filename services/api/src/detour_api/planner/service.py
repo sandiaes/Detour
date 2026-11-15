@@ -7,6 +7,7 @@
 
 import time
 import uuid
+from dataclasses import replace
 
 import structlog
 
@@ -18,10 +19,11 @@ from detour_api.planner.config import DEFAULT_CONFIG, PlannerConfig
 from detour_api.planner.reasons import issue_text
 from detour_api.planner.sequencer import HeuristicSequencer
 from detour_api.planner.travel import ServiceTravelSource
-from detour_api.planner.types import PlanInvalid, PlanningImpossible
-from detour_api.repo import planning
+from detour_api.planner.types import PlanInvalid, PlanningImpossible, StayPoint
+from detour_api.repo import planning, stays
 from detour_api.settings import Settings
 from detour_api.travel.service import TravelTimeService
+from detour_api.travel.types import Coord
 
 log = structlog.get_logger("detour.planner")
 
@@ -36,6 +38,12 @@ def generate_for_trip(
     started = time.perf_counter()
     with session.tx() as conn:
         context = planning.load_context(conn, session.installation_id, trip_id, config)
+        # Where the traveller sleeps: each day then starts there (ADR 030).
+        points = tuple(
+            StayPoint(s.first_day, s.last_day, Coord.from_degrees(s.lat, s.lon))
+            for s in stays.list_for_trip(conn, trip_id)
+        )
+        context = replace(context, request=replace(context.request, stays=points))
     loaded = time.perf_counter()
 
     sequencer = HeuristicSequencer()

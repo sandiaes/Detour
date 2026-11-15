@@ -24,6 +24,7 @@ export const keys = {
   versions: (id: string) => `versions:${id}`,
   visits: (tripId: string) => `visits:${tripId}`,
   archive: (tripId: string) => `archive:${tripId}`,
+  stays: (tripId: string) => `stays:${tripId}`,
 };
 
 function toSummary(itinerary: Itinerary): ItinerarySummary {

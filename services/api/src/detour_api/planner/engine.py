@@ -21,7 +21,7 @@ two runs with the same data is what the travel source returns, and every transfe
 kind of value it is.
 """
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from typing import Any
@@ -46,6 +46,7 @@ from detour_api.planner.types import (
     PlanningImpossible,
     PlanRequest,
     PlanStats,
+    StayPoint,
 )
 from detour_api.planner.validator import validate_generation, validate_plan
 from detour_api.travel.types import Coord, TravelTime
@@ -138,6 +139,7 @@ class _Segment:
 class _ProfilePlan:
     profile: Profile
     segments: list[_Segment]
+    stays: tuple[StayPoint, ...] = ()
 
     def ids(self) -> frozenset[str]:
         return frozenset(p for s in self.segments for r in s.routes for p in r)
@@ -158,6 +160,9 @@ class _LaidOutDay:
     layout: DayLayout
     removed: int
     arrival_unknown: bool = False
+    # From the day's stay to its first visit (ADR 030): the day's first visit starts that long
+    # after the day does.
+    start_cell: Cell | None = None
 
 
 def generate(
@@ -197,6 +202,8 @@ def generate(
         _scope(request, profile, by_id, eligible, lookup, config) for profile in config.profiles
     ]
     _check_possible(request, states, config)
+    for state in states:
+        state.stays = request.stays
 
     # The sparse cell set of every base's candidates, read from the cache only.
     near: dict[str, list[str]] = {}
@@ -212,6 +219,8 @@ def generate(
         ((by_id[a].coord, by_id[b].coord) for a in sorted(near) for b in near[a]),
         use_provider=False,
     )
+    if request.stays:
+        lookup.fetch(_stay_cells(states, request.stays), use_provider=False)
 
     first, second = states
     _solve(first, lookup, sequencer, config, {})
@@ -502,6 +511,7 @@ def _solve(
     is shorter by the drive), the others fullest first."""
     budget = config.visit_budget(state.profile)
     taken: set[str] = set()  # planned at an earlier stop of the same city (multi-city trips)
+    offset = 0  # the days before this segment
     for seg in state.segments:
         items = [s for s in seg.pool.items if s.candidate.place_id not in taken]
         ids = tuple(s.candidate.place_id for s in items)
@@ -515,6 +525,24 @@ def _solve(
         limits = [budget] * seg.days
         if arrival is not None:
             limits[0] = max(0, budget - minutes(arrival[0].seconds))
+        # With stays, a day's travel also counts the leg from its stay to its first visit. The
+        # day of a drive to a new base starts from that drive instead.
+        start_travel: tuple[tuple[int, ...], ...] | None = None
+        has_stays = any(_stay_of(state.stays, offset + k + 1) for k in range(seg.days))
+        if has_stays:
+            rows = []
+            for k in range(seg.days):
+                stay = (
+                    None
+                    if (k == 0 and arrival is not None)
+                    else _stay_of(state.stays, offset + k + 1)
+                )
+                rows.append(
+                    tuple(0 for _ in coords)
+                    if stay is None
+                    else tuple(minutes(lookup.get(stay.coord, c).seconds) for c in coords)
+                )
+            start_travel = tuple(rows)
         problem = SequencingProblem(
             ids=ids,
             value=values,
@@ -524,12 +552,15 @@ def _solve(
             day_minutes=budget,
             travel_weight=state.profile.travel_weight,
             day_limits=tuple(limits),
+            start_travel=start_travel,
         )
         routes = [[ids[i] for i in r] for r in sequencer.solve(problem)]
         head = routes[:1] if arrival is not None else []
         rest = routes[1:] if arrival is not None else routes
-        seg.routes = head + _canonical_days(rest, seg.pool.value)
+        # Days with stays are not interchangeable: they keep the order of their days.
+        seg.routes = head + (rest if has_stays else _canonical_days(rest, seg.pool.value))
         taken.update(p for r in seg.routes for p in r)
+        offset += seg.days
 
 
 def _canonical_days(routes: list[list[str]], value: dict[str, int]) -> list[list[str]]:
@@ -552,13 +583,15 @@ def _fit_day(
     config: PlannerConfig,
     profile: Profile,
     start: int,
+    head_of: Callable[[str], int] | None = None,
 ) -> tuple[list[str], DayLayout, int]:
     """The route with its lowest-value visits removed until the day fits (only needed when routed
     times are longer than the times it was planned with)."""
     route = list(route)
     removed = 0
     while True:
-        layout = lay_out_day(route, by_id, lookup, config, profile, start)
+        shift = head_of(route[0]) if head_of is not None and route else 0
+        layout = lay_out_day(route, by_id, lookup, config, profile, start + shift)
         if layout is not None:
             return route, layout, removed
         drop = min(route, key=lambda p: (value[p], p))
@@ -574,13 +607,20 @@ def _lay_out(
 ) -> list[_LaidOutDay]:
     out: list[_LaidOutDay] = []
     value = state.value()
+    number = 0
     for seg in state.segments:
         arrival = _arrival(seg, lookup)
         for n, route in enumerate(seg.routes):
+            number += 1
             leg = arrival if n == 0 else None
             start = config.day_start_minute + (minutes(leg[0].seconds) if leg else 0)
+            stay = None if leg else _stay_of(state.stays, number)
+            head_of = _head_of(stay, by_id, lookup)
             fitted, layout, removed = _fit_day(
-                route, value, by_id, lookup, config, state.profile, start
+                route, value, by_id, lookup, config, state.profile, start, head_of
+            )
+            start_cell = (
+                (stay.coord, by_id[fitted[0]].coord) if stay is not None and fitted else None
             )
             out.append(
                 _LaidOutDay(
@@ -591,15 +631,48 @@ def _lay_out(
                     layout=layout,
                     removed=removed,
                     arrival_unknown=seg.unknown_arrival and n == 0,
+                    start_cell=start_cell,
                 )
             )
     return out
+
+
+def _stay_of(stays: Sequence[StayPoint], day: int) -> StayPoint | None:
+    return next((s for s in stays if s.first_day <= day <= s.last_day), None)
+
+
+def _head_of(
+    stay: StayPoint | None, by_id: dict[str, Candidate], lookup: TravelLookup
+) -> Callable[[str], int] | None:
+    if stay is None:
+        return None
+
+    def head(place_id: str) -> int:
+        return minutes(lookup.get(stay.coord, by_id[place_id].coord).seconds)
+
+    return head
+
+
+def _stay_cells(states: list[_ProfilePlan], stays: Sequence[StayPoint]) -> list[Cell]:
+    """Each stay to every candidate of the segments whose days it covers (read from the cache)."""
+    cells: set[Cell] = set()
+    for state in states:
+        offset = 0
+        for seg in state.segments:
+            for k in range(seg.days):
+                stay = _stay_of(stays, offset + k + 1)
+                if stay is not None:
+                    cells.update((stay.coord, s.candidate.coord) for s in seg.pool.items)
+            offset += seg.days
+    return sorted(cells)
 
 
 def _day_cells(day: _LaidOutDay) -> list[Cell]:
     cells = list(day.layout.cells)
     if day.arrival_cell is not None:
         cells.append(day.arrival_cell)
+    if day.start_cell is not None:
+        cells.append(day.start_cell)
     return cells
 
 

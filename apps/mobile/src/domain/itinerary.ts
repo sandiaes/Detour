@@ -241,3 +241,33 @@ export function transportFeature(point: TransportPoint): TransferFeature | null 
     geometry: { type: "LineString", coordinates: [point.fromLngLat, point.lngLat] },
   };
 }
+
+/** Where the traveller sleeps on a day (ADR 030), as a point on the map. */
+export type StayPoint = {
+  id: string;
+  name: string;
+  lngLat: [number, number];
+  start: NonNullable<Day["start"]>;
+};
+
+export const stayId = (day: Day) => `stay-${day.id}`;
+
+/** The day's stay, when the plan says where it starts. Not a numbered stop. */
+export function stayPoint(day: Day): StayPoint | null {
+  const start = day.start;
+  if (!start) return null;
+  return { id: stayId(day), name: start.name, lngLat: [start.lon, start.lat], start };
+}
+
+/** The morning leg from the stay to the day's first stop with a place, as a line. */
+export function stayFeature(day: Day): TransferFeature | null {
+  const stay = stayPoint(day);
+  const first = stay ? mapPoints(day).find((p) => p.id === stay.start.to_item_id) : undefined;
+  if (!stay || !first) return null;
+  return {
+    type: "Feature",
+    id: stay.id,
+    properties: { confidence: stay.start.confidence, mode: stay.start.mode },
+    geometry: { type: "LineString", coordinates: [stay.lngLat, first.lngLat] },
+  };
+}

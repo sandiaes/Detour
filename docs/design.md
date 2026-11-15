@@ -469,6 +469,17 @@ preview ("Change your cities?", the diff, and a note naming what leaves with a r
 "added by you" or "locked"); without one it is "Save cities". Proposals made for the earlier cities
 say "Made for the trip's earlier cities" and their "Choose this itinerary" is disabled.
 
+### Where you're staying (ADR 030)
+
+Trip menu, "Where you're staying": a compact header, one line on what a stay does, the stays as
+hairline rows (a house icon, the name, "Day 1" or "Days 2 to 3"), **Add a stay** (`primary`). The form
+searches a hotel, apartment or address (Photon through the server) or takes a name and coordinates,
+then **From** and **To** day steppers (the first days that have no stay); Save, Cancel and, when
+editing, a red ghost "Remove this stay" with a confirmation sheet. On the map a stay is a navy
+rounded-square house mark (not numbered) with a line to the day's first stop, and the key says "Your
+stay". The day list opens with a hairline row, house icon first: "Walk from Hotel Alpen · 10 min ·
+800 m". No leg back at night.
+
 ### Trip settings, Export, Import, Settings, Image credits
 
 Pushed screens with a `ScreenHeader` and the 16 dp gutter. **Trip settings** is flat `Section`s

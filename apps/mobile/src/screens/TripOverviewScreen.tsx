@@ -486,6 +486,17 @@ export function TripOverviewScreen({
             }}
           />
         )}
+        <ListRow
+          inset="none"
+          icon="home"
+          title="Where you're staying"
+          detail="Each day starts at your stay"
+          testID="menu-stays"
+          onPress={() => {
+            setMenu(false);
+            nav.push({ name: "stays", tripId });
+          }}
+        />
         {optimizable ? (
           <ListRow
             inset="none"
