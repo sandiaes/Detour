@@ -87,7 +87,13 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
   // Another day: fit the camera to its stops.
   useEffect(() => {
     if (!bounds || status !== "loaded") return;
-    camera.current?.fitBounds(bounds, { padding: PADDING, duration: 400 });
+    // One stop (or stops on one spot) gives an empty box: fitting it would zoom to the limit, so
+    // centre on it at a street-level zoom instead.
+    if (bounds[0] === bounds[2] && bounds[1] === bounds[3]) {
+      camera.current?.easeTo({ center: [bounds[0], bounds[1]], zoom: 14, duration: 400 });
+    } else {
+      camera.current?.fitBounds(bounds, { padding: PADDING, duration: 400 });
+    }
   }, [day.id, bounds, status]);
 
   // A stop chosen in the list: bring it into view.

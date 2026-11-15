@@ -144,6 +144,7 @@ function DayTimeline({
                 photo={firstPhoto(day)}
                 height={56}
                 rounded={radius.sm + 2}
+                credit={false}
                 style={styles.thumb}
               />
               <View style={styles.dayText}>
@@ -518,7 +519,6 @@ export function TripOverviewScreen({
       items={TRIP_SECTIONS}
       value={section}
       onChange={setSection}
-      scrollable
       compact={compact}
       testID="trip-sections"
     />

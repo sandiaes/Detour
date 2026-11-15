@@ -15,6 +15,7 @@ import {
   stopsProblem,
 } from "../components/StopList";
 import { Icon } from "../components/ds/Icon";
+import { ChoiceRow, DropdownPanel } from "../components/ds/Dropdown";
 import { IconButton } from "../components/ds/primitives";
 import { Notice, useAnnounceOnMount } from "../components/ui";
 import { useTripActions } from "../data/actions";
@@ -668,20 +669,17 @@ function ResultRow({ r, onChoose }: { r: Choice; onChoose: (r: Choice) => void }
   const reason = notPlannableReason(r);
   const kind = r.kind === "city" ? "City" : r.kind === "area" ? "Area" : "Place";
   return (
-    <Pressable
+    <ChoiceRow
       testID={`destination-result-${r.ref}`}
-      accessibilityRole="button"
+      icon={r.kind === "city" ? "city" : "pin"}
+      title={r.name}
+      meta={[`${kind}${describeResult(r) ? ` · ${describeResult(r)}` : ""}`, reason]
+        .filter(Boolean)
+        .join(" · ")}
+      selected={false}
       accessibilityLabel={`${r.name}${describeResult(r) ? `, ${describeResult(r)}` : ""}. ${kind}.${reason ? ` ${reason}` : ""}`}
       onPress={() => onChoose(r)}
-      style={({ pressed }) => [styles.result, pressed && styles.pressed]}
-    >
-      <Text style={styles.resultName}>{r.name}</Text>
-      <Text style={styles.resultMeta}>
-        {kind}
-        {describeResult(r) ? ` · ${describeResult(r)}` : ""}
-      </Text>
-      {reason ? <Text style={styles.reason}>{reason}</Text> : null}
-    </Pressable>
+    />
   );
 }
 
@@ -734,12 +732,16 @@ function SearchResults({
           Nothing in the imported data matches “{query}”. Search more widely to find any place.
         </Text>
       ) : null}
-      {search.results.map((r) => (
-        <ResultRow key={`${r.kind}:${r.ref}`} r={r} onChoose={onChoose} />
-      ))}
-      {more.map((r) => (
-        <ResultRow key={r.ref} r={r} onChoose={onChoose} />
-      ))}
+      {search.results.length + more.length > 0 ? (
+        <DropdownPanel testID="destination-results">
+          {search.results.map((r) => (
+            <ResultRow key={`${r.kind}:${r.ref}`} r={r} onChoose={onChoose} />
+          ))}
+          {more.map((r) => (
+            <ResultRow key={r.ref} r={r} onChoose={onChoose} />
+          ))}
+        </DropdownPanel>
+      ) : null}
       {wide === "none" ? <Text style={styles.hint}>No wider result for “{query}”.</Text> : null}
       {wide === "unavailable" ? (
         <Text style={styles.hint}>
@@ -817,18 +819,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
-  results: { gap: 0 },
-  result: {
-    minHeight: TOUCH + 8,
-    borderBottomWidth: RULE,
-    borderBottomColor: colors.border,
-    paddingVertical: spacing.md,
-    gap: 2,
-  },
-  resultDisabled: { opacity: 0.7 },
+  results: { gap: spacing.sm },
   pressed: { opacity: 0.85 },
-  resultName: { ...type.heading, color: colors.text },
-  resultMeta: { ...type.small, color: colors.muted },
   reason: { ...type.small, color: colors.errorText, fontWeight: "600" },
 
   transportRow: {
