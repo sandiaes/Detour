@@ -4,24 +4,26 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
-import { IconButton, Tabs } from "../components/ds/primitives";
-import { PlanDayView } from "../components/plan/DayPlan";
-import { ResourceNotices } from "../components/ResourceNotices";
 import {
+  Badge,
+  Button,
   CompactHeader,
   ErrorState,
+  IconButton,
   LoadingState,
   Notice,
-  PlanNotes,
+  Tabs,
   WakingServer,
-} from "../components/ui";
+} from "../components/ds";
+import { PlanDayView } from "../components/plan/DayPlan";
+import { PlanNotes } from "../components/plan/PlanNotes";
+import { ResourceNotices } from "../components/ResourceNotices";
 import { keys, useTripActions } from "../data/actions";
 import { useItemActions } from "../data/itemActions";
 import { useResource } from "../data/DataProvider";
 import { PROFILE_LABEL, planNames } from "../domain/compare";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { colors, radius, spacing, type } from "../theme";
+import { border, colors, layout, spacing } from "../theme";
 import { pluralise } from "../util/format";
 
 export { arrivalText, dayTitle, dayTotalsText } from "../components/plan/DayPlan";
@@ -135,14 +137,18 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
             icon="settings"
             label="Trip settings"
             hint="Ask for new proposals or delete the trip"
-            compact
+            size="sm"
             testID="trip-settings"
             onPress={() => nav.push({ name: "tripSettings", tripId: route.tripId })}
           />
         }
       />
-      <ResourceNotices resource={itinerary} noun="this plan" />
-      {error ? <Notice tone="error">{error}</Notice> : null}
+      <ResourceNotices resource={itinerary} noun="this plan" inset />
+      {error ? (
+        <Notice inset tone="error">
+          {error}
+        </Notice>
+      ) : null}
       <Tabs<"days" | "map">
         items={[
           { key: "map", label: "Map", accessibilityLabel: "Show the map" },
@@ -159,7 +165,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
             label="Add a place"
             icon="sight"
             variant="secondary"
-            size="compact"
+            size="sm"
             testID="add-place"
             hint="Search or drop a pin; you see what would change first"
             onPress={() =>
@@ -170,7 +176,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
             label="Add a restaurant"
             icon="restaurant"
             variant="secondary"
-            size="compact"
+            size="sm"
             testID="add-restaurant"
             hint="Search or enter a restaurant; Detour suggests the best day and meal"
             onPress={() =>
@@ -189,7 +195,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
   const notes = (
     <View>
       {estimatedNote ? (
-        <Notice tone="info" label="About travel times">
+        <Notice inset tone="info" label="About travel times">
           {estimatedNote}
         </Notice>
       ) : null}
@@ -222,11 +228,12 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
       {/* The choice is always at hand, under the map and the stops (reference screen 14). */}
       <View style={styles.choose}>
         {selected ? (
-          <Text style={styles.selectedBadge}>✓ Selected</Text>
+          <View style={styles.selected}>
+            <Badge label="Selected" tone="primary" icon="check" />
+          </View>
         ) : (
           <Button
             label="Choose this itinerary"
-            variant="ink"
             fill
             testID="choose-itinerary"
             accessibilityLabel={`Select the ${label} plan`}
@@ -245,26 +252,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.gutter,
     paddingVertical: spacing.sm,
     flexWrap: "wrap",
   },
   choose: {
-    padding: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingVertical: spacing.md,
+    paddingHorizontal: layout.gutter,
+    borderTopWidth: border.hairline,
     borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
-  selectedBadge: {
-    textAlign: "center",
-    ...type.small,
-    fontWeight: "700",
-    color: colors.primary,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    overflow: "hidden",
-  },
+  selected: { alignItems: "center", minHeight: 44, justifyContent: "center" },
 });

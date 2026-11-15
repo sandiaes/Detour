@@ -1,28 +1,34 @@
 import type { Trip, TripVisit } from "@detour/shared";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
 import { useBackend } from "../api/BackendProvider";
-import { Icon } from "../components/ds/Icon";
-import { KindIcon } from "../components/ds/KindIcon";
-import { IconButton, ListRow, RowGroup, Tabs } from "../components/ds/primitives";
-import { PastTripMap } from "../components/PastTripMap";
-import { ResourceNotices } from "../components/ResourceNotices";
 import {
+  Button,
   CompactHeader,
   EmptyState,
   ErrorState,
+  Icon,
+  IconButton,
+  KindIcon,
+  ListRow,
   LoadingState,
   Notice,
+  RowGroup,
+  StopMark,
+  Tabs,
   WakingServer,
-} from "../components/ui";
+} from "../components/ds";
+import { PastTripMap } from "../components/PastTripMap";
+import { ResourceNotices } from "../components/ResourceNotices";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import {
   type VisitGroup,
   VISIT_KIND_LABEL,
   dayColor,
+  daySoft,
   dayRecord,
   groupVisitsByCity,
   stopRecordLine,
@@ -30,7 +36,7 @@ import {
   visitedPoints,
 } from "../domain/pastTrip";
 import { useNavigation } from "../nav/Navigator";
-import { colors, spacing, type } from "../theme";
+import { border, colors, layout, radius, size as sizes, spacing, type, weight } from "../theme";
 import { formatDayLabel, formatTripSpan, pluralise } from "../util/format";
 
 type Row =
@@ -156,7 +162,7 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
             icon="settings"
             label="Trip settings"
             hint="Mark as past, ask for new proposals or delete the trip"
-            compact
+            size="sm"
             testID="trip-settings"
             onPress={() => nav.push({ name: "tripSettings", tripId })}
           />
@@ -184,8 +190,12 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
           onPress={() => nav.push({ name: "exportTrips", tripId })}
         />
       </RowGroup>
-      <ResourceNotices resource={visits} noun="this trip" />
-      {problem ? <Notice tone="error">{problem}</Notice> : null}
+      <ResourceNotices resource={visits} noun="this trip" inset />
+      {problem ? (
+        <Notice inset tone="error">
+          {problem}
+        </Notice>
+      ) : null}
       <Tabs<"map" | "days" | "list">
         items={[
           { key: "map", label: "Map", accessibilityLabel: "Show the map" },
@@ -255,9 +265,7 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
         renderItem={({ item }) =>
           item.type === "day" ? (
             <View style={styles.dayHeadRow}>
-              <View style={[styles.dayBadge, { backgroundColor: dayColor(item.day) }]}>
-                <Text style={styles.dayBadgeText}>{item.day}</Text>
-              </View>
+              <StopMark kind="sight" label={item.day} color={dayColor(item.day)} />
               <Text accessibilityRole="header" style={styles.dayHeading}>
                 {formatDayLabel(item.startDate, item.day)}
               </Text>
@@ -296,29 +304,19 @@ function ToggleButton({
   disabled: boolean;
   onToggle: (v: TripVisit) => Promise<void>;
 }) {
-  const inactive = disabled || busy;
   return (
-    <Pressable
+    <Button
       testID={`toggle-${visit.id}`}
-      accessibilityRole="button"
+      label={visit.confirmed ? "Skip" : "Restore"}
+      variant="ghost"
+      size="sm"
       accessibilityLabel={
         visit.confirmed ? `Mark ${visit.name} as skipped` : `Mark ${visit.name} as visited again`
       }
-      accessibilityState={{ disabled: inactive, busy }}
-      disabled={inactive}
+      loading={busy}
+      disabled={disabled}
       onPress={() => void onToggle(visit)}
-      style={({ pressed }) => [
-        styles.action,
-        inactive && styles.actionInactive,
-        pressed && styles.pressed,
-      ]}
-    >
-      {busy ? (
-        <ActivityIndicator color={colors.primary} />
-      ) : (
-        <Text style={styles.actionText}>{visit.confirmed ? "Skip" : "Restore"}</Text>
-      )}
-    </Pressable>
+    />
   );
 }
 
@@ -337,7 +335,7 @@ function CityHeader({
   const skipped = city !== null && !city.confirmed;
   return (
     <View style={styles.cityRow}>
-      <Icon name="city" size={18} color={skipped ? colors.muted : colors.primary} />
+      <Icon name="city" size="md" color={skipped ? colors.muted : colors.primary} />
       <View style={styles.rowText}>
         <Text accessibilityRole="header" style={[styles.cityName, skipped && styles.skipped]}>
           {group.name}
@@ -379,16 +377,12 @@ function VisitRow({
       <View
         style={[
           styles.visitIcon,
-          {
-            backgroundColor: visit.confirmed
-              ? `${dayColor(visit.day_number)}1f`
-              : colors.surfaceMuted,
-          },
+          { backgroundColor: visit.confirmed ? daySoft(visit.day_number) : colors.surfaceMuted },
         ]}
       >
         <KindIcon
           kind={visit.kind === "city" ? "other" : visit.kind}
-          size={16}
+          size="sm"
           color={visit.confirmed ? dayColor(visit.day_number) : colors.muted}
         />
       </View>
@@ -408,38 +402,38 @@ function VisitRow({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  pressed: { opacity: 0.75 },
   list: { paddingBottom: spacing.xxl },
-  facts: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.xxs },
-  summary: { ...type.heading, color: colors.text },
-  meta: { ...type.small, color: colors.muted },
+  facts: { paddingHorizontal: layout.gutter, paddingBottom: layout.block, gap: spacing.xxs },
+  summary: { ...type.cardTitle, color: colors.text },
+  meta: { ...type.caption, color: colors.muted },
   // Flat rows under hairlines, as everywhere else: no tinted boxes, no round buttons.
   cityRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
+    marginTop: layout.block,
+    minHeight: sizes.row,
+    paddingHorizontal: layout.gutter,
     paddingVertical: spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: border.hairline,
     borderBottomColor: colors.border,
   },
   // A row is an icon on a soft tile in the day's colour, the name and a quiet line, and a small
-  // outlined action: no boxes, one hairline between rows.
+  // text action: no boxes, one hairline between rows.
   visitRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    marginLeft: spacing.lg,
-    paddingRight: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: sizes.row,
+    paddingHorizontal: layout.gutter,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: border.hairline,
     borderBottomColor: colors.border,
   },
   visitIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -447,32 +441,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginTop: layout.section,
+    paddingHorizontal: layout.gutter,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: border.hairline,
     borderBottomColor: colors.border,
   },
-  dayBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dayBadgeText: { ...type.caption, fontWeight: "700", color: colors.onPrimary },
-  dayHeading: { ...type.body, fontWeight: "700", color: colors.text },
+  dayHeading: { ...type.label, fontWeight: weight.bold, color: colors.text },
   rowText: { flex: 1, gap: 1 },
-  cityName: { ...type.body, fontWeight: "700", color: colors.text },
-  visitName: { ...type.small, fontWeight: "600", color: colors.text },
-  action: {
-    minHeight: 48,
-    minWidth: 56,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionInactive: { opacity: 0.55 },
-  actionText: { ...type.small, fontWeight: "600", color: colors.primary },
+  cityName: { ...type.label, fontWeight: weight.bold, color: colors.text },
+  visitName: { ...type.label, fontWeight: weight.semibold, color: colors.text },
   // Skipped is also written in the line below the name: never colour or strike-through alone.
   skipped: { textDecorationLine: "line-through", color: colors.muted },
 });

@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Button } from "../Button";
-import { TOUCH, colors, radius, spacing, type } from "../../theme";
+import { TOUCH, border, colors, radius, size as sizes, spacing, type, weight } from "../../theme";
 import { formatDate, parseIsoDate } from "../../util/format";
-import { IconButton, Sheet } from "./primitives";
+import { Button } from "./Button";
+import { IconButton } from "./primitives";
+import { Sheet } from "./Sheet";
 
 // A month calendar for choosing a date (the new-trip screen's start date). Drawn in JavaScript on
 // purpose: the system date picker is a native module that Detour does not add (CLAUDE.md, "No
@@ -76,7 +77,13 @@ export function CalendarSheet({
   return (
     <Sheet visible={visible} title={title} onClose={onClose}>
       <View style={styles.nav}>
-        <IconButton icon="back" label="Previous month" onPress={() => step(-1)} testID="cal-prev" />
+        <IconButton
+          icon="back"
+          label="Previous month"
+          size="sm"
+          onPress={() => step(-1)}
+          testID="cal-prev"
+        />
         <Text
           accessibilityRole="header"
           accessibilityLiveRegion="polite"
@@ -88,6 +95,7 @@ export function CalendarSheet({
         <IconButton
           icon="chevronRight"
           label="Next month"
+          size="sm"
           onPress={() => step(1)}
           testID="cal-next"
         />
@@ -127,7 +135,13 @@ export function CalendarSheet({
       ))}
       {value ? (
         <View style={styles.clear}>
-          <Button label="Clear the date" variant="quiet" onPress={onClear} testID="cal-clear" />
+          <Button
+            label="Clear the date"
+            variant="ghost"
+            size="sm"
+            onPress={onClear}
+            testID="cal-clear"
+          />
         </View>
       ) : null}
     </Sheet>
@@ -135,28 +149,29 @@ export function CalendarSheet({
 }
 
 const styles = StyleSheet.create({
-  clear: { alignItems: "center", paddingTop: spacing.sm },
+  clear: { alignItems: "center", paddingTop: spacing.xs },
   nav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  month: { ...type.heading, color: colors.text },
+  month: { ...type.cardTitle, color: colors.text },
   week: { flexDirection: "row" },
   head: {
     flex: 1,
     textAlign: "center",
     ...type.caption,
-    fontWeight: "600",
+    fontWeight: weight.semibold,
     color: colors.muted,
     paddingVertical: spacing.xs,
   },
+  // A seventh of the row each; the touch is the whole 48 dp cell.
   cell: { flex: 1, minHeight: TOUCH, alignItems: "center", justifyContent: "center" },
   day: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    minWidth: sizes.controlSm + spacing.xs,
+    minHeight: sizes.controlSm + spacing.xs,
+    borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
   },
-  today: { borderWidth: 1.5, borderColor: colors.outline, borderRadius: radius.pill },
-  chosen: { backgroundColor: colors.ink, borderColor: colors.ink },
-  dayText: { ...type.small, color: colors.text },
-  chosenText: { color: colors.onPrimary, fontWeight: "700" },
+  today: { borderWidth: border.thin, borderColor: colors.outline },
+  chosen: { backgroundColor: colors.selected, borderColor: colors.selected },
+  dayText: { ...type.label, color: colors.text },
+  chosenText: { color: colors.onPrimary, fontWeight: weight.bold },
 });

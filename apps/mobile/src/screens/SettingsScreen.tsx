@@ -103,10 +103,10 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { padding: spacing.lg, gap: spacing.xl },
   section: { gap: spacing.sm },
-  heading: { ...type.heading, color: colors.text },
-  row: { ...type.small, color: colors.text },
+  heading: { ...type.headline, color: colors.text },
+  row: { ...type.label, color: colors.text },
   link: {
-    ...type.small,
+    ...type.label,
     color: colors.link,
     textDecorationLine: "underline",
     minHeight: 48,

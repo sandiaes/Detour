@@ -19,12 +19,33 @@ import {
   sortDocuments,
 } from "../../documents/model";
 import { useNavigation } from "../../nav/Navigator";
-import { TOUCH, colors, docTones, radius, spacing, type } from "../../theme";
+import {
+  border,
+  colors,
+  docTones,
+  opacity,
+  radius,
+  size as sizes,
+  spacing,
+  touchSlop,
+  type,
+  weight,
+} from "../../theme";
 import { formatDate } from "../../util/format";
-import { Button } from "../Button";
-import { Icon, type IconName } from "../ds/Icon";
-import { IconButton, ListRow, RowGroup, Sheet } from "../ds/primitives";
-import { Chip, Notice } from "../ui";
+import {
+  Button,
+  Chip,
+  IconButton,
+  type IconName,
+  InlineStatus,
+  ListRow,
+  Notice,
+  RowGroup,
+  SectionHeader,
+  Sheet,
+  StateView,
+  Tile,
+} from "../ds";
 
 export const CATEGORY_ICON: Record<DocCategory, IconName> = {
   ticket: "ticket",
@@ -40,13 +61,15 @@ export const DEVICE_ONLY_NOTE =
 type Filter = DocCategory | "all";
 
 /** The tinted square that says what kind a document is (the words beside it say it too). */
-export function KindTile({ category, size = 48 }: { category: DocCategory; size?: number }) {
+export function KindTile({
+  category,
+  size = "md",
+}: {
+  category: DocCategory;
+  size?: "sm" | "md" | "lg";
+}) {
   const tone = docTones[category];
-  return (
-    <View style={[styles.tile, { width: size, height: size, backgroundColor: tone.bg }]}>
-      <Icon name={CATEGORY_ICON[category]} size={Math.round(size * 0.5)} color={tone.fg} />
-    </View>
-  );
+  return <Tile icon={CATEGORY_ICON[category]} fg={tone.fg} bg={tone.bg} size={size} />;
 }
 
 function DocumentRow({
@@ -96,6 +119,7 @@ function DocumentRow({
       </Pressable>
       <IconButton
         icon="dots"
+        size="sm"
         label={`More for ${doc.title}`}
         testID={`document-menu-${doc.id}`}
         onPress={onMenu}
@@ -137,15 +161,15 @@ export function DocumentList({
     );
   }
   if (shown === undefined) {
-    return <Text style={styles.muted}>Loading the documents…</Text>;
+    return <InlineStatus text="Loading the documents…" busy />;
   }
 
   const addButton = (
     <Button
-      label={filter ? "Add a document" : "Add a document"}
+      label="Add a document"
       icon="add"
-      variant={filter ? "secondary" : "ink"}
-      size={filter ? "compact" : "regular"}
+      variant={filter ? "secondary" : "primary"}
+      size={filter ? "sm" : "md"}
       fill={!filter}
       testID="add-document"
       onPress={() => add()}
@@ -155,19 +179,14 @@ export function DocumentList({
   if (shown.length === 0) {
     if (filter) return addButton;
     return (
-      <View style={styles.empty} testID="documents-empty">
-        <View style={styles.art} accessible={false} importantForAccessibility="no-hide-descendants">
-          <View style={styles.artCloud} />
-          <View style={styles.artCard}>
-            <Icon name="transport" size={26} color={colors.onPrimary} />
-          </View>
-        </View>
-        <Text accessibilityRole="header" style={styles.emptyTitle}>
-          No documents yet
-        </Text>
-        <Text style={styles.emptyText}>
-          Add your tickets, reservations and other travel documents to keep everything in one place.
-        </Text>
+      <StateView
+        kind="empty"
+        layout="inline"
+        icon="ticket"
+        title="No documents yet"
+        text="Add your tickets, reservations and other travel documents to keep everything in one place."
+        testID="documents-empty"
+      >
         <View style={styles.tiles}>
           {CATEGORIES.map((c) => (
             <Pressable
@@ -175,11 +194,11 @@ export function DocumentList({
               accessibilityRole="button"
               accessibilityLabel={`${CATEGORY_GROUP[c]}. ${CATEGORY_HELP[c]}. Adds one.`}
               onPress={() => add(c)}
-              hitSlop={{ top: 4, bottom: 4 }}
+              hitSlop={touchSlop(sizes.tile + spacing.xl)}
               style={({ pressed }) => [styles.categoryTile, pressed && styles.pressed]}
               testID={`start-${c}`}
             >
-              <KindTile category={c} size={36} />
+              <KindTile category={c} />
               <Text style={styles.tileName} numberOfLines={1}>
                 {c === "other" ? "Other" : CATEGORY_GROUP[c]}
               </Text>
@@ -188,7 +207,7 @@ export function DocumentList({
         </View>
         {addButton}
         <Text style={styles.note}>{DEVICE_ONLY_NOTE}</Text>
-      </View>
+      </StateView>
     );
   }
 
@@ -201,6 +220,7 @@ export function DocumentList({
             {group.docs.map((doc) => (
               <ListRow
                 key={doc.id}
+                inset="none"
                 icon={CATEGORY_ICON[doc.category]}
                 title={doc.title}
                 detail={`${linkLabel(doc.link, trip.start_date)} · ${fileLine(doc)}`}
@@ -245,21 +265,20 @@ export function DocumentList({
           />
         ))}
       </ScrollView>
-      <View style={styles.listHead}>
-        <Text style={styles.listTitle}>
-          {kind === "all" ? "All documents" : CATEGORY_GROUP[kind]}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Sort. ${SORT_LABEL[sort]}`}
-          onPress={() => setSorting(true)}
-          style={styles.sortButton}
-          testID="sort-documents"
-        >
-          <Text style={styles.sortText}>Sort</Text>
-          <Icon name="list" size={16} color={colors.text} />
-        </Pressable>
-      </View>
+      <SectionHeader
+        title={kind === "all" ? "All documents" : CATEGORY_GROUP[kind]}
+        action={
+          <Button
+            label="Sort"
+            icon="list"
+            variant="ghost"
+            size="sm"
+            accessibilityLabel={`Sort. ${SORT_LABEL[sort]}`}
+            onPress={() => setSorting(true)}
+            testID="sort-documents"
+          />
+        }
+      />
       {visible.length === 0 ? (
         <Text style={styles.muted}>
           No {CATEGORY_GROUP[kind as DocCategory].toLowerCase()} yet.
@@ -286,8 +305,10 @@ export function DocumentList({
             {(Object.keys(SORT_LABEL) as DocSort[]).map((s) => (
               <ListRow
                 key={s}
-                icon={s === sort ? "check" : "list"}
+                inset="none"
+                density="compact"
                 title={SORT_LABEL[s]}
+                selected={s === sort}
                 testID={`sort-${s}`}
                 onPress={() => {
                   setSort(s);
@@ -302,6 +323,7 @@ export function DocumentList({
         <Sheet visible title={menu.title} onClose={() => setMenu(null)}>
           <RowGroup>
             <ListRow
+              inset="none"
               icon="document"
               title="Open"
               detail="Details and the file"
@@ -313,6 +335,7 @@ export function DocumentList({
               }}
             />
             <ListRow
+              inset="none"
               icon="note"
               title="Edit"
               detail="Title, kind, date, notes"
@@ -332,26 +355,15 @@ export function DocumentList({
 
 const styles = StyleSheet.create({
   list: { gap: spacing.md },
-  group: {},
-  listHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  listTitle: { ...type.heading, color: colors.text },
-  muted: { ...type.small, color: colors.muted },
-  note: { ...type.caption, color: colors.muted },
-  pressed: { opacity: 0.8 },
-  tile: { borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  muted: { ...type.label, color: colors.muted },
+  note: { ...type.caption, color: colors.muted, textAlign: "center" },
+  pressed: { opacity: opacity.pressed },
   filters: { gap: spacing.sm, paddingVertical: spacing.xs },
-  sortButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    minHeight: TOUCH,
-    paddingHorizontal: spacing.xs,
-  },
-  sortText: { ...type.small, fontWeight: "600", color: colors.text },
+  group: { borderTopWidth: border.hairline, borderTopColor: colors.border },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: border.hairline,
     borderBottomColor: colors.border,
   },
   rowMain: {
@@ -359,42 +371,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    minHeight: TOUCH + 16,
+    minHeight: sizes.row + spacing.sm,
     paddingVertical: spacing.sm,
   },
   rowText: { flex: 1, gap: 1 },
-  rowTitle: { ...type.small, fontWeight: "700", color: colors.text },
+  rowTitle: { ...type.label, fontWeight: weight.semibold, color: colors.text },
   rowLine: { ...type.caption, color: colors.muted },
   thumb: { width: 40, height: 52, borderRadius: radius.sm, backgroundColor: colors.surfaceMuted },
-
-  empty: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md },
-  art: { width: 110, height: 84, alignItems: "center", justifyContent: "center" },
-  artCloud: {
-    position: "absolute",
-    width: 96,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primarySoft,
-  },
-  artCard: {
-    width: 52,
-    height: 68,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primary,
-    transform: [{ rotate: "6deg" }],
-  },
-  emptyTitle: { ...type.heading, color: colors.text, textAlign: "center" },
-  emptyText: { ...type.small, color: colors.muted, textAlign: "center" },
   // One row: the four kinds share the width, each a small tile over its name.
   tiles: { flexDirection: "row", alignSelf: "stretch", paddingVertical: spacing.xs },
   categoryTile: {
     flex: 1,
-    minHeight: TOUCH,
+    minHeight: sizes.tile + spacing.xl,
     alignItems: "center",
     gap: spacing.xs,
     paddingVertical: spacing.xs,
+    borderRadius: radius.md,
   },
-  tileName: { ...type.caption, fontWeight: "600", color: colors.text, textAlign: "center" },
+  tileName: { ...type.caption, fontWeight: weight.semibold, color: colors.text, textAlign: "center" },
 });

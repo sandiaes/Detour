@@ -177,7 +177,7 @@ test("a long plan renders one day at a time: a 14-day plan shows 40 stops, not 5
 test("Select chooses this plan from the day list too", async () => {
   const client = await openDays();
   await fireEvent.press(await screen.findByRole("button", { name: "Select the Essentials plan" }));
-  expect(await screen.findByText("✓ Selected")).toBeOnTheScreen();
+  expect(await screen.findByText("Selected")).toBeOnTheScreen();
   expect(client.calls.find((c) => c.method === "PATCH")?.body).toEqual({
     selected_itinerary_id: ESSENTIALS_ID,
   });

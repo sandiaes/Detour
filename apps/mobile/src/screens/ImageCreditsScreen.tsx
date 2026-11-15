@@ -91,7 +91,7 @@ function decodeName(url: string): string {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { padding: spacing.lg, gap: spacing.sm },
-  intro: { ...type.small, color: colors.muted },
+  intro: { ...type.label, color: colors.muted },
   row: {
     minHeight: 48,
     flexDirection: "row",
@@ -102,6 +102,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowText: { flex: 1, gap: 2 },
-  author: { ...type.small, color: colors.text, fontWeight: "600" },
+  author: { ...type.label, color: colors.text, fontWeight: "600" },
   meta: { ...type.caption, color: colors.muted },
 });

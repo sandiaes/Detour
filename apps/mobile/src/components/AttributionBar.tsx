@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors } from "../theme";
+import { colors, radius, spacing, type } from "../theme";
+import { Icon } from "./ds";
 
 // OSMF attribution guidelines: the credit must be visible without interaction at first. It may
 // collapse after five seconds or on map interaction if it can be found again, here by an "i"
@@ -47,7 +48,7 @@ export function AttributionBar({ lines, userInteractionCount = 0, bottomOffset =
   if (!expanded) {
     return (
       <Pressable
-        style={[styles.infoButton, { bottom: 8 + bottomOffset }]}
+        style={[styles.infoButton, { bottom: spacing.sm + bottomOffset }]}
         accessibilityRole="button"
         accessibilityLabel="Show map attribution"
         hitSlop={12}
@@ -56,13 +57,13 @@ export function AttributionBar({ lines, userInteractionCount = 0, bottomOffset =
           startTimer();
         }}
       >
-        <Text style={styles.infoButtonText}>i</Text>
+        <Icon name="info" size="sm" color={colors.text} />
       </Pressable>
     );
   }
 
   return (
-    <View style={[styles.bar, { bottom: 8 + bottomOffset }]} accessibilityLabel="Map attribution">
+    <View style={[styles.bar, { bottom: spacing.sm + bottomOffset }]} accessibilityLabel="Map attribution">
       {lines.map((line) => (
         <Pressable
           key={line.url}
@@ -82,31 +83,32 @@ export function AttributionBar({ lines, userInteractionCount = 0, bottomOffset =
 const styles = StyleSheet.create({
   bar: {
     position: "absolute",
-    left: 8,
-    bottom: 8,
+    left: spacing.sm,
     flexDirection: "row",
     flexWrap: "wrap",
     maxWidth: "75%",
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.mapOverlay,
+    borderRadius: radius.sm,
   },
   // 20 dp of text line plus 14 dp of hit slop above and below: a 48 dp touch target.
   linkTarget: { minHeight: 20, justifyContent: "center" },
-  link: { fontSize: 12, color: colors.link, textDecorationLine: "underline", marginRight: 6 },
+  link: {
+    ...type.micro,
+    color: colors.link,
+    textDecorationLine: "underline",
+    marginRight: spacing.sm,
+  },
+  // 28 dp drawn; 12 dp of hit slop all round makes the touch 52 dp.
   infoButton: {
     position: "absolute",
-    left: 8,
-    bottom: 8,
+    left: spacing.sm,
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderWidth: 1,
-    borderColor: "#666666",
+    backgroundColor: colors.mapOverlay,
   },
-  infoButtonText: { fontSize: 16, fontWeight: "700", color: colors.text },
 });

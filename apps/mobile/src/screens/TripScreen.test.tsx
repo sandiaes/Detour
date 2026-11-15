@@ -58,8 +58,8 @@ test("two proposals are shown as two cards, and the comparison is one tap away",
   expect(
     screen.getByLabelText("Travel time: Essentials 40 min. Wider 1 h 35 min."),
   ).toBeOnTheScreen();
-  expect(screen.getByText("• Wider has 3 visits more than Essentials.")).toBeOnTheScreen();
-  expect(screen.getByText("• About 40 % of the visits are in both plans.")).toBeOnTheScreen();
+  expect(screen.getByText("Wider has 3 visits more than Essentials.")).toBeOnTheScreen();
+  expect(screen.getByText("About 40 % of the visits are in both plans.")).toBeOnTheScreen();
 });
 
 test("selecting a plan opens the trip's overview on it, and Back from there goes to the trips", async () => {

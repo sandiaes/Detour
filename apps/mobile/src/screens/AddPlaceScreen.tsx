@@ -15,15 +15,26 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
 import { AttributionBar } from "../components/AttributionBar";
-import { Button } from "../components/Button";
 import { ChooseSlot, type ChosenSlot } from "../components/ChooseSlot";
-import { BoxField } from "../components/ds/BoxField";
-import { ChoiceGroupTitle, ChoiceRow, Dropdown, DropdownPanel } from "../components/ds/Dropdown";
+import {
+  Bullets,
+  Button,
+  ChoiceGroupTitle,
+  ChoiceRow,
+  CompactHeader,
+  DropdownPanel,
+  type IconName,
+  InlineStatus,
+  Notice,
+  SearchField,
+  SectionHeader,
+  SegmentedControl,
+  SelectField,
+  StopMark,
+  TextField,
+} from "../components/ds";
 import { DurationField } from "../components/ds/DurationField";
-import type { IconName } from "../components/ds/Icon";
-import { Tabs } from "../components/ds/primitives";
 import { SuggestionCard } from "../components/ds/SuggestionCard";
-import { Chip, CompactHeader, Notice } from "../components/ui";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
@@ -35,7 +46,7 @@ import {
   travelImpact,
 } from "../domain/placeSuggestions";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { colors, radius, spacing, type } from "../theme";
+import { border, colors, layout, radius, spacing, type } from "../theme";
 import { formatMeters, formatMinutes } from "../util/format";
 
 // Adding a place (Phase 7, ADR 018; redesigned in ADR 021, step 4). Find it (sights, towns and
@@ -388,7 +399,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   // The chosen place: the list has closed and the field shows only it. Pressing it opens the
   // search again.
   const selected = choice ? (
-    <Dropdown
+    <SelectField
       label={mode === "search" ? "Sight or town" : mode === "address" ? "Address" : "Place"}
       placeholder=""
       icon={choiceIcon(choice)}
@@ -399,7 +410,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
       testID="chosen-place"
     >
       {null}
-    </Dropdown>
+    </SelectField>
   ) : null;
 
   return (
@@ -409,38 +420,38 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
         subtitle={trip ? `${trip.title} · ${trip.destination.name}` : undefined}
         onBack={nav.back}
       />
-      <Tabs<Mode>
-        items={[
-          { key: "search", label: "Search" },
-          { key: "address", label: "Address" },
-          { key: "pin", label: "Pin on map" },
-        ]}
-        value={mode}
-        onChange={switchMode}
-        compact
-        testID="add-mode"
-      />
-
       <View style={styles.body}>
+        <SegmentedControl<Mode>
+          items={[
+            { key: "search", label: "Search" },
+            { key: "address", label: "Address" },
+            { key: "pin", label: "Pin on map" },
+          ]}
+          value={mode}
+          onChange={switchMode}
+          testID="add-mode"
+        />
         {mode === "search" ? (
           <View style={styles.gap}>
             {selected ?? (
               <>
-                <BoxField
+                <SearchField
                   label="Sight or town"
-                  icon="search"
                   placeholder="Search a sight or a town"
                   value={query}
                   onChangeText={(t) => {
                     setQuery(t);
                     clearChoice();
                   }}
-                  autoCorrect={false}
+                  onClear={() => {
+                    setQuery("");
+                    clearChoice();
+                  }}
                   hint={q.length < MIN_QUERY ? "At least two letters." : undefined}
                 />
                 {searchError ? <Notice tone="error">{searchError}</Notice> : null}
                 {q.length >= MIN_QUERY && found === undefined && !searchError ? (
-                  <Text style={styles.muted}>Searching…</Text>
+                  <InlineStatus text="Searching…" busy />
                 ) : null}
                 {found && !nothingFound ? (
                   <DropdownPanel testID="search-results">
@@ -482,20 +493,18 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 ) : null}
                 {nothingFound ? (
                   <View style={styles.gap}>
-                    <Text style={styles.muted}>Nothing in the imported data matches “{q}”.</Text>
+                    <InlineStatus text={`Nothing in the imported data matches “${q}”.`} />
                     {wider === undefined ? (
                       <Button
                         label="Search more widely"
                         variant="secondary"
-                        size="compact"
+                        size="sm"
                         icon="search"
                         hint="Asks an OpenStreetMap search service through the Detour server"
                         onPress={() => void searchWider()}
                       />
                     ) : wider === "none" ? (
-                      <Text style={styles.muted}>
-                        The wider search found nothing either. Try the address, or drop a pin.
-                      </Text>
+                      <InlineStatus text="The wider search found nothing either. Try the address, or drop a pin." />
                     ) : (
                       <DropdownPanel>
                         <ChoiceGroupTitle title="Other places (OpenStreetMap, via Photon)" />
@@ -520,9 +529,8 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
           <View style={styles.gap}>
             {selected ?? (
               <>
-                <BoxField
+                <SearchField
                   label="Street address"
-                  icon="search"
                   placeholder="A street and number, a postcode or a known place"
                   value={address}
                   onChangeText={(t) => {
@@ -537,7 +545,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                   label="Find the address"
                   icon="search"
                   variant="secondary"
-                  size="compact"
+                  size="sm"
                   testID="find-address"
                   disabled={address.trim().length < MIN_QUERY || working !== null}
                   loading={working === "address"}
@@ -545,9 +553,9 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 />
                 {searchError ? <Notice tone="error">{searchError}</Notice> : null}
                 {addressResults === "none" ? (
-                  <Text style={styles.muted}>
-                    No address matches “{address.trim()}”. Check the spelling, or drop a pin.
-                  </Text>
+                  <InlineStatus
+                    text={`No address matches “${address.trim()}”. Check the spelling, or drop a pin.`}
+                  />
                 ) : addressResults ? (
                   <DropdownPanel>
                     <ChoiceGroupTitle title="Addresses (OpenStreetMap, via Photon)" />
@@ -566,7 +574,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
               </>
             )}
             {choice?.kind === "external" ? (
-              <BoxField
+              <TextField
                 label="Name of the place"
                 value={customName}
                 onChangeText={(t) => {
@@ -580,7 +588,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
           </View>
         ) : (
           <View style={styles.gap}>
-            <Text style={styles.muted}>Tap the map where the place is, then name it.</Text>
+            <InlineStatus text="Tap the map where the place is, then name it." />
             {mapConfig && centre ? (
               <View style={styles.map}>
                 <Map
@@ -598,11 +606,9 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                   <Camera initialViewState={{ center: [centre.lon, centre.lat], zoom: 12 }} />
                   {choice?.kind === "pin" ? (
                     <Marker id="pin" lngLat={[choice.lon, choice.lat]} anchor="bottom">
-                      <View
-                        style={styles.pin}
-                        accessible
-                        accessibilityLabel="The pin you dropped"
-                      />
+                      <View accessible accessibilityLabel="The pin you dropped">
+                        <StopMark kind="sight" icon="pin" size="map" selected />
+                      </View>
                     </Marker>
                   ) : null}
                 </Map>
@@ -612,11 +618,9 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
               <Notice tone="warning">The map needs a connection to the server.</Notice>
             )}
             {choice?.kind === "pin" ? (
-              <Text style={styles.muted}>
-                Pin at {choice.lat.toFixed(5)}, {choice.lon.toFixed(5)}
-              </Text>
+              <InlineStatus text={`Pin at ${choice.lat.toFixed(5)}, ${choice.lon.toFixed(5)}`} />
             ) : null}
-            <BoxField
+            <TextField
               label="Name of the place"
               value={customName}
               onChangeText={(t) => {
@@ -649,24 +653,17 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
               testID="stay-length"
             />
             {!isManual ? (
-              <View style={styles.row}>
-                <Chip
-                  label="Suggest a day"
-                  selected={!choosing}
-                  testID="how-suggest"
-                  onPress={() => setHow("suggest")}
-                />
-                <Chip
-                  label="Choose day and time"
-                  selected={choosing}
-                  testID="how-choose"
-                  onPress={() => setHow("choose")}
-                />
-              </View>
+              <SegmentedControl<"suggest" | "choose">
+                items={[
+                  { key: "suggest", label: "Suggest a day" },
+                  { key: "choose", label: "Choose day and time" },
+                ]}
+                value={choosing ? "choose" : "suggest"}
+                onChange={setHow}
+                testID="how"
+              />
             ) : (
-              <Text style={styles.muted}>
-                This trip has no proposed plan yet, so pick the day and time yourself.
-              </Text>
+              <InlineStatus text="This trip has no proposed plan yet, so pick the day and time yourself." />
             )}
             {choosing ? (
               itinerary.data ? (
@@ -680,15 +677,13 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                   onSubmit={(slot) => void addAt(slot)}
                 />
               ) : (
-                <Text style={styles.muted}>Reading the plan…</Text>
+                <InlineStatus text="Reading the plan…" busy />
               )
             ) : !suggestions ? (
               <Button
                 label="Find the best day"
                 icon="calendar"
                 testID="find-days"
-                variant="ink"
-                size="compact"
                 fill
                 disabled={!ready}
                 loading={working === "find"}
@@ -702,11 +697,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
         {problem ? (
           <View style={styles.gap}>
             <Notice tone="error">{problem.message}</Notice>
-            {problem.issues.map((i) => (
-              <Text key={i} style={styles.issue}>
-                • {i}
-              </Text>
-            ))}
+            <Bullets items={problem.issues} />
           </View>
         ) : null}
 
@@ -721,7 +712,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
         ) : null}
 
         {!changes.connected ? (
-          <Text style={styles.muted}>Adding a place needs a connection to the server.</Text>
+          <InlineStatus text="Adding a place needs a connection to the server." />
         ) : null}
       </View>
     </ScrollView>
@@ -754,9 +745,9 @@ function Suggestions({
   const count = suggestions.suggestions.length;
   return (
     <View style={styles.gap} testID="place-suggestions">
-      <Text style={styles.heading} accessibilityRole="header">
-        {count === 1 ? "The day that fits" : `The ${count} best days`} for {suggestions.name}
-      </Text>
+      <SectionHeader
+        title={`${count === 1 ? "The day that fits" : `The ${count} best days`} for ${suggestions.name}`}
+      />
       <Text style={styles.muted}>
         {formatMinutes(suggestions.duration_minutes)}{" "}
         {suggestions.duration_source === "user" ? "(set by you)" : "(typical visit length)"} ·{" "}
@@ -781,8 +772,6 @@ function Suggestions({
       <Button
         label="Preview this change"
         testID="preview-change"
-        variant="ink"
-        size="compact"
         fill
         disabled={picked === null}
         loading={working}
@@ -795,27 +784,16 @@ function Suggestions({
 
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xxl },
-  details: { gap: spacing.md },
+  details: { gap: layout.block },
   fill: { flex: 1 },
-  body: { padding: spacing.lg, gap: spacing.md },
-  row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  body: { paddingHorizontal: layout.gutter, paddingTop: spacing.xs, gap: layout.block },
   gap: { gap: spacing.sm },
-  heading: { ...type.small, fontWeight: "700", color: colors.text },
-  muted: { ...type.small, color: colors.muted },
-  issue: { ...type.small, color: colors.text },
+  muted: { ...type.caption, color: colors.muted },
   map: {
     height: 280,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: border.hairline,
     borderColor: colors.border,
-  },
-  pin: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.accent,
-    borderWidth: 3,
-    borderColor: colors.onPrimary,
   },
 });

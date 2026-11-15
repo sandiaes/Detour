@@ -1,13 +1,24 @@
-import type { ReactNode } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { type ReactNode, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { TOUCH, colors, radius, shadow, spacing, type } from "../../theme";
-import { Icon, type IconName } from "./Icon";
+import {
+  border,
+  colors,
+  opacity,
+  radius,
+  size as sizes,
+  spacing,
+  touchSlop,
+  shadow,
+  type,
+  weight,
+  card as cardStyle,
+} from "../../theme";
+import { Icon, type IconName, type IconSize } from "./Icon";
 
-// The reusable pieces of the redesign (ADR 021). Each one meets the app's accessibility rules:
-// 48 dp touch targets, a spoken name for every control, and states told by words or marks as well
-// as colour.
+// The reusable pieces of the design system (docs/design.md, "Components"). Each meets the app's
+// accessibility rules: a 48 dp touch target (drawn size plus hit slop), a spoken name for every
+// control, and states told by words or marks as well as colour.
 
 // ---- icon button ---------------------------------------------------------------------------------
 
@@ -15,8 +26,10 @@ export function IconButton({
   icon,
   label,
   onPress,
-  onImage = false,
-  compact = false,
+  variant = "plain",
+  size = "md",
+  color,
+  disabled = false,
   hint,
   testID,
 }: {
@@ -24,62 +37,85 @@ export function IconButton({
   /** The spoken name; the button has no visible text. */
   label: string;
   onPress: () => void;
-  /** On a cover picture: a dark translucent disc and a white icon. */
-  onImage?: boolean;
-  /** A shorter button (40 x 36) for tight headers; its hit slop keeps the touch at 48 dp. */
-  compact?: boolean;
+  /** plain: on the page; onImage: a dark disc on a photo; onMap: a white disc over a map. */
+  variant?: "plain" | "onImage" | "onMap";
+  /** md: 44 dp; sm: 36 dp, for headers, rows and map controls. Both touch at 48 dp. */
+  size?: "md" | "sm";
+  color?: string;
+  disabled?: boolean;
   hint?: string;
   testID?: string;
 }) {
+  const [focused, setFocused] = useState(false);
+  const box = size === "sm" ? sizes.controlSm : sizes.control;
+  const tint =
+    color ?? (variant === "onImage" ? colors.onImage : disabled ? colors.muted : colors.text);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint={hint}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       testID={testID}
-      hitSlop={compact ? { top: 6, bottom: 6, left: 4, right: 4 } : undefined}
+      hitSlop={touchSlop(box, size === "sm" ? spacing.xs : 0)}
       style={({ pressed }) => [
         styles.iconButton,
-        compact && styles.iconButtonCompact,
-        onImage && styles.iconButtonOnImage,
-        pressed && styles.pressed,
+        { width: box, height: box, minHeight: box },
+        variant === "onImage" && styles.iconButtonOnImage,
+        variant === "onMap" && styles.iconButtonOnMap,
+        pressed && (variant === "plain" ? styles.quietPressed : styles.pressed),
+        disabled && styles.disabled,
+        focused && styles.focused,
       ]}
     >
-      <Icon name={icon} color={onImage ? colors.onImage : colors.text} />
+      <Icon name={icon} size="md" color={tint} />
     </Pressable>
   );
 }
 
 // ---- badges --------------------------------------------------------------------------------------
 
-export type BadgeTone = "neutral" | "primary" | "accent" | "solid";
+export type BadgeTone = "neutral" | "primary" | "accent" | "onImage" | "danger";
 
-/** A small pill with a word in it ("Upcoming", "Past"). The word carries the meaning. */
-export function Badge({ label, tone = "neutral" }: { label: string; tone?: BadgeTone }) {
+/** A small pill with a word in it ("Upcoming", "Best"). The word carries the meaning. */
+export function Badge({
+  label,
+  tone = "neutral",
+  icon,
+}: {
+  label: string;
+  tone?: BadgeTone;
+  icon?: IconName;
+}) {
+  const fg =
+    tone === "primary"
+      ? colors.primary
+      : tone === "accent"
+        ? colors.accentText
+        : tone === "danger"
+          ? colors.danger
+          : colors.text;
   return (
     <View
       style={[
         styles.badge,
         tone === "primary" && { backgroundColor: colors.primarySoft },
         tone === "accent" && { backgroundColor: colors.accentSoft },
-        tone === "solid" && { backgroundColor: colors.surface },
+        tone === "danger" && { backgroundColor: colors.dangerSoft },
+        tone === "onImage" && { backgroundColor: colors.surface },
       ]}
     >
-      <Text
-        style={[
-          styles.badgeText,
-          tone === "primary" && { color: colors.primary },
-          tone === "accent" && { color: colors.accentText },
-        ]}
-      >
-        {label}
-      </Text>
+      {icon ? <Icon name={icon} size="xs" color={fg} /> : null}
+      <Text style={[styles.badgeText, { color: fg }]}>{label}</Text>
     </View>
   );
 }
 
-// ---- tabs ----------------------------------------------------------------------------------------
+// ---- tabs and segmented control ------------------------------------------------------------------
 
 export type TabItem<K extends string> = {
   key: K;
@@ -89,7 +125,8 @@ export type TabItem<K extends string> = {
   accessibilityLabel?: string;
 };
 
-/** Underlined tabs. Selected is shown by the underline, bold text and the announced state. */
+/** Underlined tabs: the sections of a page. Selected is shown by the colour, the weight and the
+ * underline, and announced. */
 export function Tabs<K extends string>({
   items,
   value,
@@ -101,12 +138,13 @@ export function Tabs<K extends string>({
   items: TabItem<K>[];
   value: K;
   onChange: (key: K) => void;
-  /** For more tabs than fit a phone's width (the trip's five tabs). */
+  /** For more tabs than fit a phone's width. */
   scrollable?: boolean;
-  /** Shorter tabs (40 dp, plus hit slop) for the map's tight header. */
+  /** 40 dp tabs for a tight header (a map). */
   compact?: boolean;
   testID?: string;
 }) {
+  const height = compact ? sizes.tabCompact : sizes.tab;
   const tabs = items.map((item) => {
     const active = item.key === value;
     const text = item.count !== undefined ? `${item.label} (${item.count})` : item.label;
@@ -118,10 +156,15 @@ export function Tabs<K extends string>({
         accessibilityState={{ selected: active }}
         onPress={() => onChange(item.key)}
         testID={testID ? `${testID}-${item.key}` : undefined}
-        hitSlop={compact ? { top: 4, bottom: 4 } : undefined}
-        style={[styles.tab, compact && styles.tabCompact, !scrollable && styles.tabAuto]}
+        hitSlop={touchSlop(height)}
+        style={[styles.tab, { minHeight: height }, !scrollable && styles.tabAuto]}
       >
-        <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={1}>
+        <Text
+          style={[styles.tabText, active && styles.tabTextActive]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}
+        >
           {text}
         </Text>
         <View style={[styles.tabLine, active && styles.tabLineActive]} />
@@ -145,6 +188,115 @@ export function Tabs<K extends string>({
   );
 }
 
+/** Two or three modes of one form ("Search, Address, Pin on map"). Announced as tabs, like the
+ * platform's segmented controls. */
+export function SegmentedControl<K extends string>({
+  items,
+  value,
+  onChange,
+  testID,
+}: {
+  items: TabItem<K>[];
+  value: K;
+  onChange: (key: K) => void;
+  testID?: string;
+}) {
+  const inner = sizes.control - 2 * spacing.xxs - 2 * border.thin;
+  return (
+    <View style={styles.segments} accessibilityRole="tablist" testID={testID}>
+      {items.map((item) => {
+        const active = item.key === value;
+        return (
+          <Pressable
+            key={item.key}
+            accessibilityRole="tab"
+            accessibilityLabel={item.accessibilityLabel ?? item.label}
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(item.key)}
+            testID={testID ? `${testID}-${item.key}` : undefined}
+            hitSlop={touchSlop(inner)}
+            style={[styles.segment, { minHeight: inner }, active && styles.segmentActive]}
+          >
+            <Text
+              style={[styles.segmentText, active && styles.segmentTextActive]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// ---- chips, radios and check boxes ---------------------------------------------------------------
+
+/** A selectable pill (filters, kinds, a default value). Selected: a soft fill, a green outline and a
+ * check mark, and announced. */
+export function Chip({
+  label,
+  selected,
+  onPress,
+  accessibilityLabel,
+  icon,
+  disabled = false,
+  testID,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  accessibilityLabel?: string;
+  /** A line icon before the label; when selected the check mark takes its place. */
+  icon?: IconName;
+  disabled?: boolean;
+  testID?: string;
+}) {
+  const shown: IconName | null = selected ? "check" : (icon ?? null);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ selected, disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      testID={testID}
+      hitSlop={touchSlop(sizes.controlSm)}
+      style={({ pressed }) => [
+        styles.chip,
+        selected && styles.chipSelected,
+        pressed && !selected && styles.quietPressed,
+        disabled && styles.disabled,
+      ]}
+    >
+      {shown ? (
+        <Icon name={shown} size="sm" color={selected ? colors.selected : colors.text} />
+      ) : null}
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** The mark of a one-of-many choice, drawn inside a row that carries the role and the name. */
+export function Radio({ on }: { on: boolean }) {
+  return (
+    <View style={[styles.radio, on && styles.radioOn]}>
+      {on ? <View style={styles.radioDot} /> : null}
+    </View>
+  );
+}
+
+/** The mark of a several-of-many choice, drawn inside a row that carries the role and the name. */
+export function Checkbox({ on }: { on: boolean }) {
+  return (
+    <View style={[styles.check, on && styles.checkOn]}>
+      {on ? <Icon name="check" size="xs" color={colors.onPrimary} /> : null}
+    </View>
+  );
+}
+
 // ---- statistics ----------------------------------------------------------------------------------
 
 export type Stat = {
@@ -155,20 +307,21 @@ export type Stat = {
   spoken?: string;
 };
 
-/** A row of compact figures. Each tile reads as one phrase ("5 cities"). */
-export function StatRow({ stats, compact = false }: { stats: Stat[]; compact?: boolean }) {
+/** A row of compact figures between hairlines: icon and number side by side, the word under them.
+ * Each figure reads as one phrase ("5 cities"). */
+export function StatRow({ stats }: { stats: Stat[] }) {
   return (
     <View style={styles.statRow}>
       {stats.map((s, i) => (
         <View
           key={s.key}
-          style={[styles.stat, compact && styles.statCompact, i > 0 && styles.statDivider]}
+          style={[styles.stat, i > 0 && styles.statDivider]}
           accessible
           accessibilityLabel={s.spoken ?? `${s.value} ${s.label.toLowerCase()}`}
         >
-          <View style={compact ? styles.statTop : styles.statStack}>
-            <Icon name={s.icon} size={18} color={colors.primary} />
-            <Text style={[styles.statValue, compact && styles.statValueCompact]}>{s.value}</Text>
+          <View style={styles.statTop}>
+            <Icon name={s.icon} size="sm" color={colors.primary} />
+            <Text style={styles.statValue}>{s.value}</Text>
           </View>
           <Text style={styles.statLabel} numberOfLines={1}>
             {s.label}
@@ -181,7 +334,8 @@ export function StatRow({ stats, compact = false }: { stats: Stat[]; compact?: b
 
 // ---- section heading -------------------------------------------------------------------------------
 
-export function SectionTitle({ title, action }: { title: string; action?: ReactNode }) {
+/** The title of a section, with an optional action on the right. */
+export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <View style={styles.sectionHead}>
       <Text accessibilityRole="header" style={styles.sectionTitle}>
@@ -194,53 +348,120 @@ export function SectionTitle({ title, action }: { title: string; action?: ReactN
 
 // ---- list rows -----------------------------------------------------------------------------------
 
-/** A menu row: icon, title, a line of detail and a chevron. Disabled rows say why in words. */
+/**
+ * The one list row (docs/design.md, "List row"): a leading mark, a title, up to two detail lines,
+ * and a trailing chevron, badge or control, over a hairline. `regular` rows (56 dp, 15 pt title) are
+ * menus and lists of things to open; `compact` rows (48 dp, 14 pt title) are options in a list or a
+ * drop-down. A disabled row says why in words. `selected` tints the row and is announced.
+ */
 export function ListRow({
   icon,
+  leading,
   title,
   detail,
+  meta,
   onPress,
+  trailing,
+  density = "regular",
+  inset = "gutter",
+  selected,
   disabled = false,
   disabledLabel = "Coming later",
   danger = false,
+  role = "button",
+  checked,
+  accessibilityLabel,
+  accessibilityHint,
+  divider = true,
   testID,
 }: {
-  icon: IconName;
+  /** A line icon in the leading column. */
+  icon?: IconName;
+  /** Any leading mark instead of an icon: a tile, a thumbnail, a number, a radio or a check box. */
+  leading?: ReactNode;
   title: string;
-  detail?: string;
+  detail?: string | null;
+  /** A second, quieter detail line. */
+  meta?: string | null;
   onPress?: () => void;
+  /** Replaces the chevron: a badge, a switch, an action. `null` shows nothing. */
+  trailing?: ReactNode;
+  density?: "regular" | "compact";
+  /** gutter: 16 dp side padding (a full-width list); panel: 12 dp (inside a drop-down); none. */
+  inset?: "gutter" | "panel" | "none";
+  selected?: boolean;
   disabled?: boolean;
   /** The word shown on a disabled row instead of the chevron. */
   disabledLabel?: string;
   danger?: boolean;
+  role?: "button" | "radio" | "checkbox";
+  checked?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  divider?: boolean;
   testID?: string;
 }) {
-  const spoken = [title, detail, disabled ? disabledLabel : null].filter(Boolean).join(". ");
+  const compact = density === "compact";
+  const spoken =
+    accessibilityLabel ??
+    [title, detail, meta, disabled ? disabledLabel : null].filter(Boolean).join(". ");
+  const iconColor = danger ? colors.danger : disabled ? colors.muted : colors.primary;
+  const end =
+    trailing !== undefined ? (
+      trailing
+    ) : disabled ? (
+      <Badge label={disabledLabel} />
+    ) : selected && role === "button" ? (
+      <Icon name="check" size="sm" color={colors.selected} />
+    ) : onPress ? (
+      <Icon name="chevronRight" size="sm" color={colors.muted} />
+    ) : null;
+  const minHeight = compact ? sizes.rowCompact : sizes.row;
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={onPress ? role : undefined}
       accessibilityLabel={spoken}
-      accessibilityState={{ disabled }}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{
+        disabled: disabled || !onPress,
+        ...(selected !== undefined ? { selected } : {}),
+        ...(checked !== undefined ? { checked } : {}),
+      }}
+      accessible
       disabled={disabled || !onPress}
       onPress={onPress}
       testID={testID}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        { minHeight },
+        inset === "gutter" && styles.rowGutter,
+        inset === "panel" && styles.rowPanel,
+        divider && styles.rowDivider,
+        selected && styles.rowSelected,
+        pressed && styles.quietPressed,
+      ]}
     >
-      <View style={[styles.rowIcon, disabled && styles.rowIconDisabled]}>
-        <Icon
-          name={icon}
-          color={danger ? colors.errorText : disabled ? colors.muted : colors.primary}
-        />
-      </View>
-      <View style={styles.rowText}>
-        <Text style={[styles.rowTitle, danger && { color: colors.errorText }]}>{title}</Text>
-        {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
-      </View>
-      {disabled ? (
-        <Badge label={disabledLabel} />
+      {icon ? (
+        <View style={styles.rowIcon}>
+          <Icon name={icon} size="md" color={iconColor} />
+        </View>
       ) : (
-        <Icon name="chevronRight" size={18} color={colors.muted} />
+        leading
       )}
+      <View style={styles.rowText}>
+        <Text
+          style={[
+            compact ? styles.rowTitleCompact : styles.rowTitle,
+            danger && { color: colors.danger },
+            disabled && styles.rowTitleDisabled,
+          ]}
+        >
+          {title}
+        </Text>
+        {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
+        {meta ? <Text style={styles.rowDetail}>{meta}</Text> : null}
+      </View>
+      {end}
     </Pressable>
   );
 }
@@ -250,136 +471,300 @@ export function RowGroup({ children }: { children: ReactNode }) {
   return <View style={styles.group}>{children}</View>;
 }
 
-// ---- a feature that is planned but not built ---------------------------------------------------
-
-/** Says plainly that a part of the design is not built yet, and what it will do. */
-export function PlannedFeature({
-  icon,
-  title,
-  text,
-  testID,
-}: {
-  icon: IconName;
-  title: string;
-  text: string;
-  testID?: string;
-}) {
+/** A fact: a small label over its value, over a hairline. */
+export function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <View
-      style={styles.planned}
-      testID={testID}
-      accessible
-      accessibilityLabel={`${title}. ${text}`}
-    >
-      <View style={styles.plannedIcon}>
-        <Icon name={icon} size={28} color={colors.primary} />
-      </View>
-      <Text style={styles.plannedTitle}>{title}</Text>
-      <Text style={styles.plannedText}>{text}</Text>
-      <Badge label="Not built yet" />
+    <View style={styles.info} accessible accessibilityLabel={`${label}: ${value}`}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
 
-// ---- bottom sheet ----------------------------------------------------------------------------------
-
-/** A sheet of actions that slides up from the bottom; tapping outside or Back closes it. */
-export function Sheet({
-  visible,
-  title,
-  onClose,
-  children,
+/** A quiet line with a small icon and no label: when it is, where, how much. */
+export function MetaLine({
+  icon,
+  text,
+  tone = "muted",
 }: {
-  visible: boolean;
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
+  icon: IconName;
+  text: string;
+  tone?: "muted" | "text" | "danger";
 }) {
-  const insets = useSafeAreaInsets();
+  const colour = tone === "danger" ? colors.danger : tone === "text" ? colors.text : colors.muted;
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.sheetRoot}>
-        <Pressable
-          style={styles.backdrop}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          onPress={onClose}
-        />
-        <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]}>
-          <View style={styles.grabber} />
-          <View style={styles.sheetHead}>
-            <Text accessibilityRole="header" style={styles.sheetTitle}>
-              {title}
-            </Text>
-            <IconButton icon="close" label="Close" onPress={onClose} />
-          </View>
-          {children}
+    <View style={styles.metaLine} accessible accessibilityLabel={text}>
+      <Icon name={icon} size="sm" color={colour} />
+      <Text style={[styles.metaText, { color: colour }]}>{text}</Text>
+    </View>
+  );
+}
+
+/** A list of short lines with bullets (reasons, notes, differences). */
+export function Bullets({ items, tone = "text" }: { items: string[]; tone?: "text" | "muted" }) {
+  return (
+    <View style={styles.bullets}>
+      {items.map((item) => (
+        <View key={item} style={styles.bullet} accessible accessibilityLabel={item}>
+          <View style={[styles.bulletDot, tone === "muted" && styles.bulletDotMuted]} />
+          <Text style={[styles.bulletText, tone === "muted" && styles.bulletTextMuted]}>
+            {item}
+          </Text>
         </View>
-      </View>
-    </Modal>
+      ))}
+    </View>
+  );
+}
+
+// ---- cards, sections and tiles -------------------------------------------------------------------
+
+/** The card (docs/design.md): white, 16 dp corners, a hairline and a soft shadow, for a thing that
+ * is picked up and opened. One look everywhere. */
+export function Card({
+  children,
+  padded = true,
+  testID,
+}: {
+  children: ReactNode;
+  /** False for a card whose first child (a cover) runs to its edges. */
+  padded?: boolean;
+  testID?: string;
+}) {
+  return (
+    <View style={[styles.card, padded && styles.cardPadded]} testID={testID}>
+      {children}
+    </View>
+  );
+}
+
+/** A flat section of a settings-like page: a hairline above, a title, its text and actions. No box. */
+export function Section({
+  title,
+  children,
+  testID,
+}: {
+  title?: string;
+  children: ReactNode;
+  testID?: string;
+}) {
+  return (
+    <View style={styles.section} testID={testID}>
+      {title ? <SectionHeader title={title} /> : null}
+      {children}
+    </View>
+  );
+}
+
+const TILE = {
+  sm: { box: 32, radius: radius.sm, icon: "sm" as IconSize },
+  md: { box: sizes.tile, radius: radius.md, icon: "md" as IconSize },
+  lg: { box: sizes.thumb, radius: radius.md, icon: "lg" as IconSize },
+};
+
+/** An icon on a soft tone: what kind a thing is (a document, a way to add, a visited place). */
+export function Tile({
+  icon,
+  fg,
+  bg,
+  size = "md",
+}: {
+  icon: IconName;
+  fg: string;
+  bg: string;
+  size?: keyof typeof TILE;
+}) {
+  const t = TILE[size];
+  return (
+    <View
+      style={[
+        styles.tile,
+        { width: t.box, height: t.box, borderRadius: t.radius, backgroundColor: bg },
+      ]}
+    >
+      <Icon name={icon} size={t.icon} color={fg} />
+    </View>
+  );
+}
+
+export type MarkKind = "sight" | "eat" | "transport" | "city" | "quiet";
+
+const MARK_SIZE = { list: sizes.mark, map: sizes.marker, selected: sizes.markerSelected, key: 14 };
+
+/**
+ * The mark of a stop, shared by the day list, the map and the map key: sights are round and green,
+ * places to eat rounded squares in orange, travel and cities navy rounded squares; a day colour can
+ * replace the fill. The words beside it always say the kind too.
+ */
+export function StopMark({
+  kind,
+  label,
+  icon,
+  size = "list",
+  color,
+  selected = false,
+}: {
+  kind: MarkKind;
+  /** A number in the mark. */
+  label?: string | number;
+  icon?: IconName;
+  size?: keyof typeof MARK_SIZE;
+  /** A day's colour instead of the kind's. */
+  color?: string;
+  selected?: boolean;
+}) {
+  const box = selected ? MARK_SIZE.selected : MARK_SIZE[size];
+  const square = kind === "eat" || kind === "transport" || kind === "city";
+  const fill = selected
+    ? colors.markerSelected
+    : (color ??
+      (kind === "eat"
+        ? colors.eat
+        : kind === "transport" || kind === "city"
+          ? colors.ink
+          : kind === "quiet"
+            ? colors.surfaceMuted
+            : colors.marker));
+  const onMap = size === "map" || selected;
+  return (
+    <View
+      style={[
+        styles.mark,
+        {
+          width: box,
+          height: box,
+          borderRadius: square ? Math.round(box * 0.3) : box / 2,
+          backgroundColor: fill,
+        },
+        onMap && styles.markOnMap,
+      ]}
+    >
+      {label !== undefined ? (
+        <Text style={styles.markText} maxFontSizeMultiplier={1.3}>
+          {label}
+        </Text>
+      ) : icon ? (
+        <Icon name={icon} size="xs" color={kind === "quiet" ? colors.muted : colors.onPrimary} />
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  pressed: { opacity: 0.75 },
+  pressed: { opacity: opacity.pressed },
+  quietPressed: { backgroundColor: colors.surfaceMuted },
+  disabled: { opacity: opacity.disabled },
+  focused: { borderWidth: border.thick, borderColor: colors.selected },
 
-  iconButton: {
-    width: TOUCH,
-    height: TOUCH,
-    minHeight: TOUCH,
-    borderRadius: TOUCH / 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconButtonCompact: { width: 40, height: 36, minHeight: 36, borderRadius: 18 },
+  iconButton: { borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
   iconButtonOnImage: { backgroundColor: colors.imageButton },
+  iconButtonOnMap: { backgroundColor: colors.surface, ...shadow.card },
 
   badge: {
     alignSelf: "flex-start",
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xxs + 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xxs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceMuted,
   },
-  badgeText: { ...type.caption, fontWeight: "600", color: colors.text },
+  badgeText: { ...type.micro, fontWeight: weight.semibold },
 
-  tabBar: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  tabBar: { borderBottomWidth: border.hairline, borderBottomColor: colors.border },
   tabScroll: { paddingHorizontal: spacing.lg, gap: spacing.lg },
+  // Equal gutters at both edges, the same space between the labels.
   tabRow: { flexDirection: "row", justifyContent: "space-between", gap: 0 },
-  tab: { minHeight: TOUCH, justifyContent: "flex-end", alignItems: "center" },
-  // Equal gutters at both edges, the same space between the labels: balanced, whatever their length.
-  tabAuto: { paddingHorizontal: spacing.xs },
-  tabCompact: { minHeight: 40 },
+  tab: { justifyContent: "flex-end", alignItems: "center" },
+  tabAuto: { paddingHorizontal: spacing.xs, flexShrink: 1 },
   tabText: {
-    ...type.small,
+    ...type.label,
     color: colors.muted,
-    fontWeight: "500",
+    fontWeight: weight.medium,
     paddingBottom: spacing.sm,
   },
-  tabTextActive: { color: colors.text, fontWeight: "700" },
-  tabLine: { height: 2.5, alignSelf: "stretch", borderRadius: 2, backgroundColor: "transparent" },
-  tabLineActive: { backgroundColor: colors.text },
-
-  // Flat: figures separated by hairlines, no boxes (docs/design.md).
-  statRow: {
-    flexDirection: "row",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+  tabTextActive: { color: colors.selected, fontWeight: weight.semibold },
+  tabLine: {
+    height: border.thick,
+    alignSelf: "stretch",
+    borderRadius: radius.pill,
+    backgroundColor: "transparent",
   },
-  stat: {
+  tabLineActive: { backgroundColor: colors.selected },
+
+  segments: {
+    flexDirection: "row",
+    padding: spacing.xxs,
+    gap: spacing.xxs,
+    borderRadius: radius.md,
+    borderWidth: border.thin,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+  },
+  segment: {
     flex: 1,
     alignItems: "center",
-    gap: spacing.xxs,
-    paddingVertical: spacing.md,
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+    borderWidth: border.thin,
+    borderColor: "transparent",
   },
-  // The original stacked figure, tighter: icon and number side by side, the word under them.
-  statCompact: { gap: 0, paddingVertical: spacing.sm },
-  statStack: { alignItems: "center", gap: spacing.xxs },
+  segmentActive: {
+    backgroundColor: colors.surface,
+    borderColor: colors.selected,
+  },
+  segmentText: { ...type.label, color: colors.muted, fontWeight: weight.medium },
+  segmentTextActive: { color: colors.selected, fontWeight: weight.semibold },
+
+  chip: {
+    minHeight: sizes.controlSm,
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: border.thin,
+    borderColor: colors.outline,
+    backgroundColor: colors.surface,
+  },
+  chipSelected: { backgroundColor: colors.selectedSoft, borderColor: colors.selected },
+  chipText: { ...type.caption, color: colors.text, fontWeight: weight.semibold },
+  chipTextSelected: { color: colors.selected },
+
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: radius.pill,
+    borderWidth: border.thick,
+    borderColor: colors.outline,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioOn: { borderColor: colors.selected },
+  radioDot: { width: 10, height: 10, borderRadius: radius.pill, backgroundColor: colors.selected },
+  check: {
+    width: 20,
+    height: 20,
+    borderRadius: radius.xs,
+    borderWidth: border.thick,
+    borderColor: colors.outline,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkOn: { backgroundColor: colors.selected, borderColor: colors.selected },
+
+  statRow: {
+    flexDirection: "row",
+    borderTopWidth: border.hairline,
+    borderBottomWidth: border.hairline,
+    borderColor: colors.border,
+  },
+  stat: { flex: 1, alignItems: "center", paddingVertical: spacing.sm },
   statTop: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  statValueCompact: { ...type.heading },
-  statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.border },
-  statValue: { ...type.title, color: colors.text },
+  statDivider: { borderLeftWidth: border.hairline, borderLeftColor: colors.border },
+  statValue: { ...type.headline, color: colors.text },
   statLabel: { ...type.caption, color: colors.muted },
 
   sectionHead: {
@@ -388,63 +773,60 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing.sm,
   },
-  sectionTitle: { ...type.heading, color: colors.text },
+  sectionTitle: { ...type.headline, color: colors.text, flexShrink: 1 },
 
-  group: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
+  group: { borderTopWidth: border.hairline, borderTopColor: colors.border },
   row: {
-    minHeight: TOUCH + 8,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rowGutter: { paddingHorizontal: spacing.lg },
+  rowPanel: { paddingHorizontal: spacing.md },
+  rowDivider: { borderBottomWidth: border.hairline, borderBottomColor: colors.border },
+  rowSelected: { backgroundColor: colors.selectedSoft },
+  rowIcon: { width: 24, alignItems: "center", justifyContent: "center" },
+  rowText: { flex: 1, gap: spacing.xxs },
+  rowTitle: { ...type.body, fontWeight: weight.semibold, color: colors.text },
+  rowTitleCompact: { ...type.label, fontWeight: weight.semibold, color: colors.text },
+  rowTitleDisabled: { color: colors.muted },
+  rowDetail: { ...type.caption, color: colors.muted },
+
+  info: {
+    gap: spacing.xxs,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: border.hairline,
     borderBottomColor: colors.border,
   },
-  rowIcon: { width: 32, alignItems: "center", justifyContent: "center" },
-  rowIconDisabled: {},
-  rowText: { flex: 1, gap: spacing.xxs },
-  rowTitle: { ...type.body, fontWeight: "600", color: colors.text },
-  rowDetail: { ...type.small, color: colors.muted },
-
-  planned: {
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  plannedIcon: { alignItems: "center", justifyContent: "center" },
-  plannedTitle: { ...type.heading, color: colors.text, textAlign: "center" },
-  plannedText: { ...type.small, color: colors.muted, textAlign: "center" },
-
-  sheetRoot: { flex: 1, justifyContent: "flex-end" },
-  backdrop: {
-    ...StyleSheet.absoluteFill,
-    minHeight: TOUCH,
-    backgroundColor: "rgba(20, 36, 58, 0.35)",
-  },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    ...shadow.raised,
-  },
-  grabber: {
-    alignSelf: "center",
-    width: 40,
+  infoLabel: { ...type.caption, color: colors.muted },
+  infoValue: { ...type.label, color: colors.text },
+  metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  metaText: { ...type.label, flex: 1 },
+  bullets: { gap: spacing.xs },
+  bullet: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
+  bulletDot: {
+    width: 4,
     height: 4,
-    borderRadius: 2,
-    marginTop: spacing.sm,
-    backgroundColor: colors.border,
+    borderRadius: radius.pill,
+    marginTop: 8,
+    backgroundColor: colors.text,
   },
-  sheetHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sheetTitle: { ...type.title, color: colors.text },
+  bulletDotMuted: { backgroundColor: colors.muted },
+  bulletText: { ...type.label, color: colors.text, flex: 1 },
+  bulletTextMuted: { color: colors.muted },
+
+  card: { ...cardStyle, gap: spacing.sm, overflow: "hidden" },
+  cardPadded: { padding: spacing.md },
+  section: {
+    gap: spacing.sm,
+    paddingTop: spacing.lg,
+    borderTopWidth: border.hairline,
+    borderTopColor: colors.border,
+  },
+  tile: { alignItems: "center", justifyContent: "center" },
+
+  mark: { alignItems: "center", justifyContent: "center" },
+  markOnMap: { borderWidth: border.thick, borderColor: colors.onPrimary, ...shadow.card },
+  markText: { ...type.micro, fontWeight: weight.semibold, color: colors.onPrimary },
 });

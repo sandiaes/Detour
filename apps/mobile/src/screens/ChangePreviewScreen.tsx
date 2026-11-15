@@ -3,21 +3,23 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ApiError, call, describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
 import {
+  Bullets,
+  Button,
   Card,
+  CompactHeader,
   ErrorState,
   LoadingState,
   Notice,
-  PlanNotes,
-  ScreenHeader,
+  SectionHeader,
   WakingServer,
-} from "../components/ui";
+} from "../components/ds";
+import { PlanNotes } from "../components/plan/PlanNotes";
 import { changeKey, useChangeActions } from "../data/changes";
 import { useResource } from "../data/DataProvider";
 import { diffSections, diffSummary, travelChangeText } from "../domain/changes";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { colors, spacing, type } from "../theme";
+import { colors, layout, spacing, type, weight } from "../theme";
 
 type PreviewRoute = Extract<Route, { name: "changePreview" }>;
 
@@ -47,7 +49,7 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
   if (data === undefined) {
     return (
       <View style={styles.fill}>
-        <ScreenHeader title="Preview" onBack={nav.back} />
+        <CompactHeader title="Preview" onBack={nav.back} />
         {change.status === "error" ? (
           <ErrorState
             title="The preview could not be loaded"
@@ -100,7 +102,7 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <ScreenHeader
+      <CompactHeader
         title={
           data.action === "optimize"
             ? data.restores_version !== null
@@ -116,7 +118,7 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
         onBack={nav.back}
       />
       <View style={styles.section}>
-        <Card accent>
+        <Card>
           <Text style={styles.summary} accessibilityRole="summary">
             {diffSummary(data.diff)}
           </Text>
@@ -133,14 +135,8 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
                 : `These ${s.lines.length} items are no longer in the plan if you accept.`}
             </Notice>
           ) : null}
-          <Text style={styles.title} accessibilityRole="header">
-            {s.title}
-          </Text>
-          {s.lines.map((line) => (
-            <Text key={line} style={styles.line}>
-              • {line}
-            </Text>
-          ))}
+          <SectionHeader title={s.title} />
+          <Bullets items={s.lines} />
           {s.key === "estimated" ? (
             <Text style={styles.muted}>
               Straight-line distance with a detour factor, not a measured route.
@@ -179,7 +175,7 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
         ) : (
           <>
             <Notice tone="info">{STATUS_TEXT[data.status] ?? data.status}</Notice>
-            <Button label="Back to the plan" variant="secondary" onPress={nav.back} />
+            <Button label="Back to the plan" variant="secondary" fill onPress={nav.back} />
           </>
         )}
       </View>
@@ -190,11 +186,9 @@ export function ChangePreviewScreen({ route }: { route: PreviewRoute }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { paddingBottom: spacing.xxl },
-  section: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.xs },
-  summary: { ...type.body, color: colors.text, fontWeight: "600" },
-  travel: { ...type.small, color: colors.muted },
-  title: { ...type.heading, color: colors.text },
-  line: { ...type.small, color: colors.text },
+  section: { paddingHorizontal: layout.gutter, paddingBottom: layout.section, gap: spacing.sm },
+  summary: { ...type.body, color: colors.text, fontWeight: weight.semibold },
+  travel: { ...type.label, color: colors.muted },
   muted: { ...type.caption, color: colors.muted },
   buttons: { gap: spacing.sm },
 });

@@ -5,11 +5,12 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BackendContext } from "../../api/BackendProvider";
 import { describeError } from "../../api/unwrap";
 import { colors, radius, spacing, type } from "../../theme";
-import { Button } from "../Button";
-import { LoadingState, Notice } from "../ui";
+import { Button } from "./Button";
 import { FittedPhoto } from "./Cover";
 import { Icon } from "./Icon";
-import { Sheet } from "./primitives";
+import { Chip } from "./primitives";
+import { Sheet } from "./Sheet";
+import { LoadingState, Notice } from "./states";
 
 /** One destination whose photos can be chosen (a city or area; each stop of a multi-city trip). */
 export type CoverSource = { kind: "city" | "area"; ref: string; name: string };
@@ -96,23 +97,22 @@ export function CoverPicker({
           contentContainerStyle={s.tabs}
         >
           {sources.map((src, i) => (
-            <Pressable
+            <Chip
               key={`${src.kind}:${src.ref}`}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: i === sourceIndex }}
-              hitSlop={6}
+              label={src.name}
+              selected={i === sourceIndex}
               onPress={() => setSourceIndex(i)}
-              style={[s.tab, i === sourceIndex && s.tabOn]}
               testID={`cover-source-${i}`}
-            >
-              <Text style={[s.tabText, i === sourceIndex && s.tabTextOn]}>{src.name}</Text>
-            </Pressable>
+            />
           ))}
         </ScrollView>
       ) : null}
       {error ? <Notice tone="error">{error}</Notice> : null}
       {state.status === "loading" ? (
-        <LoadingState text="Finding photos. The first time for a place can take half a minute." />
+        <LoadingState
+          layout="inline"
+          text="Finding photos. The first time for a place can take half a minute."
+        />
       ) : state.status === "error" ? (
         <Notice tone="error">{state.message}</Notice>
       ) : state.items.length === 0 ? (
@@ -139,7 +139,7 @@ export function CoverPicker({
                   {apiUrl ? <FittedPhoto uri={`${apiUrl}${c.preview_url}`} photoSize={c} /> : null}
                   {on ? (
                     <View style={s.tick}>
-                      <Icon name="check" size={14} color={colors.onPrimary} />
+                      <Icon name="check" size="xs" color={colors.onPrimary} />
                     </View>
                   ) : null}
                 </View>
@@ -154,7 +154,7 @@ export function CoverPicker({
       <Button
         label="Automatic photo"
         variant="secondary"
-        size="compact"
+        size="sm"
         icon="refresh"
         loading={saving === "automatic"}
         disabled={saving !== null}
@@ -170,18 +170,7 @@ export function CoverPicker({
 }
 
 const s = StyleSheet.create({
-  tabs: { gap: spacing.sm, paddingBottom: spacing.sm },
-  tab: {
-    minHeight: 36,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.outline,
-    justifyContent: "center",
-  },
-  tabOn: { backgroundColor: colors.ink, borderColor: colors.ink },
-  tabText: { ...type.caption, color: colors.text },
-  tabTextOn: { color: colors.onPrimary },
+  tabs: { gap: spacing.sm, paddingVertical: spacing.xs },
   scroll: { maxHeight: 420 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   cell: { width: "31%", gap: spacing.xs, borderRadius: radius.sm },
@@ -198,8 +187,8 @@ const s = StyleSheet.create({
     right: spacing.xs,
     width: 22,
     height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.ink,
+    borderRadius: radius.pill,
+    backgroundColor: colors.selected,
     alignItems: "center",
     justifyContent: "center",
   },

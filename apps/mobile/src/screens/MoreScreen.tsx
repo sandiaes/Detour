@@ -1,9 +1,8 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ListRow, RowGroup } from "../components/ds/primitives";
-import { ScreenHeader } from "../components/ui";
+import { ListRow, RowGroup, ScreenHeader } from "../components/ds";
 import { useNavigation } from "../nav/Navigator";
-import { colors, spacing, type } from "../theme";
+import { colors, layout, spacing, type } from "../theme";
 
 /**
  * More (ADR 021). Settings works today; the other rows are the planned parts of the design and
@@ -36,7 +35,7 @@ export function MoreScreen() {
             onPress={() => nav.push({ name: "exportTrips" })}
           />
           <ListRow
-            icon="export"
+            icon="import"
             title="Import a trip"
             detail="Add trips from a Detour file"
             testID="more-import"
@@ -76,6 +75,7 @@ export function MoreScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: spacing.lg, gap: spacing.lg },
-  note: { ...type.small, color: colors.muted },
+  // The rows run to the screen's edges; their text sits on the gutter.
+  content: { gap: layout.section, paddingBottom: spacing.xxl },
+  note: { ...type.caption, color: colors.muted, paddingHorizontal: layout.gutter },
 });

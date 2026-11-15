@@ -1,5 +1,5 @@
 import { COVER_TONES } from "./components/ds/Cover";
-import { TOUCH, colors, docTones } from "./theme";
+import { TOUCH, colors, dayTones, docTones, touchSlop } from "./theme";
 
 // WCAG 2.x contrast ratio.
 function luminance(hex: string): number {
@@ -41,6 +41,19 @@ describe("text contrast is at least 4.5:1 (WCAG AA)", () => {
     ["on ink", colors.onInk, colors.ink],
     ["primary on muted surface", colors.primary, colors.surfaceMuted],
     ["restaurant marker number", colors.onPrimary, colors.eat],
+    ["on danger", colors.onDanger, colors.danger],
+    ["danger on surface", colors.danger, colors.surface],
+    ["danger on background", colors.danger, colors.background],
+    ["danger on danger soft", colors.danger, colors.dangerSoft],
+    ["selected on surface", colors.selected, colors.surface],
+    ["selected on selected soft", colors.selected, colors.selectedSoft],
+    ["on primary, pressed", colors.onPrimary, colors.primaryPressed],
+    ["text on danger soft", colors.text, colors.dangerSoft],
+    ...dayTones.map((t, i): [string, string, string] => [
+      `white on day ${i + 1}`,
+      colors.onPrimary,
+      t.fg,
+    ]),
     ...Object.entries(docTones).map(([k, t]): [string, string, string] => [
       `document tile ${k}`,
       t.fg,
@@ -66,6 +79,22 @@ describe("the borders that identify a control are at least 3:1 (WCAG 1.4.11)", (
   });
 });
 
+describe("a day's colour reads on its soft tone (3:1 for icons)", () => {
+  test.each(dayTones.map((t, i): [string, string, string] => [`day ${i + 1}`, t.fg, t.bg]))(
+    "%s",
+    (_name, fg, bg) => {
+      expect(contrast(fg, bg)).toBeGreaterThanOrEqual(3);
+    },
+  );
+});
+
 test("the touch target size is Android's 48 dp", () => {
   expect(TOUCH).toBe(48);
+});
+
+test("touch slop lifts any drawn height to 48 dp", () => {
+  for (const h of [24, 36, 40, 44, 48]) {
+    const s = touchSlop(h);
+    expect(h + s.top + s.bottom).toBeGreaterThanOrEqual(48);
+  }
 });

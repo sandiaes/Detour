@@ -3,13 +3,12 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
-import { Button } from "../components/Button";
+import { Button, EmptyState, LoadingState, Notice, ScreenHeader } from "../components/ds";
 import { StopList, type StopDraft, stopsProblem } from "../components/StopList";
-import { EmptyState, LoadingState, Notice, ScreenHeader } from "../components/ui";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useNavigation } from "../nav/Navigator";
-import { colors, spacing, type } from "../theme";
+import { colors, layout, spacing, type } from "../theme";
 
 /**
  * A multi-city trip's cities (ADR 024, decision 19): add, remove, reorder, change days. With a
@@ -97,7 +96,6 @@ export function EditStopsScreen({ tripId }: { tripId: string }) {
           <Button
             testID="save-stops"
             label={hasPlan ? "Preview the change" : "Save cities"}
-            variant="ink"
             fill
             loading={busy}
             disabled={unchanged || invalid !== null || !actions.connected || busy}
@@ -112,6 +110,6 @@ export function EditStopsScreen({ tripId }: { tripId: string }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { paddingBottom: spacing.xxl },
-  pad: { paddingHorizontal: spacing.lg, gap: spacing.md },
+  pad: { paddingHorizontal: layout.gutter, gap: layout.block },
   note: { ...type.caption, color: colors.muted },
 });

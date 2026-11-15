@@ -1,8 +1,7 @@
 import { ScrollView, StyleSheet, View } from "react-native";
 
-import { PlannedFeature } from "../components/ds/primitives";
-import { ScreenHeader } from "../components/ui";
-import { spacing } from "../theme";
+import { PlannedFeature, ScreenHeader } from "../components/ds";
+import { layout } from "../theme";
 
 /**
  * Photos across all trips (ADR 021). Not built: photos grouped by day or place need storage and,
@@ -26,5 +25,5 @@ export function PhotosScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: spacing.lg },
+  content: { paddingHorizontal: layout.gutter },
 });

@@ -154,12 +154,12 @@ test("search a sight, preview the change, accept it, and see the new plan", asyn
   ).toBeOnTheScreen();
   // What is dropped is shown with a warning, never silently.
   expect(screen.getByText("Left out of the plan")).toBeOnTheScreen();
-  expect(screen.getByText("• Day 1, 14:03: St. Stephen's Cathedral")).toBeOnTheScreen();
-  expect(screen.getByText("• Day 1, 15:10: Prater (your addition)")).toBeOnTheScreen();
-  expect(screen.getByText("• Belvedere: day 1 11:21 → day 2 10:05")).toBeOnTheScreen();
-  expect(screen.getByText("• Day 1: Gasthaus Zum Test 13:01 → 12:30")).toBeOnTheScreen();
+  expect(screen.getByText("Day 1, 14:03: St. Stephen's Cathedral")).toBeOnTheScreen();
+  expect(screen.getByText("Day 1, 15:10: Prater (your addition)")).toBeOnTheScreen();
+  expect(screen.getByText("Belvedere: day 1 11:21 → day 2 10:05")).toBeOnTheScreen();
+  expect(screen.getByText("Day 1: Gasthaus Zum Test 13:01 → 12:30")).toBeOnTheScreen();
   expect(
-    screen.getByText("• Day 1: drive Schönbrunn Palace → Prater, about 22 min"),
+    screen.getByText("Day 1: drive Schönbrunn Palace → Prater, about 22 min"),
   ).toBeOnTheScreen();
   expect(client.count("POST /v1/change-sets/{change_set_id}/apply")).toBe(0);
 
@@ -386,7 +386,7 @@ test("up to three suggested days show the time, travel and what else changes", a
   expect(screen.getByText("+12 min travel (estimated)")).toBeOnTheScreen();
   expect(screen.getByText("Café Ohne Angabe: 18:30 → 19:00")).toBeOnTheScreen();
   expect(
-    screen.getByText("• Adds the least travel of the days that can take it."),
+    screen.getByText("Adds the least travel of the days that can take it."),
   ).toBeOnTheScreen();
   // The alternative leaves a visit out, and says so first, as a warning.
   expect(screen.getByText("Day 2 · 10:05–12:05")).toBeOnTheScreen();

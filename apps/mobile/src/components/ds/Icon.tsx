@@ -124,28 +124,43 @@ const SHAPES = {
   unlock: { rects: [[5, 11, 14, 10, 2]], d: ["M8 11V8a4 4 0 0 1 7.5-2"] },
   refresh: { d: ["M20 12a8 8 0 1 1-2.5-5.8", "M20 4v5h-5"] },
   trash: { d: ["M4 7h16", "M10 11v6", "M14 11v6", "M6 7l1 13h10l1-13", "M9 7V4h6v3"] },
+  minus: { d: ["M5 12h14"] },
+  import: { d: ["M12 3v12", "M8 11l4 4 4-4", "M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"] },
+  external: {
+    d: ["M14 4h6v6", "M20 4l-9 9", "M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"],
+  },
+  alert: { d: ["M12 4L2.5 20h19z", "M12 10v4.5", "M12 17.5h.01"] },
 } satisfies Record<string, Shape>;
 
 export type IconName = keyof typeof SHAPES;
 export const ICON_NAMES = Object.keys(SHAPES) as IconName[];
 
+/** The four icon sizes (docs/design.md): xs 14 in metadata, sm 16 in rows and compact controls,
+ * md 20 in regular controls, lg 24 in the bottom bar and on covers. A number is for an illustration
+ * only (the empty Documents tab, a tile scaled to its box). */
+export type IconSize = "xs" | "sm" | "md" | "lg";
+
+export function iconSize(size: IconSize | number): number {
+  return typeof size === "number" ? size : iconTokens[size];
+}
+
 export function Icon({
   name,
-  size = iconTokens.size,
+  size = "md",
   color = colors.text,
-  strokeWidth = iconTokens.stroke,
 }: {
   name: IconName;
-  size?: number;
+  size?: IconSize | number;
   color?: string;
-  strokeWidth?: number;
 }) {
   const shape: Shape = SHAPES[name];
+  const px = iconSize(size);
+  const strokeWidth = iconTokens.stroke;
   const dotFill = name === "dots" ? color : "none";
   return (
     <Svg
-      width={size}
-      height={size}
+      width={px}
+      height={px}
       viewBox="0 0 24 24"
       fill="none"
       stroke={color}

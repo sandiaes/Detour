@@ -1,15 +1,14 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { TOUCH, colors, spacing, type } from "../../theme";
-import { Icon } from "./Icon";
-import { Badge } from "./primitives";
+import { border, colors, size as sizes, spacing, type, weight } from "../../theme";
+import { Badge, Bullets, MetaLine, Radio } from "./primitives";
 
 export type AffectedLine = { tone: "warn" | "info"; text: string };
 
 /**
- * One suggested placement (a day and time for a place, or a day and meal for a restaurant):
- * where it goes, the travel it adds, what else changes, and why. The first is marked "Best" in
- * words; the chosen one has a thick border, a check and the announced state.
+ * One suggested placement (a day and time for a place): where it goes, the travel it adds, what
+ * else changes, and why. A selectable row with the shared radio mark; the first is marked "Best" in
+ * words; the chosen one is tinted and announced.
  */
 export function SuggestionCard({
   rank,
@@ -41,87 +40,56 @@ export function SuggestionCard({
       accessibilityState={{ selected }}
       onPress={onPress}
       testID={testID}
-      style={({ pressed }) => [styles.card, selected && styles.selected, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.row, (selected || pressed) && styles.selected]}
     >
       <View style={styles.head}>
-        <View style={[styles.radio, selected && styles.radioOn]}>
-          {selected ? (
-            <Icon name="check" size={16} color={colors.onPrimary} strokeWidth={2.4} />
-          ) : null}
-        </View>
+        <Radio on={selected} />
         <Text style={styles.title}>{title}</Text>
         {rank === 1 ? <Badge label="Best" tone="primary" /> : null}
       </View>
-      <View style={styles.line}>
-        <Icon name="pin" size={16} color={colors.muted} />
-        <Text style={styles.text}>{where}</Text>
-      </View>
-      <View style={styles.line}>
-        <Icon name="route" size={16} color={colors.muted} />
-        <Text style={styles.text}>{impact}</Text>
-      </View>
-      {affected.length === 0 ? (
-        <View style={styles.line}>
-          <Icon name="check" size={16} color={colors.primary} />
-          <Text style={styles.text}>Nothing else changes</Text>
-        </View>
-      ) : (
-        <View style={styles.affected}>
-          <Text style={styles.label}>Also changes</Text>
-          {affected.map((a) => (
-            <View key={a.text} style={styles.line}>
-              <Icon
-                name={a.tone === "warn" ? "close" : "clock"}
-                size={16}
-                color={a.tone === "warn" ? colors.errorText : colors.muted}
+      <View style={styles.body}>
+        <MetaLine icon="pin" text={where} tone="text" />
+        <MetaLine icon="route" text={impact} tone="text" />
+        {affected.length === 0 ? (
+          <MetaLine icon="check" text="Nothing else changes" tone="text" />
+        ) : (
+          <View style={styles.group}>
+            <Text style={styles.label}>Also changes</Text>
+            {affected.map((a) => (
+              <MetaLine
+                key={a.text}
+                icon={a.tone === "warn" ? "alert" : "clock"}
+                text={a.text}
+                tone={a.tone === "warn" ? "danger" : "muted"}
               />
-              <Text style={[styles.text, a.tone === "warn" && styles.warn]}>{a.text}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-      {reasons.length > 0 ? (
-        <View style={styles.reasons}>
-          <Text style={styles.label}>Why here</Text>
-          {reasons.map((r) => (
-            <Text key={r} style={styles.reason}>
-              • {r}
-            </Text>
-          ))}
-        </View>
-      ) : null}
+            ))}
+          </View>
+        )}
+        {reasons.length > 0 ? (
+          <View style={styles.group}>
+            <Text style={styles.label}>Why here</Text>
+            <Bullets items={reasons} tone="muted" />
+          </View>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    minHeight: TOUCH,
-    gap: spacing.xs,
-    paddingVertical: spacing.lg,
+  row: {
+    minHeight: sizes.row,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: border.hairline,
     borderBottomColor: colors.border,
   },
-  selected: { backgroundColor: colors.surfaceMuted },
-  pressed: { opacity: 0.85 },
-  head: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs },
-  radio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.outline,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  radioOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  title: { ...type.heading, color: colors.text, flex: 1 },
-  line: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
-  text: { ...type.small, color: colors.text, flex: 1 },
-  warn: { color: colors.errorText, fontWeight: "600" },
-  affected: { gap: spacing.xs, marginTop: spacing.xs },
-  label: { ...type.caption, fontWeight: "700", color: colors.muted },
-  reasons: { gap: spacing.xxs, marginTop: spacing.xs },
-  reason: { ...type.small, color: colors.muted },
+  selected: { backgroundColor: colors.selectedSoft },
+  head: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  // The lines start under the title, past the radio mark.
+  body: { gap: spacing.xs, paddingLeft: 20 + spacing.md },
+  title: { ...type.cardTitle, color: colors.text, flex: 1 },
+  group: { gap: spacing.xs, marginTop: spacing.xs },
+  label: { ...type.caption, fontWeight: weight.bold, color: colors.muted },
 });
