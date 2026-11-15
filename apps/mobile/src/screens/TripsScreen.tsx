@@ -1,6 +1,6 @@
 import type { Trip } from "@detour/shared";
 import { useState } from "react";
-import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, Image, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError, isOfflineError } from "../api/unwrap";
 import {
@@ -13,6 +13,7 @@ import {
   Tabs,
   WakingServer,
   useAnnounceOnMount,
+  FocusPressable,
 } from "../components/ds";
 import { Cover } from "../components/ds/Cover";
 import { ResourceNotices } from "../components/ResourceNotices";
@@ -27,7 +28,17 @@ import {
   tripsInTab,
 } from "../domain/trips";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { colors, layout, opacity, radius, spacing, textOnImage, type, weight } from "../theme";
+import {
+  colors,
+  layout,
+  opacity,
+  radius,
+  size as sizes,
+  spacing,
+  textOnImage,
+  type,
+  weight,
+} from "../theme";
 
 /** A past trip opens on its map of visited places (ADR 006); every other trip on its overview,
  * which shows the active plan or leads to the proposals (ADR 021). */
@@ -52,7 +63,7 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
   const label = TRIP_PHASE_LABEL[phase];
   const span = shortSpan(trip);
   return (
-    <Pressable
+    <FocusPressable
       accessibilityRole="button"
       accessibilityLabel={`${trip.title}. ${span}. ${label}.`}
       accessibilityHint={
@@ -77,7 +88,7 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
           <Badge label={label} tone={PHASE_TONE[phase]} />
         </View>
         <View style={styles.cardText} pointerEvents="none">
-          <Text style={styles.cardTitle} numberOfLines={1}>
+          <Text style={styles.cardTitle} numberOfLines={2}>
             {trip.title}
           </Text>
           <Text style={styles.cardMeta} numberOfLines={1}>
@@ -85,7 +96,7 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
           </Text>
         </View>
       </Cover>
-    </Pressable>
+    </FocusPressable>
   );
 }
 
@@ -208,7 +219,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   brand: { paddingHorizontal: layout.gutter, paddingTop: spacing.sm, paddingBottom: spacing.xs },
   list: { padding: layout.gutter, gap: spacing.lg },
-  card: { minHeight: 48 },
+  card: { minHeight: sizes.rowCompact },
   pressed: { opacity: opacity.pressed },
   cardBadge: { position: "absolute", top: spacing.md, right: spacing.md },
   // The name, dates and length sit on the photo, bottom left, over the cover's soft gradient;

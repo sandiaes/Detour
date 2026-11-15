@@ -39,7 +39,7 @@ cuisines, imported restaurants or the slot engine they are out of date.
 tokens in `theme.ts` and one set of components in `components/ds` that every screen uses (green main
 action and selected state, buttons and fields at radius 12, a ConfirmSheet for deleting a trip, marking
 it as past and deleting a document, a type scale of 26 to 12, 48 dp touch targets). `styleTokens.test.ts`
-fails when a screen writes its own colour, font size, radius or border; `e2e/screenshot-tour.yaml` (the
+fails when a screen writes its own colour, font size, radius, border, spacing number or control height, or a tappable thing without the focus ring; `e2e/screenshot-tour.yaml` (the
 "E2E Android" workflow, flow `screenshot-tour`) is written but **not yet run**; `e2e/trip-flow.yaml` is
 out of date with the screens. No behaviour, API or data changed.
 

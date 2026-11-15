@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import { colors, layout, radius, spacing, type, weight } from "../../theme";
+import { colors, layout, radius, size as sizes, spacing, type, weight } from "../../theme";
 import { Button } from "./Button";
 import { Icon, type IconName } from "./Icon";
 import { Badge } from "./primitives";
@@ -271,7 +271,7 @@ export function Notice({
       </View>
       {action ? (
         <View style={styles.noticeAction}>
-          <Button label={action.label} variant="secondary" size="sm" onPress={action.onPress} />
+          <Button label={action.label} variant="ghost" size="sm" onPress={action.onPress} />
         </View>
       ) : null}
     </View>
@@ -284,8 +284,8 @@ const styles = StyleSheet.create({
   inline: { paddingVertical: spacing.xl, paddingHorizontal: spacing.lg },
   group: { alignItems: "center", gap: spacing.sm },
   mark: {
-    width: 48,
-    height: 48,
+    width: sizes.stateMark,
+    height: sizes.stateMark,
     borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",

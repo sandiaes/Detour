@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   dayHeading: { ...type.label, fontWeight: weight.bold, color: colors.text },
-  rowText: { flex: 1, gap: 1 },
+  rowText: { flex: 1, gap: spacing.xxs },
   cityName: { ...type.label, fontWeight: weight.bold, color: colors.text },
   visitName: { ...type.label, fontWeight: weight.semibold, color: colors.text },
   // Skipped is also written in the line below the name: never colour or strike-through alone.

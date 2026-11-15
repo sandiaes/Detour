@@ -1,11 +1,12 @@
 import type { Photo } from "@detour/shared";
 import { type ReactNode, useContext, useState } from "react";
-import { Image, Linking, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Image, Linking, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 
 import { BackendContext } from "../../api/BackendProvider";
-import { colors, radius, spacing, type as typeScale } from "../../theme";
+import { colors, radius, size as sizes, spacing, touchSlop, type as typeScale } from "../../theme";
 import { Icon } from "./Icon";
+import { FocusPressable } from "./primitives";
 
 // A destination's or place's cover (ADR 021, ADR 022). A photo appears only when the backend sent
 // one (`photo`: Wikimedia Commons, served through the backend); otherwise nothing is invented and
@@ -247,7 +248,7 @@ export function PhotoCredit({
   return (
     <View style={[creditStyles.corner, { bottom: spacing.sm + inset }]} pointerEvents="box-none">
       {open ? (
-        <Pressable
+        <FocusPressable
           accessibilityRole="link"
           accessibilityLabel={`${photo.credit.text}. Opens the photo's page on Wikimedia Commons.`}
           onPress={() => void Linking.openURL(photo.credit.source_url)}
@@ -257,19 +258,19 @@ export function PhotoCredit({
           <Text style={creditStyles.text} numberOfLines={3}>
             {photo.credit.text}
           </Text>
-        </Pressable>
+        </FocusPressable>
       ) : null}
-      <Pressable
+      <FocusPressable
         accessibilityRole="button"
         accessibilityLabel={open ? "Hide the photo credit" : "Show the photo credit"}
         accessibilityState={{ expanded: open }}
-        hitSlop={12}
+        hitSlop={touchSlop(sizes.creditButton)}
         onPress={() => setOpen((v) => !v)}
         style={creditStyles.button}
         testID="photo-credit-toggle"
       >
         <Icon name="info" size="xs" color={colors.onImage} />
-      </Pressable>
+      </FocusPressable>
     </View>
   );
 }
@@ -286,8 +287,8 @@ const creditStyles = StyleSheet.create({
     gap: spacing.xs,
   },
   button: {
-    width: 24,
-    height: 24,
+    width: sizes.creditButton,
+    height: sizes.creditButton,
     borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",

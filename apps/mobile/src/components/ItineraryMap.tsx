@@ -20,10 +20,10 @@ import {
   transportFeature,
   transportPoint,
 } from "../domain/itinerary";
-import { TOUCH, border, colors, radius, shadow, spacing, type } from "../theme";
+import { TOUCH, border, colors, radius, spacing, type } from "../theme";
 import { formatSeconds } from "../util/format";
 import { AttributionBar } from "./AttributionBar";
-import { Button, IconButton, MapChip, Notice, StopMark } from "./ds";
+import { IconButton, MapChip, MapFailure, MapPanel, StopMark } from "./ds";
 
 /** The touch target of a marker; the drawn marker inside it is smaller (docs/design.md). */
 /** Each marker keeps a 48 dp touch area around the drawn mark. */
@@ -200,22 +200,15 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
       </Map>
 
       {status === "failed" ? (
-        <View style={styles.failure}>
-          <Notice
-            tone="error"
-            action={{
-              label: "Try the map again",
-              onPress: () => {
-                setStatus("loading");
-                setAttempt((n) => n + 1);
-              },
-            }}
-          >
-            The map could not load. This happens without a connection or when the map host is down.
-            The day list still works.
-          </Notice>
-          <Button label="Show the day list" variant="secondary" size="sm" onPress={onShowList} />
-        </View>
+        <MapFailure
+          message="The map could not load. This happens without a connection or when the map host is down. The day list still works."
+          onRetry={() => {
+            setStatus("loading");
+            setAttempt((n) => n + 1);
+          }}
+          listLabel="Show the day list"
+          onShowList={onShowList}
+        />
       ) : null}
       {status === "loading" ? <MapChip text="Loading the map…" live /> : null}
       {points.length > shownCount ? (
@@ -250,7 +243,7 @@ export function ItineraryMap({ day, previousDay, map, onShowList, selectedId, on
 
 export function Legend() {
   return (
-    <View style={styles.legend} accessibilityLiveRegion="polite">
+    <MapPanel>
       <View style={styles.legendRow}>
         <View style={styles.legendKey}>
           <StopMark kind="sight" size="key" />
@@ -275,7 +268,7 @@ export function Legend() {
         </View>
         <Text style={styles.legendText}>Direct line between stops; dashed if estimated</Text>
       </View>
-    </View>
+    </MapPanel>
   );
 }
 
@@ -283,14 +276,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   clip: { overflow: "hidden" },
   hit: { width: MARKER_SIZE, height: MARKER_SIZE, alignItems: "center", justifyContent: "center" },
-  failure: {
-    position: "absolute",
-    top: spacing.md,
-    left: spacing.md,
-    right: spacing.md,
-    gap: spacing.sm,
-    alignItems: "flex-start",
-  },
   keyCorner: {
     position: "absolute",
     top: spacing.sm,
@@ -298,13 +283,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: spacing.sm,
     maxWidth: 270,
-  },
-  legend: {
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    ...shadow.card,
   },
   // Every key sits in the same 20 dp column, so the words line up.
   legendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 20 },

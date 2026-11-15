@@ -153,15 +153,29 @@ Everything below is exported from `components/ds`. A screen uses these and nothi
 | **`StateView`** | The loading, empty, error, waking, offline and planned views (`LoadingState`, `EmptyState`, `ErrorState`, `WakingServer`, `PlannedFeature`): an icon in a 48 dp soft circle, a headline, a label-size text and an optional secondary action; `fill` centres it, `inline` sits in the page. **`InlineStatus`** is a spinner and a caption ("Searching…") |
 | **`Notice`** | `info`, `warning`, `error`, `success`: an icon, a word (Note, Offline, Problem, Done) and the text, radius 8, no outer margin, an optional action |
 | **Headers** | `ScreenHeader` (Back, a 24 pt title, a subtitle, right actions: Trips, More and pushed screens), `CompactHeader` (Back, a one-line 18 pt title, a subtitle, an action: screens inside a trip), `CoverBar` (Back and menu over a cover). A header is announced when its screen opens |
-| **Other** | `StatRow` (flat figures), `SectionHeader` (a title and an action), `Cover`, `CoverPicker`, `Calendar`, `KindIcon`, `SuggestionCard`, `MapChip`, `EdgeFade` |
+| **Map overlays** | `MapChip` (a status tag), `MapPanel` (the white key panel), `MapFailure` (what happened, "Try the map again", a way to the list); a button on a map is `IconButton variant="onMap"` |
+| **`FocusPressable`** | A `Pressable` that draws the focus ring; for every tappable thing that is not one of the shared controls (a document row, a calendar day, a card, a stop row) |
+| **Other** | `StatRow` (flat figures), `SectionHeader` (a title and an action), `Cover`, `CoverPicker`, `Calendar`, `KindIcon`, `SuggestionCard`, `EdgeFade` |
 
 ### Interaction states
 
-Every control has, and the tests check, these states: **default**, **pressed** (a tint, never only
-a colour change that is the sole cue), **disabled** (dimmed, announced as disabled, the reason in
-words where a row is disabled), **loading** (a spinner in the button, announced as busy, pressing
-does nothing), **focused** (a 2 dp green ring for keyboards and switch access), **selected** (green,
-announced as selected) and **error** (a red border and a message under a field).
+The states a control can have, and what checks them:
+
+- **Default** and **pressed** (a tint or reduced opacity).
+- **Disabled**: dimmed, announced as disabled; a disabled row keeps its button role and says why in
+  words. Tested for `Button`, `ListRow` and the planned rows of More.
+- **Loading** (`Button`): a spinner, announced as busy, pressing does nothing. Tested.
+- **Focused**: a 2 dp green ring for keyboards, a D-pad and switch access. `Button` draws it as its
+  border; every other control (`IconButton`, `Chip`, `ListRow`, tabs, segments, the bottom bar,
+  fields, anything made with `FocusPressable`) draws it as an outline through `useFocusRing`, so the
+  layout does not move. Tested for each kind, and `styleTokens.test.ts` fails on a `Pressable` that
+  does not draw it. **Not tried with a real keyboard or switch device.**
+- **Selected** (green, announced as selected) and **expanded** (announced). Tested.
+- **Error**: a red border and a message under a field. Tested for `TextField`.
+
+Titles that can be long (a trip's name on its card and cover, a compact header, a city, a
+document) take up to two lines; tab and segment labels shrink to 85 % instead. Heights are
+minimums. Not checked at 200 % font size.
 
 ### Patterns
 
@@ -178,12 +192,20 @@ announced as selected) and **error** (a red border and a message under a field).
 
 - `styleTokens.test.ts`: no file under `src` (apart from `theme.ts`, tests and the exceptions below)
   contains a hex or `rgba` colour, a `fontSize`, `lineHeight`, `fontFamily` or numeric `fontWeight`,
-  a non-zero `borderRadius` or border width as a number, or `StyleSheet.hairlineWidth`. It also
-  fails if a removed module (`ui.tsx`, the old `Button`, `BoxField`, `Dropdown`) comes back.
+  a non-zero `borderRadius` or border width as a number, a number as `padding`, `margin` or `gap`, a
+  `minHeight` or `height` of 36 dp or more (a control's height is `size.*`), a hand-written
+  `hitSlop` (use `touchSlop`) or `StyleSheet.hairlineWidth`. It fails if a removed module (`ui.tsx`,
+  the old `Button`, `BoxField`, `Dropdown`) comes back, and if a `Pressable` does not draw the focus
+  ring. Widths, and heights under 36, are geometry and are not linted.
 - `theme.test.ts`: contrast of every text pair, the border colours, the day colours and `danger`;
   `touchSlop`.
-- `accessibility.test.tsx` and the screen tests: a spoken name for every control, 48 dp touch targets,
-  states told in words, announced headers.
+- `accessibility.test.tsx`: a spoken name and a 48 dp touch target for every control, on Trips, the
+  trip overview and its tabs, menu and Add sheet, Add a place, Add a restaurant, Optimize, documents,
+  Add document, place detail, Create trip, the proposals, the day list and map, a past trip, More,
+  Explore, Photos, Export, Import, Image credits, Settings, and Trip settings with both of its
+  confirmation sheets open. Not visited by it: Edit cities and the change preview (the screen tests
+  cover their behaviour, not their touch targets).
+- Screen tests: states told in words, announced headers.
 - `components/ds/components.test.tsx`: the variants and states of `Button`, the fields, `Stepper`,
   `SegmentedControl`, `ConfirmSheet`, `StateView`.
 
@@ -199,6 +221,21 @@ Values that are not in `theme.ts` on purpose (decision 90). A new one needs the 
 | Calendar grid cells | `Calendar` | A seven-column grid: a cell is a seventh of the row; its text and colours are tokens |
 | Wordmark width on Trips | `TripsScreen` | An image, set by ADR 021, decision 68 (c) |
 | Geometry of drawn shapes (a radio's 20 dp circle, a 4 dp grabber, a 10 dp timeline dot, a 3 dp tab marker) | `ds/`, `nav/` | Shapes, not text or colour; plain width and height numbers are not linted |
+
+## Where the build differs from the audit's plan
+
+Decided while checking the work against `design-audit.md` (section 15):
+
+- **No `CoverHeader` component.** The audit proposed one for the trip cover and the place cover. They
+  differ: the trip's name is drawn on the photo, the place's name sits on the sheet below it. Both
+  share `Cover`, `CoverBar` and the `hero` type token; a shared header used twice with different
+  content would be an abstraction without a user.
+- **No `DateField`, `DayPills` or `CoverCard` components.** A date is a `SelectField` that opens the
+  calendar sheet; the day pills (`DayStrip`) and the trip card (`TripCard`) are single-use and live
+  with their screens, built from tokens and `FocusPressable`.
+- **No `MapButton`.** A map button is `IconButton variant="onMap"`.
+- **`Notice` actions are `ghost` buttons**, as planned; "Choose a plan" and "See the proposals" are
+  `primary md`.
 
 ## Checking the design
 

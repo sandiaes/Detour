@@ -5,7 +5,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { TOUCH, colors, size } from "../../theme";
 import { Button } from "./Button";
 import { SearchField, SelectField, Stepper, TextField } from "./fields";
-import { Chip, ListRow, SegmentedControl } from "./primitives";
+import { MapFailure } from "./map";
+import { Chip, IconButton, ListRow, SegmentedControl, Tabs } from "./primitives";
 import { ConfirmSheet } from "./Sheet";
 import { Notice, StateView } from "./states";
 
@@ -229,5 +230,84 @@ describe("confirmations, states and notices", () => {
   test("a notice says its tone in a word", async () => {
     await render(<Notice tone="warning">Showing trips saved earlier.</Notice>);
     expect(screen.getByText(/Offline\./)).toBeOnTheScreen();
+  });
+});
+
+describe("focus, disabled rows and map overlays", () => {
+  const ring = { outlineColor: colors.selected, outlineWidth: 2 };
+
+  test("every kind of control draws the same green ring when focused", async () => {
+    await render(
+      <>
+        <IconButton icon="close" label="Close it" onPress={() => {}} />
+        <Chip label="Tickets" selected={false} onPress={() => {}} />
+        <ListRow title="A row" onPress={() => {}} />
+        <Tabs
+          items={[
+            { key: "a", label: "First" },
+            { key: "b", label: "Second" },
+          ]}
+          value="a"
+          onChange={() => {}}
+        />
+        <SegmentedControl
+          items={[
+            { key: "a", label: "Search" },
+            { key: "b", label: "Address" },
+          ]}
+          value="a"
+          onChange={() => {}}
+        />
+      </>,
+    );
+    const roles: [string, string][] = [
+      ["button", "Close it"],
+      ["button", "Tickets"],
+      ["button", "A row"],
+      ["tab", "Second"],
+      ["tab", "Address"],
+    ];
+    for (const [role, name] of roles) {
+      expect(flat(screen.getByRole(role as "button", { name })).outlineWidth).toBeUndefined();
+      await fireEvent(screen.getByRole(role as "button", { name }), "focus");
+      expect(flat(screen.getByRole(role as "button", { name }))).toMatchObject(ring);
+      await fireEvent(screen.getByRole(role as "button", { name }), "blur");
+      expect(flat(screen.getByRole(role as "button", { name })).outlineWidth).toBeUndefined();
+    }
+  });
+
+  test("a disabled row is still a button, dimmed, with its reason last", async () => {
+    await render(<ListRow title="Place" detail="Choose a plan first" disabled />);
+    const row = screen.getByRole("button", { name: /^Place\./ });
+    expect(row.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(row.props.accessibilityLabel).toBe("Place. Choose a plan first. Coming later");
+  });
+
+  test("a row that opens something in place says whether it is open", async () => {
+    await render(<ListRow title="Compare" expanded={false} onPress={() => {}} />);
+    expect(screen.getByRole("button", { name: "Compare" }).props.accessibilityState).toMatchObject({
+      expanded: false,
+    });
+  });
+
+  test("a map failure says what happened and offers the retry and the list", async () => {
+    const retry = jest.fn();
+    const list = jest.fn();
+    await render(
+      <MapFailure
+        message="No connection."
+        onRetry={retry}
+        listLabel="Show the list"
+        onShowList={list}
+      />,
+    );
+    expect(screen.getByText(/No connection\./)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Try the map again" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Show the list" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(list).toHaveBeenCalledTimes(1);
+    expect(touch(screen.getByRole("button", { name: "Show the list" }))).toBeGreaterThanOrEqual(
+      TOUCH,
+    );
   });
 });

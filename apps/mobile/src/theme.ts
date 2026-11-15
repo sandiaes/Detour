@@ -158,6 +158,21 @@ export const size = {
   /** Thumbnails and tiles beside a row. */
   thumb: 56,
   tile: 40,
+  /** The round "i" of a photo credit, and of the map attribution. */
+  creditButton: 24,
+  attributionButton: 28,
+  /** A line of link text in the attribution. */
+  link: 20,
+  /** The portrait thumbnail of a picture document. */
+  thumbPortrait: 52,
+  /** The icon circle of a loading, empty or error view. */
+  stateMark: 48,
+  /** The drawn box of a radio mark and of a check box. */
+  radio: 20,
+  /** A compact header's minimum height. */
+  header: 52,
+  /** A multi-line field: three lines of text. */
+  multiline: 72,
 };
 
 /** Android's minimum touch target is 48 x 48 dp. */

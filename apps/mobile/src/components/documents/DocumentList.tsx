@@ -1,6 +1,6 @@
 import type { Trip } from "@detour/shared";
 import { useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useTripDocuments } from "../../documents/DocumentsProvider";
 import {
@@ -45,6 +45,7 @@ import {
   Sheet,
   StateView,
   Tile,
+  FocusPressable,
 } from "../ds";
 
 export const CATEGORY_ICON: Record<DocCategory, IconName> = {
@@ -88,7 +89,7 @@ function DocumentRow({
   const line = `${CATEGORY_LABEL[doc.category]} · ${fileLine(doc)}`;
   return (
     <View style={styles.row}>
-      <Pressable
+      <FocusPressable
         accessibilityRole="button"
         accessibilityLabel={`${doc.title}. ${line}. ${about}.`}
         onPress={onOpen}
@@ -97,7 +98,7 @@ function DocumentRow({
       >
         <KindTile category={doc.category} />
         <View style={styles.rowText}>
-          <Text style={styles.rowTitle} numberOfLines={1}>
+          <Text style={styles.rowTitle} numberOfLines={2}>
             {doc.title}
           </Text>
           <Text style={styles.rowLine} numberOfLines={1}>
@@ -116,7 +117,7 @@ function DocumentRow({
             testID={`document-thumb-${doc.id}`}
           />
         ) : null}
-      </Pressable>
+      </FocusPressable>
       <IconButton
         icon="dots"
         size="sm"
@@ -189,7 +190,7 @@ export function DocumentList({
       >
         <View style={styles.tiles}>
           {CATEGORIES.map((c) => (
-            <Pressable
+            <FocusPressable
               key={c}
               accessibilityRole="button"
               accessibilityLabel={`${CATEGORY_GROUP[c]}. ${CATEGORY_HELP[c]}. Adds one.`}
@@ -202,7 +203,7 @@ export function DocumentList({
               <Text style={styles.tileName} numberOfLines={1}>
                 {c === "other" ? "Other" : CATEGORY_GROUP[c]}
               </Text>
-            </Pressable>
+            </FocusPressable>
           ))}
         </View>
         {addButton}
@@ -374,10 +375,15 @@ const styles = StyleSheet.create({
     minHeight: sizes.row + spacing.sm,
     paddingVertical: spacing.sm,
   },
-  rowText: { flex: 1, gap: 1 },
+  rowText: { flex: 1, gap: spacing.xxs },
   rowTitle: { ...type.label, fontWeight: weight.semibold, color: colors.text },
   rowLine: { ...type.caption, color: colors.muted },
-  thumb: { width: 40, height: 52, borderRadius: radius.sm, backgroundColor: colors.surfaceMuted },
+  thumb: {
+    width: sizes.tile,
+    height: sizes.thumbPortrait,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceMuted,
+  },
   // One row: the four kinds share the width, each a small tile over its name.
   tiles: { flexDirection: "row", alignSelf: "stretch", paddingVertical: spacing.xs },
   categoryTile: {

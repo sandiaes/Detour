@@ -674,7 +674,35 @@ and 5 ahead of plan. The app did not build at the end of it.
   enforce, approved exceptions, how to check), ADR 021 amended (decisions 78 to 90), CLAUDE.md and
   `docs/development.md` updated.
 - **Checks run:** `npm run format:check`, `npm run lint`, `npm run typecheck` and `npm test` (43
-  suites, 458 tests) pass.
+  suites, 458 tests) passed; session 3 below raised this to 468 tests.
+
+### Session 3 (a second pass: the work checked against sections 3 to 10 and 13)
+
+The owner asked for a double check of phases 2 to 7. Each item of the audit's lists was checked in
+the code (not in the earlier summary). Found and fixed:
+
+- **Focus (A8):** only `Button`, `TextField` and `IconButton` had a focus state, yet `design.md`
+  claimed every control had. Now a shared `useFocusRing` and `FocusPressable` give `Chip`,
+  `ListRow`, tabs, segments, the bottom bar, the select field, the calendar, cards, document rows,
+  stop rows and the rest the same ring; tested per kind, and a test fails on a `Pressable` without it.
+- **Hand-written hit slop** in the photo credit and the map attribution: now `touchSlop`.
+- **Literal values the lint did not see:** seven `gap: 1`, a bullet margin, a suggestion indent, nine
+  control heights (44, 48, 40, 52, 64, 72, 56, 52, 48) and the radio and check size, the Add disc
+  (was 36, now 40 as planned): all tokens now (`size.radio`, `header`, `multiline`, `thumbPortrait`,
+  `stateMark`, `creditButton`, `attributionButton`, `link`). The lint now also rejects numeric
+  spacing, control heights and hand-written hit slop.
+- **Map overlays (P1 to P3):** the failure message was copied into both maps and the key panel was
+  styled by hand. Now `MapFailure` and `MapPanel` in `ds/map.tsx`. A tested `MapFailure`.
+- **One-line truncation (A5):** titles on the trip card and cover, compact headers, cities and
+  documents take two lines.
+- **Test coverage of phase 6:** `accessibility.test.tsx` did not visit Trip settings (or its
+  confirmation sheets), Export, Import, Image credits, More, Explore, Photos, Optimize, Add a
+  restaurant or Add document. It does now, and I checked the new tests fail when the touch target
+  shrinks.
+- **Documents corrected:** the focus claim above, and the list of what the screens and tests cover.
+- **Not built, on purpose** (recorded in `design.md`, "Where the build differs"): `CoverHeader`,
+  `DateField`, `DayPills`, `CoverCard`, `MapButton`.
+- **Checks now:** format, lint, typecheck and `npm test` pass: 43 suites, 468 tests.
 
 ### Still open
 

@@ -80,7 +80,7 @@ export function StopList({
         <View key={`${stop.cityId}-${i}`} style={s.row} testID={`stop-${i}`}>
           <StopMark kind="city" label={i + 1} />
           <View style={s.body}>
-            <Text style={s.name} numberOfLines={1}>
+            <Text style={s.name} numberOfLines={2}>
               {stop.name}
             </Text>
             {stop.detail ? (

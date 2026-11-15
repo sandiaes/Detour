@@ -1,6 +1,6 @@
 import type { CoverCandidate } from "@detour/shared";
 import { useContext, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { BackendContext } from "../../api/BackendProvider";
 import { describeError } from "../../api/unwrap";
@@ -8,7 +8,7 @@ import { colors, radius, spacing, type } from "../../theme";
 import { Button } from "./Button";
 import { FittedPhoto } from "./Cover";
 import { Icon } from "./Icon";
-import { Chip } from "./primitives";
+import { Chip, FocusPressable } from "./primitives";
 import { Sheet } from "./Sheet";
 import { LoadingState, Notice } from "./states";
 
@@ -125,7 +125,7 @@ export function CoverPicker({
           {state.items.map((c) => {
             const on = chosen === c.commons_file;
             return (
-              <Pressable
+              <FocusPressable
                 key={c.commons_file}
                 accessibilityRole="button"
                 accessibilityLabel={`Photo by ${c.credit.author}, ${c.credit.licence}`}
@@ -146,7 +146,7 @@ export function CoverPicker({
                 <Text style={s.credit} numberOfLines={2}>
                   {c.credit.author} · {c.credit.licence}
                 </Text>
-              </Pressable>
+              </FocusPressable>
             );
           })}
         </ScrollView>

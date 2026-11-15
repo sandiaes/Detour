@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { TOUCH, border, colors, radius, size as sizes, spacing, type, weight } from "../../theme";
 import { formatDate, parseIsoDate } from "../../util/format";
 import { Button } from "./Button";
-import { IconButton } from "./primitives";
+import { IconButton, FocusPressable } from "./primitives";
 import { Sheet } from "./Sheet";
 
 // A month calendar for choosing a date (the new-trip screen's start date). Drawn in JavaScript on
@@ -114,7 +114,7 @@ export function CalendarSheet({
             const chosen = iso === value;
             const isToday = iso === today;
             return (
-              <Pressable
+              <FocusPressable
                 key={iso}
                 accessibilityRole="button"
                 accessibilityLabel={`${formatDate(iso)}${isToday ? ", today" : ""}`}
@@ -128,7 +128,7 @@ export function CalendarSheet({
                     {Number(iso.slice(8))}
                   </Text>
                 </View>
-              </Pressable>
+              </FocusPressable>
             );
           })}
         </View>

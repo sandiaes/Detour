@@ -318,3 +318,89 @@ test("nothing is conveyed by colour alone: states carry words or marks", async (
     screen.getByRole("button", { name: "Compare itineraries" }).props.accessibilityState,
   ).toMatchObject({ expanded: true });
 });
+
+// ---- the screens the first version of this file did not visit ------------------------------------
+
+async function showHeader(
+  initial: Parameters<typeof Harness>[0]["initial"],
+  header: string | RegExp,
+  client = server(),
+) {
+  await render(
+    <Harness client={client} cache={createMemoryStore()} initial={initial}>
+      <AppContent />
+    </Harness>,
+  );
+  await screen.findByRole("header", { name: header });
+}
+
+function planServer() {
+  return createFakeClient({
+    "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
+    "GET /v1/trips/{trip_id}/itineraries": () => [makeSummary("essentials"), makeSummary("wider")],
+    "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
+    "GET /v1/itineraries/{itinerary_id}/versions": () => [],
+    "GET /v1/attributions": () => [],
+  } as never);
+}
+
+test("more, explore and photos: planned rows are dimmed buttons that say why", async () => {
+  await showHeader({ name: "more" }, "More");
+  checkControls();
+  for (const name of [/^Saved places\./, /^Travel preferences\./, /^Archive trip\./]) {
+    const row = screen.getByRole("button", { name });
+    expect(row.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(row.props.accessibilityLabel).toMatch(/Coming later$/);
+  }
+  for (const header of ["Explore", "Photos"]) {
+    await fireEvent.press(screen.getByRole("tab", { name: header }));
+    await screen.findByRole("header", { name: header });
+    checkControls();
+  }
+});
+
+test("export, import and image credits", async () => {
+  await showHeader({ name: "exportTrips" }, "Back up all trips", planServer());
+  checkControls();
+  await showHeader({ name: "importTrips" }, "Import a trip", planServer());
+  checkControls();
+  await showHeader({ name: "imageCredits" }, "Image credits", planServer());
+  checkControls();
+});
+
+test("trip settings: the red entry points and both confirmation sheets", async () => {
+  await showHeader({ name: "tripSettings", tripId: TRIP_ID }, "Trip settings", planServer());
+  checkControls();
+  for (const [entry, title, confirm, back] of [
+    [/^Mark the trip/, "Mark as a past trip?", "Yes, mark as past", "Keep planning"],
+    [/^Delete the trip/, "Delete this trip?", "Yes, delete the trip", "Keep the trip"],
+  ] as const) {
+    await fireEvent.press(await screen.findByRole("button", { name: entry }));
+    await screen.findByRole("header", { name: title });
+    // The sheet's own controls: a red confirm, a way back and Close, each named and 48 dp.
+    expect(screen.getByRole("button", { name: confirm })).toBeOnTheScreen();
+    checkControls();
+    await fireEvent.press(screen.getByRole("button", { name: back }));
+    expect(screen.queryByRole("header", { name: title })).toBeNull();
+  }
+});
+
+test("optimize and add a restaurant", async () => {
+  await showHeader(
+    { name: "optimize", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID },
+    /^Optimize/,
+    planServer(),
+  );
+  checkControls();
+  await showHeader(
+    { name: "addRestaurant", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID },
+    /^Add a restaurant or café/,
+    planServer(),
+  );
+  checkControls();
+});
+
+test("add a document: the first step with its options", async () => {
+  await showHeader({ name: "documentForm", tripId: TRIP_ID }, "Add document", planServer());
+  checkControls();
+});

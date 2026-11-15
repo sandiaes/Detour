@@ -1,7 +1,7 @@
 import type { Day, Itinerary, ItineraryVersion, Trip } from "@detour/shared";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { call, describeError } from "../api/unwrap";
@@ -26,6 +26,7 @@ import {
   Tabs,
   WakingServer,
   useAnnounceOnMount,
+  FocusPressable,
 } from "../components/ds";
 import { Cover } from "../components/ds/Cover";
 import { ResourceNotices } from "../components/ResourceNotices";
@@ -134,7 +135,7 @@ function DayTimeline({
         const base = day.base_city_name;
         const contents = dayContents(day);
         return (
-          <Pressable
+          <FocusPressable
             key={day.id}
             accessibilityRole="button"
             accessibilityLabel={`${title}.${base ? ` ${base}.` : ""} ${contents}.`}
@@ -164,7 +165,7 @@ function DayTimeline({
               </View>
               <Icon name="chevronRight" size="sm" color={colors.muted} />
             </View>
-          </Pressable>
+          </FocusPressable>
         );
       })}
     </View>
@@ -216,7 +217,6 @@ function ChoosePlanCard({ trip }: { trip: Trip }) {
       </Text>
       <Button
         label="See the proposals"
-        size="sm"
         testID="open-proposals"
         onPress={() => nav.push({ name: "trip", tripId: trip.id })}
       />
@@ -624,7 +624,7 @@ export function TripOverviewScreen({
             accessibilityRole="header"
             accessibilityLabel={`${trip.title}. ${shortSpan(trip)}.`}
           >
-            <Text style={styles.heroTitle} numberOfLines={1}>
+            <Text style={styles.heroTitle} numberOfLines={2}>
               {trip.title}
             </Text>
             <Text style={styles.heroMeta} numberOfLines={1}>
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
   },
   dayCardRule: { borderBottomWidth: border.hairline, borderBottomColor: colors.border },
   thumb: { width: sizes.thumb },
-  dayText: { flex: 1, gap: 1 },
+  dayText: { flex: 1, gap: spacing.xxs },
   dayTitle: { ...type.label, fontWeight: weight.bold, color: colors.text },
   dayBase: { ...type.label, color: colors.text },
   dayMeta: { ...type.caption, color: colors.muted },
