@@ -6,9 +6,9 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useProgressiveCount } from "../data/useProgressive";
 import { type PastPoint, VISIT_KIND_LABEL, dayColor } from "../domain/pastTrip";
 import { boundsOf } from "../domain/itinerary";
-import { TOUCH, border, colors, layout, spacing, type, weight } from "../theme";
+import { TOUCH, border, colors, layout, size as sizes, spacing, type, weight } from "../theme";
 import { AttributionBar } from "./AttributionBar";
-import { Button, IconButton, MapChip, Notice, StopMark, Tile } from "./ds";
+import { IconButton, MapChip, MapFailure, StopMark, Tile } from "./ds";
 
 const PADDING = { top: 72, right: 56, bottom: 72, left: 56 };
 /** Android's minimum touch target; the markers are drawn smaller inside it. */
@@ -102,22 +102,15 @@ export function PastTripMap({ points, map, onShowList }: Props) {
         </Map>
 
         {status === "failed" ? (
-          <View style={styles.failure}>
-            <Notice
-              tone="error"
-              action={{
-                label: "Try the map again",
-                onPress: () => {
-                  setStatus("loading");
-                  setAttempt((n) => n + 1);
-                },
-              }}
-            >
-              The map could not load. This happens without a connection or when the map host is
-              down. The list still works.
-            </Notice>
-            <Button label="Show the list" variant="secondary" size="sm" onPress={onShowList} />
-          </View>
+          <MapFailure
+            message="The map could not load. This happens without a connection or when the map host is down. The list still works."
+            onRetry={() => {
+              setStatus("loading");
+              setAttempt((n) => n + 1);
+            }}
+            listLabel="Show the list"
+            onShowList={onShowList}
+          />
         ) : null}
         {status === "loading" ? <MapChip text="Loading the map…" live /> : null}
         {points.length > shownCount ? (
@@ -181,27 +174,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  failure: {
-    position: "absolute",
-    top: spacing.md,
-    left: spacing.md,
-    right: spacing.md,
-    gap: spacing.sm,
-    alignItems: "flex-start",
-  },
   panel: {
     backgroundColor: colors.background,
     borderTopWidth: border.hairline,
     borderTopColor: colors.border,
     paddingHorizontal: layout.gutter,
     paddingVertical: spacing.md,
-    minHeight: 64,
+    minHeight: sizes.tile + 2 * spacing.md,
     justifyContent: "center",
   },
   title: { ...type.label, fontWeight: weight.bold, color: colors.text },
   meta: { ...type.caption, color: colors.muted },
   selectedRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  selectedText: { flex: 1, gap: 1 },
+  selectedText: { flex: 1, gap: spacing.xxs },
   days: { flexDirection: "row", gap: spacing.md, alignItems: "center" },
   dayChip: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   legendText: { ...type.caption, color: colors.muted, flexShrink: 1 },

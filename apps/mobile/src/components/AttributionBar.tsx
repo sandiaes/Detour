@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, type } from "../theme";
-import { Icon } from "./ds";
+import { colors, radius, size as sizes, spacing, touchSlop, type } from "../theme";
+import { Icon, FocusPressable } from "./ds";
 
 // OSMF attribution guidelines: the credit must be visible without interaction at first. It may
 // collapse after five seconds or on map interaction if it can be found again, here by an "i"
@@ -47,18 +47,18 @@ export function AttributionBar({ lines, userInteractionCount = 0, bottomOffset =
 
   if (!expanded) {
     return (
-      <Pressable
+      <FocusPressable
         style={[styles.infoButton, { bottom: spacing.sm + bottomOffset }]}
         accessibilityRole="button"
         accessibilityLabel="Show map attribution"
-        hitSlop={12}
+        hitSlop={touchSlop(sizes.attributionButton)}
         onPress={() => {
           setExpanded(true);
           startTimer();
         }}
       >
         <Icon name="info" size="sm" color={colors.text} />
-      </Pressable>
+      </FocusPressable>
     );
   }
 
@@ -68,16 +68,16 @@ export function AttributionBar({ lines, userInteractionCount = 0, bottomOffset =
       accessibilityLabel="Map attribution"
     >
       {lines.map((line) => (
-        <Pressable
+        <FocusPressable
           key={line.url}
           accessibilityRole="link"
           accessibilityLabel={line.text}
-          hitSlop={{ top: 14, bottom: 14, left: 4, right: 4 }}
+          hitSlop={touchSlop(sizes.link, spacing.xs)}
           style={styles.linkTarget}
           onPress={() => void Linking.openURL(line.url)}
         >
           <Text style={styles.link}>{line.text}</Text>
-        </Pressable>
+        </FocusPressable>
       ))}
     </View>
   );
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   // 20 dp of text line plus 14 dp of hit slop above and below: a 48 dp touch target.
-  linkTarget: { minHeight: 20, justifyContent: "center" },
+  linkTarget: { minHeight: sizes.link, justifyContent: "center" },
   link: {
     ...type.micro,
     color: colors.link,
@@ -107,8 +107,8 @@ const styles = StyleSheet.create({
   infoButton: {
     position: "absolute",
     left: spacing.sm,
-    width: 28,
-    height: 28,
+    width: sizes.attributionButton,
+    height: sizes.attributionButton,
     borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",

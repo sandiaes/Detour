@@ -41,7 +41,7 @@ import {
   titleFromFileName,
 } from "../documents/model";
 import { useNavigation } from "../nav/Navigator";
-import { colors, docTones, layout, radius, spacing, type, weight } from "../theme";
+import { colors, docTones, layout, radius, size as sizes, spacing, type, weight } from "../theme";
 import { localToday, shortSpan } from "../domain/trips";
 import { formatDate, formatDayLabel } from "../util/format";
 
@@ -544,8 +544,8 @@ const styles = StyleSheet.create({
   cards: { gap: spacing.sm },
   file: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   filePicture: {
-    width: 56,
-    height: 56,
+    width: sizes.thumb,
+    height: sizes.thumb,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceMuted,
   },

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { call } from "../api/unwrap";
-import { Icon, type IconName, ListRow, RowGroup, Sheet } from "../components/ds";
+import { Icon, type IconName, ListRow, RowGroup, Sheet, useFocusRing } from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { TOUCH, colors, radius, size as sizes, spacing, type, weight } from "../theme";
@@ -39,6 +39,51 @@ function rootOf(route: Route): RootName {
   return route.name === "settings" ? "more" : "trips";
 }
 
+/** One place in the bar: a tab (selected is colour, weight and a bar, and announced) or the Add disc. */
+function NavItem({
+  label,
+  icon,
+  selected = false,
+  add = false,
+  accessibilityLabel,
+  hint,
+  onPress,
+  testID,
+}: {
+  label: string;
+  icon: IconName;
+  selected?: boolean;
+  add?: boolean;
+  accessibilityLabel?: string;
+  hint?: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  const focus = useFocusRing();
+  return (
+    <Pressable
+      accessibilityRole={add ? "button" : "tab"}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={hint}
+      accessibilityState={add ? undefined : { selected }}
+      style={[styles.item, focus.ring]}
+      onPress={onPress}
+      {...focus.focusProps}
+      testID={testID}
+    >
+      {add ? (
+        <View style={styles.addDisc}>
+          <Icon name="add" size="lg" color={colors.onPrimary} />
+        </View>
+      ) : (
+        <Icon name={icon} size="lg" color={selected ? colors.selected : colors.muted} />
+      )}
+      <Text style={[styles.label, selected && styles.labelActive]}>{label}</Text>
+      {add ? null : <View style={[styles.marker, selected && styles.markerActive]} />}
+    </Pressable>
+  );
+}
+
 export function BottomNav() {
   const nav = useNavigation();
   const [adding, setAdding] = useState(false);
@@ -50,46 +95,31 @@ export function BottomNav() {
     else nav.push({ name: "createTrip" });
   };
 
-  const tab = (t: (typeof TABS)[number]) => {
-    const selected = active === t.key;
-    return (
-      <Pressable
-        key={t.key}
-        accessibilityRole="tab"
-        accessibilityLabel={t.label}
-        accessibilityState={{ selected }}
-        style={styles.item}
-        onPress={() => nav.switchRoot({ name: t.key })}
-        testID={`nav-${t.key}`}
-      >
-        <Icon name={t.icon} size="lg" color={selected ? colors.selected : colors.muted} />
-        <Text style={[styles.label, selected && styles.labelActive]}>{t.label}</Text>
-        {/* Selected is shown by colour, weight and this bar, and announced. */}
-        <View style={[styles.marker, selected && styles.markerActive]} />
-      </Pressable>
-    );
-  };
+  const tab = (t: (typeof TABS)[number]) => (
+    <NavItem
+      key={t.key}
+      label={t.label}
+      icon={t.icon}
+      selected={active === t.key}
+      onPress={() => nav.switchRoot({ name: t.key })}
+      testID={`nav-${t.key}`}
+    />
+  );
 
   return (
     <>
       <View style={styles.bar} accessibilityRole="tablist">
         {tab(TABS[0] as (typeof TABS)[number])}
         {tab(TABS[1] as (typeof TABS)[number])}
-        <Pressable
-          accessibilityRole="button"
+        <NavItem
+          label="Add"
+          icon="add"
+          add
           accessibilityLabel={tripId ? "Add to this trip" : "Add a trip"}
-          accessibilityHint={
-            tripId ? "Choose what to add: a place, a restaurant, and more" : "Plan a new trip"
-          }
-          style={styles.item}
+          hint={tripId ? "Choose what to add: a place, a restaurant, and more" : "Plan a new trip"}
           onPress={onAdd}
           testID="nav-add"
-        >
-          <View style={styles.addDisc}>
-            <Icon name="add" size="lg" color={colors.onPrimary} />
-          </View>
-          <Text style={styles.label}>Add</Text>
-        </Pressable>
+        />
         {tab(TABS[2] as (typeof TABS)[number])}
         {tab(TABS[3] as (typeof TABS)[number])}
       </View>
@@ -175,8 +205,8 @@ const styles = StyleSheet.create({
   marker: { height: 3, width: 20, borderRadius: radius.pill, backgroundColor: "transparent" },
   markerActive: { backgroundColor: colors.selected },
   addDisc: {
-    width: sizes.controlSm,
-    height: sizes.controlSm,
+    width: sizes.tile,
+    height: sizes.tile,
     borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",

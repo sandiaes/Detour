@@ -40,6 +40,21 @@ const RULES: { name: string; pattern: RegExp; hint: string }[] = [
     hint: "use `border.*` from theme.ts",
   },
   {
+    name: "spacing",
+    pattern: /\b(?:padding|margin|gap|rowGap|columnGap)[A-Za-z]*\s*:\s*-?[1-9]/,
+    hint: "use `spacing.*` or `layout.*` from theme.ts",
+  },
+  {
+    name: "controlHeight",
+    pattern: /\b(?:minHeight|height)\s*:\s*(?:3[6-9]|[4-9][0-9])\b/,
+    hint: "a control or row height is `size.*` in theme.ts",
+  },
+  {
+    name: "hitSlop",
+    pattern: /\bhitSlop=\{(?:\{|[0-9])/,
+    hint: "use `touchSlop(height)` from theme.ts",
+  },
+  {
     name: "hairlineWidth",
     pattern: /StyleSheet\.hairlineWidth/,
     hint: "use `border.hairline` from theme.ts",
@@ -97,4 +112,20 @@ test("the old shared modules stay deleted", () => {
   ]) {
     expect(() => statSync(join(ROOT, gone))).toThrow();
   }
+});
+
+test("every tappable thing draws the focus ring", () => {
+  // A plain <Pressable> is only for the sheet's backdrop and for the shared controls that draw the
+  // ring themselves (they use `useFocusRing`); everything else uses <FocusPressable>.
+  const allowed = new Set(["components/ds/Sheet.tsx", "components/ds/Button.tsx"]);
+  const problems: string[] = [];
+  for (const file of sources(ROOT)) {
+    const name = relative(ROOT, file).split("\\").join("/");
+    if (allowed.has(name) || name.startsWith("testing/")) continue;
+    const text = readFileSync(file, "utf8");
+    const plain = (text.match(/<Pressable\b/g) ?? []).length;
+    const ring = (text.match(/useFocusRing\(\)|onFocus=/g) ?? []).length;
+    if (plain > ring) problems.push(`${name}: ${plain} <Pressable>, ${ring} with a focus ring`);
+  }
+  expect(problems).toEqual([]);
 });

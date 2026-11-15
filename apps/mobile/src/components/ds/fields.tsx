@@ -1,13 +1,5 @@
 import { type ReactNode, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  type TextInputProps,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, type TextInputProps, View } from "react-native";
 
 import {
   border,
@@ -21,7 +13,7 @@ import {
   weight,
 } from "../../theme";
 import { Icon, type IconName } from "./Icon";
-import { IconButton, ListRow } from "./primitives";
+import { IconButton, ListRow, FocusPressable } from "./primitives";
 
 // Fields (docs/design.md, "Field"). One shell for every input: a small label over a 44 dp box with
 // 12 dp corners and a 1 dp outline (3:1 or more), the value in 15 pt, an optional leading icon,
@@ -190,7 +182,7 @@ export function SelectField({
     <FieldShell label={label} hint={hint} error={error}>
       <View style={[styles.box, open && styles.boxFocused, error ? styles.boxError : null]}>
         {dropdown || onPress ? (
-          <Pressable
+          <FocusPressable
             accessibilityRole="button"
             accessibilityLabel={accessibilityLabel ?? `${spokenName}, ${value ?? "none chosen"}`}
             accessibilityHint={
@@ -215,7 +207,7 @@ export function SelectField({
               ) : null}
             </View>
             {dropdown ? <Icon name={open ? "up" : "down"} size="sm" color={colors.muted} /> : null}
-          </Pressable>
+          </FocusPressable>
         ) : (
           // A chosen value shown read-only (a destination, cleared with the button beside it).
           <View
@@ -339,7 +331,7 @@ export function Stepper({
 }) {
   const text = format(value);
   const step = (by: number, label: string, icon: IconName, off: boolean, id: string) => (
-    <Pressable
+    <FocusPressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: off }}
@@ -350,7 +342,7 @@ export function Stepper({
       testID={testID ? `${testID}-${id}` : undefined}
     >
       <Icon name={icon} size="sm" color={colors.text} />
-    </Pressable>
+    </FocusPressable>
   );
   return (
     <View style={styles.stepper}>
@@ -403,7 +395,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingRight: spacing.sm,
   },
-  inputMultiline: { minHeight: 72, textAlignVertical: "top" },
+  inputMultiline: { minHeight: sizes.multiline, textAlignVertical: "top" },
   inputQuiet: { color: colors.muted },
   suffix: { ...type.caption, color: colors.muted, marginRight: spacing.sm },
   select: {
@@ -415,7 +407,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingRight: spacing.sm,
   },
-  selectText: { flex: 1, gap: 1 },
+  selectText: { flex: 1, gap: spacing.xxs },
   value: { ...type.body, color: colors.text },
   placeholder: { color: colors.muted },
   detail: { ...type.caption, color: colors.muted },

@@ -23,7 +23,7 @@ import { useItemActions } from "../data/itemActions";
 import { useResource } from "../data/DataProvider";
 import { PROFILE_LABEL, planNames } from "../domain/compare";
 import { type Route, useNavigation } from "../nav/Navigator";
-import { border, colors, layout, spacing } from "../theme";
+import { border, colors, layout, size as sizes, spacing } from "../theme";
 import { pluralise } from "../util/format";
 
 export { arrivalText, dayTitle, dayTotalsText } from "../components/plan/DayPlan";
@@ -263,5 +263,5 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
-  selected: { alignItems: "center", minHeight: 44, justifyContent: "center" },
+  selected: { alignItems: "center", minHeight: sizes.control, justifyContent: "center" },
 });

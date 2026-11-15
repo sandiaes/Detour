@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, type PressableProps, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
   border,
@@ -19,6 +19,40 @@ import { Icon, type IconName, type IconSize } from "./Icon";
 // The reusable pieces of the design system (docs/design.md, "Components"). Each meets the app's
 // accessibility rules: a 48 dp touch target (drawn size plus hit slop), a spoken name for every
 // control, and states told by words or marks as well as colour.
+
+// ---- focus ---------------------------------------------------------------------------------------
+
+/** The focus state of a pressable (keyboard, D-pad, switch access): a 2 dp green ring drawn as an
+ * outline, so the layout does not move. Spread `focusProps` on the `Pressable`, add `ring` to its
+ * style while `focused`. Exported for the bottom bar and the day pills. */
+export function useFocusRing() {
+  const [focused, setFocused] = useState(false);
+  return {
+    focused,
+    focusProps: { onFocus: () => setFocused(true), onBlur: () => setFocused(false) },
+    ring: focused ? focusRing : null,
+  };
+}
+
+export const focusRing = {
+  outlineWidth: border.thick,
+  outlineColor: colors.selected,
+  outlineOffset: -border.thick,
+  outlineStyle: "solid" as const,
+};
+
+/** A `Pressable` that draws the focus ring: for every tappable thing that is not one of the shared
+ * controls (a document row, a calendar day, a card). */
+export function FocusPressable({ style, ...rest }: PressableProps) {
+  const focus = useFocusRing();
+  return (
+    <Pressable
+      {...rest}
+      {...focus.focusProps}
+      style={(state) => [typeof style === "function" ? style(state) : style, focus.ring]}
+    />
+  );
+}
 
 // ---- icon button ---------------------------------------------------------------------------------
 
@@ -46,7 +80,7 @@ export function IconButton({
   hint?: string;
   testID?: string;
 }) {
-  const [focused, setFocused] = useState(false);
+  const focus = useFocusRing();
   const box = size === "sm" ? sizes.controlSm : sizes.control;
   const tint =
     color ?? (variant === "onImage" ? colors.onImage : disabled ? colors.muted : colors.text);
@@ -58,8 +92,7 @@ export function IconButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      {...focus.focusProps}
       testID={testID}
       hitSlop={touchSlop(box, size === "sm" ? spacing.xs : 0)}
       style={({ pressed }) => [
@@ -69,7 +102,7 @@ export function IconButton({
         variant === "onMap" && styles.iconButtonOnMap,
         pressed && (variant === "plain" ? styles.quietPressed : styles.pressed),
         disabled && styles.disabled,
-        focused && styles.focused,
+        focus.ring,
       ]}
     >
       <Icon name={icon} size="md" color={tint} />
@@ -149,26 +182,16 @@ export function Tabs<K extends string>({
     const active = item.key === value;
     const text = item.count !== undefined ? `${item.label} (${item.count})` : item.label;
     return (
-      <Pressable
+      <TabButton
         key={item.key}
-        accessibilityRole="tab"
-        accessibilityLabel={item.accessibilityLabel ?? text}
-        accessibilityState={{ selected: active }}
+        item={item}
+        text={text}
+        active={active}
+        height={height}
+        auto={!scrollable}
         onPress={() => onChange(item.key)}
         testID={testID ? `${testID}-${item.key}` : undefined}
-        hitSlop={touchSlop(height)}
-        style={[styles.tab, { minHeight: height }, !scrollable && styles.tabAuto]}
-      >
-        <Text
-          style={[styles.tabText, active && styles.tabTextActive]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.85}
-        >
-          {text}
-        </Text>
-        <View style={[styles.tabLine, active && styles.tabLineActive]} />
-      </Pressable>
+      />
     );
   });
   return (
@@ -188,6 +211,85 @@ export function Tabs<K extends string>({
   );
 }
 
+function TabButton<K extends string>({
+  item,
+  text,
+  active,
+  height,
+  auto,
+  onPress,
+  testID,
+}: {
+  item: TabItem<K>;
+  text: string;
+  active: boolean;
+  height: number;
+  auto: boolean;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const focus = useFocusRing();
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={item.accessibilityLabel ?? text}
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      {...focus.focusProps}
+      testID={testID}
+      hitSlop={touchSlop(height)}
+      style={[styles.tab, { minHeight: height }, auto && styles.tabAuto, focus.ring]}
+    >
+      <Text
+        style={[styles.tabText, active && styles.tabTextActive]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
+        {text}
+      </Text>
+      <View style={[styles.tabLine, active && styles.tabLineActive]} />
+    </Pressable>
+  );
+}
+
+function Segment<K extends string>({
+  item,
+  active,
+  inner,
+  onPress,
+  testID,
+}: {
+  item: TabItem<K>;
+  active: boolean;
+  inner: number;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const focus = useFocusRing();
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={item.accessibilityLabel ?? item.label}
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      {...focus.focusProps}
+      testID={testID}
+      hitSlop={touchSlop(inner)}
+      style={[styles.segment, { minHeight: inner }, active && styles.segmentActive, focus.ring]}
+    >
+      <Text
+        style={[styles.segmentText, active && styles.segmentTextActive]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
+        {item.label}
+      </Text>
+    </Pressable>
+  );
+}
+
 /** Two or three modes of one form ("Search, Address, Pin on map"). Announced as tabs, like the
  * platform's segmented controls. */
 export function SegmentedControl<K extends string>({
@@ -204,30 +306,16 @@ export function SegmentedControl<K extends string>({
   const inner = sizes.control - 2 * spacing.xxs - 2 * border.thin;
   return (
     <View style={styles.segments} accessibilityRole="tablist" testID={testID}>
-      {items.map((item) => {
-        const active = item.key === value;
-        return (
-          <Pressable
-            key={item.key}
-            accessibilityRole="tab"
-            accessibilityLabel={item.accessibilityLabel ?? item.label}
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(item.key)}
-            testID={testID ? `${testID}-${item.key}` : undefined}
-            hitSlop={touchSlop(inner)}
-            style={[styles.segment, { minHeight: inner }, active && styles.segmentActive]}
-          >
-            <Text
-              style={[styles.segmentText, active && styles.segmentTextActive]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {items.map((item) => (
+        <Segment
+          key={item.key}
+          item={item}
+          active={item.key === value}
+          inner={inner}
+          onPress={() => onChange(item.key)}
+          testID={testID ? `${testID}-${item.key}` : undefined}
+        />
+      ))}
     </View>
   );
 }
@@ -255,6 +343,7 @@ export function Chip({
   testID?: string;
 }) {
   const shown: IconName | null = selected ? "check" : (icon ?? null);
+  const focus = useFocusRing();
   return (
     <Pressable
       accessibilityRole="button"
@@ -262,6 +351,7 @@ export function Chip({
       accessibilityState={{ selected, disabled }}
       disabled={disabled}
       onPress={onPress}
+      {...focus.focusProps}
       testID={testID}
       hitSlop={touchSlop(sizes.controlSm)}
       style={({ pressed }) => [
@@ -269,6 +359,7 @@ export function Chip({
         selected && styles.chipSelected,
         pressed && !selected && styles.quietPressed,
         disabled && styles.disabled,
+        focus.ring,
       ]}
     >
       {shown ? (
@@ -420,6 +511,7 @@ export function ListRow({
       <Icon name="chevronRight" size="sm" color={colors.muted} />
     ) : null;
   const minHeight = compact ? sizes.rowCompact : sizes.row;
+  const focus = useFocusRing();
   return (
     <Pressable
       // A disabled row is still announced as a (dimmed) button, with the reason in its label.
@@ -435,8 +527,10 @@ export function ListRow({
       accessible
       disabled={disabled || !onPress}
       onPress={onPress}
+      {...focus.focusProps}
       testID={testID}
       style={({ pressed }) => [
+        focus.ring,
         styles.row,
         { minHeight },
         inset === "gutter" && styles.rowGutter,
@@ -658,7 +752,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: opacity.pressed },
   quietPressed: { backgroundColor: colors.surfaceMuted },
   disabled: { opacity: opacity.disabled },
-  focused: { borderWidth: border.thick, borderColor: colors.selected },
 
   iconButton: { borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
   iconButtonOnImage: { backgroundColor: colors.imageButton },
@@ -739,8 +832,8 @@ const styles = StyleSheet.create({
   chipTextSelected: { color: colors.selected },
 
   radio: {
-    width: 20,
-    height: 20,
+    width: sizes.radio,
+    height: sizes.radio,
     borderRadius: radius.pill,
     borderWidth: border.thick,
     borderColor: colors.outline,
@@ -750,8 +843,8 @@ const styles = StyleSheet.create({
   radioOn: { borderColor: colors.selected },
   radioDot: { width: 10, height: 10, borderRadius: radius.pill, backgroundColor: colors.selected },
   check: {
-    width: 20,
-    height: 20,
+    width: sizes.radio,
+    height: sizes.radio,
     borderRadius: radius.xs,
     borderWidth: border.thick,
     borderColor: colors.outline,
@@ -814,7 +907,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: radius.pill,
-    marginTop: 8,
+    marginTop: spacing.sm,
     backgroundColor: colors.text,
   },
   bulletDotMuted: { backgroundColor: colors.muted },

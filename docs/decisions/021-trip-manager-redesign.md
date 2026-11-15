@@ -498,6 +498,14 @@ device or in screenshots**.
     illustration palette, marker sizes, the attribution text, calendar cells, the wordmark, shapes)
     are listed in `docs/design.md`, "Approved exceptions".
 
+91. **Checked a second time, and the gaps closed.** Every control draws one focus ring (`useFocusRing`,
+    `FocusPressable`); the style lint also rejects numeric spacing, control heights and
+    hand-written hit slop; the map's failure message and key panel are shared (`MapFailure`,
+    `MapPanel`); long titles take two lines; the accessibility test visits the screens that
+    decision 81 and the Trip settings sheets added. Components the audit proposed but the build
+    does not need (`CoverHeader`, `DateField`, `DayPills`, `CoverCard`, `MapButton`) are not built;
+    `docs/design.md`, "Where the build differs from the audit's plan", says why.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until

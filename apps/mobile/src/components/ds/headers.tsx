@@ -1,7 +1,7 @@
 import { type ComponentRef, type ReactNode, useEffect, useRef } from "react";
 import { AccessibilityInfo, StyleSheet, Text, View, findNodeHandle } from "react-native";
 
-import { colors, layout, spacing, type } from "../../theme";
+import { colors, layout, size as sizes, spacing, type } from "../../theme";
 import { IconButton } from "./primitives";
 
 // Headers (docs/design.md, "Headers"). Two, with fixed roles:
@@ -85,7 +85,7 @@ export function CompactHeader({
         accessibilityRole="header"
         accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
       >
-        <Text style={styles.compactTitle} numberOfLines={1}>
+        <Text style={styles.compactTitle} numberOfLines={2}>
           {title}
         </Text>
         {subtitle ? (
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    minHeight: 52,
+    minHeight: sizes.header,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },

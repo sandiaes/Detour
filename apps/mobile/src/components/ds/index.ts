@@ -9,6 +9,7 @@ export {
   Card,
   Checkbox,
   Chip,
+  FocusPressable,
   IconButton,
   InfoRow,
   ListRow,
@@ -24,6 +25,7 @@ export {
   StopMark,
   type TabItem,
   Tabs,
+  useFocusRing,
   Tile,
 } from "./primitives";
 export {
@@ -49,4 +51,4 @@ export {
 } from "./states";
 export { CompactHeader, CoverBar, ScreenHeader, useAnnounceOnMount } from "./headers";
 export { ConfirmSheet, Sheet } from "./Sheet";
-export { MapChip } from "./map";
+export { MapChip, MapFailure, MapPanel } from "./map";

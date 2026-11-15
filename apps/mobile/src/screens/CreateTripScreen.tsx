@@ -28,7 +28,7 @@ import {
 } from "../components/StopList";
 import { useTripActions } from "../data/actions";
 import { useNavigation } from "../nav/Navigator";
-import { colors, layout, radius, spacing, type, weight } from "../theme";
+import { colors, layout, radius, size as sizes, spacing, type, weight } from "../theme";
 import { formatDate, isValidIsoDate, pluralise } from "../util/format";
 import { CalendarSheet } from "../components/ds/Calendar";
 import { localToday } from "../domain/trips";
@@ -722,7 +722,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   pair: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
   half: { flex: 1, gap: spacing.xs },
-  duration: { minHeight: 44, justifyContent: "center" },
+  duration: { minHeight: sizes.control, justifyContent: "center" },
   total: { ...type.body, color: colors.text },
   results: { gap: spacing.sm },
   actions: { gap: spacing.sm },

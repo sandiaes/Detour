@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { border, colors, size as sizes, spacing, type, weight } from "../../theme";
-import { Badge, Bullets, MetaLine, Radio } from "./primitives";
+import { Badge, Bullets, MetaLine, Radio, FocusPressable } from "./primitives";
 
 export type AffectedLine = { tone: "warn" | "info"; text: string };
 
@@ -34,7 +34,7 @@ export function SuggestionCard({
   testID?: string;
 }) {
   return (
-    <Pressable
+    <FocusPressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected }}
@@ -72,7 +72,7 @@ export function SuggestionCard({
           </View>
         ) : null}
       </View>
-    </Pressable>
+    </FocusPressable>
   );
 }
 
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   selected: { backgroundColor: colors.selectedSoft },
   head: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   // The lines start under the title, past the radio mark.
-  body: { gap: spacing.xs, paddingLeft: 20 + spacing.md },
+  body: { gap: spacing.xs, paddingLeft: sizes.radio + spacing.md },
   title: { ...type.cardTitle, color: colors.text, flex: 1 },
   group: { gap: spacing.xs, marginTop: spacing.xs },
   label: { ...type.caption, fontWeight: weight.bold, color: colors.muted },

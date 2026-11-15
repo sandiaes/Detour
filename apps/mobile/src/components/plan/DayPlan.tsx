@@ -1,6 +1,6 @@
 import type { ClientConfig, Day, Item } from "@detour/shared";
 import { type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
   type DayRow,
@@ -33,7 +33,7 @@ import {
   formatSeconds,
   pluralise,
 } from "../../util/format";
-import { EmptyState, Icon, KindIcon, StopMark } from "../ds";
+import { EmptyState, FocusPressable, Icon, KindIcon, StopMark } from "../ds";
 import { ItineraryMap } from "../ItineraryMap";
 
 // One day of a plan (ADR 021, step 3): a day selector, the day's stops in time order, and the map.
@@ -102,6 +102,36 @@ export function stopSentence(item: Item, ordinal: number | null): string {
 
 // ---- day selector ----------------------------------------------------------------------------
 
+function DayPill({
+  day,
+  active,
+  onPress,
+}: {
+  day: Day;
+  active: boolean;
+  onPress: (dayIndex: number) => void;
+}) {
+  const date = day.date ? formatDate(day.date, false) : null;
+  return (
+    <FocusPressable
+      accessibilityRole="tab"
+      accessibilityLabel={`Day ${day.day_index}${date ? `, ${date}` : ""}`}
+      accessibilityState={{ selected: active }}
+      onPress={() => onPress(day.day_index)}
+      hitSlop={touchSlop(sizes.control)}
+      style={[styles.dayPill, active && styles.dayPillActive]}
+      testID={`day-tab-${day.day_index}`}
+    >
+      <Text style={[styles.dayPillTitle, active && styles.dayPillTextActive]}>
+        Day {day.day_index}
+      </Text>
+      {date ? (
+        <Text style={[styles.dayPillDate, active && styles.dayPillTextActive]}>{date}</Text>
+      ) : null}
+    </FocusPressable>
+  );
+}
+
 export function DayStrip({
   days,
   value,
@@ -121,29 +151,9 @@ export function DayStrip({
       showsHorizontalScrollIndicator={false}
       accessibilityRole="tablist"
     >
-      {days.map((d) => {
-        const active = d.day_index === value;
-        const date = d.date ? formatDate(d.date, false) : null;
-        return (
-          <Pressable
-            key={d.id}
-            accessibilityRole="tab"
-            accessibilityLabel={`Day ${d.day_index}${date ? `, ${date}` : ""}`}
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(d.day_index)}
-            hitSlop={touchSlop(sizes.control)}
-            style={[styles.dayPill, active && styles.dayPillActive]}
-            testID={`day-tab-${d.day_index}`}
-          >
-            <Text style={[styles.dayPillTitle, active && styles.dayPillTextActive]}>
-              Day {d.day_index}
-            </Text>
-            {date ? (
-              <Text style={[styles.dayPillDate, active && styles.dayPillTextActive]}>{date}</Text>
-            ) : null}
-          </Pressable>
-        );
-      })}
+      {days.map((d) => (
+        <DayPill key={d.id} day={d} active={d.day_index === value} onPress={onChange} />
+      ))}
     </ScrollView>
   );
 }
@@ -183,7 +193,7 @@ function ArrivalRow({
       <View style={styles.timeCol}>
         <Text style={styles.time}>Start</Text>
       </View>
-      <Pressable
+      <FocusPressable
         accessibilityRole={selectable ? "button" : undefined}
         accessibilityLabel={label}
         accessibilityHint={selectable ? "Highlights it on the map" : undefined}
@@ -201,7 +211,7 @@ function ArrivalRow({
           </Text>
           <Text style={styles.meta}>{text}</Text>
         </View>
-      </Pressable>
+      </FocusPressable>
     </View>
   );
 }
@@ -234,7 +244,7 @@ export function StopRow({
       </View>
       <View style={styles.body}>
         <View style={styles.cardRow}>
-          <Pressable
+          <FocusPressable
             accessibilityRole="button"
             accessibilityLabel={stopSentence(item, ordinal)}
             accessibilityHint={ordinal ? "Highlights it on the map" : undefined}
@@ -263,9 +273,9 @@ export function StopRow({
               </View>
               {tags ? <Text style={styles.tags}>{tags}</Text> : null}
             </View>
-          </Pressable>
+          </FocusPressable>
           {onDetails ? (
-            <Pressable
+            <FocusPressable
               accessibilityRole="button"
               accessibilityLabel={`Details of ${item.display_name}`}
               onPress={onDetails}
@@ -273,7 +283,7 @@ export function StopRow({
               testID={`details-${item.id}`}
             >
               <Icon name="chevronRight" size="sm" color={colors.muted} />
-            </Pressable>
+            </FocusPressable>
           ) : null}
         </View>
       </View>
@@ -602,7 +612,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  cardText: { flex: 1, gap: 1 },
+  cardText: { flex: 1, gap: spacing.xxs },
   title: { ...type.label, fontWeight: weight.semibold, color: colors.text },
   kindLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   kind: { ...type.caption, fontWeight: weight.medium },
