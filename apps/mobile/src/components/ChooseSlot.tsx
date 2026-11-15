@@ -2,9 +2,10 @@ import type { Day } from "@detour/shared";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { parseClock } from "../domain/clock";
 import { layout } from "../theme";
 import { formatClock, formatDayLabel, formatMinutes } from "../util/format";
-import { Button, ChoiceRow, SelectField, TextField } from "./ds";
+import { Button, ChoiceRow, SelectField, TimeField } from "./ds";
 import { DurationField } from "./ds/DurationField";
 
 // Putting a place on a day at a time the user picks, with no proposal. It is the only way to fill
@@ -22,14 +23,7 @@ export type ChosenSlot = {
   position: number;
 };
 
-/** "9:30" or "09:30" -> "09:30"; null when it is not a time of day. */
-export function parseClock(text: string): string | null {
-  const m = /^(\d{1,2})[:.](\d{2})$/.exec(text.trim());
-  if (!m) return null;
-  const [h, min] = [Number(m[1]), Number(m[2])];
-  if (h > 23 || min > 59) return null;
-  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-}
+export { parseClock };
 
 /** The 1-based position that keeps a day in time order for a new item at `time`. */
 export function positionFor(day: Day | undefined, time: string): number {
@@ -98,17 +92,7 @@ export function ChooseSlot({
           />
         ))}
       </SelectField>
-      <TextField
-        label="Start time"
-        icon="clock"
-        value={timeText}
-        onChangeText={setTimeText}
-        keyboardType="numbers-and-punctuation"
-        autoCorrect={false}
-        testID="slot-time"
-        hint="24-hour, like 14:30"
-        error={timeText.trim() && time === null ? "use hours and minutes, like 09:30" : null}
-      />
+      <TimeField label="Start time" value={timeText} onChange={setTimeText} testID="slot-time" />
       {fixedMinutes === null ? (
         <DurationField
           minutes={ownMinutes}

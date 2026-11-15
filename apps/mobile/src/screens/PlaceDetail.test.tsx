@@ -180,6 +180,57 @@ test("lock and remove work from the details too", async () => {
   expect(await screen.findByText("Remove Schönbrunn Palace?")).toBeOnTheScreen();
 });
 
+describe("a plan made by hand", () => {
+  const manual = () => {
+    const p = plan();
+    p.profile = "manual";
+    return p;
+  };
+
+  test("an attraction can be locked and removed, after asking", async () => {
+    const client = await open(
+      "i1",
+      server({
+        "GET /v1/itineraries/{itinerary_id}": manual,
+        "PATCH /v1/items/{item_id}": (c: {
+          params: { item_id: string };
+          body: { locked: boolean };
+        }) => ({ id: c.params.item_id, locked: c.body.locked }),
+        "DELETE /v1/items/{item_id}": () => undefined,
+      }),
+    );
+    await fireEvent.press(await screen.findByLabelText("Lock Schönbrunn Palace"));
+    expect(client.calls.find((c) => c.method === "PATCH")?.body).toEqual({ locked: true });
+    await fireEvent.press(await screen.findByLabelText("Unlock Schönbrunn Palace"));
+    await fireEvent.press(await screen.findByLabelText("Remove Schönbrunn Palace"));
+    expect(await screen.findByText("Remove Schönbrunn Palace?")).toBeOnTheScreen();
+    expect(client.calls.some((c) => c.method === "DELETE")).toBe(false);
+    await fireEvent.press(screen.getByTestId("confirm-remove"));
+    await screen.findByRole("header", { name: /Rome|Vienna|Austria|Trips/ }).catch(() => null);
+    expect(client.calls.some((c) => c.method === "DELETE")).toBe(true);
+  });
+
+  test("the start time can be changed as well as the length", async () => {
+    const client = await open(
+      "i1",
+      server({
+        "GET /v1/itineraries/{itinerary_id}": manual,
+        "PATCH /v1/items/{item_id}": (c: { params: { item_id: string }; body: unknown }) => ({
+          id: c.params.item_id,
+          ...(c.body as object),
+        }),
+      }),
+    );
+    await fireEvent.press(await screen.findByTestId("edit-length"));
+    expect(screen.getByTestId("edit-start")).toHaveProp("value", "09:00");
+    await fireEvent.changeText(screen.getByTestId("edit-start"), "08:00");
+    await fireEvent.press(screen.getByTestId("save-length"));
+    const body = client.calls.find((c) => c.method === "PATCH")?.body as Record<string, unknown>;
+    expect(body.start_time).toBe("08:00:00");
+    expect(body.duration_minutes).toBeUndefined();
+  });
+});
+
 describe("edit length", () => {
   const patch = () => ({
     "PATCH /v1/items/{item_id}": (c: { params: { item_id: string }; body: unknown }) => ({

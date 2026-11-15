@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { type ComponentRef, useEffect, useRef } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
@@ -14,6 +14,7 @@ import { DocumentsProvider } from "./documents/DocumentsProvider";
 import { DocumentFormScreen } from "./screens/DocumentFormScreen";
 import { DocumentScreen } from "./screens/DocumentScreen";
 import { TripDocumentsScreen } from "./screens/TripDocumentsScreen";
+import { useKeyboardOverlap } from "./components/ds/keyboard";
 import { BottomNav, showsBottomNav } from "./nav/BottomNav";
 import { type Route, NavigationProvider, useNavigation } from "./nav/Navigator";
 import { AddPlaceScreen } from "./screens/AddPlaceScreen";
@@ -147,19 +148,27 @@ function useOpenedTripFile() {
 export function AppContent() {
   const nav = useNavigation();
   useOpenedTripFile();
-  const bottomNav = showsBottomNav(nav.route, nav.depth);
+  const content = useRef<ComponentRef<typeof View>>(null);
+  const keyboard = useKeyboardOverlap(content);
+  // The bottom bar gives way to the keyboard.
+  const bottomNav = showsBottomNav(nav.route, nav.depth) && !keyboard.visible;
   return (
     <SafeAreaView style={styles.fill}>
       <StatusBar style="dark" />
       <BackendBanner />
-      <View style={styles.fill}>
-        <CurrentScreen route={nav.route} />
-        {/* Soft edges instead of hard lines at the top and above the bottom bar. The plan screen
+      {/* Padded by what the keyboard covers, so the focused field is never behind it. */}
+      <View ref={content} style={[styles.fill, { paddingBottom: keyboard.overlap }]}>
+        <View style={styles.fill}>
+          <CurrentScreen route={nav.route} />
+          {/* Soft edges instead of hard lines at the top and above the bottom bar. The plan screen
             keeps its own choose bar at the bottom, so it gets no fade there. */}
-        {coverUnderStatusBar(nav.route) ? null : <EdgeFade edge="top" size={10} />}
-        {bottomNav && nav.route.name !== "itinerary" ? <EdgeFade edge="bottom" size={14} /> : null}
+          {coverUnderStatusBar(nav.route) ? null : <EdgeFade edge="top" size={10} />}
+          {bottomNav && nav.route.name !== "itinerary" ? (
+            <EdgeFade edge="bottom" size={14} />
+          ) : null}
+        </View>
+        {bottomNav ? <BottomNav /> : null}
       </View>
-      {bottomNav ? <BottomNav /> : null}
     </SafeAreaView>
   );
 }

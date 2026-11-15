@@ -7,7 +7,7 @@ import type {
 } from "@detour/shared";
 import { Camera, Map, Marker } from "@maplibre/maplibre-react-native";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
 import { call, describeError, planningIssues } from "../api/unwrap";
@@ -27,6 +27,7 @@ import {
   SegmentedControl,
   StopMark,
   TextField,
+  KeyboardScrollView,
 } from "../components/ds";
 import { keys } from "../data/actions";
 import { useChangeActions } from "../data/changes";
@@ -241,7 +242,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
   const nothingFound = found !== undefined && found.your_places.length === 0;
 
   return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardScrollView contentContainerStyle={styles.content}>
       <CompactHeader
         title="Add a restaurant or café"
         subtitle={trip ? `${trip.title} · ${trip.destination.name}` : undefined}
@@ -471,7 +472,7 @@ export function AddRestaurantScreen({ route }: { route: AddRoute }) {
           ) : null}
         </View>
       ) : null}
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }
 

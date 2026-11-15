@@ -11,6 +11,8 @@ import { Badge } from "./primitives";
 // it in the space a screen has; `inline` puts it in the flow of a list or a sheet. Small progress
 // inside a form is an `InlineStatus`; a message above content is a `Notice`.
 
+export type StateAction = NonNullable<Parameters<typeof StateView>[0]["action"]>;
+
 export type StateKind = "loading" | "empty" | "error" | "waking" | "planned";
 
 const KIND_ICON: Record<Exclude<StateKind, "loading" | "waking">, IconName> = {
@@ -26,6 +28,7 @@ export function StateView({
   icon,
   action,
   layout: placement = "fill",
+  tight = false,
   badge,
   children,
   live = false,
@@ -36,8 +39,17 @@ export function StateView({
   title?: string;
   text?: string;
   icon?: IconName;
-  action?: { label: string; onPress: () => void; variant?: "primary" | "secondary" };
+  action?: {
+    label: string;
+    onPress: () => void;
+    variant?: "primary" | "secondary";
+    icon?: IconName;
+    /** Stretch across the screen's gutters, like the "New trip" button of a list. */
+    fill?: boolean;
+  };
   layout?: "fill" | "inline";
+  /** Inline only: less room above the mark, where a tab bar sits right over it. */
+  tight?: boolean;
   /** A word under the text ("Not built yet"). */
   badge?: string;
   /** Extra content under the text (the Documents tab's four kinds). */
@@ -52,7 +64,11 @@ export function StateView({
   const mark = spinner ? null : (icon ?? KIND_ICON[kind]);
   return (
     <View
-      style={[styles.state, placement === "fill" ? styles.fill : styles.inline]}
+      style={[
+        styles.state,
+        placement === "fill" ? styles.fill : styles.inline,
+        tight && placement === "inline" && styles.inlineTight,
+      ]}
       accessibilityLiveRegion={live ? "polite" : undefined}
       accessible={accessibleSummary !== undefined || undefined}
       accessibilityLabel={accessibleSummary}
@@ -80,6 +96,8 @@ export function StateView({
         <Button
           label={action.label}
           variant={action.variant ?? "secondary"}
+          icon={action.icon}
+          fill={action.fill}
           onPress={action.onPress}
         />
       ) : null}
@@ -129,7 +147,7 @@ export function EmptyState({
 }: {
   title: string;
   text: string;
-  action?: { label: string; onPress: () => void };
+  action?: StateAction;
   layout?: "fill" | "inline";
   icon?: IconName;
 }) {
@@ -282,6 +300,8 @@ const styles = StyleSheet.create({
   state: { alignItems: "center", gap: spacing.sm },
   fill: { flex: 1, justifyContent: "center", padding: spacing.xl },
   inline: { paddingVertical: spacing.xl, paddingHorizontal: spacing.lg },
+  // The room above the mark matches the room under it (8 dp gap and 4 dp mark margin).
+  inlineTight: { paddingTop: spacing.xs },
   group: { alignItems: "center", gap: spacing.sm },
   mark: {
     width: sizes.stateMark,

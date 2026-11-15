@@ -8,6 +8,7 @@ import type {
   OptimizeRequest,
   Itinerary,
   ItemCreate,
+  ItemUpdate,
   ItinerarySummary,
   UserPlace,
   UserPlaceCreate,
@@ -16,7 +17,7 @@ import type {
 import { useCallback } from "react";
 
 import { useBackend } from "../api/BackendProvider";
-import { NetworkError, call } from "../api/unwrap";
+import { NetworkError, call, callEmpty } from "../api/unwrap";
 import { keys } from "./actions";
 import { useData } from "./DataProvider";
 
@@ -162,17 +163,45 @@ export function useChangeActions() {
     [need, data],
   );
 
-  /** Sets how long a stop lasts (minutes), or goes back to its default length (null). The plan is
-   * read again afterwards: the end time of the stop changes. */
-  const setDuration = useCallback(
-    async (itineraryId: string, itemId: string, minutes: number | null): Promise<void> => {
+  /** Changes when a stop starts and/or how long it lasts. `minutes` undefined leaves the length
+   * alone, null goes back to the default length; `startTime` ("HH:MM") and `position` (where the
+   * stop now sits in the day's time order) are sent only when given. The plan is read again
+   * afterwards: the end time of the stop changes. */
+  const setSchedule = useCallback(
+    async (
+      itineraryId: string,
+      itemId: string,
+      change: { minutes?: number | null; startTime?: string; position?: number },
+    ): Promise<void> => {
+      const body: ItemUpdate = {};
+      if (change.startTime !== undefined) body.start_time = `${change.startTime}:00`;
+      if (change.position !== undefined) body.position = change.position;
+      if (change.minutes === null) body.use_default_duration = true;
+      else if (change.minutes !== undefined) body.duration_minutes = change.minutes;
       await call(
-        need().PATCH("/v1/items/{item_id}", {
-          params: { path: { item_id: itemId } },
-          body: minutes === null ? { use_default_duration: true } : { duration_minutes: minutes },
-        }),
+        need().PATCH("/v1/items/{item_id}", { params: { path: { item_id: itemId } }, body }),
       );
       data.invalidate(keys.itinerary(itineraryId));
+    },
+    [need, data],
+  );
+
+  /** Sets how long a stop lasts (minutes), or goes back to its default length (null). */
+  const setDuration = useCallback(
+    (itineraryId: string, itemId: string, minutes: number | null): Promise<void> =>
+      setSchedule(itineraryId, itemId, { minutes }),
+    [setSchedule],
+  );
+
+  /** Takes a stop out of a plan made by hand, at once (a planned itinerary goes through a
+   * previewed change set instead). */
+  const removeItem = useCallback(
+    async (tripId: string, itineraryId: string, itemId: string): Promise<void> => {
+      await callEmpty(
+        need().DELETE("/v1/items/{item_id}", { params: { path: { item_id: itemId } } }),
+      );
+      data.invalidate(keys.itinerary(itineraryId));
+      data.invalidate(keys.itineraries(tripId));
     },
     [need, data],
   );
@@ -229,6 +258,8 @@ export function useChangeActions() {
     discard,
     setLocked,
     setDuration,
+    setSchedule,
+    removeItem,
     addItem,
     connected: client !== null,
   };

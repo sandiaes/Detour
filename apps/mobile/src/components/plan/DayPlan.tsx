@@ -233,9 +233,8 @@ export function StopRow({
   const end = formatClock(item.end_time);
   const stop = stopKind(item);
   const eat = isEatKind(stop);
-  const tags = [item.locked ? "Locked" : null, item.origin === "user" ? "Added by you" : null]
-    .filter(Boolean)
-    .join(" · ");
+  // A stop the user added is not marked in the list (owner, 2026-11-15); its details still say so.
+  const tags = item.locked ? "Locked" : "";
   return (
     <View style={[styles.row, selected && styles.rowSelected]}>
       <View style={styles.timeCol}>
@@ -511,10 +510,13 @@ export function PlanDayView({
         )}
       </View>
       <View style={styles.sheet}>
-        {strip}
-        <ScrollView ref={scroller} contentContainerStyle={styles.sheetContent}>
-          {list}
-        </ScrollView>
+        {/* Clips the day pills and the stops to the sheet's curved top corners. */}
+        <View style={styles.sheetClip}>
+          {strip}
+          <ScrollView ref={scroller} contentContainerStyle={styles.sheetContent}>
+            {list}
+          </ScrollView>
+        </View>
       </View>
     </View>
   );
@@ -535,8 +537,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
-    paddingTop: spacing.xs,
     ...shadow.raised,
+  },
+  // The shadow stays on the sheet; what is drawn inside is cut at the curve, so a day pill that
+  // scrolls into a corner follows it instead of poking out over the map.
+  sheetClip: {
+    flex: 1,
+    overflow: "hidden",
+    paddingTop: spacing.xs,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
   },
   sheetContent: { paddingBottom: spacing.xl },
   // Never shrinks or clips: its height is its pills' height plus the padding.

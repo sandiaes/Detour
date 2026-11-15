@@ -167,7 +167,8 @@ test("search a sight, preview the change, accept it, and see the new plan", asyn
   expect(client.count("POST /v1/change-sets/{change_set_id}/apply")).toBe(1);
   // Back on the plan, which shows the new version without another request.
   expect(await screen.findByText(/^Essentials plan/)).toBeOnTheScreen();
-  expect(await screen.findByText("Added by you")).toBeOnTheScreen();
+  // The list no longer marks a stop the user added (owner, 2026-11-15); its details still do.
+  expect(screen.queryByText("Added by you")).toBeNull();
   expect(client.count("GET /v1/itineraries/{itinerary_id}")).toBe(1);
 });
 

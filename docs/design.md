@@ -125,6 +125,7 @@ of the borders that identify a control is asserted in `theme.test.ts`.
 - **Heights** (`size`): `control` 44 (buttons, inputs, selects, segmented control), `controlSm` 36
   (small buttons, chips, header icon buttons), `row` 56 (a row with a detail line), `rowCompact` 48,
   `tab` 44, `tabCompact` 40. A drawn height is a **minimum**, so text can scale.
+- **Keyboard:** the keyboard never covers the field being typed in (owner, 2026-11-15). The app root and every `Sheet` pad themselves by how far the keyboard reaches into them (`useKeyboardOverlap`, measured, so nothing is added twice where Android already resized the window); the bottom bar hides while it is open; screens with fields use `KeyboardScrollView`, which scrolls the focused field just above the keyboard. **Not tried on a device.**
 - **Touch:** every control reaches 48 dp (`TOUCH`) with hit slop; `touchSlop(height)` is the one helper.
 - **Icons** (`icon`): 14 in metadata, 16 in rows and small controls, 20 in regular controls, 24 in the
   bottom bar and on covers; one stroke width, 1.8. Icons are drawn shapes, never characters.
@@ -138,6 +139,7 @@ Everything below is exported from `components/ds`. A screen uses these and nothi
 | **`Button`** | `primary` (filled green): the screen's main action, **at most one per screen or sheet**. `secondary` (outlined): a second action. `ghost` (text): a third, quiet action. `destructive` (filled red): only the button that confirms something that cannot be undone. `tone="danger"` makes a secondary or ghost button the red entry point ("Delete trip"). Sizes `md` (44) and `sm` (36); radius 12; optional icon; `fill` stretches it. States: default, pressed, disabled, loading (spinner, announced as busy) and focused (2 dp ring) |
 | **`IconButton`** | `plain`, `onImage` (translucent disc over a photo), `onMap`; sizes `md` and `sm`; always has a spoken label |
 | **Fields** | `TextField`, `SearchField`, `SelectField` (opens a `DropdownPanel` of `ChoiceRow`s), the calendar field, all in one `FieldShell`: a caption label, a 44 dp box, radius 12, a 1 dp `outline` border, 15 pt text, optional leading icon, suffix, clear button, hint (a counter such as "11/500 characters" is a hint) and error. `multiline` grows from three lines |
+| **`TimeField`** | A time of day: the typed field (24-hour) plus **Pick**, which opens a roulette of two wheels under it (hours by 1, minutes by 5, wrapping). **Dragging a wheel down makes the time later, up makes it earlier**; tapping the row above or below the middle steps once; a screen reader adjusts it with increment and decrement. Typed text and wheels always agree (Add a place, Add a restaurant, Edit time) |
 | **`Stepper`** | A number with minus and plus, sizes `md` and `sm` (days, a city's days, a length) |
 | **`Chip`** | The one filter or choice look: a 36 dp pill with an `outline`; selected is a soft green fill, a green border and a check; announced as selected |
 | **`SegmentedControl`** | Two or three exclusive options in one 44 dp control of radius 12 (Search / Address / Pin on map; Suggest a day / Choose day and time; Within each day / Across all days); a form switch, not navigation |
@@ -258,7 +260,7 @@ Decided while checking the work against `design-audit.md` (section 15):
 Title "Trips", tabs Upcoming and Past. Each trip is **one cover card** and nothing else: the
 cover with the status badge on its own pill at the top right, and the trip's **name** and its
 **dates and length** ("12–19 Mar 2026 · 8 days") **on the photo**, bottom left, in white over the
-cover's soft gradient (owner, 2026-11-14, as screen 01). No footer, no counts, no destination line, no extra request per card. A button "New trip" ends the Upcoming list.
+cover's soft gradient (owner, 2026-11-14, as screen 01). No footer, no counts, no destination line, no extra request per card. A button "New trip" ends the Upcoming list; with no trips at all the empty state shows the same primary "New trip" button.
 
 **A trip is named after its destination** (the country, region or city chosen), never with its
 length: "Austria", not "Austria, 8 days". A multi-city trip is named by the server from its cities
@@ -329,14 +331,14 @@ not asked; it is the destination.
 - **The stops get most of the height.** The map is the smaller part (about a third of the space
   between the tabs and the bottom bar), the stops the larger. The map's camera fits the day's stops.
 - **Day pills sit under the map, above the stops** (screen 14): rounded pills (radius 12), 44 dp tall, that share the width
-  (and scroll sideways when there are many days), the chosen one green with white text, in the stops' own type size. "Day 1" over
+  (and scroll sideways when there are many days; the sheet clips them at its curved corners), the chosen one green with white text, in the stops' own type size. "Day 1" over
   "Thu, 12 Mar", or just "Day 1" when the trip has no dates; the text is **centred** in every pill.
 - **Coming back keeps your place.** Back from a stop's details returns to the same day and the
   same selected stop (kept in the route), never to the first day.
 - **No day title above the stops.** The pills say which day it is; there is no "Day 3, Wed 14 Mar,
   8 visits, 2 meals, 4 h at the sights, 1 h travelling" block. A trip
   that moves between base cities shows the day's base city as one quiet line.
-- **A stop is a hairline row:** the time (start over end), a numbered disc that matches the map
+- **A stop is a hairline row** (a stop the user added is not marked; Locked is): the time (start over end), a numbered disc that matches the map
   marker, the name in small bold, the **kind icon** and the kind and length in caption ("Attraction ·
   2 h", "Restaurant · 1 h 15 min"), a chevron to the place's details. The names are English where
   the source has an English name; the local name is on the place's details. Selecting a stop gives
@@ -382,7 +384,7 @@ edited name offers "Use the usual name"); one line with the kind icon,
 the kind and the town ("Attraction · Vienna"); two flat figures for the day
 ("Day 3", "Wed 14 Mar") and the length ("1 h 30 min", "Typical visit" or "Set by you"); one quiet line with the
 address (no label); for places to eat the kind and, when Photon gave one, the address (*ADR 026: the meal, venue and cuisine lines go*); small buttons Show
-on map, **Edit length**, Lock, Remove (red outline) and Add a document. Edit length opens one field (minutes or
+on map, **Edit time**, Lock, Remove (red outline) and Add a document. Lock and Remove are offered on a plan made by hand too (Remove asks first in a `ConfirmSheet`; on a generated plan it shows the change preview). Edit time opens the start time (`TimeField`) and one length field (minutes or
 "1h30"), a "Default" pill that goes back to the usual length, Save and Cancel, and a live check: a
 length that runs into the next timed stop is a conflict and cannot be saved; too little time for
 the trip to the next stop, or an end after 20:00, is a warning that can be saved; the place's documents; the data source. No opening hours, no
@@ -412,7 +414,7 @@ anything changes. Outside a trip it starts a new trip.
 tabs (Search, Address, Pin on map), and a boxed search field whose results open as one rounded list
 under it, grouped under small headings ("Sights", "Towns and cities"). Choosing a result closes the
 list and the field shows only the choice, with its kind and town; pressing it searches again. Then
-**How long**: one boxed field (minutes, or "1h30") and a pill for the default ("Typical length" for
+**How long**: one boxed field (minutes, or "1h30"; the unit "min" at its end is pressed to switch to "h", hours such as 1.5; the text is selected on first entry and typing replaces it) and a pill for the default ("Typical length" for
 a sight; "Default · 2 h" for a town, 1 h for any other place); typing replaces the default. Then
 either "Find the best day" (`primary`) with up to three suggested days, or, for "Choose day and
 time" and for an empty trip, a **Day drop-down**, a start time field and "Add to day N at HH:MM".
@@ -443,6 +445,7 @@ for a restaurant and 45 min for a café (*proposed*).
 - **A document:** its title, its kind as a tile and badge, a picture in place for images, then
   hairline facts (About, File, Type and size, Date and Notes when set, Added). Open (`primary`, the
   phone's viewer), Edit (`secondary`), Delete (red text, asks first in a confirmation sheet).
+- **The empty tab sits close under the tabs:** the room above the illustration equals the room between it and the title (`StateView` `tight`).
 - **A place's details** list that place's documents under "Tickets and documents" (sights) or
   "Bookings and documents" (places to eat), with "Attach a document".
 - **A past trip** is a flat page: a compact header with the settings icon, a summary, a Documents

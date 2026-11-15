@@ -152,7 +152,7 @@ test("create a trip, compare the proposals, select one, read its days, see it on
       </Harness>,
     );
 
-    await fireEvent.press(await screen.findByText("Plan a trip"));
+    await fireEvent.press(await screen.findByText("New trip"));
     await fireEvent.changeText(screen.getByLabelText("Destination"), "Vie");
     await act(async () => void jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS + 10));
     await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));

@@ -46,6 +46,7 @@ export type ChangeSetCreate = components["schemas"]["ChangeSetCreate"];
 export type OptimizeRequest = components["schemas"]["OptimizeRequest"];
 export type ItineraryVersion = components["schemas"]["ItineraryVersion"];
 export type ItemCreate = components["schemas"]["ItemCreate"];
+export type ItemUpdate = components["schemas"]["ItemUpdate"];
 export type PlaceSuggestionRequest = components["schemas"]["PlaceSuggestionRequest"];
 export type PlaceSuggestion = components["schemas"]["PlaceSuggestion"];
 export type PlaceSuggestions = components["schemas"]["PlaceSuggestions"];

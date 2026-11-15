@@ -146,7 +146,13 @@ export function TripsScreen() {
         <EmptyState
           title="No trips yet"
           text="Choose a destination and how many days you have. Detour proposes two different plans to compare."
-          action={{ label: "Plan a trip", onPress: create }}
+          action={{
+            label: "New trip",
+            icon: "add",
+            variant: "primary",
+            fill: true,
+            onPress: create,
+          }}
         />
       </>
     );
