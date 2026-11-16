@@ -142,7 +142,7 @@ test("a place with no sight data becomes an empty place trip with a gazetteer re
     destination_country: "AT",
     duration_days: 3,
     start_date: null,
-    uses_car: true,
+    uses_car: false,
   });
   expect(client.calls.some((c) => c.path.endsWith("/itineraries/generate"))).toBe(false);
 });
@@ -288,7 +288,7 @@ test("the whole flow: search, choose, set details, plan, land on the two proposa
     destination_ref: "900101",
     duration_days: 4,
     start_date: `${nextMonth()}-15`,
-    uses_car: true,
+    uses_car: false,
   });
   expect(client.count("POST /v1/trips/{trip_id}/itineraries/generate")).toBe(1);
   // The generated plans were stored, so opening the proposals made no extra plan requests.
@@ -327,11 +327,10 @@ test("public transport is shown but marked as not used yet, and there is no trav
   expect(client.count("POST /v1/trips")).toBe(0);
 });
 
-test("the Car pill starts on and is sent as chosen; off means Optimize only walks", async () => {
+test("Car and Public transport start off; Car is sent as chosen; off means Optimize only walks", async () => {
   const client = await openForm();
-  expect(screen.getByTestId("uses-car")).toBeSelected();
-  await fireEvent.press(screen.getByTestId("uses-car"));
   expect(screen.getByTestId("uses-car")).not.toBeSelected();
+  expect(screen.getByTestId("public-transport")).not.toBeSelected();
   await typeDestination("Vie");
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
   await fireEvent.press(screen.getByRole("button", { name: "Start a fresh trip" }));

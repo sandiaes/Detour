@@ -184,6 +184,16 @@ test("discarding returns to the plan unchanged", async () => {
   expect(screen.queryByText("Added by you")).toBeNull();
 });
 
+test("the pin map pauses the page's scrolling while it is touched, and zooms with its buttons", async () => {
+  await openPlan();
+  await fireEvent.press(screen.getByRole("tab", { name: "Pin on map" }));
+  await fireEvent(screen.getByTestId("map"), "touchStart");
+  await fireEvent.press(screen.getByTestId("map-zoom-in"));
+  expect(maplibre.zoomTo).toHaveBeenCalledWith(14, expect.anything());
+  await fireEvent.press(screen.getByTestId("map-zoom-out"));
+  expect(maplibre.zoomTo).toHaveBeenLastCalledWith(12, expect.anything());
+});
+
 test("drop a pin, name it and choose how long to stay", async () => {
   const client = await openPlan();
   await fireEvent.press(screen.getByRole("tab", { name: "Pin on map" }));

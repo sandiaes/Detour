@@ -46,7 +46,7 @@ test("a plannable result stays a city or area trip; others become place trips", 
     destination_ref: "900101",
     duration_days: 3,
     start_date: null,
-    uses_car: true,
+    uses_car: false,
   });
   expect(tripBody(vienna, start, true)).toMatchObject({
     destination_kind: "place",

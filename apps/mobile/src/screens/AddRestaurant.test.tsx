@@ -100,9 +100,9 @@ test("search your saved places, pick one, choose the day and time", async () => 
   // No suggestions: the user chooses. The start time is only a first suggestion.
   expect(screen.queryByTestId("find-slots")).toBeNull();
   await fireEvent.press(screen.getByLabelText("Zur Alten Post, Restaurant"));
-  // The first free time of day 1 (nothing was open): after the planned stops and the trip from
-  // the last one, not a fixed meal time.
-  expect(screen.getByTestId("slot-time")).toHaveProp("value", "15:07");
+  // The suggested time of day 1 (nothing was open): right after its last planned stop, not
+  // the earliest gap and not a fixed meal time.
+  expect(screen.getByTestId("slot-time")).toHaveProp("value", "20:00");
   await fireEvent.press(screen.getByTestId("slot-day"));
   await fireEvent.press(screen.getByTestId("slot-day-2"));
   await fireEvent.changeText(screen.getByTestId("slot-time"), "20:30");

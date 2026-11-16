@@ -539,6 +539,16 @@ device or in screenshots**.
     the city changes. The morning row from a stay (ADR 030) is centred between two hairlines, like
     the travel between stops.
 
+98. **Owner's requests of 2026-11-16.** (a) On Add a place's pin map a chosen sight looks selected
+    (the larger navy mark); the page no longer scrolls while a finger is on the map, so the map pans
+    freely once a place is chosen (the page had become long enough to scroll and took the drag); +
+    and − buttons zoom. (b) A new stop is suggested right after the day's last stop (09:00 on an
+    empty day), not in the earliest gap. (c) The time roulette is reversed: drag up for later, down
+    for earlier. (d) The morning row from the stay and its map line are unchanged (they show for a
+    day inside a stay's days).
+99. **Getting around starts empty.** Car (now with a car icon) and Public transport are both off on
+    the new-trip screen; a trip's `uses_car` is false unless the user turns Car on.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until

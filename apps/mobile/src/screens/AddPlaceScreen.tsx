@@ -8,7 +8,7 @@ import type {
   PlaceSummary,
   Trip,
 } from "@detour/shared";
-import { Camera, Map, Marker } from "@maplibre/maplibre-react-native";
+import { Camera, type CameraRef, Map, Marker } from "@maplibre/maplibre-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -24,6 +24,7 @@ import {
   CompactHeader,
   DropdownPanel,
   type IconName,
+  IconButton,
   InlineStatus,
   Notice,
   SearchField,
@@ -72,7 +73,8 @@ const MIN_QUERY = 2;
 /** Sights are searched within this distance of each of the trip's cities. */
 export const SIGHT_RADIUS_M = LOCAL_RADIUS_M;
 /** The known sights shown around the day's city on the pin map, so the user can find their way. */
-export const NEARBY_RADIUS_M = 3_000;
+export const MAP_ZOOM = 13;
+const NEARBY_RADIUS_M = 3_000;
 /** What "default" means for a choice that is not an imported sight (a sight has its own typical
  * length, known to the server). */
 export function defaultMinutesFor(c: Choice): number | null {
@@ -320,6 +322,13 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   }, [needsNearby, client, centre, nearbyAt]);
   // A tap on a marker can also reach the map underneath; that tap must not drop a pin.
   const markerTap = useRef(0);
+  // The page scrolls, and once a place is chosen it is long enough to: a finger on the map must
+  // move the map, not the page, so the page's scrolling is paused while the map is touched.
+  const [mapTouched, setMapTouched] = useState(false);
+  const camera = useRef<CameraRef>(null);
+  const zoom = useRef(MAP_ZOOM);
+  const zoomBy = (by: number) =>
+    camera.current?.zoomTo(Math.min(19, Math.max(2, zoom.current + by)), { duration: 250 });
 
   /** Places beyond the imported data, and addresses: Photon through the Detour server. */
   const external = async (text: string): Promise<ExternalPlace[] | "none" | "unavailable"> => {
@@ -492,6 +501,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
       ),
     [itinerary.data],
   );
+  const chosenId = choice?.kind === "sight" ? choice.place.id : null;
   const nearbyShown = (nearby?.at === nearbyAt ? nearby.sights : []).filter(
     (p) => !planned.has(p.id),
   );
@@ -540,7 +550,7 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
   ) : null;
 
   return (
-    <KeyboardScrollView contentContainerStyle={styles.content}>
+    <KeyboardScrollView contentContainerStyle={styles.content} scrollEnabled={!mapTouched}>
       <CompactHeader
         title="Add a place"
         subtitle={trip ? `${trip.title} · ${trip.destination.name}` : undefined}
@@ -720,9 +730,17 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
               text={`Tap the map where the place is, then name it. The grey marks are known sights: tap one to choose it.${focus && anchors.length > 1 ? ` The map opens on ${focus.name}, the day's city.` : ""}`}
             />
             {mapConfig && centre ? (
-              <View style={styles.map}>
+              <View
+                style={styles.map}
+                onTouchStart={() => setMapTouched(true)}
+                onTouchEnd={() => setMapTouched(false)}
+                onTouchCancel={() => setMapTouched(false)}
+              >
                 <Map
                   style={styles.fill}
+                  onRegionDidChange={(e) => {
+                    zoom.current = e.nativeEvent.zoom;
+                  }}
                   mapStyle={mapConfig.style_url}
                   logo={false}
                   attribution={false}
@@ -736,8 +754,9 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                 >
                   {/* Keyed by the city, so the camera opens on the day's city once the plan is read. */}
                   <Camera
+                    ref={camera}
                     key={nearbyAt}
-                    initialViewState={{ center: [centre.lon, centre.lat], zoom: 13 }}
+                    initialViewState={{ center: [centre.lon, centre.lat], zoom: MAP_ZOOM }}
                   />
                   {nearbyShown.map((p) => (
                     <Marker
@@ -755,9 +774,15 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                         accessibilityRole="button"
                         accessibilityLabel={`Known sight: ${p.names?.display ?? p.name_en ?? p.name}`}
                         accessibilityHint="Chooses this sight"
+                        accessibilityState={{ selected: chosenId === p.id }}
                         style={styles.hit}
                       >
-                        <StopMark kind="quiet" icon="sight" size="map" />
+                        <StopMark
+                          kind={chosenId === p.id ? "sight" : "quiet"}
+                          icon="sight"
+                          size="map"
+                          selected={chosenId === p.id}
+                        />
                       </View>
                     </Marker>
                   ))}
@@ -793,6 +818,24 @@ export function AddPlaceScreen({ route }: { route: AddRoute }) {
                     </Marker>
                   ) : null}
                 </Map>
+                <View style={styles.zoom} pointerEvents="box-none">
+                  <IconButton
+                    icon="add"
+                    label="Zoom in"
+                    variant="onMap"
+                    size="sm"
+                    onPress={() => zoomBy(1)}
+                    testID="map-zoom-in"
+                  />
+                  <IconButton
+                    icon="minus"
+                    label="Zoom out"
+                    variant="onMap"
+                    size="sm"
+                    onPress={() => zoomBy(-1)}
+                    testID="map-zoom-out"
+                  />
+                </View>
                 <AttributionBar lines={mapConfig.attribution} userInteractionCount={0} />
               </View>
             ) : (
@@ -976,6 +1019,7 @@ const styles = StyleSheet.create({
   gap: { gap: spacing.sm },
   muted: { ...type.caption, color: colors.muted },
   hit: { width: TOUCH, height: TOUCH, alignItems: "center", justifyContent: "center" },
+  zoom: { position: "absolute", right: spacing.sm, top: spacing.sm, gap: spacing.xs },
   map: {
     height: 280,
     borderRadius: radius.lg,

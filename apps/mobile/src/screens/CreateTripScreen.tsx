@@ -102,7 +102,7 @@ export function CreateTripScreen() {
   // Public transport is saved for later (docs/design.md): chosen here, not sent, and the plans do
   // not use it yet. The car is sent: without it Optimize only considers walking.
   const [publicTransport, setPublicTransport] = useState(false);
-  const [usesCar, setUsesCar] = useState(true);
+  const [usesCar, setUsesCar] = useState(false);
   const [working, setWorking] = useState<"creating" | "planning" | "starting" | null>(null);
   const [mode, setMode] = useState<"generate" | "empty">("generate");
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
@@ -518,7 +518,7 @@ export function CreateTripScreen() {
             <View style={styles.row}>
               <Chip
                 label="Car"
-                icon="transport"
+                icon="car"
                 selected={usesCar}
                 onPress={() => setUsesCar((v) => !v)}
                 accessibilityLabel="Car"

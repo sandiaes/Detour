@@ -7,12 +7,14 @@ const state = {
   map: null,
   fitBounds: jest.fn(),
   easeTo: jest.fn(),
+  zoomTo: jest.fn(),
   sources: {},
   layers: [],
   reset() {
     this.map = null;
     this.fitBounds.mockClear();
     this.easeTo.mockClear();
+    this.zoomTo.mockClear();
     this.sources = {};
     this.layers = [];
   },
@@ -24,7 +26,11 @@ function Map(props) {
 }
 
 function Camera({ ref }) {
-  React.useImperativeHandle(ref, () => ({ fitBounds: state.fitBounds, easeTo: state.easeTo }));
+  React.useImperativeHandle(ref, () => ({
+    fitBounds: state.fitBounds,
+    easeTo: state.easeTo,
+    zoomTo: state.zoomTo,
+  }));
   return null;
 }
 

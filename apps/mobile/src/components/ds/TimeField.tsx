@@ -6,14 +6,19 @@ import { border, colors, radius, size as sizes, spacing, type, weight } from "..
 import { TextField } from "./fields";
 
 // A time of day (docs/design.md, "Time field"): typed like "14:30", or turned like a roulette.
-// "Pick" opens two wheels, hours and minutes; dragging a wheel DOWN makes the time later and
-// dragging it UP makes it earlier (owner request, 2026-11-15). Tapping the row above or below the
+// "Pick" opens two wheels, hours and minutes; dragging a wheel UP makes the time later and
+// dragging it DOWN makes it earlier (owner request, 2026-11-16, reversing the one of 2026-11-15). Tapping the row above or below the
 // middle moves one step. Hours turn by 1, minutes by 5, each wrapping round. The typed field and
 // the wheels always show the same time.
 
 const ROW = sizes.controlSm;
 const FALLBACK = "09:00";
 const mod = (n: number, m: number) => ((n % m) + m) % m;
+
+/** The value a wheel shows after a drag of `dy` px from `from`: up (negative) is later. */
+export function wheelValue(from: number, dy: number, step: number, size: number, row: number) {
+  return mod(from - Math.round(dy / row) * step, size);
+}
 
 function Wheel({
   value,
@@ -49,8 +54,8 @@ function Wheel({
       },
       onPanResponderMove: (_e, g) => {
         const { step: s, size: n, onChange: change, value: now } = latest.current;
-        // Down is later, up is earlier.
-        const next = mod(from.current + Math.round(g.dy / ROW) * s, n);
+        // Up is later, down is earlier: the wheel turns like a drum under the finger.
+        const next = wheelValue(from.current, g.dy, s, n, ROW);
         if (next !== now) change(next);
       },
       onPanResponderRelease: (e, g) => {

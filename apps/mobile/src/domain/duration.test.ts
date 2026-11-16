@@ -54,7 +54,7 @@ test("ending after the usual end of the day is a warning; an untimed stop never 
   expect(checkDuration(dayOf(untimed), untimed, 500)).toBeNull();
 });
 
-test("the first free time of a day: the start of the day, or after the stops that are there", () => {
+test("the suggested time of a day: the start of the day, or right after its last stop", () => {
   const timed = (id: string, start: string, end: string, travel = 0) =>
     item(id, start, 0, {
       end_time: end,
@@ -62,21 +62,21 @@ test("the first free time of a day: the start of the day, or after the stops tha
     });
   expect(firstAvailableTime(undefined, 60)).toBe("09:00");
   expect(firstAvailableTime(dayOf(), 60)).toBe("09:00");
-  // A gap before the first stop that is long enough is used.
-  expect(firstAvailableTime(dayOf(timed("a", "11:00", "12:00")), 60)).toBe("09:00");
-  // Too short a gap: after the stop and the trip from it (10 minutes).
+  // A gap before the first stop is not used: the new stop goes after the last one.
+  expect(firstAvailableTime(dayOf(timed("a", "11:00", "12:00")), 60)).toBe("12:00");
+  // After the last stop and the trip from it (10 minutes).
   expect(firstAvailableTime(dayOf(timed("a", "09:30", "11:00", 10)), 60)).toBe("11:10");
-  // The first gap that fits between two stops.
+  // The last stop in time, wherever the list puts it.
   expect(
     firstAvailableTime(
       dayOf(
+        timed("c", "15:00", "16:00"),
         timed("a", "09:00", "10:00"),
         timed("b", "10:30", "12:00"),
-        timed("c", "15:00", "16:00"),
       ),
       90,
     ),
-  ).toBe("12:00");
+  ).toBe("16:00");
   // Free time is not a stop; a stop with no time is ignored; the moved stop does not block itself.
   expect(
     firstAvailableTime(
