@@ -107,12 +107,9 @@ test("insurance, a kind until 2026-11-14, now reads as other", () => {
   expect(normaliseCategory("ticket")).toBe("ticket");
 });
 
-test("identifiers are unique enough on one device", () => {
+test("identifiers are version-4 UUIDs, so a shared document keeps its id on the server", () => {
   let n = 0;
-  const id = newDocumentId(
-    () => (n++ % 10) / 10,
-    () => 255,
-  );
-  expect(id).toMatch(/^ff-[0-9a-f]{16}$/);
+  const id = newDocumentId(() => (n++ % 10) / 10);
+  expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   expect(newDocumentId()).not.toBe(newDocumentId());
 });

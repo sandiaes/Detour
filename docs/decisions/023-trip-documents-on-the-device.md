@@ -11,6 +11,11 @@
   (Supabase Storage for public photos), [`005-free-managed-hosting.md`](005-free-managed-hosting.md),
   [`../design.md`](../design.md)
 
+> **Amended 2026-11-16 by [ADR 034](034-people-devices-and-shared-trips.md), step 6:** a document
+> can now also be uploaded to the trip ("Upload to the trip", on by default) and is then shared with
+> everyone on it through the private `trip-files` bucket. A document kept on the phone only still
+> follows this ADR unchanged.
+
 ## Context
 
 The redesign asks for "a central area for tickets, bookings, transport documents and insurance",

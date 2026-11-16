@@ -12,7 +12,9 @@
   acceptance, tests only, migration `0027` not yet run in production.
   **Step 5 (album links and covers on the server) is built** (2026-11-16, owner: "go with step 5"),
   awaiting acceptance, tests only, migration `0028` not yet run in production; the `trip-files`
-  bucket was created by the owner on 2026-11-16 (private). Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
+  bucket was created by the owner on 2026-11-16 (private).
+  **Step 6 (shared documents) is built** (2026-11-16, owner: "go ahead with step 6"), awaiting
+  acceptance, tests only, migration `0029` not yet run in production. All six steps are built. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
   (recorded there and in the decisions); question 1 (codes or a sign-in provider) is still open.
 - **Date:** 2026-11-16
 - **Changes when accepted:** D5 in `docs/app-plan.md` (anonymous installation, no accounts), the
@@ -342,6 +344,38 @@ unset, so Supabase's 50 MB applies), which settles it.
   native module); the server does.
 - Tests: `test_trip_files.py`, `TripPhotos.test.tsx` (server albums, upload, download),
   `util/base64.test.ts`.
+
+## Step 6 as built (2026-11-16)
+
+- Migration `0029`: `app.trip_document` (title, kind, what it is about as the phone's link JSON,
+  date, notes, file name, who changed it last), whose id is that of its `app.trip_file` (kind
+  `document`): deleting the file row deletes the description, and the object leaves the bucket
+  after the change commits.
+- API: `GET/POST /v1/trips/{id}/documents`, `PATCH/DELETE .../documents/{doc}`,
+  `GET .../documents/{doc}/file`. The **phone chooses the id** (a UUID), so a retried upload is
+  stored once (409 `document_exists` for an id of another trip). PDFs and pictures (JPEG, PNG, WebP,
+  GIF, HEIC/HEIF), at most 10 MB, checked by their first bytes (422 `not_a_document`,
+  `document_too_large`), **kept as they are** (a ticket's code must not be re-encoded; a photo of
+  a document keeps its metadata), within the 250 MB budget (409 `storage_full`). Allowed on past
+  trips (ADR 006). Members only; base64 in JSON as for covers.
+- App: Add document has an **"Upload to the trip" switch, on by default** (owner, 2026-11-16); a
+  document is always kept on the phone too. A failed upload keeps it on the phone, opens its screen
+  and offers "Upload to the trip" again. A document's screen says where it is kept ("On this phone
+  only", "Shared with the trip, and on this phone", "Shared with the trip; downloaded when you open
+  it") with "Upload to the trip" or "Keep on this phone only" (deletes the uploaded copy for
+  everyone, after asking). Edits and deletions of a shared document go to the server first and
+  apply to everyone. The Documents tab offers **"Share them with the trip"** once for documents
+  kept only on the phone; nothing is uploaded without a tap. New document ids are UUIDs; an older
+  document gets a new id on the server when shared (`serverId`).
+- **Offline:** `syncTrip` (step 5) also lists the trip's shared documents: new ones appear ("Not
+  downloaded yet"), changed ones take the new description, deleted ones go; a trip that starts
+  within 14 days or is under way has its shared documents **downloaded ahead**; others download
+  when opened.
+- **Not built:** end-to-end encryption (owner, question 4); the daily backup does not hold the
+  bucket's files (an export with documents does); a document only half-uploaded when the app is
+  closed is simply uploaded again (same id).
+- Tests: `test_trip_documents.py`, `screens/SharedDocuments.test.tsx`; the earlier document tests
+  were updated for the switch and the new wording.
 
 ## Build order (each step shippable and tested on its own)
 

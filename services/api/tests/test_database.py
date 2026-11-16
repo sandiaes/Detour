@@ -80,6 +80,7 @@ APP_TABLES = [
     "transfer",
     "trip",
     "trip_album",
+    "trip_document",
     "trip_file",
     "trip_file_orphan",
     "trip_member",

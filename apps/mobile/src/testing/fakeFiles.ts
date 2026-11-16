@@ -62,6 +62,12 @@ export function createFakeFiles(next: PickedFile | null = PICKED_PDF): FakeFiles
       fake.opened.push(doc.uri);
     },
     readBytes: async () => Uint8Array.from([255, 216, 255, 224]),
+    keepDocumentBytes: async (_bytes, tripId, id, fileName) => {
+      const ext = fileName.includes(".") ? fileName.slice(fileName.lastIndexOf(".")) : "";
+      const uri = `file:///app/documents/${tripId}/${id}${ext}`;
+      fake.kept.push(uri);
+      return uri;
+    },
     keepCoverBytes: async (_bytes, tripId) => {
       covers += 1;
       const uri = `file:///app/covers/${tripId}-${covers}.jpg`;

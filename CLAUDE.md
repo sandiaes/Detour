@@ -74,7 +74,11 @@ yet run): `If-Match` plan versions on direct item changes (409 `plan_changed`) a
 trips. **Step 5 is built** (tests only; migration `0028` not yet run; the private `trip-files` bucket exists in
 Supabase since 2026-11-16): album links in `app.trip_album` and covers chosen from a phone in `app.trip_file` (JPEG ≤ 1600 px, no EXIF,
 base64 in JSON, 250 MB budget) behind `/v1/trips/{id}/albums` and `/own-cover`; the app uploads, downloads and keeps a copy
-(`syncTrip`). Step 6 (shared documents) is not started.
+(`syncTrip`). **Step 6 is built** (tests only; migration `0029` not yet run): shared documents in `app.trip_document` +
+`app.trip_file` (kind `document`, kept as uploaded, checked by first bytes, 10 MB, phone-chosen UUID id) behind
+`/v1/trips/{id}/documents`; "Upload to the trip" on by default, "Keep on this phone only", "Share them with the trip",
+downloads ahead for trips within 14 days, open-on-demand otherwise. All six steps of ADR 034 are built; the iPhone build
+is next in the owner's order.
 
 **Regions can be imported from the app** (2026-11-17, ADR 033 step 3, built, awaiting acceptance; tests only; migration
 `0023` and the workflow change must reach `main` first; the GitHub token `DETOUR_GITHUB_TOKEN` and

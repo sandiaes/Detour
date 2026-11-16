@@ -33,6 +33,8 @@ export function DocumentScreen({ tripId, documentId }: { tripId: string; documen
   const trip = trips.data?.find((t) => t.id === tripId);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sharing, setSharing] = useState<"share" | "unshare" | null>(null);
+  const [confirmUnshare, setConfirmUnshare] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   if (doc === undefined) {
@@ -67,6 +69,35 @@ export function DocumentScreen({ tripId, documentId }: { tripId: string; documen
     }
   };
 
+  // Where the document is (ADR 034, step 6): shared with the trip, or on this phone only.
+  const share = async () => {
+    setSharing("share");
+    setProblem(null);
+    try {
+      await actions.share(doc);
+    } catch (e) {
+      setProblem(
+        `It stays on this phone only for now: ${e instanceof Error ? e.message : "the upload failed."}`,
+      );
+    } finally {
+      setSharing(null);
+    }
+  };
+
+  const unshare = async () => {
+    setSharing("unshare");
+    setProblem(null);
+    try {
+      await actions.unshare(doc);
+      setConfirmUnshare(false);
+    } catch {
+      setConfirmUnshare(false);
+      setProblem("The upload could not be removed. Check the connection and try again.");
+    } finally {
+      setSharing(null);
+    }
+  };
+
   const remove = async () => {
     setBusy(true);
     setProblem(null);
@@ -88,6 +119,14 @@ export function DocumentScreen({ tripId, documentId }: { tripId: string; documen
     ...(doc.date ? ([["Date", formatDate(doc.date)]] as [string, string][]) : []),
     ...(doc.notes ? ([["Notes", doc.notes]] as [string, string][]) : []),
     ["Added", formatDate(localToday(new Date(doc.createdAt)))],
+    [
+      "Kept",
+      !doc.serverId
+        ? "On this phone only"
+        : doc.uri
+          ? "Shared with the trip, and on this phone"
+          : "Shared with the trip; downloaded when you open it",
+    ],
   ];
 
   return (
@@ -100,7 +139,7 @@ export function DocumentScreen({ tripId, documentId }: { tripId: string; documen
             <Badge label={CATEGORY_LABEL[doc.category]} tone="primary" />
           </View>
           {problem ? <Notice tone="error">{problem}</Notice> : null}
-          {image ? (
+          {image && doc.uri ? (
             <Image
               source={{ uri: doc.uri }}
               style={styles.preview}
@@ -129,6 +168,29 @@ export function DocumentScreen({ tripId, documentId }: { tripId: string; documen
               onPress={() => nav.push({ name: "documentForm", tripId, documentId: doc.id })}
             />
           </View>
+          {doc.serverId ? (
+            <Button
+              label="Keep on this phone only"
+              variant="secondary"
+              size="sm"
+              testID="unshare-document"
+              loading={sharing === "unshare"}
+              disabled={sharing !== null}
+              onPress={() => setConfirmUnshare(true)}
+            />
+          ) : doc.uri ? (
+            <Button
+              label="Upload to the trip"
+              icon="export"
+              variant="secondary"
+              size="sm"
+              testID="share-document"
+              hint="Everyone on this trip gets it"
+              loading={sharing === "share"}
+              disabled={sharing !== null}
+              onPress={() => void share()}
+            />
+          ) : null}
           <Button
             label="Delete"
             variant="ghost"
@@ -143,13 +205,27 @@ export function DocumentScreen({ tripId, documentId }: { tripId: string; documen
       <ConfirmSheet
         visible={confirm}
         title="Delete this document?"
-        message={`“${doc.title}” and its file will be removed from this phone.`}
+        message={
+          doc.serverId
+            ? `“${doc.title}” will be deleted for everyone on this trip, and from this phone.`
+            : `“${doc.title}” and its file will be removed from this phone.`
+        }
         confirmLabel="Yes, delete it"
         cancelLabel="Keep it"
         confirmTestID="confirm-delete-document"
         busy={busy}
         onConfirm={() => void remove()}
         onCancel={() => setConfirm(false)}
+      />
+      <ConfirmSheet
+        visible={confirmUnshare}
+        title="Keep it on this phone only?"
+        message={`The uploaded copy of “${doc.title}” is deleted, so the others on this trip no longer have it. Your copy here stays.`}
+        confirmLabel="Keep on this phone only"
+        confirmTestID="confirm-unshare-document"
+        busy={sharing === "unshare"}
+        onConfirm={() => void unshare()}
+        onCancel={() => setConfirmUnshare(false)}
       />
     </View>
   );

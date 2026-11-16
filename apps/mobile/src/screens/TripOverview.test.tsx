@@ -153,7 +153,7 @@ test("Photos start with no album linked; Documents start empty", async () => {
   expect(screen.getByTestId("link-album")).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("tab", { name: "Trip documents" }));
   expect(await screen.findByText("No documents yet")).toBeOnTheScreen();
-  expect(screen.getByText(/stay on this phone only/)).toBeOnTheScreen();
+  expect(screen.getByText(/kept privately for the people on this trip/)).toBeOnTheScreen();
 });
 
 test("Back from the add-document screen returns to the Documents tab, not the overview", async () => {

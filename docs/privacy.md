@@ -10,8 +10,9 @@ Detour has no sign-in: no email, password or phone number. The app registers an 
 **installation** and keeps its token in the phone's secure storage. Since ADR 034 each installation
 belongs to a **person** (you), and other phones join you with a one-time code; a recovery code, if
 you made one, brings everything back on a new phone. Trips, plans, your own places and stays are
-stored on the backend (Supabase, schema `app`) under your person. **Documents (tickets, bookings, insurance) never leave the
-phone** unless you put them in an export file yourself. The app talks only to the Detour backend and
+stored on the backend (Supabase, schema `app`) under your person. **Documents (tickets, bookings, insurance)** are uploaded to the trip
+when "Upload to the trip" is on (the default since ADR 034); one you keep on this phone only never
+leaves it unless you put it in an export file. The app talks only to the Detour backend and
 the map tile host; searches that need an outside service (Photon, Wikidata, Commons, the routing
 server) are made by the backend, without your installation or trip.
 
@@ -24,7 +25,8 @@ server) are made by the backend, without your installation or trip.
 | Your phones (ADR 034): which installations belong to you, when each was added and last used; a keyed hash of your recovery code and of each link code | Backend, `app.person`, `app.installation`, `app.link_code` | The owner of the Supabase project (hashes only: the codes cannot be read back) | Until deleted (see 5) |
 | Trips, days, stops, times, your own places, stays, visited marks | Backend database (Supabase Free, EU North), schema `app` | Anyone holding your token; the owner of the Supabase project | Until you delete the trip; your own places until deleted (see 5) |
 | A copy of what the app last read (trip list, plans) | Phone, SQLite `detour-cache.db`, table `cache` | The app | Replaced on each read; cleared if the installation changes |
-| Documents: files and their titles, links, dates, notes | Phone, the app's private files and table `trip_document` | The app | Until you delete them or the trip, or uninstall |
+| Documents kept on this phone only: files and their titles, links, dates, notes | Phone, the app's private files and table `trip_document` | The app | Until you delete them or the trip, or uninstall |
+| Documents uploaded to a trip (ADR 034, step 6) | Backend: the file **as you picked it** (a photo keeps its own metadata) in the private `trip-files` bucket, its description in `app.trip_document`; a copy on each phone that opened or pre-downloaded it | Everyone on the trip, through the API only; the owner of the Supabase project (stored encrypted at rest by Supabase, not end-to-end) | Until deleted (for everyone), kept on one phone only, or the trip is deleted |
 | Links to your photo albums | Backend, `app.trip_album` (ADR 034, step 5), with a copy on each phone (`trip_extra`) | Everyone on the trip; the owner of the Supabase project. The album itself stays in Google Photos under its own sharing | Until removed, or the trip is deleted |
 | A cover picture chosen from a phone | Backend: a JPEG of at most 1600 px **without location or camera data** in the private `trip-files` bucket (`app.trip_file`); a copy in each phone's `covers/` folder | Everyone on the trip, through the API only; the owner of the Supabase project | Until replaced, removed ("Automatic photo") or the trip is deleted |
 | Export files (`.detour`) | Wherever you send them (share sheet) | Whoever gets the file | Your choice |

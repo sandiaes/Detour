@@ -125,6 +125,11 @@ the same `code_invalid`.
   at most 60 megapixels, a JPEG of at most 1600 px out, no EXIF), so a file that is not a picture,
   and the picture's location, never reach the bucket. All trip files together are capped at
   `DETOUR_TRIP_FILES_BUDGET_BYTES` (250 MB; 409 `storage_full`).
+- **Shared documents** (step 6) use the same private bucket and checks of membership. They are kept
+  as uploaded (no re-encoding: a ticket's code must stay readable), so the server checks the first
+  bytes against the type the phone names (PDF, JPEG, PNG, WebP, GIF, HEIC) and refuses anything else;
+  at most 10 MB each. A document's id is chosen by the phone; an id already used on another trip is
+  refused. Readable by the Supabase project's owner (encryption at rest only; owner, question 4).
 - **Rotating `DETOUR_TOKEN_SECRET`** invalidates every token and every stored code hash (the app
   registers again by itself; recovery codes must be made again).
 
