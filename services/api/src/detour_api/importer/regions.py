@@ -11,8 +11,6 @@ class RegionDef:
     name: str
     geofabrik_path: str  # for example europe/austria
     countries: tuple[str, ...]  # ISO 3166-1 alpha-2
-    # The size Geofabrik shows for the extract, when it was read (ADR 033); None when not read.
-    download_mb: int | None = None
 
     @property
     def extract_url(self) -> str:
@@ -39,7 +37,6 @@ REGIONS: dict[str, RegionDef] = {
             "Greater London",
             "europe/great-britain/england/greater-london",
             ("GB",),
-            download_mb=124,
         ),
     )
 }

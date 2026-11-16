@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 
 import { AppContent } from "../App";
+import { colors } from "../theme";
 import { createFakeClient } from "../testing/fakeClient";
 import { Harness } from "../testing/harness";
 
@@ -8,20 +10,20 @@ const LONDON = {
   id: "greater-london",
   name: "Greater London",
   country_codes: ["GB"],
-  download_mb: 124,
   state: "not_imported",
   places: 0,
   places_kept: 0,
+  bytes: null,
   job: null,
 };
 const AUSTRIA = {
   id: "austria",
   name: "Austria",
   country_codes: ["AT"],
-  download_mb: null,
   state: "available",
   places: 1200,
   places_kept: 0,
+  bytes: 38_400_000,
   job: null,
 };
 
@@ -52,8 +54,8 @@ async function open(handlers: Record<string, unknown> = {}) {
 test("the regions are listed with their state and the space used", async () => {
   await open();
   expect(await screen.findByText("Greater London")).toBeOnTheScreen();
-  expect(screen.getByText("Not imported · about 124 MB to download")).toBeOnTheScreen();
-  expect(screen.getByText("Available · 1,200 places")).toBeOnTheScreen();
+  expect(screen.getByText("Not imported")).toBeOnTheScreen();
+  expect(screen.getByText("Available · 1,200 places · about 38 MB")).toBeOnTheScreen();
   expect(screen.getByTestId("regions-usage")).toHaveTextContent(
     "Imported data uses 38 MB of the 250 MB allowed.",
   );
@@ -64,7 +66,7 @@ test("someone who is not the owner can read the list but not import or remove", 
   expect(await screen.findByText(/Only the owner of this server/)).toBeOnTheScreen();
   await fireEvent.press(await screen.findByTestId("region-greater-london"));
   // The row and the sheet both say it.
-  expect(await screen.findAllByText("Not imported · about 124 MB to download")).toHaveLength(2);
+  expect(await screen.findAllByText("Not imported")).toHaveLength(2);
   expect(screen.queryByTestId("region-import")).toBeNull();
   expect(screen.queryByTestId("region-remove")).toBeNull();
 });
@@ -157,4 +159,22 @@ test("Regions is reachable from More", async () => {
   );
   await fireEvent.press(await screen.findByTestId("more-regions"));
   expect(await screen.findByRole("header", { name: "Regions" })).toBeOnTheScreen();
+});
+
+test("an import under way has a yellow badge", async () => {
+  const running = {
+    ...LONDON,
+    job: {
+      id: "j1",
+      status: "running",
+      message: null,
+      run_url: null,
+      requested_at: "2027-01-01T10:00:00Z",
+      updated_at: "2027-01-01T10:00:00Z",
+    },
+  };
+  await open({ "GET /v1/regions/catalog": () => catalog({ regions: [AUSTRIA, running] }) });
+  const badge = await screen.findByText("Importing");
+  const pill = badge.parent;
+  expect(pill && StyleSheet.flatten(pill.props.style).backgroundColor).toBe(colors.warning);
 });

@@ -4987,18 +4987,6 @@
             "type": "array",
             "title": "Country Codes"
           },
-          "download_mb": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Download Mb",
-            "description": "The extract's size at Geofabrik, if it was read"
-          },
           "state": {
             "type": "string",
             "enum": [
@@ -5019,6 +5007,18 @@
             "title": "Places Kept",
             "description": "Places kept for trips after a removal (not searchable)"
           },
+          "bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes",
+            "description": "About how much database space the region's places take (an estimate: its share of the place tables' size); null when it has none"
+          },
           "job": {
             "anyOf": [
               {
@@ -5036,10 +5036,10 @@
           "id",
           "name",
           "country_codes",
-          "download_mb",
           "state",
           "places",
           "places_kept",
+          "bytes",
           "job"
         ],
         "title": "CatalogRegion"

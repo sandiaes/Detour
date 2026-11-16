@@ -56,9 +56,11 @@ def test_the_catalog_lists_the_importable_regions_and_who_may_manage(api_env: Ap
     cat = c.get("/v1/regions/catalog", headers=h).json()
     assert cat["can_manage"] is False and cat["import_enabled"] is True
     by_id = {r["id"]: r for r in cat["regions"]}
-    assert by_id[LONDON]["state"] == "not_imported" and by_id[LONDON]["download_mb"] == 124
+    assert by_id[LONDON]["state"] == "not_imported"
     assert by_id[LONDON]["job"] is None and by_id[LONDON]["country_codes"] == ["GB"]
     assert cat["geo_limit_bytes"] == 250_000_000 and cat["geo_bytes"] > 0
+    # The fixture region is not in the catalog; an imported catalog region would show its size.
+    assert by_id[LONDON]["bytes"] is None
     _setup(api_env)
     assert c.get("/v1/regions/catalog", headers=h).json()["can_manage"] is True
 
@@ -213,3 +215,21 @@ def test_the_daily_budget_limits_dispatches(api_env: ApiEnv) -> None:
     r = _post(api_env)
     assert r.status_code == 502 and "today" in r.json()["detail"]
     assert len(github.requests) == 1
+
+
+def test_an_imported_catalog_region_shows_its_places_and_about_how_much_room_it_takes(
+    api_env: ApiEnv,
+) -> None:
+    sql(
+        api_env,
+        "INSERT INTO geo.region (id, name, country_codes, status) VALUES ('austria', 'Austria',"
+        " '{AT}', 'available')",
+    )
+    sql(api_env, "UPDATE geo.place SET region_id = 'austria'")
+    cat = api_env.client.get("/v1/regions/catalog", headers=api_env.headers).json()
+    austria = next(r for r in cat["regions"] if r["id"] == "austria")
+    assert austria["state"] == "available" and austria["places"] > 0
+    assert austria["bytes"] is not None and austria["bytes"] > 0
+    # Its share cannot be more than the whole of the place tables, or the database itself.
+    assert austria["bytes"] <= cat["geo_bytes"]
+    assert next(r for r in cat["regions"] if r["id"] == LONDON)["bytes"] is None

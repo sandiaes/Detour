@@ -149,7 +149,7 @@ export function RegionsScreen() {
                   testID={`region-${r.id}`}
                   trailing={
                     importInProgress(r) ? (
-                      <Badge label="Importing" tone="primary" />
+                      <Badge label="Importing" tone="warning" />
                     ) : r.state === "available" ? (
                       <Badge label="Available" tone="primary" />
                     ) : undefined

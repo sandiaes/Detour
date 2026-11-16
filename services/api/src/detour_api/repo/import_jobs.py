@@ -29,6 +29,13 @@ def _job(row: Any, stall: timedelta, now: datetime) -> ImportJob:
     )
 
 
+def _share(total_bytes: int, row: Any, total_rows: int) -> int | None:
+    rows = 0 if row is None else int(row.n) + int(row.kept)
+    if rows == 0 or total_rows == 0:
+        return None
+    return round(total_bytes * rows / total_rows)
+
+
 def latest_jobs(conn: Connection, settings: Settings) -> dict[str, ImportJob]:
     rows = conn.execute(
         text(
@@ -56,6 +63,17 @@ def catalog(
         ).all()
     }
     jobs = latest_jobs(conn, settings)
+    # A region's share of the place tables (rows, indexes and long values), by its share of rows.
+    place_bytes = int(
+        conn.execute(
+            text(
+                "SELECT COALESCE(SUM(pg_total_relation_size(c.oid)), 0)::bigint FROM pg_class c"
+                " JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'geo'"
+                " AND c.relname IN ('place', 'place_source', 'place_signal')"
+            )
+        ).scalar_one()
+    )
+    total_rows = sum(int(r.n) + int(r.kept) for r in stored.values())
     size = conn.execute(
         text(
             "SELECT COALESCE(SUM(pg_total_relation_size(c.oid)), 0)::bigint FROM pg_class c"
@@ -71,10 +89,10 @@ def catalog(
                 id=definition.id,
                 name=definition.name,
                 country_codes=list(definition.countries),
-                download_mb=definition.download_mb,
                 state="not_imported" if row is None else row.status,
                 places=0 if row is None else int(row.n),
                 places_kept=0 if row is None else int(row.kept),
+                bytes=_share(place_bytes, row, total_rows),
                 job=jobs.get(definition.id),
             )
         )

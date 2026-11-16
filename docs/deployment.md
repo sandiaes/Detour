@@ -247,7 +247,7 @@ Do this once so that **More, Regions** works. Nothing here is a secret in the re
 3. **The workflow must be on `main`** (GitHub only dispatches workflows from the default branch),
    and the secret `DETOUR_IMPORT_DATABASE_URL` must exist (see "Importing a region").
 4. **Try it.** Open **More, Regions**, tap **Greater London**, **Import this region**. The row says
-   "Import requested…", then "Importing…" while the workflow runs (a few minutes for 124 MB), and
+   "Import requested…", then "Importing…" while the workflow runs (a few minutes for a city), and
    "Available" when it finishes. If it says "GitHub refused the request", the token, its
    permission or the workflow name is wrong; if it stops reporting for 45 minutes it shows as
    stalled and the run's page on GitHub (the Actions tab) has the reason.
