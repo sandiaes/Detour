@@ -2,7 +2,15 @@ import type { Day, Item } from "@detour/shared";
 
 import { makeItinerary, makeLeg } from "../testing/fixtures";
 import { buildDayRows, dayTotals } from "./itinerary";
-import { journeyLeg, legLine, legSentence, legTimes, legsOnMap } from "./transport";
+import {
+  journeyLeg,
+  legClash,
+  legLine,
+  legPosition,
+  legSentence,
+  legTimes,
+  legsOnMap,
+} from "./transport";
 
 // Transport legs the user entered (ADR 032): what the day list says, what the map draws, and what
 // counts as travel. A length the user did not enter is never guessed.
@@ -82,4 +90,58 @@ test("on the map a leg is a line between its ends; a typed end borrows the next 
     dayWith([makeLeg({}, { from_lat: null, from_lon: null, to_lat: null, to_lon: null })]),
   );
   expect(nothing).toEqual([]);
+});
+
+// Placement and times (owner, 2026-11-16). Day 1 of the fixture: Schönbrunn 09:00-11:00,
+// Belvedere 11:21-12:51, Gasthaus 13:01-14:01, St. Stephen's 14:03-15:03, Café 18:30-20:00.
+const day1 = () => makeItinerary("essentials").days[0] as Day;
+const schoen = { name: "Schönbrunn Palace", lat: 48.1845, lon: 16.3122 };
+
+test("a leg from a stop of the day goes right after that stop", () => {
+  expect(legPosition(day1(), { from: schoen, start: "16:00", journey: false })).toBe(2);
+});
+
+test("otherwise a journey goes first, then time order, then the end", () => {
+  const typed = { name: "Wien Hbf", lat: null, lon: null };
+  expect(legPosition(day1(), { from: typed, start: "16:00", journey: true })).toBe(1);
+  expect(legPosition(day1(), { from: typed, start: "16:00", journey: false })).toBe(5);
+  expect(legPosition(day1(), { from: typed, start: null, journey: false })).toBe(6);
+  expect(legPosition(day1(), { from: null, start: "08:00", journey: false })).toBe(1);
+});
+
+test("the leg itself is left out when it is placed again", () => {
+  const day = day1();
+  day.items.splice(1, 0, makeLeg({ id: "leg1" }));
+  expect(legPosition(day, { from: schoen, start: null, journey: false }, "leg1")).toBe(2);
+});
+
+test("a leg that runs into the next stop asks to move the later stops by the overlap", () => {
+  // After Schönbrunn (ends 11:00), a 45 min bus at 11:00 ends 11:45; Belvedere starts 11:21.
+  const clash = legClash(day1(), 2, { start: "11:00", minutes: 45 });
+  expect(clash).toEqual({
+    kind: "later",
+    name: "Belvedere",
+    start: "11:21",
+    minutes: 24,
+    count: 4,
+  });
+  expect(legClash(day1(), 2, { start: "11:00", minutes: 20 })).toEqual({ kind: "none" });
+});
+
+test("a leg that leaves before the stop before it ends is named, not fixed", () => {
+  expect(legClash(day1(), 2, { start: "10:30", minutes: 20 })).toEqual({
+    kind: "earlier",
+    name: "Schönbrunn Palace",
+    end: "11:00",
+  });
+});
+
+test("moving the later stops past midnight is refused", () => {
+  const clash = legClash(day1(), 5, { start: "18:00", minutes: 300 });
+  expect(clash).toMatchObject({ kind: "midnight", name: "Café Ohne Angabe" });
+});
+
+test("a leg with no time, or of unknown length at a free moment, clashes with nothing", () => {
+  expect(legClash(day1(), 2, { start: null, minutes: 60 })).toEqual({ kind: "none" });
+  expect(legClash(day1(), 2, { start: "11:10", minutes: null })).toEqual({ kind: "none" });
 });

@@ -458,7 +458,11 @@ cities, its stays, the day's stops, then "Type a name" for a station or port, wh
 (the time field, optional), a two-part control **How long** / **Arrives at** (the length field with a
 "Not known" pill, or an arrival time; one before the start is the next day), a line saying the length
 in words ("Length: time not entered"), **Journey between cities** (a pill, on a multi-city trip), and
-**Note**. "Add transport" (`primary`), Cancel; when changing a leg also "Attach a document" (a
+**Note**. The leg goes right after its From stop when that is a stop of the day (replacing the walk
+or drive from it), else first for a journey, else in time order, else last. If it runs into the stops
+after it, a confirmation sheet "Move the later stops?" offers "Move them 24 min later" (or "Change the
+times"); if it leaves before the stop before it ends, an error names that stop and its end time.
+"Add transport" (`primary`), Cancel; when changing a leg also "Attach a document" (a
 journey link by day and name, kind Transport) and a red ghost "Remove this transport" with a
 confirmation sheet. No price, operator, seat or booking field (ADR 017).
 

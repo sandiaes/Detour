@@ -58,16 +58,18 @@ test("a train between two stops is added as the user entered it", async () => {
   await fireEvent.press(screen.getByText("Belvedere"));
   await fireEvent.press(screen.getByTestId("leg-to"));
   await fireEvent.press(screen.getByText("St. Stephen's Cathedral"));
-  await fireEvent.changeText(screen.getByTestId("leg-start"), "10:12");
-  await fireEvent.changeText(screen.getByTestId("leg-length"), "1h30");
+  // Belvedere ends at 12:51 and the next stop starts at 13:01: a 10 min train fits between.
+  await fireEvent.changeText(screen.getByTestId("leg-start"), "12:51");
+  await fireEvent.changeText(screen.getByTestId("leg-length"), "10");
   await fireEvent.changeText(screen.getByTestId("leg-note"), "Coach 7");
-  expect(screen.getByTestId("leg-length-said")).toHaveTextContent("Length: 1 h 30 min");
+  expect(screen.getByTestId("leg-length-said")).toHaveTextContent("Length: 10 min");
   await fireEvent.press(screen.getByTestId("leg-save"));
   await waitFor(() => expect(bodies).toHaveLength(1));
   expect(bodies[0]).toMatchObject({
     type: "transport",
-    start_time: "10:12:00",
-    duration_minutes: 90,
+    start_time: "12:51:00",
+    duration_minutes: 10,
+    position: 3,
     transport: {
       mode: "train",
       from_name: "Belvedere",
@@ -122,7 +124,18 @@ test("a leg is changed, and removed after a confirmation", async () => {
   const patches: Body[] = [];
   const deleted: string[] = [];
   const plan = planWith((days) => {
-    days[0]!.items.splice(2, 0, makeLeg({ id: "leg1", day_id: days[0]!.id }));
+    // Between Belvedere (ends 12:51) and the next stop (13:01).
+    days[0]!.items.splice(
+      2,
+      0,
+      makeLeg({
+        id: "leg1",
+        day_id: days[0]!.id,
+        start_time: "12:51:00",
+        end_time: "13:01:00",
+        duration_minutes: 10,
+      }),
+    );
   });
   await showForm({ itemId: "leg1" }, plan, {
     "PATCH /v1/items/{item_id}": ({ body }: { body: Body }) => {
@@ -142,10 +155,12 @@ test("a leg is changed, and removed after a confirmation", async () => {
   await waitFor(() => expect(patches).toHaveLength(1));
   expect(patches[0]).toMatchObject({
     duration_minutes: null,
-    start_time: "10:12:00",
+    start_time: "12:51:00",
     transport: { mode: "bus", from_name: "Rome", to_name: "Florence" },
   });
   expect(patches[0]).not.toHaveProperty("day_index");
+  // Nothing that places it changed: it stays where it is.
+  expect(patches[0]).not.toHaveProperty("position");
 });
 
 test("removing asks first", async () => {
@@ -257,4 +272,67 @@ test("From lists cities first, then stays, then the day's stops, then Type a nam
   expect(order).toEqual([...order].sort((a, b) => a - b));
   expect(new Set(order)).toEqual(new Set([0, 1, 2, 3]));
   expect(rows[rows.length - 1]).toBe("leg-from-type");
+});
+
+test("a leg from a stop goes right after it, and moving the later stops is asked first", async () => {
+  const bodies: Body[] = [];
+  await showForm({ day: 1 }, planWith(), {
+    "POST /v1/itineraries/{itinerary_id}/days/{day_index}/items": ({ body }: { body: Body }) => {
+      bodies.push(body);
+      return makeLeg();
+    },
+  });
+  await fireEvent.press(await screen.findByTestId("leg-from"));
+  await fireEvent.press(screen.getByText("Schönbrunn Palace"));
+  await fireEvent.press(screen.getByTestId("leg-to"));
+  await fireEvent.press(screen.getByText("Belvedere"));
+  await fireEvent.changeText(screen.getByTestId("leg-start"), "11:00");
+  await fireEvent.changeText(screen.getByTestId("leg-length"), "45");
+  await fireEvent.press(screen.getByTestId("leg-save"));
+  expect(await screen.findByText("Move the later stops?")).toBeOnTheScreen();
+  expect(bodies).toEqual([]);
+  await fireEvent.press(screen.getByText("Move them 24 min later"));
+  await waitFor(() => expect(bodies).toHaveLength(1));
+  expect(bodies[0]).toMatchObject({ position: 2, shift_later_minutes: 24 });
+});
+
+test("without a clash a leg is saved at its place with no move", async () => {
+  const bodies: Body[] = [];
+  await showForm({ day: 1 }, planWith(), {
+    "POST /v1/itineraries/{itinerary_id}/days/{day_index}/items": ({ body }: { body: Body }) => {
+      bodies.push(body);
+      return makeLeg();
+    },
+  });
+  await fireEvent.press(await screen.findByTestId("leg-from"));
+  await fireEvent.press(screen.getByText("Schönbrunn Palace"));
+  await fireEvent.press(screen.getByTestId("leg-to"));
+  await fireEvent.press(screen.getByText("Belvedere"));
+  await fireEvent.changeText(screen.getByTestId("leg-start"), "11:00");
+  await fireEvent.changeText(screen.getByTestId("leg-length"), "15");
+  await fireEvent.press(screen.getByTestId("leg-save"));
+  await waitFor(() => expect(bodies).toHaveLength(1));
+  expect(bodies[0]).toMatchObject({ position: 2 });
+  expect(bodies[0]).not.toHaveProperty("shift_later_minutes");
+});
+
+test("a leg that leaves before the stop before it ends is not saved, and says why", async () => {
+  const bodies: Body[] = [];
+  await showForm({ day: 1 }, planWith(), {
+    "POST /v1/itineraries/{itinerary_id}/days/{day_index}/items": ({ body }: { body: Body }) => {
+      bodies.push(body);
+      return makeLeg();
+    },
+  });
+  await fireEvent.press(await screen.findByTestId("leg-from"));
+  await fireEvent.press(screen.getByText("Schönbrunn Palace"));
+  await fireEvent.press(screen.getByTestId("leg-to"));
+  await fireEvent.press(screen.getByText("Belvedere"));
+  await fireEvent.changeText(screen.getByTestId("leg-start"), "10:30");
+  await fireEvent.changeText(screen.getByTestId("leg-length"), "20");
+  await fireEvent.press(screen.getByTestId("leg-save"));
+  expect(
+    await screen.findByText(/It leaves before Schönbrunn Palace ends at 11:00/),
+  ).toBeOnTheScreen();
+  expect(bodies).toEqual([]);
 });

@@ -280,3 +280,108 @@ def test_undo_of_optimize_brings_the_leg_back_unchanged(api_env: ApiEnv) -> None
     legs = [i for i in _plan(api_env, plan)["days"][0]["items"] if i["type"] == "transport"]
     assert len(legs) == 1 and legs[0]["transport"]["note"] == "Late"
     assert legs[0]["start_time"] == "18:00:00" and legs[0]["duration_minutes"] == 45
+
+
+# -- placing a leg and moving the later stops (owner request of 2026-11-16) -----------------------
+
+
+def test_a_leg_placed_after_its_stop_replaces_the_walk_and_can_move_the_later_stops(
+    api_env: ApiEnv,
+) -> None:
+    from tests.test_api_optimize import _optimize
+
+    _, plan = _trip(api_env, uses_car=False)
+    for i, x in enumerate([0, 0.3, 0.1]):  # short walks; Optimize writes the legs
+        _visit(api_env, plan, 1, f"Stop {i + 1}", x, f"{9 + i:02d}:00:00", minutes=50)
+    change = _optimize(api_env, plan, "within_days").json()
+    api_env.client.post(f"/v1/change-sets/{change['id']}/apply", headers=api_env.headers)
+    items = _plan(api_env, plan)["days"][0]["items"]
+    first, second = items[0], items[1]
+    assert first["transfer"] is not None  # a computed walk from stop 1 to stop 2
+    # A 30 min bus right after stop 1 runs into stop 2: refused unless the later stops move.
+    start = first["end_time"]
+    clash = _leg(api_env, plan, 1, position=2, start_time=start, duration_minutes=45)
+    assert clash.status_code == 409 and code(clash) == "overlap"
+    end_minute = int(start[:2]) * 60 + int(start[3:5]) + 45
+    second_start = int(second["start_time"][:2]) * 60 + int(second["start_time"][3:5])
+    shift = end_minute - second_start
+    r = _leg(
+        api_env,
+        plan,
+        1,
+        position=2,
+        start_time=start,
+        duration_minutes=45,
+        shift_later_minutes=shift,
+    )
+    assert r.status_code == 201, r.text
+    after = _plan(api_env, plan)["days"][0]["items"]
+    assert [i["type"] for i in after] == ["visit", "transport", "visit", "visit"]
+    assert after[0]["transfer"] is None  # the walk is replaced by the leg
+    moved = int(after[2]["start_time"][:2]) * 60 + int(after[2]["start_time"][3:5])
+    assert moved == end_minute
+    assert after[3]["start_time"] > items[2]["start_time"]  # every later stop moved
+    versions = sql(
+        api_env,
+        "SELECT count(*) FROM app.itinerary_version WHERE itinerary_id = %s",
+        plan["id"],
+    )
+    before_leg = versions[0][0]
+    assert before_leg >= 1
+
+
+def test_moving_the_later_stops_is_refused_past_midnight_and_for_a_stop(api_env: ApiEnv) -> None:
+    _, plan = _trip(api_env)
+    _visit(api_env, plan, 1, "Late show", 0, "22:00:00", minutes=90)
+    r = _leg(
+        api_env,
+        plan,
+        1,
+        position=1,
+        start_time="21:30:00",
+        duration_minutes=60,
+        shift_later_minutes=60,
+    )
+    assert r.status_code == 422 and code(r) == "shift_past_midnight"
+    assert _plan(api_env, plan)["days"][0]["items"][0]["start_time"] == "22:00:00"  # unchanged
+    place = api_env.client.post(
+        "/v1/user-places",
+        json={
+            "kind": "location",
+            "name": "Museum",
+            "lat": 41.9,
+            "lon": 12.5,
+            "source": "manual_pin",
+        },
+        headers=api_env.headers,
+    ).json()
+    not_leg = add_item(
+        api_env,
+        plan,
+        1,
+        type="visit",
+        user_place_id=place["id"],
+        duration_minutes=30,
+        shift_later_minutes=10,
+    )
+    assert not_leg.status_code == 422
+
+
+def test_changing_a_leg_can_move_the_later_stops_too(api_env: ApiEnv) -> None:
+    _, plan = _trip(api_env)
+    _visit(api_env, plan, 1, "Stop 1", 0, "09:00:00", minutes=60)
+    leg = _leg(api_env, plan, 1, start_time="10:00:00", duration_minutes=30).json()
+    _visit(api_env, plan, 1, "Stop 2", 1, "10:30:00", minutes=60)
+    url = f"/v1/items/{leg['id']}"
+    longer = api_env.client.patch(url, json={"duration_minutes": 50}, headers=api_env.headers)
+    assert longer.status_code == 409 and code(longer) == "overlap"
+    r = api_env.client.patch(
+        url, json={"duration_minutes": 50, "shift_later_minutes": 20}, headers=api_env.headers
+    )
+    assert r.status_code == 200, r.text
+    items = _plan(api_env, plan)["days"][0]["items"]
+    assert [(i["display_name"], i["start_time"]) for i in items] == [
+        ("Stop 1", "09:00:00"),
+        ("Train to Florence", "10:00:00"),
+        ("Stop 2", "10:50:00"),
+    ]

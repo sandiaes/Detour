@@ -2,7 +2,7 @@ import type { Day, Item, TransportInfo } from "@detour/shared";
 
 import type { IconName } from "../components/ds/Icon";
 import { formatClock, formatMinutes } from "../util/format";
-import { minutesOf } from "./itinerary";
+import { clockOf, minutesOf } from "./itinerary";
 
 // Transport legs the user enters by hand (ADR 032): how they actually travelled, never computed.
 // A length the user did not enter is unknown and is shown as such (hard constraint 5); there is
@@ -130,4 +130,103 @@ export function legsOnMap(day: Day): LegOnMap[] {
     out.push({ id: item.id, item, mode: t.mode, lngLat, line });
   });
   return out;
+}
+
+// ---- where a leg goes in its day, and what its times run into (owner, 2026-11-16) -------------
+
+/** An end of a leg as chosen on the form. */
+export type LegEnd = { name: string; lat: number | null; lon: number | null };
+
+const sameStop = (item: Item, end: LegEnd) =>
+  item.type !== "transport" &&
+  end.lat !== null &&
+  item.display_name === end.name &&
+  item.lat === end.lat &&
+  item.lon === end.lon;
+
+/**
+ * Where a leg goes among the day's other items, as the 1-based position it will have:
+ * 1. right after its From stop, when From is a stop of that day (it then replaces the walk or
+ *    drive from that stop to the next);
+ * 2. otherwise first, for a journey between cities;
+ * 3. otherwise in time order by its start;
+ * 4. otherwise after the last item.
+ * `exceptId` leaves the leg itself out (when it is being changed).
+ */
+export function legPosition(
+  day: Day | undefined,
+  leg: { from: LegEnd | null; start: string | null; journey: boolean },
+  exceptId?: string,
+): number {
+  const items = (day?.items ?? []).filter((i) => i.id !== exceptId);
+  const from = leg.from;
+  const after = from ? items.findIndex((i) => sameStop(i, from)) : -1;
+  if (after >= 0) return after + 2;
+  if (leg.journey) return 1;
+  const start = minutesOf(leg.start);
+  if (start !== null) {
+    const later = items.findIndex((i) => {
+      const s = minutesOf(i.start_time);
+      return s !== null && s > start;
+    });
+    if (later >= 0) return later + 1;
+  }
+  return items.length + 1;
+}
+
+export type LegClash =
+  | { kind: "none" }
+  /** An item before the leg is still going when it leaves: the user changes a time. */
+  | { kind: "earlier"; name: string; end: string }
+  /** The leg runs into the items after it: they can all move `minutes` later. */
+  | { kind: "later"; name: string; start: string; minutes: number; count: number }
+  /** Moving them would take one past midnight. */
+  | { kind: "midnight"; name: string; minutes: number };
+
+const DAY_END = 24 * 60;
+
+/** What a leg at `position` (1-based, as `legPosition` gives) with these times runs into. A leg
+ * of unknown length is a point; one that arrives the next day runs to midnight. */
+export function legClash(
+  day: Day | undefined,
+  position: number,
+  leg: { start: string | null; minutes: number | null },
+  exceptId?: string,
+): LegClash {
+  const start = minutesOf(leg.start);
+  if (start === null) return { kind: "none" };
+  const end = leg.minutes === null ? start : Math.min(start + leg.minutes, DAY_END);
+  const items = (day?.items ?? []).filter((i) => i.id !== exceptId);
+  const before = items.slice(0, position - 1);
+  const after = items.slice(position - 1).filter((i) => minutesOf(i.start_time) !== null);
+  for (const i of before) {
+    const s = minutesOf(i.start_time);
+    const e = i.end_time ? minutesOf(i.end_time) : s;
+    // A point (length unknown) clashes only inside an item, as the server checks it.
+    const overlaps = start === end ? s !== null && s < start : s !== null && s < end;
+    if (s !== null && e !== null && overlaps && e > start) {
+      return { kind: "earlier", name: i.display_name, end: clockOf(e) };
+    }
+  }
+  if (after.length === 0) return { kind: "none" };
+  const first = after.reduce((a, b) =>
+    (minutesOf(b.start_time) as number) < (minutesOf(a.start_time) as number) ? b : a,
+  );
+  const firstStart = minutesOf(first.start_time) as number;
+  const minutes = end - firstStart;
+  if (minutes <= 0) return { kind: "none" };
+  for (const i of after) {
+    const s = minutesOf(i.start_time) as number;
+    const e = minutesOf(i.end_time);
+    // A night train already runs to midnight: only its start moves.
+    const reach = (e === null || (i.type === "transport" && e < s) ? s : e) + minutes;
+    if (reach > DAY_END - 1) return { kind: "midnight", name: i.display_name, minutes };
+  }
+  return {
+    kind: "later",
+    name: first.display_name,
+    start: clockOf(firstStart),
+    minutes,
+    count: after.length,
+  };
 }
