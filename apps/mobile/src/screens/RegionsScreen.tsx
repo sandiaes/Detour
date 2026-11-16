@@ -6,6 +6,7 @@ import { call, describeError } from "../api/unwrap";
 import {
   Badge,
   Button,
+  Card,
   ConfirmSheet,
   ErrorState,
   ListRow,
@@ -148,7 +149,7 @@ export function RegionsScreen() {
               ) : null}
               {problem && !region && !removal ? <Notice tone="error">{problem}</Notice> : null}
             </View>
-            <View>
+            <View style={styles.cards}>
               {groups.map((group, index) => {
                 // A continent starts open when it holds data or an import; when none does, the
                 // first one is open so the screen is never a list of closed bands.
@@ -156,38 +157,42 @@ export function RegionsScreen() {
                 const open =
                   folded[group.continent] === undefined ? startsOpen : !folded[group.continent];
                 return (
-                  <View key={group.continent}>
-                    <GroupHeader
-                      title={group.continent}
-                      summary={groupSummary(group.regions)}
-                      expanded={open}
-                      onToggle={() => setFolded((f) => ({ ...f, [group.continent]: open }))}
-                      testID={`continent-${group.continent}`}
-                    />
-                    {open ? (
-                      <RowGroup>
-                        {group.regions.map((r) => (
-                          <ListRow
-                            key={r.id}
-                            title={r.name}
-                            detail={regionLine(r)}
-                            testID={`region-${r.id}`}
-                            trailing={
-                              importInProgress(r) ? (
-                                <Badge label="Importing" tone="warning" />
-                              ) : r.state === "available" ? (
-                                <Badge label="Available" tone="primary" />
-                              ) : undefined
-                            }
-                            onPress={() => {
-                              setProblem(null);
-                              setOpenId(r.id);
-                            }}
-                          />
-                        ))}
-                      </RowGroup>
-                    ) : null}
-                  </View>
+                  <Card key={group.continent} padded={false}>
+                    {/* One child, so the card's own gap does not open a space above the rows. */}
+                    <View>
+                      <GroupHeader
+                        title={group.continent}
+                        summary={groupSummary(group.regions)}
+                        expanded={open}
+                        onToggle={() => setFolded((f) => ({ ...f, [group.continent]: open }))}
+                        testID={`continent-${group.continent}`}
+                      />
+                      {open ? (
+                        <RowGroup>
+                          {group.regions.map((r, i) => (
+                            <ListRow
+                              key={r.id}
+                              divider={i < group.regions.length - 1}
+                              title={r.name}
+                              detail={regionLine(r)}
+                              testID={`region-${r.id}`}
+                              trailing={
+                                importInProgress(r) ? (
+                                  <Badge label="Importing" tone="warning" />
+                                ) : r.state === "available" ? (
+                                  <Badge label="Available" tone="primary" />
+                                ) : undefined
+                              }
+                              onPress={() => {
+                                setProblem(null);
+                                setOpenId(r.id);
+                              }}
+                            />
+                          ))}
+                        </RowGroup>
+                      ) : null}
+                    </View>
+                  </Card>
                 );
               })}
             </View>
@@ -252,6 +257,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { gap: layout.section, paddingBottom: spacing.xxl },
   intro: { paddingHorizontal: layout.gutter, gap: spacing.sm },
+  // One card per continent, on the page's gutter.
+  cards: { paddingHorizontal: layout.gutter, gap: spacing.md },
   text: { ...type.label, color: colors.text },
   muted: { ...type.caption, color: colors.muted },
   actions: { gap: spacing.sm },
