@@ -322,6 +322,9 @@ installation.
 
 ### 3.5 `app.trip_visit`: the past-trip archive (ADR 006)
 
+> **Amendment of 2026-11-16: no longer written.** A past trip keeps its plan (ADR 006). The rows
+> below exist only for trips that became past before that date, whose plans were deleted.
+
 > **ADR 026, history step (built, migration `0015`): the archive is also the day-by-day record.**
 > `trip_visit` holds one row per base city (once each) and one per stop of the selected itinerary,
 > restaurants and cafés the user added included; free time is not a stop (it is read from the times).
@@ -397,8 +400,8 @@ carry no cuisine, meal type or price (ADR 026). Bringing prices back needs a new
 | **Discard a change** | The change set becomes `discarded` and loses its proposal |
 | **Delete a user place** | Refused (409) while an item uses it |
 | **Name lookup** (ADR 025) | Writes the entity's `geo.place_name` rows (replacing its earlier Wikidata rows) and its lookup row. `prune` (the `names` command) deletes expired names of entities nothing in `app` names (items, past-trip visits, overrides, a trip's cities and area), and the names and lookups of entities gone from `geo`; named entities keep theirs and are refreshed when due |
-| **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006) | One `trip_visit` per base city (once each) and per stop (visit or meal item) of the *selected* itinerary with its day, order, start and length (or the destination city if there is none and the destination is a city); then **every** itinerary of the trip is deleted (days, items, transfers, route geometry, versions and change sets go with them; user places stay); the trip becomes `past`. One-way. A past trip is read-only except deletion and clearing visits |
-| **A trip's last day passes** (ADR 006, amendment of 2026-11-13) | Reading the trips (`GET /v1/trips`, `GET /v1/trips/{id}`) first archives the caller's active, non-seed trips that have a start date and whose last day ended two days ago or more (the same archive as above). No scheduled job. A trip without a start date never becomes past by itself |
+| **Archive a trip** (`POST /v1/trips/{id}/archive`, ADR 006, amended 2026-11-16) | Sets `status = past` and `archived_at`; **nothing is deleted** except itinerary versions beyond the newest five of each plan. The plan, routes, stays and chosen plan stay and the trip stays editable; no `trip_visit` rows are written. (Before the amendment it wrote one `trip_visit` per base city (once each) and per stop (visit or meal item) of the *selected* itinerary with its day, order, start and length (or the destination city if there is none and the destination is a city); then **every** itinerary of the trip is deleted (days, items, transfers, route geometry, versions and change sets go with them; user places stay); the trip becomes `past`. One-way (the status).) |
+| **A trip's last day passes** (ADR 006, amendment of 2026-11-13) | Reading the trips (`GET /v1/trips`, `GET /v1/trips/{id}`) first archives the caller's active, non-seed trips that have a start date and whose last day ended two days ago or more (the same step as above). No scheduled job. A trip without a start date never becomes past by itself |
 | **Delete an installation** (no endpoint; operator action) | Cascades to everything it owns. Tokens are stateless, so the app would register a new installation |
 | **Limits** | 100 trips per installation, 5 itineraries per trip, 40 items per day, 500 user places, 30 kept versions per itinerary, one pending change set per itinerary |
 

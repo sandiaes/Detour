@@ -465,7 +465,11 @@ for a restaurant and 45 min for a café (*proposed*).
 - **The empty tab sits close under the tabs:** the room above the illustration equals the room between it and the title (`StateView` `tight`).
 - **A place's details** list that place's documents under "Tickets and documents" (sights) or
   "Bookings and documents" (places to eat), with "Attach a document".
-- **A past trip** is a flat page: a compact header with the settings icon, a summary, a Documents
+- **A past trip** (since ADR 006's amendment of 2026-11-16) is an ordinary trip with a "Past" badge:
+  the same cover, tabs (Overview, Map, Photos, Documents), Add, Optimize and trip menu as an upcoming
+  trip; it only sits in the Trips screen's Past tab. The page below describes the **older archive**
+  (a past trip with no plan), which keeps this screen:
+  a flat page with a compact header with the settings icon, a summary, a Documents
   row, underlined Map, Days and List tabs, and hairline rows with plain Skip and Restore actions
   (the visited mark of every stop, restaurants and cafés included). **Days** (ADR 026, built) is the
   day record: a heading per day ("Day 2 · Sun 2 May") and its stops in their planned order, each
@@ -498,7 +502,7 @@ Pushed screens with a `ScreenHeader` and the 16 dp gutter. **Trip settings** is 
 explanation and one small button. **Mark as past trip** and **Delete trip** are `secondary` buttons
 with `tone="danger"`; each opens a `ConfirmSheet` ("Mark as a past trip?", "Delete this trip?")
 whose red button says what will happen ("Yes, mark as past", "Yes, delete the trip") and whose way
-back is "Keep planning" or "Keep the trip". **Export** has one `ListRow` with a switch for the
+back is "Not yet" or "Keep the trip". Marking as past says the plan stays and only the undo history is cut to five. **Export** has one `ListRow` with a switch for the
 documents and, when they are included, a warning `Notice` that the file is not encrypted; **Import**
 lists the trips in the file as `ListRow`s; **Settings** shows the connection as `InfoRow`s and the
 credits as link rows with an external-link icon; **Image credits** lists the photos the same way.

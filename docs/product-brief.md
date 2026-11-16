@@ -75,7 +75,8 @@ sightseeing plans are an occasional help, not the main way in.
    nothing. "Import a trip" adds a file's trips as new copies, so a reinstall or a new phone keeps
    the history. Documents in the file are not encrypted; the app says so.
 8. **Look back.** A past trip keeps its days, places, visited marks and documents, and the map of
-   the cities and attractions visited (ADR 006 amended by ADR 026). Built: a past trip's Days tab lists its stops by
+   the cities and attractions visited (ADR 006 amended by ADR 026). Since 2026-11-16 a past trip keeps its
+   whole plan and works like an upcoming one (ADR 006 amendment); only its undo history is cut to five. Built: a past trip's Days tab lists its stops by
    day with their times.
 
 ## 5. What "meaningfully different" means

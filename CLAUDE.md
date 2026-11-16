@@ -53,6 +53,13 @@ public** (ADR 007 addendum): workflows must never log or upload anything secret 
 backup is always encrypted, the signing key goes straight into secrets). No journey has been checked
 on a device (checked by tests only).
 
+**Past trips keep their plan** (2026-11-16, ADR 006 amendment, owner request; built, awaiting acceptance;
+tests only): marking a trip as past, or the two-day rule, now only sets its status; the plan, routes, stays and
+documents stay and the trip is as editable as any other (the `trip_archived` refusals are gone). Undo history is
+capped at 5 versions for a past trip (`MAX_VERSIONS_PAST`; 30 otherwise), pruned when it becomes past. No
+`app.trip_visit` rows are written any more; trips archived earlier keep theirs and the old past-trip screen
+(`archiveOnly` in the app). Export and import carry a past trip's plan.
+
 **Photos, first step** (2026-11-16, ADR 031, accepted, built, awaiting acceptance; mobile app only,
 checked by tests only): Google's Library API no longer lets an app read albums it did not create, so
 a trip's Photos tab keeps **links to the user's own albums** (pasted from Google Photos' Share, Copy

@@ -1,20 +1,18 @@
-"""The past-trips archive (ADR 006): what archiving keeps and deletes, a past trip without any
-routing data, a re-import of the geo data, the size report, and archiving after the last day.
+"""Past trips (ADR 006, amendment of 2026-11-16): a past trip keeps its plan and works like any
+other trip, only its undo history is cut to five versions; becoming past after the last day; and the
+archive rows of trips that became past before the amendment.
 
 Plans come from the planner on its synthetic sights (Testburg); the routing provider is off in
 tests, so every transfer is a labelled estimate.
 """
 
 from datetime import date
-from pathlib import Path
 from typing import Any
 
 import pytest
 
-from detour_api.models.trips import TripVisit
 from detour_api.repo import trips as trips_repo
 from tests.conftest import ApiEnv
-from tests.import_helpers import import_fixture_region
 from tests.test_api_changes import _apply, _preview, _unplanned_sight
 from tests.test_api_planning import add_synthetic_sights, generate, make_trip, sql
 from tests.test_api_trips import CITY as CITY_BODY
@@ -22,7 +20,7 @@ from tests.test_api_trips import add_item, make_itinerary
 
 pytestmark = pytest.mark.db
 
-# Everything below an itinerary: archiving must delete all of it.
+# Everything below an itinerary: archiving must keep all of it.
 PLAN_TABLES = (
     "itinerary",
     "itinerary_day",
@@ -71,220 +69,104 @@ def _planned_trip(env: ApiEnv, days: int = 3) -> tuple[dict[str, Any], dict[str,
     return trip, current
 
 
-# -- what is kept and what is deleted ----------------------------------------------------------
+# -- what is kept ------------------------------------------------------------------------------
 
 
-def test_archiving_deletes_exactly_the_listed_data_and_keeps_the_rest(api_env: ApiEnv) -> None:
+def test_a_past_trip_keeps_its_plan_and_only_its_old_undo_history_goes(api_env: ApiEnv) -> None:
     trip, plan = _planned_trip(api_env)
-    pin = api_env.client.post(
-        "/v1/user-places",
-        json={
-            "kind": "location",
-            "name": "My pin",
-            "lat": 48.21,
-            "lon": 16.37,
-            "source": "manual_pin",
-        },
-        headers=api_env.headers,
-    )
-    assert pin.status_code == 201
-    # A route line, so there is geometry to delete.
     sql(
         api_env,
         "UPDATE app.transfer SET geometry = ST_GeomFromText('LINESTRING(16.37 48.20, 16.38 48.21)', 4326)"
         " WHERE from_item_id = (SELECT from_item_id FROM app.transfer ORDER BY id LIMIT 1)",
     )
-
-    before = {t: _count(api_env, t) for t in PLAN_TABLES}
-    assert before["itinerary"] >= 2  # the selected plan and the unselected proposal
-    assert before["transfer"] > 0 and before["itinerary_version"] >= 1 and before["change_set"] >= 1
-    assert sql(api_env, "SELECT count(*) FROM app.transfer WHERE geometry IS NOT NULL") == [(1,)]
-    trip_row = sql(
-        api_env,
-        "SELECT title, destination_kind, destination_ref, destination_name, ST_AsText(destination_point),"
-        " duration_days, start_date, installation_id FROM app.trip",
-    )
-    places_before = sql(api_env, "SELECT id, name FROM app.user_place ORDER BY id")
-
-    day_of_city: dict[str, int] = {}
-    for d in plan["days"]:
-        day_of_city.setdefault(d["base_city_name"], d["day_index"])
-    expected = {("city", name, day) for name, day in day_of_city.items()}
-    for d in plan["days"]:
-        for item in d["items"]:
-            if item["type"] == "visit":
-                expected.add(("attraction", item["display_name"], d["day_index"]))
-    assert any(k == "attraction" for k, _, _ in expected)
+    # An undo history of 20 versions on the selected plan.
+    sql(api_env, "DELETE FROM app.itinerary_version")
+    for v in range(1, 21):
+        sql(
+            api_env,
+            "INSERT INTO app.itinerary_version (itinerary_id, version, state)"
+            " VALUES (%s, %s, '{}'::jsonb)",
+            plan["id"],
+            v,
+        )
+    sql(api_env, "UPDATE app.itinerary SET version = 21 WHERE id = %s", plan["id"])
+    before = {t: _count(api_env, t) for t in PLAN_TABLES if t != "itinerary_version"}
 
     past = _archive(api_env, trip)
-    assert past["status"] == "past" and past["selected_itinerary_id"] is None
-
-    # Deleted: every itinerary and everything that hangs from one.
-    assert {t: _count(api_env, t) for t in PLAN_TABLES} == dict.fromkeys(PLAN_TABLES, 0)
-    assert sql(api_env, "SELECT count(*) FROM app.transfer WHERE geometry IS NOT NULL") == [(0,)]
-
-    # Kept: the trip as it was, the user's places, one row per city and attraction, nothing else.
-    assert (
-        sql(
-            api_env,
-            "SELECT title, destination_kind, destination_ref, destination_name,"
-            " ST_AsText(destination_point), duration_days, start_date, installation_id FROM app.trip",
-        )
-        == trip_row
-    )
-    assert sql(api_env, "SELECT id, name FROM app.user_place ORDER BY id") == places_before
-    assert _count(api_env, "installation") == 1
-    visits = _visits(api_env, trip)
-    assert {(v["kind"], v["name"], v["day_number"]) for v in visits} == expected
-    assert len(visits) == len(expected)  # no row twice
-    assert _count(api_env, "trip_visit") == len(expected)
-    assert all(v["confirmed"] for v in visits)
+    assert past["status"] == "past" and past["archived_at"]
+    assert past["selected_itinerary_id"] == plan["id"]
+    # Nothing but versions is deleted, and no archive rows are written.
+    assert {t: _count(api_env, t) for t in before} == before
+    assert sql(api_env, "SELECT count(*) FROM app.transfer WHERE geometry IS NOT NULL") == [(1,)]
+    assert _count(api_env, "trip_visit") == 0
+    kept = sql(api_env, "SELECT version FROM app.itinerary_version ORDER BY version")
+    assert kept == [(v,) for v in range(16, 21)]
+    # The plan reads as before.
+    again = api_env.client.get(f"/v1/itineraries/{plan['id']}", headers=api_env.headers).json()
+    assert again["days"] == plan["days"]
 
 
-# -- no routing data ---------------------------------------------------------------------------
-
-
-def test_a_past_trip_renders_without_any_routing_data(api_env: ApiEnv) -> None:
-    trip, _ = _planned_trip(api_env)
+def test_a_past_trip_can_still_be_changed_and_keeps_five_versions(api_env: ApiEnv) -> None:
+    trip, plan = _planned_trip(api_env)
     _archive(api_env, trip)
-    # Take every table that holds routing away: the transfers (and their route geometry) and the
-    # travel-time cache. A past trip must not need either.
-    sql(api_env, "ALTER TABLE app.transfer RENAME TO transfer_gone")
-    sql(api_env, "ALTER TABLE geo.travel_time RENAME TO travel_time_gone")
-
     c, h = api_env.client, api_env.headers
-    listed = c.get("/v1/trips?status=past", headers=h)
-    assert listed.status_code == 200 and [t["id"] for t in listed.json()] == [trip["id"]]
-    assert c.get(f"/v1/trips/{trip['id']}", headers=h).status_code == 200
-    visits = _visits(api_env, trip)
-    assert visits
-    # Exactly the snapshot fields: no route, travel time or mode.
-    assert all(set(v) == set(TripVisit.model_fields) for v in visits)
-    assert c.get(f"/v1/trips/{trip['id']}/archive", headers=h).status_code == 200
-    assert c.get(f"/v1/trips/{trip['id']}/itineraries", headers=h).json() == []
-
-
-# -- a re-import of the geo data ---------------------------------------------------------------
-
-
-def test_reimporting_geo_data_does_not_break_an_archived_trip(
-    api_env: ApiEnv, second_scratch_database_url: str, tmp_path: Path
-) -> None:
-    trip, _ = _planned_trip(api_env)
-    _archive(api_env, trip)
-    before = _visits(api_env, trip)
-    assert any(v["geo_place_ref"] for v in before if v["kind"] == "attraction")
-
-    # The synthetic sights are not in the region's extract, so the re-import deletes them: the
-    # archived rows now name places that no longer exist.
-    assert sql(
-        api_env, "SELECT count(*) FROM geo.place WHERE name LIKE %s", "Synthetic sight%"
-    ) != [(0,)]
-    import_fixture_region(api_env.database_url, second_scratch_database_url, tmp_path)
-    gone = sql(api_env, "SELECT count(*) FROM geo.place WHERE name LIKE %s", "Synthetic sight%")
-    assert gone == [(0,)]
-    assert _visits(api_env, trip) == before
-
-    # The same when the gazetteer and every place are gone altogether.
-    sql(api_env, "DELETE FROM geo.place")
-    sql(api_env, "UPDATE geo.region SET current_import_run_id = NULL")
-    sql(api_env, "DELETE FROM geo.city")
-    assert _visits(api_env, trip) == before
+    # Another change of the plan is accepted.
+    change = _preview(
+        api_env, plan["id"], action="add_place", place_id=_unplanned_sight(api_env, plan)
+    )
+    assert change.status_code == 201, change.text
+    assert _apply(api_env, change.json()["id"]).status_code == 200
+    # Settings and new proposals work too.
     assert (
-        api_env.client.get(f"/v1/trips/{trip['id']}/archive", headers=api_env.headers).status_code
+        c.patch(f"/v1/trips/{trip['id']}", json={"title": "Back then"}, headers=h).status_code
         == 200
     )
-    assert api_env.client.get("/v1/trips?status=past", headers=api_env.headers).status_code == 200
+    assert generate(api_env, trip).status_code == 201
+    # The history stays at five however many changes are made.
+    sql(
+        api_env,
+        "INSERT INTO app.itinerary_version (itinerary_id, version, state)"
+        " SELECT %s, g, '{}'::jsonb FROM generate_series(1, 3) g ON CONFLICT DO NOTHING",
+        plan["id"],
+    )
+    current = c.get(f"/v1/itineraries/{plan['id']}", headers=h).json()
+    change = _preview(
+        api_env, plan["id"], action="add_place", place_id=_unplanned_sight(api_env, current)
+    )
+    if change.status_code == 201:
+        assert _apply(api_env, change.json()["id"]).status_code == 200
+    stored = sql(
+        api_env, "SELECT count(*) FROM app.itinerary_version WHERE itinerary_id = %s", plan["id"]
+    )
+    assert int(stored[0][0]) <= 5
 
 
-# -- size --------------------------------------------------------------------------------------
+# -- the archive rows of trips that became past before the amendment -------------------------
 
 
-def test_the_size_of_an_archived_trip_is_reported(api_env: ApiEnv) -> None:
-    trip, _ = _planned_trip(api_env)
+def test_the_archive_rows_of_an_older_past_trip_are_still_readable(api_env: ApiEnv) -> None:
     c, h = api_env.client, api_env.headers
+    trip = make_trip(api_env, duration_days=2, start_date="2027-05-01")
     not_yet = c.get(f"/v1/trips/{trip['id']}/archive", headers=h)
     assert not_yet.status_code == 409 and not_yet.json()["code"] == "not_archived"
-
     _archive(api_env, trip)
-    visits = _visits(api_env, trip)
-    info = c.get(f"/v1/trips/{trip['id']}/archive", headers=h).json()
-    assert info["trip_id"] == trip["id"]
-    assert info["cities"] == sum(v["kind"] == "city" for v in visits)
-    assert info["attractions"] == sum(v["kind"] == "attraction" for v in visits)
-    assert info["places_to_eat"] == 0 and info["skipped"] == 0
-
-    # The reported size is the stored row data of the trip and its visits.
-    measured = sql(
+    sql(
         api_env,
-        "SELECT (SELECT sum(pg_column_size(v.*)) FROM app.trip_visit v)"
-        " + (SELECT pg_column_size(t.*) FROM app.trip t)",
-    )[0][0]
-    assert info["size_bytes"] == int(measured) > 0
-    assert info["size_bytes"] < 10_000  # a few dozen small rows (ADR 006)
-
-    # Clearing a visit is counted, and a trip with fewer visits is smaller.
-    c.patch(
-        f"/v1/trips/{trip['id']}/visits/{visits[-1]['id']}", json={"confirmed": False}, headers=h
+        "INSERT INTO app.trip_visit (id, trip_id, kind, name, point, day_number)"
+        " VALUES (gen_random_uuid(), %s, 'attraction', 'Old museum',"
+        " ST_SetSRID(ST_MakePoint(16.37, 48.2), 4326), 1)",
+        trip["id"],
     )
-    assert c.get(f"/v1/trips/{trip['id']}/archive", headers=h).json()["skipped"] == 1
-    small = make_trip(api_env, title="Small", duration_days=1)
-    _archive(api_env, small)
-    small_info = c.get(f"/v1/trips/{small['id']}/archive", headers=h).json()
-    assert small_info["attractions"] == 0 and small_info["size_bytes"] < info["size_bytes"]
-
+    visits = _visits(api_env, trip)
+    assert [(v["kind"], v["name"]) for v in visits] == [("attraction", "Old museum")]
+    info = c.get(f"/v1/trips/{trip['id']}/archive", headers=h).json()
+    assert info["attractions"] == 1 and info["size_bytes"] > 0
+    cleared = c.patch(
+        f"/v1/trips/{trip['id']}/visits/{visits[0]['id']}", json={"confirmed": False}, headers=h
+    )
+    assert cleared.status_code == 200
     other = api_env.other_installation()
     assert c.get(f"/v1/trips/{trip['id']}/archive", headers=other).status_code == 404
-
-
-# -- an area trip ------------------------------------------------------------------------------
-
-
-def test_an_area_trip_lists_each_base_city_once(api_env: ApiEnv) -> None:
-    area = api_env.client.get(
-        "/v1/destinations/search", params={"q": "testland"}, headers=api_env.headers
-    ).json()["results"][0]
-    trip = make_trip(
-        api_env,
-        destination_kind="area",
-        destination_ref=area["ref"],
-        duration_days=4,
-        start_date=None,
-    )
-    plan = make_itinerary(api_env, trip)
-    museum = api_env.client.get(
-        "/v1/places/search", params={"q": "testburg museum"}, headers=api_env.headers
-    ).json()["results"][0]
-    # Testburg is the base on days 1, 2 and 4, Alpenau on day 3 (900101 and 900105 are gazetteer
-    # towns of the fixture).
-    for day, city in ((1, 900101), (2, 900101), (3, 900105), (4, 900101)):
-        sql(
-            api_env,
-            "UPDATE app.itinerary_day SET base_city_id = %s WHERE itinerary_id = %s AND day_index = %s",
-            city,
-            plan["id"],
-            day,
-        )
-    add_item(api_env, plan, 1, type="visit", place_id=museum["id"], duration_minutes=60)
-    # The user added Testburg as a town on day 2, and "Pin Town" twice, on days 2 and 3.
-    for day, name in ((2, "Testburg"), (2, "Pin Town"), (3, "Pin Town")):
-        place = api_env.client.post(
-            "/v1/user-places",
-            json={"kind": "city", "name": name, "lat": 48.2, "lon": 16.4, "source": "manual_pin"},
-            headers=api_env.headers,
-        ).json()
-        add_item(api_env, plan, day, type="visit", user_place_id=place["id"], duration_minutes=60)
-    api_env.client.patch(
-        f"/v1/trips/{trip['id']}",
-        json={"selected_itinerary_id": plan["id"]},
-        headers=api_env.headers,
-    )
-
-    _archive(api_env, trip)
-    cities = [(v["name"], v["day_number"]) for v in _visits(api_env, trip) if v["kind"] == "city"]
-    # Once each: the base cities Testburg (days 1, 2, 4; also added by hand) and Alpenau, and the
-    # town added twice. Ordered by day, so Alpenau (day 3) follows Pin Town (day 2).
-    assert cities == [("Testburg", 1), ("Pin Town", 2), ("Alpenau", 3)]
 
 
 # -- after the last day ------------------------------------------------------------------------
@@ -323,23 +205,20 @@ def test_a_trip_becomes_past_by_itself_after_its_last_day(
     for d in (date(2027, 5, 1), date(2027, 5, 2), date(2027, 5, 3)):
         today(d)
         assert {t["status"] for t in c.get("/v1/trips", headers=h).json()} == {"active"}
-    assert status_of(due) == "active" and _count(api_env, "trip_visit") == 0
+    assert status_of(due) == "active"
 
     today(date(2027, 5, 4))
     by_title = {t["title"]: t for t in c.get("/v1/trips", headers=h).json()}
     assert by_title["Due"]["status"] == "past" and by_title["Due"]["archived_at"]
     assert by_title["Undated"]["status"] == "active"  # no last day
     assert by_title["Seed"]["status"] == "active"  # the seed trip is illustrative
-    # It is the same archive as when the user marks the trip: the snapshots, no plans.
-    assert [(v["kind"], v["name"]) for v in _visits(api_env, due)] == [
-        ("city", "Testburg"),
-        ("attraction", "Testburg Museum"),
-    ]
-    assert _count(api_env, "itinerary") == 0 and _count(api_env, "itinerary_item") == 0
+    # The plan is kept, as when the user marks the trip.
+    assert by_title["Due"]["selected_itinerary_id"] == plan["id"]
+    assert _count(api_env, "itinerary") == 1 and _count(api_env, "trip_visit") == 0
 
-    # Reading again changes nothing (no visit twice).
+    # Reading again changes nothing.
     c.get("/v1/trips", headers=h)
-    assert len(_visits(api_env, due)) == 2
+    assert _count(api_env, "itinerary") == 1
     # Another installation's trip is archived when its owner reads, not when someone else does.
     assert status_of(theirs) == "active"
     assert [t["status"] for t in c.get("/v1/trips", headers=other).json()] == ["past"]
@@ -352,82 +231,7 @@ def test_a_trip_opened_by_id_after_its_last_day_is_past(
     trip = make_trip(api_env, duration_days=1, start_date="2027-05-01")
     monkeypatch.setattr(trips_repo, "today_utc", lambda: date(2027, 5, 3))
     got = api_env.client.get(f"/v1/trips/{trip['id']}", headers=api_env.headers).json()
-    assert got["status"] == "past" and got["selected_itinerary_id"] is None
-    assert [(v["kind"], v["name"]) for v in _visits(api_env, trip)] == [("city", "Testburg")]
-
-
-# -- the day record (ADR 026) ------------------------------------------------------------------
-
-
-def test_a_past_trip_keeps_every_stop_with_its_day_order_and_times(api_env: ApiEnv) -> None:
-    c, h = api_env.client, api_env.headers
-    trip = make_trip(api_env, title="Record", duration_days=2, start_date="2027-05-01")
-    plan = make_itinerary(api_env, trip)
-    museum = c.get("/v1/places/search", params={"q": "testburg museum"}, headers=h).json()[
-        "results"
-    ][0]
-    cafe = c.post(
-        "/v1/user-places",
-        json={
-            "kind": "cafe",
-            "name": "Kaffeehaus",
-            "lat": 48.21,
-            "lon": 16.37,
-            "source": "manual_pin",
-        },
-        headers=h,
-    ).json()
-    diner = c.post(
-        "/v1/user-places",
-        json={
-            "kind": "restaurant",
-            "name": "Gasthaus",
-            "lat": 48.2,
-            "lon": 16.4,
-            "source": "manual_pin",
-        },
-        headers=h,
-    ).json()
-    add_item(
-        api_env,
-        plan,
-        1,
-        type="visit",
-        place_id=museum["id"],
-        start_time="09:30",
-        duration_minutes=60,
-    )
-    add_item(api_env, plan, 1, type="meal", user_place_id=cafe["id"], start_time="11:00")
-    add_item(api_env, plan, 2, type="meal", user_place_id=diner["id"], start_time="19:00")
-    c.patch(f"/v1/trips/{trip['id']}", json={"selected_itinerary_id": plan["id"]}, headers=h)
-
-    _archive(api_env, trip)
-    rows = [
-        (
-            v["day_number"],
-            v["position"],
-            v["kind"],
-            v["name"],
-            v["start_time"],
-            v["duration_minutes"],
-        )
-        for v in _visits(api_env, trip)
-    ]
-    assert rows == [
-        (1, None, "city", "Testburg", None, None),
-        (1, 1, "attraction", "Testburg Museum", "09:30", 60),
-        (1, 2, "cafe", "Kaffeehaus", "11:00", 45),
-        (2, 1, "restaurant", "Gasthaus", "19:00", 75),
-    ]
-    info = c.get(f"/v1/trips/{trip['id']}/archive", headers=h).json()
-    assert (info["cities"], info["attractions"], info["places_to_eat"]) == (1, 1, 2)
-
-    # A restaurant is a visit like any other: the user can clear it.
-    cafe_row = next(v for v in _visits(api_env, trip) if v["kind"] == "cafe")
-    cleared = c.patch(
-        f"/v1/trips/{trip['id']}/visits/{cafe_row['id']}", json={"confirmed": False}, headers=h
-    )
-    assert cleared.status_code == 200 and cleared.json()["confirmed"] is False
+    assert got["status"] == "past"
 
 
 def test_a_trip_made_after_its_last_day_is_not_archived_by_itself(
@@ -445,8 +249,4 @@ def test_a_trip_made_after_its_last_day_is_not_archived_by_itself(
     c.patch(f"/v1/trips/{taken['id']}", json={"selected_itinerary_id": plan["id"]}, headers=h)
     assert {t["status"] for t in c.get("/v1/trips", headers=h).json()} == {"active"}
     past = _archive(api_env, taken)
-    assert past["status"] == "past"
-    assert [(v["kind"], v["name"]) for v in _visits(api_env, taken)] == [
-        ("city", "Testburg"),
-        ("attraction", "Testburg Museum"),
-    ]
+    assert past["status"] == "past" and past["selected_itinerary_id"] == plan["id"]

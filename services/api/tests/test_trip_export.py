@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from tests.conftest import ApiEnv
-from tests.test_api_planning import add_synthetic_sights, generate, make_trip
+from tests.test_api_planning import add_synthetic_sights, generate, make_trip, sql
 from tests.test_api_trips import add_item, make_itinerary
 from tests.test_past_trips import _archive, _visits
 from tests.test_place_destinations import PHOTON
@@ -140,7 +140,7 @@ def test_a_planned_trip_imports_as_a_manual_plan_of_the_users_own_places(api_env
     ]
 
 
-def test_a_past_trip_comes_back_as_past_with_its_day_record(api_env: ApiEnv) -> None:
+def test_a_past_trip_comes_back_as_past_with_its_plan(api_env: ApiEnv) -> None:
     trip = _place_trip(api_env)
     plan = make_itinerary(api_env, trip)
     api_env.client.patch(
@@ -159,6 +159,28 @@ def test_a_past_trip_comes_back_as_past_with_its_day_record(api_env: ApiEnv) -> 
         duration_minutes=90,
     )
     _archive(api_env, trip)
+
+    file = _export(api_env, trip)
+    exported = file["trips"][0]
+    assert exported["status"] == "past" and exported["visits"] == []
+    assert [i["name"] for d in exported["days"] for i in d["items"]] == ["Salt mine"]
+    made = _import(api_env, file).json()["trips"][0]
+    copy = api_env.client.get(f"/v1/trips/{made['trip_id']}", headers=api_env.headers).json()
+    assert copy["status"] == "past" and copy["archived_at"] is not None
+    assert copy["selected_itinerary_id"] is not None
+    assert _visits(api_env, copy) == []
+
+
+def test_a_past_trip_of_the_older_archive_comes_back_with_its_visits(api_env: ApiEnv) -> None:
+    trip = _place_trip(api_env)
+    _archive(api_env, trip)
+    sql(
+        api_env,
+        "INSERT INTO app.trip_visit (id, trip_id, kind, name, point, day_number, position,"
+        " start_time, duration_minutes) VALUES (gen_random_uuid(), %s, 'attraction', 'Salt mine',"
+        " ST_SetSRID(ST_MakePoint(13.6401, 47.5598), 4326), 1, 1, '10:00', 90)",
+        trip["id"],
+    )
     visits = _visits(api_env, trip)
     api_env.client.patch(
         f"/v1/trips/{trip['id']}/visits/{visits[-1]['id']}",

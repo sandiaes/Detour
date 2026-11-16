@@ -8,7 +8,7 @@ import pytest
 from tests.conftest import ApiEnv
 from tests.test_api_planning import generate, sql
 from tests.test_api_trips import add_item, make_itinerary
-from tests.test_past_trips import _archive, _visits
+from tests.test_past_trips import _archive
 
 pytestmark = pytest.mark.db
 
@@ -112,7 +112,7 @@ def test_an_empty_plan_can_be_filled_by_hand_and_nothing_is_suggested(api_env: A
     assert preview.status_code in (404, 409, 422)
 
 
-def test_a_past_place_trip_keeps_its_days_and_a_city_row_from_the_snapshot(
+def test_a_past_place_trip_keeps_its_plan(
     api_env: ApiEnv,
 ) -> None:
     trip = _create(api_env).json()
@@ -144,10 +144,9 @@ def test_a_past_place_trip_keeps_its_days_and_a_city_row_from_the_snapshot(
     )
     past = _archive(api_env, trip)
     assert past["status"] == "past" and past["destination"]["kind"] == "place"
-    rows = [
-        (v["kind"], v["name"], v["geo_place_ref"], v["start_time"]) for v in _visits(api_env, trip)
-    ]
-    assert rows == [("city", "Hallstatt", None, None), ("attraction", "Seeplatz", None, "10:00")]
+    assert past["selected_itinerary_id"] == plan["id"]
+    kept = api_env.client.get(f"/v1/itineraries/{plan['id']}", headers=api_env.headers).json()
+    assert [i["display_name"] for d in kept["days"] for i in d["items"]] == ["Seeplatz"]
 
 
 def test_a_gazetteer_place_borrows_its_citys_photo_and_photon_places_have_none(

@@ -21,6 +21,14 @@ export function localToday(now: Date = new Date()): string {
 }
 
 /**
+ * A past trip of the older archive (before ADR 006's amendment of 2026-11-16): its plans were
+ * deleted and only the visited places remain. Every other trip, past or not, has the same screens.
+ */
+export function archiveOnly(trip: Trip): boolean {
+  return trip.status === "past" && trip.selected_itinerary_id === null;
+}
+
+/**
  * Planning: no plan chosen yet. In progress: today is within the trip's dates. Past: the backend
  * says so (ADR 006). Otherwise Upcoming (including a chosen plan with no dates).
  */

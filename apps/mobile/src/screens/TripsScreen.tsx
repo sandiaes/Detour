@@ -24,6 +24,7 @@ import {
   TRIP_PHASE_LABEL,
   type TripPhase,
   type TripTab,
+  archiveOnly,
   shortSpan,
   tripPhase,
   tripsInTab,
@@ -41,10 +42,11 @@ import {
   weight,
 } from "../theme";
 
-/** A past trip opens on its map of visited places (ADR 006); every other trip on its overview,
- * which shows the active plan or leads to the proposals (ADR 021). */
+/** A past trip of the older archive opens on its map of visited places (ADR 006); every other
+ * trip, past or not, on its overview, which shows the active plan or leads to the proposals
+ * (ADR 021). */
 export function tripRoute(trip: Trip): Route {
-  if (trip.status === "past") return { name: "pastTrip", tripId: trip.id };
+  if (archiveOnly(trip)) return { name: "pastTrip", tripId: trip.id };
   return { name: "tripOverview", tripId: trip.id };
 }
 
@@ -78,7 +80,7 @@ export function TripCard({
       accessibilityLabel={`${trip.title}. ${span}. ${label}.`}
       accessibilityHint={
         phase === "past"
-          ? "Opens the places you visited"
+          ? "Opens the trip and its itinerary"
           : phase === "planning"
             ? "Opens the trip, to choose a plan"
             : "Opens the trip and its itinerary"
@@ -118,7 +120,7 @@ const EMPTY_TEXT: Record<TripTab, { title: string; text: string }> = {
   },
   past: {
     title: "No past trips yet",
-    text: "A trip moves here two days after its last day, or when you mark it as past in the trip's menu.",
+    text: "A trip moves here two days after its last day, or when you mark it as past in the trip's menu. It keeps its plan.",
   },
 };
 

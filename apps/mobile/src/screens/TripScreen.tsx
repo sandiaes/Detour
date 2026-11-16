@@ -28,6 +28,7 @@ import { ResourceNotices } from "../components/ResourceNotices";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useLocalCover } from "../documents/DocumentsProvider";
+import { archiveOnly } from "../domain/trips";
 import { PROFILE_EMPHASIS, PROFILE_LABEL, buildComparison, planNames } from "../domain/compare";
 import { useNavigation } from "../nav/Navigator";
 import { PastTripScreen } from "./PastTripScreen";
@@ -263,8 +264,8 @@ export function TripScreen({ tripId }: { tripId: string }) {
     );
   }
 
-  // A trip that became past while this screen was open (or reached by a stale link).
-  if (trip.status === "past") return <PastTripScreen tripId={tripId} />;
+  // A past trip of the older archive (or reached by a stale link): the visited places remain.
+  if (archiveOnly(trip)) return <PastTripScreen tripId={tripId} />;
 
   const shown = plans.data ? visiblePlans(plans.data) : [];
   // After new proposals were asked for, the plan chosen earlier is kept apart from the new pair.

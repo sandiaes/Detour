@@ -58,8 +58,6 @@ def _check(first: int, last: int, days: int, others: list[Stay], own: uuid.UUID 
 
 def _editable(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> int:
     trip = trips.require_trip(conn, installation_id, trip_id)
-    if trip.status == "past":
-        raise conflict("trip_archived", "a past trip cannot be changed")
     return trip.duration_days
 
 

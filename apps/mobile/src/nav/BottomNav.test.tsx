@@ -69,7 +69,7 @@ test("without a chosen plan, places and restaurants wait for a plan", async () =
   expect(await screen.findByRole("header", { name: "Choose a plan" })).toBeOnTheScreen();
 });
 
-test("a past trip cannot be added to", async () => {
+test("an older past trip with no plan cannot be added to until a plan is chosen", async () => {
   await show(
     { name: "pastTrip", tripId: TRIP_ID },
     createFakeClient({
@@ -86,7 +86,7 @@ test("a past trip cannot be added to", async () => {
   );
   await fireEvent.press(await screen.findByRole("button", { name: "Add to this trip" }));
   expect(
-    await screen.findByRole("button", { name: /^Place\. A past trip cannot be changed\./ }),
+    await screen.findByRole("button", { name: /^Place\. Choose a plan first\./ }),
   ).toBeOnTheScreen();
 });
 

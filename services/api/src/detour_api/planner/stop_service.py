@@ -51,8 +51,6 @@ def preview_stops(
     started = time.perf_counter()
     with session.tx() as conn:
         trip = trips.require_trip(conn, session.installation_id, trip_id)
-        if trip.status == "past":
-            raise conflict("trip_archived", "a past trip cannot be changed")
         if trip.destination.kind != "route":
             raise conflict("not_a_route", "only a multi-city trip has stops to edit")
         if trip.selected_itinerary_id is None:

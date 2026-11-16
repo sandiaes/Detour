@@ -135,13 +135,8 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
   const nav = useNavigation();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
-  const planId = trip?.status === "past" ? null : (trip?.selected_itinerary_id ?? null);
-  const why =
-    trip?.status === "past"
-      ? "A past trip cannot be changed"
-      : !planId
-        ? "Choose a plan first"
-        : undefined;
+  const planId = trip?.selected_itinerary_id ?? null;
+  const why = !planId ? "Choose a plan first" : undefined;
 
   const go = (route: Route) => {
     onClose();

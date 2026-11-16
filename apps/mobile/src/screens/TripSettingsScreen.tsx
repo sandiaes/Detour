@@ -82,8 +82,8 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
     setProblem(null);
     try {
       await actions.archiveTrip(trip);
-      // The places are the screen to see now; going back from it returns to the trips.
-      nav.resetTo([{ name: "trips" }, { name: "pastTrip", tripId: trip.id }]);
+      // The trip stays as it is; going back returns to the trips.
+      nav.resetTo([{ name: "trips" }, { name: "tripOverview", tripId: trip.id }]);
     } catch (e) {
       // Close the sheet so the problem is in view.
       setConfirmArchive(false);
@@ -121,7 +121,7 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
             <Notice tone="info">Changes to a trip need a connection to the server.</Notice>
           ) : null}
 
-          {!past && trip.destination.kind === "route" ? (
+          {trip.destination.kind === "route" ? (
             <Section title="Your cities">
               <Text style={styles.text}>
                 {`${(trip.stops ?? []).map((x) => `${x.name} (${x.days})`).join(", ")}. Add, remove or reorder cities and change their days. ${
@@ -141,7 +141,7 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
             </Section>
           ) : null}
 
-          {!past && trip.destination.kind !== "place" ? (
+          {trip.destination.kind !== "place" ? (
             <Section title="Proposals">
               <Text style={styles.text}>
                 {hasPlan
@@ -166,13 +166,9 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
           {!past ? (
             <Section title="Mark as a past trip">
               <Text style={styles.text}>
-                {`A trip also becomes a past trip by itself two days after its last day, when it has dates. Detour keeps the title, destination, dates and ${
-                  hasPlan
-                    ? "every stop of your chosen plan by day, with its time and length (sights, restaurants and cafés), and its cities"
-                    : trip.destination.kind === "city"
-                      ? "the destination city (no plan is chosen, so nothing else)"
-                      : "nothing else (no plan is chosen, so no cities or attractions)"
-                }, and shows them on a map and by day. It then deletes the plans themselves, routes and travel times; the record and your documents stay. This cannot be undone.`}
+                A trip also becomes a past trip by itself two days after its last day, when it has
+                dates. It moves to the Past tab and keeps its plan, routes and documents, and you
+                can still change it. Only the undo history is cut to the last five changes.
               </Text>
               <Button
                 testID="archive-trip"
@@ -189,9 +185,8 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
 
           <Section title="Delete this trip">
             <Text style={styles.text}>
-              {past
-                ? "Removes the trip, its saved places and its documents on this phone for good. This cannot be undone."
-                : "Removes the trip, all its plans and its documents on this phone for good. This cannot be undone."}
+              Removes the trip, all its plans and its documents on this phone for good. This cannot
+              be undone.
             </Text>
             <Button
               testID="delete-trip"
@@ -210,9 +205,9 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
       <ConfirmSheet
         visible={confirmArchive}
         title="Mark as a past trip?"
-        message={`“${trip.title}” will lose its plans for good.`}
+        message={`“${trip.title}” moves to the Past tab. Its plan stays, and the undo history is cut to the last five changes.`}
         confirmLabel="Yes, mark as past"
-        cancelLabel="Keep planning"
+        cancelLabel="Not yet"
         confirmTestID="confirm-archive"
         busy={busy === "archive"}
         onConfirm={() => void markPast()}

@@ -37,7 +37,7 @@ import { useResource } from "../data/DataProvider";
 import { useTripCounts } from "../data/tripCounts";
 import { dayTotals } from "../domain/itinerary";
 import { canOptimize, canUndoOptimize } from "../domain/optimize";
-import { type TripCounts, localToday, shortSpan } from "../domain/trips";
+import { type TripCounts, archiveOnly, localToday, shortSpan } from "../domain/trips";
 import { type TripSection, useNavigation } from "../nav/Navigator";
 import {
   border,
@@ -258,7 +258,7 @@ export function TripOverviewScreen({
   const trip = trips.data?.find((t) => t.id === tripId);
   const { counts, plan } = useTripCounts(trip);
   const insets = useSafeAreaInsets();
-  const planId0 = trip?.status !== "past" ? (trip?.selected_itinerary_id ?? null) : null;
+  const planId0 = trip?.selected_itinerary_id ?? null;
   const stays = useResource<Stay[]>(
     planId0 ? keys.stays(tripId) : null,
     (c) => call(c.GET("/v1/trips/{trip_id}/stays", { params: { path: { trip_id: tripId } } })),
@@ -344,8 +344,8 @@ export function TripOverviewScreen({
       </View>
     );
   }
-  // A trip that became past while open: its plans are gone, the visited places remain (ADR 006).
-  if (trip.status === "past") return <PastTripScreen tripId={tripId} />;
+  // A past trip of the older archive: its plans are gone, the visited places remain (ADR 006).
+  if (archiveOnly(trip)) return <PastTripScreen tripId={tripId} />;
 
   const hasPlan = trip.selected_itinerary_id !== null;
   const planId = trip.selected_itinerary_id as string;

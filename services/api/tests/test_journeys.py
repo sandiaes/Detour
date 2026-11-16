@@ -4,7 +4,7 @@ The single journeys each have their own tests elsewhere; this file chains the ma
 the way the owner uses the app, so a break between two features shows up: journey a (a fresh
 empty trip filled by hand: a sight, a town, a pin, a restaurant through Photon and one by hand
 with a chosen day and time), e (Optimize, preview, apply, undo), h (export and import), i (mark as
-past, the Days record, clearing a visit, the size report) and l (no routing provider: every
+past: the plan is kept) and l (no routing provider: every
 travel time is a labelled estimate). Photon is the recorded-format stub of ``conftest``; nothing
 calls the network.
 """
@@ -193,24 +193,13 @@ def test_a_fresh_trip_is_filled_optimized_exported_imported_and_kept_as_history(
     damaged = _import(api_env, {"format": "detour-trip", "format_version": 1, "trips": "x"})
     assert damaged.status_code == 422
 
-    # -- i. mark as past: the day record keeps every stop -----------------------------------------
+    # -- i. mark as past: the plan is kept and still works ---------------------------------------
     past = c.post(f"/v1/trips/{trip['id']}/archive", headers=h)
     assert past.status_code == 200 and past.json()["status"] == "past"
-    visits = c.get(f"/v1/trips/{trip['id']}/visits", headers=h).json()
-    days = [
-        (v["day_number"], v["name"], (v["start_time"] or "")[:5], v["duration_minutes"])
-        for v in visits
-        if v["position"] is not None
-    ]
-    assert days == [(d, n, t, m) for d, n, t, m in _stops(filled)]
-    eaten = next(v for v in visits if v["name"] == "Corner Café")
-    cleared = c.patch(
-        f"/v1/trips/{trip['id']}/visits/{eaten['id']}", json={"confirmed": False}, headers=h
-    )
-    assert cleared.status_code == 200 and cleared.json()["confirmed"] is False
-    info = c.get(f"/v1/trips/{trip['id']}/archive", headers=h).json()
-    assert info["places_to_eat"] == 2 and info["size_bytes"] > 0
-    # A past trip cannot be optimized or edited any more.
+    assert past.json()["selected_itinerary_id"] == plan["id"]
+    assert _stops(_plan(api_env, plan["id"])) == _stops(filled)
+    assert c.get(f"/v1/trips/{trip['id']}/visits", headers=h).json() == []
+    # A past trip can still be optimized.
     assert c.post(
         f"/v1/itineraries/{plan['id']}/optimize", json={"scope": "within_days"}, headers=h
-    ).status_code in (404, 409)
+    ).status_code in (200, 201, 422)

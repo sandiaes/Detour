@@ -186,11 +186,11 @@ test("a failed change is reported and the visit stays as it was", async () => {
   expect(screen.queryByText(/marked as skipped/)).toBeNull();
 });
 
-test("the trip settings of a past trip offer deleting only", async () => {
+test("the trip settings of an older past trip offer new proposals and deleting, not marking as past", async () => {
   await open();
   await fireEvent.press(await screen.findByTestId("trip-settings"));
   expect(await screen.findByRole("header", { name: "Trip settings" })).toBeOnTheScreen();
-  expect(screen.queryByRole("button", { name: "Get new proposals" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Get new proposals" })).toBeOnTheScreen();
   expect(screen.queryByTestId("archive-trip")).toBeNull();
   expect(screen.getByTestId("delete-trip")).toBeOnTheScreen();
 });

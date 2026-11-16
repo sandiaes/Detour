@@ -148,7 +148,7 @@ def delete_trip(session: SessionDep, trip_id: uuid.UUID) -> Response:
 
 @router.post(
     "/{trip_id}/archive",
-    summary="Make the trip a past trip (ADR 006): keep a snapshot of its visits, delete the plans.",
+    summary="Make the trip a past trip (ADR 006): its plan is kept; only the undo history is cut to five versions.",
     responses=ERRORS,
 )
 def archive_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
@@ -271,8 +271,6 @@ def set_trip_cover(
 def replace_stops(session: SessionDep, trip_id: uuid.UUID, body: StopsEdit) -> Trip:
     with session.tx() as conn:
         trip = trips.require_trip(conn, session.installation_id, trip_id)
-        if trip.status == "past":
-            raise ApiError(409, "trip_archived", "a past trip cannot be changed")
         if trip.destination.kind != "route":
             raise ApiError(409, "not_a_route", "only a multi-city trip has stops to edit")
         if trip.selected_itinerary_id is not None:

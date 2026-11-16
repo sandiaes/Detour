@@ -103,10 +103,10 @@ test("a failed deletion says so and keeps the trip", async () => {
   expect(screen.getByRole("header", { name: "Trip settings" })).toBeOnTheScreen();
 });
 
-test("a past trip can be deleted but not planned again", async () => {
+test("a past trip can be deleted and planned again", async () => {
   await open({ "GET /v1/trips": () => [makeTrip({ status: "past" })] });
   expect(await screen.findByRole("button", { name: /^Delete the trip/ })).toBeOnTheScreen();
-  expect(screen.queryByRole("button", { name: "Get new proposals" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Get new proposals" })).toBeOnTheScreen();
 });
 
 test("the settings are reachable from the plan and from the proposals", async () => {
@@ -154,27 +154,17 @@ test("marking a trip as past asks first, keeps nothing until confirmed, then sho
   });
   await fireEvent.press(await screen.findByTestId("archive-trip"));
   // The warning says what is kept and what is deleted, and nothing has been sent yet.
-  // ADR 026: every stop is kept by day, restaurants included; the old "not kept" line is gone.
-  expect(screen.getByText(/every stop of your chosen plan by day/)).toBeOnTheScreen();
-  expect(
-    screen.getByText(/deletes the plans themselves, routes and travel times/),
-  ).toBeOnTheScreen();
-  expect(screen.queryByText(/restaurants are not kept/)).toBeNull();
+  // ADR 006 amendment of 2026-11-16: the plan is kept; only the undo history is cut.
+  expect(screen.getByText(/keeps its plan, routes and documents/)).toBeOnTheScreen();
+  expect(screen.getByText(/moves to the Past tab\. Its plan stays/)).toBeOnTheScreen();
   expect(client.count("POST /v1/trips/{trip_id}/archive")).toBe(0);
-  await fireEvent.press(screen.getByRole("button", { name: "Keep planning" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Not yet" }));
   expect(screen.getByTestId("archive-trip")).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByTestId("archive-trip"));
   await fireEvent.press(screen.getByTestId("confirm-archive"));
   expect(await screen.findByText("1 city and 1 attraction visited")).toBeOnTheScreen();
   expect(client.count("POST /v1/trips/{trip_id}/archive")).toBe(1);
-});
-
-test("a trip without a chosen plan says that only the destination city is kept", async () => {
-  await open({ "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: null })] });
-  expect(
-    await screen.findByText(/the destination city \(no plan is chosen, so nothing else\)/),
-  ).toBeOnTheScreen();
 });
 
 test("a trip to a place with no sight data offers no proposals (ADR 027)", async () => {

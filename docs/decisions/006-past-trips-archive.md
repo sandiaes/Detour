@@ -103,3 +103,33 @@ gains the day list; documents on the phone stay linked to its days and places. T
 places and the "each city once" rule are unchanged. Decision 5 (restaurants are not archived) no
 longer holds. Built as migration `0015` on `app.trip_visit` (no new table); see ADR 026, "As built:
 step 5".
+
+## Amendment of 2026-11-16: a past trip keeps its plan (owner request; built, awaits acceptance)
+
+The owner asked for past trips to work like upcoming ones, with routes and the other functions
+that the archive removed. This changes decision 2 and replaces the snapshot of decisions 4 and 5
+and the amendment of 2026-11-14.
+
+1. **Becoming past deletes nothing but old undo history.** Marking a trip (or the two-day rule)
+   sets `status = 'past'` and `archived_at`, and nothing else: itineraries, days, items,
+   transfers with their route geometry, change sets, stays and the chosen plan stay, and
+   `selected_itinerary_id` is kept. No `app.trip_visit` rows are written.
+2. **Undo history is capped at five versions for a past trip** (`MAX_VERSIONS_PAST` in
+   `repo/plan_state.py`; 30 for any other trip). Archiving prunes every plan of the trip to the
+   newest five stored versions and later changes keep that cap. Measured on the one real trip in
+   production (2026-11-16), `itinerary_version` was the largest part of a trip's database footprint
+   (30 versions, about 0.5 MB of about 1.5 MB on disk with indexes), so this is where a past trip
+   saves space.
+3. **A past trip is editable.** The `trip_archived` refusals are gone: the plan can be changed,
+   optimized, given stays, new proposals and a new title, as before. The trip stays in the Past tab.
+   Marking as past is still one-way for the status (there is no "back to upcoming" yet).
+4. **Export and import** carry a past trip's plan (`days`) like any trip; the file's `visits` are
+   used only for a trip with no plan.
+5. **Trips archived before this amendment** keep their `trip_visit` rows and no plan. The app opens
+   them on the old past-trip screen (map, Days, list, skip and restore); the endpoints
+   `GET /v1/trips/{id}/archive`, `GET .../visits` and `PATCH .../visits/{id}` stay for them.
+   They can be given a new plan like any trip. Nothing is migrated.
+
+Consequences: a past trip costs what any trip costs (a few hundred KB at most), plus nothing for
+routing, because route lines are fetched for the selected plan only and cached travel times are
+shared. The archive size report is only meaningful for older archives.
