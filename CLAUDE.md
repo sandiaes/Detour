@@ -53,10 +53,16 @@ public** (ADR 007 addendum): workflows must never log or upload anything secret 
 backup is always encrypted, the signing key goes straight into secrets). No journey has been checked
 on a device (checked by tests only).
 
-**People and shared trips** (2026-11-16, ADR 034, **proposed, nothing built**, owner request): a person with
-devices (link codes and a recovery code, no email or sign-in provider), a partner link, trips owned by a person
-with members (owner and editor), version checks on every plan write (409 `plan_changed`), and shared documents,
-album links and covers in a private Storage bucket behind the API. Owner answered questions 2 to 6 (2026-11-16); question 1, codes or a sign-in provider, is open.
+**People and shared trips** (2026-11-16, ADR 034, proposed, owner request; all six questions answered, codes
+chosen): a person with devices (link codes and a recovery code, no email or sign-in provider), a partner link,
+trips owned by a person with members (owner and editor), version checks on every plan write (409 `plan_changed`),
+and shared documents (upload toggle on by default), album links and covers in a private Storage bucket behind the
+API. **Step 1 is built** (awaiting acceptance; tests only; migration `0024` not yet run in production): `app.person`
+whose id is its first installation's id, so `Session.installation_id` is now the caller's person and every query
+sees the person's trips from any phone (`Session.device_id` is the phone); `POST /v1/installations/join` with a
+one-time link code (8 letters, 10 minutes) or the recovery code (26 letters; signs out the other phones);
+`GET /v1/me`, `POST /v1/me/link-codes`, `POST /v1/me/recovery-code`, `DELETE /v1/me/devices/{id}` (401
+`device_removed` afterwards); More, Your phones in the app. Steps 2 to 6 are not started.
 
 **Regions can be imported from the app** (2026-11-17, ADR 033 step 3, built, awaiting acceptance; tests only; migration
 `0023` and the workflow change must reach `main` first; the GitHub token `DETOUR_GITHUB_TOKEN` and

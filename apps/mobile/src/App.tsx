@@ -42,6 +42,7 @@ import { EditStopsScreen } from "./screens/EditStopsScreen";
 import { StaysScreen } from "./screens/StaysScreen";
 import { OptimizeScreen } from "./screens/OptimizeScreen";
 import { ImageCreditsScreen } from "./screens/ImageCreditsScreen";
+import { DevicesScreen } from "./screens/DevicesScreen";
 import { TripScreen } from "./screens/TripScreen";
 import { TripSettingsScreen } from "./screens/TripSettingsScreen";
 import { TripsScreen } from "./screens/TripsScreen";
@@ -59,6 +60,8 @@ function CurrentScreen({ route }: { route: Route }) {
       return <MoreScreen />;
     case "settings":
       return <SettingsScreen />;
+    case "devices":
+      return <DevicesScreen />;
     case "regions":
       return <RegionsScreen />;
     case "imageCredits":

@@ -105,7 +105,7 @@
         "tags": [
           "installations"
         ],
-        "summary": "Token check: returns the installation the bearer token belongs to.",
+        "summary": "Token check: returns the installation the bearer token belongs to and its person (null while the database cannot be reached). 401 device_removed for a removed phone.",
         "operationId": "current_installation",
         "responses": {
           "200": {
@@ -124,6 +124,361 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "tags": [
+          "people"
+        ],
+        "summary": "You: your phones and whether you have a recovery code.",
+        "operationId": "get_me",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me/link-codes": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "summary": "A one-time code (10 minutes) to type on another phone to make it one of yours. An earlier unused code stops working.",
+        "operationId": "create_link_code",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkCode"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me/recovery-code": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "summary": "A new recovery code, shown once. The earlier one stops working.",
+        "operationId": "create_recovery_code",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCode"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me/devices/{device_id}": {
+      "delete": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Sign out one of your other phones; its token is refused from then on.",
+        "operationId": "remove_device",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/installations/join": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Make this phone one of yours with a code from another phone, or with your recovery code (which signs out your other phones). This phone's own trips come along. 400 code_invalid; 409 has_other_devices or limit_reached.",
+        "operationId": "join",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             }
@@ -5858,6 +6213,38 @@
         ],
         "title": "DestinationSearchResponse"
       },
+      "DeviceInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Added At",
+            "description": "When the phone became one of the person's"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Seen At"
+          },
+          "this_device": {
+            "type": "boolean",
+            "title": "This Device"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "added_at",
+          "last_seen_at",
+          "this_device"
+        ],
+        "title": "DeviceInfo"
+      },
       "DiffBase": {
         "properties": {
           "day": {
@@ -7275,6 +7662,19 @@
             "type": "string",
             "format": "uuid",
             "title": "Installation Id"
+          },
+          "person_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person Id",
+            "description": "The person this phone belongs to (ADR 034); the app keys its saved data by it"
           }
         },
         "type": "object",
@@ -8144,6 +8544,67 @@
         ],
         "title": "ItineraryVersion"
       },
+      "JoinRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code",
+            "description": "A link code from another phone (8 letters) or the recovery code (26 letters); spaces and hyphens are ignored"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "JoinRequest"
+      },
+      "JoinResult": {
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/PersonInfo"
+          },
+          "recovered": {
+            "type": "boolean",
+            "title": "Recovered",
+            "description": "The recovery code was used: every other phone of the person was signed out"
+          },
+          "moved_trips": {
+            "type": "integer",
+            "title": "Moved Trips",
+            "description": "Trips of this phone that moved to the person"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person",
+          "recovered",
+          "moved_trips"
+        ],
+        "title": "JoinResult"
+      },
+      "LinkCode": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Eight letters in two groups, e.g. 'K7MQ-R4XT'. Works once."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "expires_at"
+        ],
+        "title": "LinkCode"
+      },
       "MapConfig": {
         "properties": {
           "style_url": {
@@ -8194,6 +8655,50 @@
         ],
         "title": "OptimizeRequest",
         "description": "Preview a shorter order for the stops of a plan (ADR 029). Nothing changes until the change\nset is applied."
+      },
+      "PersonInfo": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Device Id",
+            "description": "The phone that asked"
+          },
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceInfo"
+            },
+            "type": "array",
+            "title": "Devices",
+            "description": "The person's phones, oldest first"
+          },
+          "recovery_code_created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Code Created At",
+            "description": "When the current recovery code was made; null when there is none"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "device_id",
+          "devices",
+          "recovery_code_created_at"
+        ],
+        "title": "PersonInfo"
       },
       "Photo": {
         "properties": {
@@ -9302,6 +9807,26 @@
           "database"
         ],
         "title": "ReadinessResponse"
+      },
+      "RecoveryCode": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "26 letters in groups of four. Shown once; the earlier code stops working."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "created_at"
+        ],
+        "title": "RecoveryCode"
       },
       "RegionCatalog": {
         "properties": {

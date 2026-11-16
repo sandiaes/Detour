@@ -23,7 +23,7 @@ def test_register_then_token_check_succeeds(client: TestClient) -> None:
         "/v1/installations/me", headers={"Authorization": f"Bearer {registration['token']}"}
     )
     assert me.status_code == 200
-    assert me.json() == {"installation_id": registration["installation_id"]}
+    assert me.json() == {"installation_id": registration["installation_id"], "person_id": None}
 
 
 def test_every_registration_is_a_new_installation(client: TestClient) -> None:

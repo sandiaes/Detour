@@ -545,6 +545,19 @@ trip's cover thumbnail, its name and "dates · length", which opens the trip's P
 albums as rows (photo tile, name, source, an external-link icon). Empty, it says to link an album on a
 trip's Photos tab and offers a green "Go to my trips" button.
 
+### Your phones (ADR 034, step 1)
+
+More, **Your phones** (lock icon). Hairline rows of the person's phones ("This phone" first, then
+"Phone 2" … with "Added <date> · last used <age>") and a small red ghost **Remove** on the others
+(a ConfirmSheet). **Add a phone**: a green "Show a code" button, then the code in title type with
+letter spacing ("K7MQ-R4XT", selectable) and "Works once, until 14:32"; the button becomes the
+outlined "New code". **Use a code on this phone**: one field for either kind of code (the hint says
+when it is a recovery code), an outlined "Use this code" behind a ConfirmSheet (red when it is the
+recovery code, which signs out the other phones); success is a green Notice and the app reconnects.
+**Recovery code**: a sentence saying it is the only way back without a phone, the date of the current
+code, and "Make a recovery code" (replacing one asks first); the code is shown once. Typed codes
+only: no QR scanning (it would need the camera and a module).
+
 ## 5. Plans and times
 
 - **Suggested plans have no meals (ADR 026, built).** Each day has one

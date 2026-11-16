@@ -30,6 +30,7 @@ export function makeConnection(client: FakeClient = createFakeClient({})): Conne
     health: { status: "ok", service: "detour-api", version: "0.1.0", release: "abcdef1234" },
     config: { config_version: "1", map: MAP_CONFIG },
     installationId: "11111111-2222-3333-4444-555555555555",
+    personId: "11111111-2222-3333-4444-555555555555",
     registered: false,
     client,
   } as unknown as Connection;

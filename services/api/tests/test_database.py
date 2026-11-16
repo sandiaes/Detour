@@ -71,6 +71,8 @@ APP_TABLES = [
     "itinerary_day",
     "itinerary_item",
     "itinerary_version",
+    "link_code",
+    "person",
     "place_name_override",
     "provider_cache",
     "provider_usage",

@@ -2,7 +2,9 @@
 
 - **Status:** **Proposed** on 2026-11-16 (owner request: "a user for myself and my girlfriend, and
   to set a trip up with her, or solo"; also shared documents and the other things kept only on the
-  phone). **Nothing is built.** Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
+  phone). **Step 1 (people and devices) is built** (2026-11-16, owner: "Go with codes, start step
+  1"), awaiting acceptance; checked by tests only, not on a device; migration `0024` not yet run in
+  production. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
   (recorded there and in the decisions); question 1 (codes or a sign-in provider) is still open.
 - **Date:** 2026-11-16
 - **Changes when accepted:** D5 in `docs/app-plan.md` (anonymous installation, no accounts), the
@@ -208,6 +210,38 @@ Shared documents in detail:
 
 Every existing endpoint keeps its path; `installation_id` disappears from responses in favour of
 `owner` and `members` on `Trip`. OpenAPI and the generated client are regenerated as usual.
+
+## Step 1 as built (2026-11-16)
+
+Differences from the plan above, all to keep step 1 small and leave every existing query as it is:
+
+- **A person's id is the id of its first installation** (no `owner_person_id` yet). The API's
+  `Session.installation_id` is now the caller's person (the data owner) and `Session.device_id` the
+  phone; every repository query that filters by `installation_id` therefore sees the person's trips
+  from any phone. Joining moves the joining phone's trips, places and display-name overrides to the
+  person's id (checked against the 100-trip and 500-place limits; refused with 409 `limit_reached`
+  otherwise, moving nothing). Step 2 renames the columns.
+- **One endpoint for both codes**, `POST /v1/installations/join`, told apart by length (8 or 26
+  letters, spaces and hyphens ignored); `GET /v1/me`, `POST /v1/me/link-codes`,
+  `POST /v1/me/recovery-code`, `DELETE /v1/me/devices/{id}`. `GET /v1/installations/me` adds
+  `person_id` (null when the database is unreachable) and answers 401 `device_removed` for a removed
+  phone; the app keys its saved copy by person, so joining clears the old person's copy.
+- **No display name yet**: it is only needed once two people share (step 3). Phones are "This
+  phone", "Phone 2" …; no device model is sent (it would need `expo-device`).
+- **No QR code** (typed codes only) and no "I already use Detour" first screen: More, Your phones
+  has "Use a code on this phone".
+- `DETOUR_OWNER_INSTALLATION_IDS` keeps its name: it is compared with the caller's person, which is
+  the owner's first phone's id, so all of the owner's joined phones qualify. Renaming waits for step 2.
+- A removed phone is refused within 60 seconds (the person of a phone is cached that long in each
+  process; the process that removed it forgets at once).
+- Codes are stored as HMAC-SHA256 with `DETOUR_TOKEN_SECRET`, so rotating the secret also cancels
+  link and recovery codes.
+
+Files: migration `0024_people_and_devices.py`; `repo/people.py`, `routers/people.py`,
+`models/people.py`, `deps.py` (`resolve_device`, `forget_devices`), `abuse.py` (join limits);
+the app's `screens/DevicesScreen.tsx`, `domain/devices.ts`, `api/connect.ts` (`personId`),
+`data/DataProvider.tsx`. Tests: `test_people.py`, `test_migration_0024.py`, `test_abuse.py`,
+`screens/Devices.test.tsx`.
 
 ## Build order (each step shippable and tested on its own)
 

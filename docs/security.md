@@ -93,6 +93,30 @@ in the repository. Rotating `DETOUR_TOKEN_SECRET` makes every installation regis
 access to its trips** (they stay in the database under the old installation): do not rotate it
 without exporting first.
 
+### 2.9a Codes that add a phone (ADR 034)
+
+A phone joins a person with a **link code** (8 letters from a 32-letter alphabet without 0, O, 1
+and I: 40 bits; one use; 10 minutes; a new code cancels the unused one) or the **recovery code** (26
+letters: 130 bits; until replaced). Only an HMAC-SHA256 of each code, keyed with
+`DETOUR_TOKEN_SECRET`, is stored, so a copy of the database does not allow guessing offline.
+`POST /v1/installations/join` is limited to 5 tries per phone (then one every 2 minutes) and 20 an
+hour for the whole service (`DETOUR_JOIN_ATTEMPTS_*`), so at most about 480 guesses a day against a
+code space of 2^40 with at most one live code per person. A wrong, used or expired code all answer
+the same `code_invalid`.
+
+- **A stolen or lost phone:** remove it under More, Your phones from another phone, or use the
+  recovery code on a new phone, which signs out every other phone and deletes unused link codes. A
+  removed phone's token is refused with 401 `device_removed` within a minute (at once in the process
+  that removed it); the phone then starts again as a new, empty person.
+- **A phone cannot be taken over by its own codes:** a phone already joined by others cannot move
+  to another person (409 `has_other_devices`), so its phones are never left without their trips.
+- **Residual risk:** whoever sees the screen of an unlocked phone with Detour can make a link code
+  and join a phone of theirs. Treat the app like the phone itself. There is no email fallback: a
+  person who loses every phone and the recovery code cannot get the trips back, except from an
+  export file.
+- **Rotating `DETOUR_TOKEN_SECRET`** invalidates every token and every stored code hash (the app
+  registers again by itself; recovery codes must be made again).
+
 ### 2.10 Deletion of trips and local data
 
 Deleting a trip deletes its plans, stops, stays and visits on the server and its documents on the

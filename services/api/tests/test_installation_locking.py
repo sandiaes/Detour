@@ -96,10 +96,12 @@ def test_a_known_installation_makes_no_installation_write(
     calls = _count_installation_writes(api_env, monkeypatch)
     engine = make_engine(api_env.database_url)
     try:
+        device = uuid.uuid4()
         session = Session(
             db=Database(engine),
-            installation_id=uuid.uuid4(),
+            installation_id=device,
             photon=None,  # type: ignore[arg-type]
+            device_id=device,
         )
         for _ in range(3):
             with session.tx() as conn:
@@ -121,10 +123,12 @@ def test_a_failed_first_request_is_not_remembered(
     calls = _count_installation_writes(api_env, monkeypatch)
     engine = make_engine(api_env.database_url)
     try:
+        device = uuid.uuid4()
         session = Session(
             db=Database(engine),
-            installation_id=uuid.uuid4(),
+            installation_id=device,
             photon=None,  # type: ignore[arg-type]
+            device_id=device,
         )
         with pytest.raises(RuntimeError), session.tx():
             raise RuntimeError("the request failed and its transaction rolled back")

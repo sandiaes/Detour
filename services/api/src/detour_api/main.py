@@ -30,6 +30,7 @@ from detour_api.routers import (
     images,
     installations,
     itineraries,
+    people,
     regions,
     restaurants,
     search,
@@ -155,6 +156,7 @@ def create_app(
     app.include_router(health.router)
     app.include_router(config.router)
     app.include_router(installations.router)
+    app.include_router(people.router)
     app.include_router(regions.router)
     app.include_router(images.router)
     app.include_router(search.router)
