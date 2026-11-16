@@ -43,6 +43,12 @@ REGIONS: dict[str, RegionDef] = {
         # 2026-11-17, https://download.geofabrik.de/europe.html). The country code decides which
         # region a destination belongs to, so a country appears once. France and Germany (about
         # 4.5 GB each) are left out until a smaller one has been imported and measured.
+        # City extracts (ADR 033): each claims its country's code, so a destination belongs to it
+        # only inside its coverage polygon (geo.region_for_country). Links read 2026-11-17 on
+        # Geofabrik: france/ile-de-france (324 MB), germany/berlin (95 MB); each region's own page
+        # links a .poly file.
+        RegionDef("paris", "Paris (Île-de-France)", "europe/france/ile-de-france", ("FR",)),
+        RegionDef("berlin", "Berlin", "europe/germany/berlin", ("DE",)),
         RegionDef("belgium", "Belgium", "europe/belgium", ("BE",)),
         RegionDef("croatia", "Croatia", "europe/croatia", ("HR",)),
         RegionDef("denmark", "Denmark", "europe/denmark", ("DK",)),

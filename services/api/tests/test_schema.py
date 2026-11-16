@@ -351,7 +351,10 @@ def test_destination_search_uses_the_trigram_indexes(api_env: ApiEnv) -> None:
     # country) is cheap to scan, so the planner may legitimately choose a sequential scan.
     # What matters is that the trigram indexes can serve the query when it pays off.
     city = explain_search(
-        api_env, geo._DESTINATION_SQL, {"q": "testburg", "limit": 10}, force_indexes=True
+        api_env,
+        geo._DESTINATION_SQL,
+        {"q": "testburg", "limit": 10, "slack": geo.REGION_SLACK_DEGREES},
+        force_indexes=True,
     )
     assert "city_name_trgm" in city and "city_alt_trgm" in city, city
     assert "Seq Scan on city" not in city

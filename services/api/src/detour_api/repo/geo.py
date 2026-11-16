@@ -61,14 +61,29 @@ def list_regions(conn: Connection) -> list[RegionInfo]:
     ]
 
 
-def region_for_country(conn: Connection, country_iso2: str) -> tuple[str, str] | None:
-    """The region that covers a country: an available one first. Returns (id, status)."""
+# A region's coverage polygon is checked with this much slack (degrees, about 5 km): Geofabrik's
+# polygons are simplified, so a place on the border must not fall out of its own region.
+REGION_SLACK_DEGREES = 0.05
+
+
+def region_for_country(
+    conn: Connection, country_iso2: str, lat: float | None = None, lon: float | None = None
+) -> tuple[str, str] | None:
+    """The region that covers a country: an available one first. Returns (id, status).
+
+    With a point, a region whose coverage polygon is known must also cover the point (with a little
+    slack): a city extract such as Greater London or Paris claims its whole country by code, and
+    Manchester or Lyon are not in it (ADR 033). A region with no polygon is matched by country.
+    """
     row = conn.execute(
         text(
-            "SELECT id, status FROM geo.region WHERE :c = ANY (country_codes)"
-            " ORDER BY (status = 'available') DESC, id LIMIT 1"
+            "SELECT id, status FROM geo.region r WHERE :c = ANY (r.country_codes)"
+            " AND (CAST(:lat AS double precision) IS NULL OR r.geom IS NULL OR ST_DWithin(r.geom,"
+            "      ST_SetSRID(ST_MakePoint(CAST(:lon AS double precision),"
+            "                              CAST(:lat AS double precision)), 4326), :slack))"
+            " ORDER BY (r.status = 'available') DESC, r.id LIMIT 1"
         ),
-        {"c": country_iso2},
+        {"c": country_iso2, "lat": lat, "lon": lon, "slack": REGION_SLACK_DEGREES},
     ).first()
     return None if row is None else (row.id, row.status)
 
@@ -154,6 +169,8 @@ LEFT JOIN geo.admin_code a1 ON a1.code = h.country_iso2 || '.' || h.admin1_code
 LEFT JOIN LATERAL (
     SELECT r.id, r.status FROM geo.region r
     WHERE h.country_iso2 = ANY (r.country_codes)
+          AND (r.geom IS NULL OR ST_DWithin(r.geom, ST_SetSRID(ST_MakePoint(h.lon, h.lat), 4326),
+               CAST(:slack AS double precision)))
     ORDER BY (r.status = 'available') DESC, r.id LIMIT 1
 ) reg ON true
 ORDER BY h.tier, h.population DESC NULLS LAST, h.sim DESC, h.kind, h.ref
@@ -165,7 +182,9 @@ def search_destinations(conn: Connection, query: str, limit: int) -> list[Destin
     norm = normalize_text(query)
     if not norm:
         return []
-    rows = conn.execute(text(_DESTINATION_SQL), {"q": norm, "limit": limit}).all()
+    rows = conn.execute(
+        text(_DESTINATION_SQL), {"q": norm, "limit": limit, "slack": REGION_SLACK_DEGREES}
+    ).all()
     return [
         DestinationResult(
             kind=r.kind,
@@ -231,7 +250,7 @@ def resolve_destination(conn: Connection, kind: str, ref: str) -> ResolvedDestin
         ).first()
         if row is None:
             return None
-        region = region_for_country(conn, row.country_iso2)
+        region = region_for_country(conn, row.country_iso2, row.lat, row.lon)
         return ResolvedDestination(
             row.name,
             row.lat,

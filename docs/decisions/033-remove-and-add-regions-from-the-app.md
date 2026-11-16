@@ -82,7 +82,15 @@ workflow reports back.
    Malta, Netherlands, Norway, Poland, Portugal, Slovakia, Slovenia, Spain, Sweden, Switzerland.
    France and Germany (about 4.5 GB each) are left out until a smaller country has been imported and
    measured. A country appears once, because its code decides where a destination is planned; the
-   catalog test enforces it. The list shows regions with data first, then the rest by name. Great
+   catalog test enforces it. The list shows regions with data first, then the rest by name. **Paris and Berlin** are added as city extracts (Geofabrik
+   `france/ile-de-france`, 324 MB, and `germany/berlin`, 95 MB; the region pages link `.poly`
+   files, read 2026-11-17). A city extract claims its country's code, so the destination match is
+   now also geographic: when a region's coverage polygon is known, a destination must lie inside
+   it (5 km of slack for simplified polygons), otherwise Manchester would count as inside Greater
+   London and Lyon inside Paris (`geo.region_for_country`, the destination search). A region with no
+   polygon is still matched by country, so before a first import, and if the polygon cannot be
+   loaded, a city extract still claims its whole country. Multi-city bases are still matched by
+   country only. Great
    Britain (2.1 GB download) is deliberately not offered yet: it is far larger than a city and its
    share of the free database is unknown. The download is filtered on the GitHub runner, so its size
    is not the size the region takes in the database.

@@ -5,6 +5,8 @@ from typing import Any
 import pytest
 
 from tests.conftest import ApiEnv
+from tests.test_api_planning import sql
+from tests.test_api_trips import CITY
 
 pytestmark = pytest.mark.db
 
@@ -276,3 +278,38 @@ def test_place_search_matches_the_english_name_and_the_original(api_env: ApiEnv)
     finally:
         with psycopg.connect(api_env.database_url, autocommit=True) as conn:
             conn.execute("DELETE FROM geo.place WHERE id = %s", (pid,))
+
+
+def _test_region_covers(api_env: ApiEnv, lon: float, lat: float, half: float = 0.1) -> None:
+    """Give the fixture region a known coverage polygon: a box around a point."""
+    sql(
+        api_env,
+        "UPDATE geo.region SET geom = ST_Multi(ST_MakeEnvelope(%s, %s, %s, %s, 4326))"
+        " WHERE id = 'test-region'",
+        lon - half,
+        lat - half,
+        lon + half,
+        lat + half,
+    )
+
+
+def test_a_region_with_a_known_polygon_covers_only_the_places_inside_it(api_env: ApiEnv) -> None:
+    """A city extract (Greater London, Paris) claims its whole country by code; a city outside its
+    polygon is not in the region, so planning there says the region is not available."""
+    # No polygon: the country code decides (the region of the fixture covers Testland).
+    (city,) = search(api_env, "/v1/destinations/search", q="testburg", limit=1)["results"]
+    assert (city["region_id"], city["planning_available"]) == ("test-region", True)
+    # A polygon around Testburg: still covered, and so is Alpenau just outside it (slack).
+    _test_region_covers(api_env, 16.3738, 48.2082)
+    (city,) = search(api_env, "/v1/destinations/search", q="testburg", limit=1)["results"]
+    assert (city["region_id"], city["planning_available"]) == ("test-region", True)
+    # A polygon far away (another part of the country): Testburg is not in the region.
+    _test_region_covers(api_env, 9.0, 47.0)
+    (city,) = search(api_env, "/v1/destinations/search", q="testburg", limit=1)["results"]
+    assert city["region_id"] is None and city["planning_available"] is False
+    assert city["unavailable_reason"] == "region_not_available"
+    # Creating a trip there and planning it is refused for the same reason.
+    refused = api_env.client.post(
+        "/v1/trips", json={**CITY, "title": "Outside", "duration_days": 1}, headers=api_env.headers
+    )
+    assert refused.status_code == 409 and refused.json()["code"] == "region_not_available"
