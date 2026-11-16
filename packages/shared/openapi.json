@@ -5019,6 +5019,18 @@
             "title": "Places Kept",
             "description": "Places kept for trips after a removal (not searchable)"
           },
+          "bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes",
+            "description": "About how much database space the region's places take (an estimate: its share of the place tables' size); null when it has none"
+          },
           "job": {
             "anyOf": [
               {
@@ -5040,6 +5052,7 @@
           "state",
           "places",
           "places_kept",
+          "bytes",
           "job"
         ],
         "title": "CatalogRegion"

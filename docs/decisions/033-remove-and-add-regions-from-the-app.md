@@ -74,10 +74,14 @@ workflow reports back.
 2. **The token** is `DETOUR_GITHUB_TOKEN`, a Render secret, never in the repository, logs, the app
    or the database. A GitHub answer's body is never logged.
 3. **A catalog** (`importer/regions.py`) lists the regions that can be imported, with the extract's
-   size when it was read. **Greater London** is added (`europe/great-britain/england/
+   download size (read on 2026-11-17 from each region's Geofabrik page, "File size" of the latest
+   file: Austria 777 MB, Czechia 909 MB, Hungary 314 MB, Italy 2.1 GB, Japan 2.4 GB, Greater London
+   124 MB). **Greater London** is added (`europe/great-britain/england/
    greater-london`, 124 MB, listed on Geofabrik's England page on 2026-11-17; the page shows no
    `.poly` for it, so the region's coverage polygon stays unknown and the importer warns). Great
-   Britain (2.1 GB) is deliberately not offered: it would exceed the free database.
+   Britain (2.1 GB download) is deliberately not offered yet: it is far larger than a city and its
+   share of the free database is unknown. The download is filtered on the GitHub runner, so its size
+   is not the size the region takes in the database.
 4. **Jobs**: `geo.import_job` (migration `0023`). `POST /v1/regions/{id}/import` (owner only)
    records a job, asks GitHub, and answers 202 with the job; a refusal, an unreachable GitHub or an
    exhausted budget make the job `failed` and the call 502. The workflow takes `region`,
@@ -90,6 +94,8 @@ workflow reports back.
    server can start imports.
 6. **App**: **More, Regions**: the list, a sheet per region with Import (or Import again) and Remove
    (preview with what is kept, then confirm), refreshing every 15 s while an import is under way.
+   A region's row also shows about how much database space it takes (its share of the place tables
+   by rows; an estimate) and, while importing, a yellow badge.
    Settings now shows the full installation id, which the owner pastes into
    `DETOUR_OWNER_INSTALLATION_IDS`.
 7. The workflow still runs by hand from the Actions tab (its inputs are now a text field and an

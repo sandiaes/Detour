@@ -954,6 +954,11 @@ export interface components {
        * @description Places kept for trips after a removal (not searchable)
        */
       places_kept: number;
+      /**
+       * Bytes
+       * @description About how much database space the region's places take (an estimate: its share of the place tables' size); null when it has none
+       */
+      bytes: number | null;
       /** @description The latest import started from the app */
       job: components["schemas"]["ImportJob"] | null;
     };

@@ -2,6 +2,7 @@ import {
   type CatalogRegion,
   type RegionCatalog,
   anyImportInProgress,
+  megabytes,
   regionLine,
   removalMessage,
   usageLine,
@@ -16,6 +17,7 @@ function region(over: Partial<CatalogRegion> = {}): CatalogRegion {
     state: "not_imported",
     places: 0,
     places_kept: 0,
+    bytes: null,
     job: null,
     ...over,
   };
@@ -35,6 +37,23 @@ describe("regionLine", () => {
   test("a region that was never imported says how big the download is", () => {
     expect(regionLine(region())).toBe("Not imported · about 124 MB to download");
     expect(regionLine(region({ download_mb: null }))).toBe("Not imported");
+  });
+  test("sizes are in megabytes, or gigabytes from 1,000", () => {
+    expect(megabytes(777)).toBe("777 MB");
+    expect(megabytes(2100)).toBe("2.1 GB");
+    expect(megabytes(2000)).toBe("2 GB");
+    expect(megabytes(0.2)).toBe("1 MB");
+    expect(regionLine(region({ download_mb: 2400 }))).toBe(
+      "Not imported · about 2.4 GB to download",
+    );
+  });
+  test("an imported region says how much room it takes, when known", () => {
+    expect(regionLine(region({ state: "available", places: 3, bytes: 12_400_000 }))).toBe(
+      "Available · 3 places · about 12 MB",
+    );
+    expect(regionLine(region({ state: "disabled", places_kept: 2, bytes: 90_000 }))).toBe(
+      "Removed · 2 places kept for trips · about 1 MB",
+    );
   });
   test("an available region counts its places", () => {
     expect(regionLine(region({ state: "available", places: 1 }))).toBe("Available · 1 place");

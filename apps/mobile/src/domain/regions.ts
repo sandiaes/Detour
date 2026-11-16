@@ -21,8 +21,19 @@ export function anyImportInProgress(catalog: RegionCatalog | undefined): boolean
   return catalog?.regions.some(importInProgress) ?? false;
 }
 
+/** A size in megabytes, or gigabytes from 1,000: "777 MB", "2.1 GB". */
+export function megabytes(mb: number): string {
+  if (mb >= 1000) return `${(mb / 1000).toFixed(1).replace(/\.0$/, "")} GB`;
+  return `${Math.max(1, Math.round(mb))} MB`;
+}
+
 function count(n: number, one: string, many: string): string {
   return `${n.toLocaleString("en")} ${n === 1 ? one : many}`;
+}
+
+/** " · about 12 MB" when the server knows roughly how much room the region takes. */
+function sizeSuffix(region: CatalogRegion): string {
+  return region.bytes ? ` · about ${megabytes(region.bytes / 1_000_000)}` : "";
 }
 
 /** The line under a region's name. */
@@ -34,16 +45,16 @@ export function regionLine(region: CatalogRegion): string {
   if (region.job?.status === "failed") return "The last import failed";
   switch (region.state) {
     case "available":
-      return `Available · ${count(region.places, "place", "places")}`;
+      return `Available · ${count(region.places, "place", "places")}${sizeSuffix(region)}`;
     case "disabled":
       return region.places > 0
-        ? `Imported, not available · ${count(region.places, "place", "places")}`
+        ? `Imported, not available · ${count(region.places, "place", "places")}${sizeSuffix(region)}`
         : region.places_kept > 0
-          ? `Removed · ${count(region.places_kept, "place", "places")} kept for trips`
+          ? `Removed · ${count(region.places_kept, "place", "places")} kept for trips${sizeSuffix(region)}`
           : "Not available";
     default:
       return region.download_mb
-        ? `Not imported · about ${region.download_mb} MB to download`
+        ? `Not imported · about ${megabytes(region.download_mb)} to download`
         : "Not imported";
   }
 }

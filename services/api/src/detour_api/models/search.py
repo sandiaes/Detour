@@ -192,6 +192,10 @@ class CatalogRegion(BaseModel):
     state: Literal["not_imported", "available", "disabled", "importing"]
     places: int = Field(description="Searchable places of the region in the database")
     places_kept: int = Field(description="Places kept for trips after a removal (not searchable)")
+    bytes: int | None = Field(
+        description="About how much database space the region's places take (an estimate: its "
+        "share of the place tables' size); null when it has none"
+    )
     job: ImportJob | None = Field(description="The latest import started from the app")
 
 

@@ -112,7 +112,7 @@ export function IconButton({
 
 // ---- badges --------------------------------------------------------------------------------------
 
-export type BadgeTone = "neutral" | "primary" | "accent" | "onImage" | "danger";
+export type BadgeTone = "neutral" | "primary" | "accent" | "onImage" | "danger" | "warning";
 
 /** A small pill with a word in it ("Upcoming", "Best"). The word carries the meaning. */
 export function Badge({
@@ -131,7 +131,9 @@ export function Badge({
         ? colors.accentText
         : tone === "danger"
           ? colors.danger
-          : colors.text;
+          : tone === "warning"
+            ? colors.warningText
+            : colors.text;
   return (
     <View
       style={[
@@ -139,6 +141,7 @@ export function Badge({
         tone === "primary" && { backgroundColor: colors.primarySoft },
         tone === "accent" && { backgroundColor: colors.accentSoft },
         tone === "danger" && { backgroundColor: colors.dangerSoft },
+        tone === "warning" && { backgroundColor: colors.warning },
         tone === "onImage" && { backgroundColor: colors.surface },
       ]}
     >
