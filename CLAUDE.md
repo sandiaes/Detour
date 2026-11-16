@@ -53,8 +53,13 @@ public** (ADR 007 addendum): workflows must never log or upload anything secret 
 backup is always encrypted, the signing key goes straight into secrets). No journey has been checked
 on a device (checked by tests only).
 
-**Regions can be removed** (2026-11-17, ADR 033 proposed, owner request; step 2 of 3 built, awaiting acceptance; tests only;
-no app screen yet): `DELETE /v1/regions/{id}` (owner only, `DETOUR_OWNER_INSTALLATION_IDS`) with
+**Regions can be imported from the app** (2026-11-17, ADR 033 step 3, built, awaiting acceptance; tests only; migration
+`0023` and the workflow change must reach `main` first; the GitHub token `DETOUR_GITHUB_TOKEN` and
+`DETOUR_OWNER_INSTALLATION_IDS` are not set yet): More, Regions lists the catalog (Greater London added, 124 MB) with
+Import and Remove for the owner; the backend asks GitHub to run the Import region workflow, which reports progress into
+`geo.import_job`.
+
+**Regions can be removed** (2026-11-17, ADR 033 proposed, owner request; step 2 of 3 built, awaiting acceptance; tests only): `DELETE /v1/regions/{id}` (owner only, `DETOUR_OWNER_INSTALLATION_IDS`) with
 `GET .../removal-preview` frees a region's imported data and keeps every place and area a trip, a past-trip record or a
 name override still names (inactive). Adding a region from the app (dispatching the import workflow) is step 3, not
 built.

@@ -35,6 +35,7 @@ import { MoreScreen } from "./screens/MoreScreen";
 import { PastTripScreen } from "./screens/PastTripScreen";
 import { PlaceDetailScreen } from "./screens/PlaceDetailScreen";
 import { PhotosScreen } from "./screens/PhotosScreen";
+import { RegionsScreen } from "./screens/RegionsScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TripOverviewScreen } from "./screens/TripOverviewScreen";
 import { EditStopsScreen } from "./screens/EditStopsScreen";
@@ -58,6 +59,8 @@ function CurrentScreen({ route }: { route: Route }) {
       return <MoreScreen />;
     case "settings":
       return <SettingsScreen />;
+    case "regions":
+      return <RegionsScreen />;
     case "imageCredits":
       return <ImageCreditsScreen />;
     case "exportTrips":

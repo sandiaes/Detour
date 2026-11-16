@@ -230,6 +230,30 @@ data it writes can be rebuilt by running it again; it never touches the `app` sc
 
 ---
 
+## Importing and removing regions from the app (ADR 033)
+
+Do this once so that **More, Regions** works. Nothing here is a secret in the repository.
+
+1. **Your installation id.** Open the app, **More, Settings**: the Installation line is the full
+   id. On Render, open the service, **Environment**, and set `DETOUR_OWNER_INSTALLATION_IDS` to it
+   (several ids can be separated by commas). Without it nobody can import or remove a region.
+2. **A GitHub token.** GitHub, your avatar, **Settings, Developer settings, Personal access tokens,
+   Fine-grained tokens, Generate new token**. Resource owner: you. Repository access: **Only select
+   repositories**, then this repository. Permissions, Repository: **Actions: Read and write** and
+   nothing else. Set the shortest expiry you are happy to renew (GitHub's maximum is one year).
+   Copy the token once and set it on Render as `DETOUR_GITHUB_TOKEN` (never in the repository, a
+   chat or a workflow). GitHub's page for the call names the `repo` scope for classic tokens and
+   does not name the fine-grained permission, so check it works (step 4) and say if it is refused.
+3. **The workflow must be on `main`** (GitHub only dispatches workflows from the default branch),
+   and the secret `DETOUR_IMPORT_DATABASE_URL` must exist (see "Importing a region").
+4. **Try it.** Open **More, Regions**, tap **Greater London**, **Import this region**. The row says
+   "Import requested…", then "Importing…" while the workflow runs (a few minutes for 124 MB), and
+   "Available" when it finishes. If it says "GitHub refused the request", the token, its
+   permission or the workflow name is wrong; if it stops reporting for 45 minutes it shows as
+   stalled and the run's page on GitHub (the Actions tab) has the reason.
+5. **Removing** a region asks first and shows what the trips keep. It frees database space; the
+   region can be imported again.
+
 ## Deploying photos (ADR 022)
 
 The backend streams stored photos to the app, so it needs the same two Storage settings as the

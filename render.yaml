@@ -31,6 +31,12 @@ services:
       # key is a secret: Render asks for it when the Blueprint is synced, or set it in the
       # service's Environment tab. Without them /v1/images answers 503 and the app keeps its
       # illustrations.
+      # Region imports from the app (ADR 033): the owner's installation id (shown in the app's
+      # Settings), and a fine-grained GitHub token (this repository, Actions read and write).
+      - key: DETOUR_OWNER_INSTALLATION_IDS
+        sync: false
+      - key: DETOUR_GITHUB_TOKEN
+        sync: false
       - key: DETOUR_SUPABASE_URL
         sync: false
       - key: DETOUR_SUPABASE_SERVICE_KEY

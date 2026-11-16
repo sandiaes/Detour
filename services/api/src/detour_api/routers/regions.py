@@ -1,12 +1,19 @@
 import uuid
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Request, status
 
 from detour_api.deps import DatabaseDep, SessionDep, SettingsDep
 from detour_api.errors import ApiError
-from detour_api.models.search import AttributionEntry, RegionInfo, RegionRemoval
-from detour_api.repo import geo, regions
+from detour_api.models.search import (
+    AttributionEntry,
+    ImportJob,
+    ImportRequest,
+    RegionCatalog,
+    RegionInfo,
+    RegionRemoval,
+)
+from detour_api.repo import geo, import_jobs, regions
 from detour_api.routers.responses import ERRORS
 from detour_api.settings import Settings
 
@@ -26,6 +33,60 @@ def _owner_only(settings: Settings, installation_id: uuid.UUID) -> None:
     (``DETOUR_OWNER_INSTALLATION_IDS``) may do it. With none configured nobody may (ADR 033)."""
     if installation_id not in settings.owner_installations:
         raise ApiError(403, "not_owner", "only the owner of this server can change its regions")
+
+
+@router.get(
+    "/regions/catalog",
+    summary="The regions that can be imported, their state and the latest import started from the "
+    "app (ADR 033). Anyone may read it; only the owner can_manage.",
+    responses=ERRORS,
+)
+def region_catalog(session: SessionDep, settings: SettingsDep, request: Request) -> RegionCatalog:
+    with session.tx() as conn:
+        return import_jobs.catalog(
+            conn,
+            settings,
+            can_manage=session.installation_id in settings.owner_installations,
+            import_enabled=request.app.state.github.enabled,
+        )
+
+
+@router.post(
+    "/regions/{region_id}/import",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Start importing a region from the catalog: asks GitHub to run the 'Import region' "
+    "workflow, which reports its progress (ADR 033). Owner only. 503 without a GitHub token.",
+    responses=ERRORS,
+)
+def import_region(
+    session: SessionDep,
+    settings: SettingsDep,
+    request: Request,
+    region_id: str,
+    body: ImportRequest | None = None,
+) -> ImportJob:
+    _owner_only(settings, session.installation_id)
+    github = request.app.state.github
+    if not github.enabled:
+        raise ApiError(503, "import_unavailable", "this server cannot start imports")
+    with session.tx() as conn:
+        job_id = import_jobs.start_job(conn, settings, region_id, session.installation_id)
+    # The job exists and is committed before GitHub is asked: the workflow updates it by id.
+    outcome = github.dispatch_import(region_id, job_id, body.gazetteer if body else True)
+    failed = {
+        "disabled": "this server cannot start imports",
+        "unavailable": "GitHub could not be reached",
+        "budget_exhausted": "too many imports were started today",
+        "refused": "GitHub refused the request: check the token and the workflow",
+    }.get(outcome.state)
+    with session.tx() as conn:
+        import_jobs.finish_request(
+            conn, job_id, ok=failed is None, message=failed, run_url=outcome.run_url
+        )
+        job = import_jobs.latest_jobs(conn, settings)[region_id]
+    if failed is not None:
+        raise ApiError(502, "import_not_started", failed)
+    return job
 
 
 @router.get(

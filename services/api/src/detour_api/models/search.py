@@ -170,3 +170,38 @@ class RegionRemoval(BaseModel):
     bytes_freed_estimate: int = Field(
         description="About how much database space the removal frees; an estimate from row sizes"
     )
+
+
+class ImportJob(BaseModel):
+    """A region import started from the app (ADR 033). ``stalled`` means it was not reported on
+    for too long: the workflow probably failed before it could say so."""
+
+    id: uuid.UUID
+    status: Literal["requested", "running", "succeeded", "failed", "stalled"]
+    message: str | None
+    run_url: str | None = Field(description="The workflow run on GitHub, when GitHub gave it")
+    requested_at: datetime
+    updated_at: datetime
+
+
+class CatalogRegion(BaseModel):
+    id: str
+    name: str
+    country_codes: list[str]
+    download_mb: int | None = Field(description="The extract's size at Geofabrik, if it was read")
+    state: Literal["not_imported", "available", "disabled", "importing"]
+    places: int = Field(description="Searchable places of the region in the database")
+    places_kept: int = Field(description="Places kept for trips after a removal (not searchable)")
+    job: ImportJob | None = Field(description="The latest import started from the app")
+
+
+class RegionCatalog(BaseModel):
+    can_manage: bool = Field(description="True for the owner: only they may import or remove")
+    import_enabled: bool = Field(description="False when the server has no GitHub token")
+    geo_bytes: int = Field(description="Space the imported data takes in the database")
+    geo_limit_bytes: int = Field(description="The limit ADR 009 gate 6 allows for all regions")
+    regions: list[CatalogRegion]
+
+
+class ImportRequest(BaseModel):
+    gazetteer: bool = Field(default=True, description="Also import the GeoNames cities first")

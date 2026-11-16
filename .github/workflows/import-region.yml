@@ -12,15 +12,19 @@ on:
   workflow_dispatch:
     inputs:
       region:
-        description: "Region to import"
+        description: "Region to import: an id from services/api/src/detour_api/importer/regions.py"
         required: true
-        type: choice
-        options: [austria, czech-republic, hungary, italy, japan]
+        type: string
       gazetteer:
         description: "Import the GeoNames countries, currencies and cities first"
         required: true
         type: boolean
         default: true
+      job_id:
+        description: "Set when the app started this import (ADR 033): the job to report progress to"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -53,6 +57,8 @@ jobs:
       DETOUR_STAGING_DATABASE_URL: postgresql://postgres:staging@localhost:5432/postgres
       DETOUR_IMPORT_USER_AGENT: "Detour-import/1 (+https://github.com/${{ github.repository }})"
       REGION: ${{ inputs.region }}
+      JOB_ID: ${{ inputs.job_id }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Check the database secret
         run: |
@@ -78,6 +84,9 @@ jobs:
       - name: Migrate the database
         working-directory: services/api
         run: alembic upgrade head
+      - name: Tell the app the import is running
+        if: ${{ inputs.job_id != '' }}
+        run: python -m detour_api.importer job "$JOB_ID" running --run-url "$RUN_URL"
       - name: Import the gazetteer (GeoNames)
         if: ${{ inputs.gazetteer }}
         run: python -m detour_api.importer gazetteer $(python -m detour_api.importer countries "$REGION")
@@ -92,6 +101,21 @@ jobs:
             echo "All readiness gates passed: the region is available."
           elif [ -f out/report.json ]; then
             echo "::warning::A readiness gate failed (ADR 009): the data is loaded but the region stays disabled. See the report."
+          fi
+      - name: Tell the app how the import ended
+        if: ${{ always() && inputs.job_id != '' }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ "$JOB_STATUS" != "success" ]; then
+            python -m detour_api.importer job "$JOB_ID" failed --run-url "$RUN_URL" \
+              --message "The import did not finish: open the workflow run for the reason."
+          elif [ -f out/report.json ] && python -c "import json,sys; sys.exit(0 if json.load(open('out/report.json'))['all_gates_passed'] else 1)"; then
+            python -m detour_api.importer job "$JOB_ID" succeeded --run-url "$RUN_URL" \
+              --message "Imported: the region is available."
+          else
+            python -m detour_api.importer job "$JOB_ID" succeeded --run-url "$RUN_URL" \
+              --message "Loaded, but a readiness gate failed: the region stays disabled."
           fi
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}

@@ -106,6 +106,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/regions/catalog": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The regions that can be imported, their state and the latest import started from the app (ADR 033). Anyone may read it; only the owner can_manage. */
+    get: operations["region_catalog"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/regions/{region_id}/import": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start importing a region from the catalog: asks GitHub to run the 'Import region' workflow, which reports its progress (ADR 033). Owner only. 503 without a GitHub token. */
+    post: operations["import_region"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/regions/{region_id}/removal-preview": {
     parameters: {
       query?: never;
@@ -891,6 +925,37 @@ export interface components {
       text: string;
       /** Url */
       url: string;
+    };
+    /** CatalogRegion */
+    CatalogRegion: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Country Codes */
+      country_codes: string[];
+      /**
+       * Download Mb
+       * @description The extract's size at Geofabrik, if it was read
+       */
+      download_mb: number | null;
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "not_imported" | "available" | "disabled" | "importing";
+      /**
+       * Places
+       * @description Searchable places of the region in the database
+       */
+      places: number;
+      /**
+       * Places Kept
+       * @description Places kept for trips after a removal (not searchable)
+       */
+      places_kept: number;
+      /** @description The latest import started from the app */
+      job: components["schemas"]["ImportJob"] | null;
     };
     /**
      * ChangeDiff
@@ -1726,6 +1791,49 @@ export interface components {
        * @description Commit identifier of the deployed build
        */
       release?: string | null;
+    };
+    /**
+     * ImportJob
+     * @description A region import started from the app (ADR 033). ``stalled`` means it was not reported on
+     *     for too long: the workflow probably failed before it could say so.
+     */
+    ImportJob: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "requested" | "running" | "succeeded" | "failed" | "stalled";
+      /** Message */
+      message: string | null;
+      /**
+       * Run Url
+       * @description The workflow run on GitHub, when GitHub gave it
+       */
+      run_url: string | null;
+      /**
+       * Requested At
+       * Format: date-time
+       */
+      requested_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /** ImportRequest */
+    ImportRequest: {
+      /**
+       * Gazetteer
+       * @description Also import the GeoNames cities first
+       * @default true
+       */
+      gazetteer: boolean;
     };
     /** ImportResult */
     ImportResult: {
@@ -2610,6 +2718,31 @@ export interface components {
       status: "ok" | "unavailable";
       database: components["schemas"]["DatabaseStatus"];
     };
+    /** RegionCatalog */
+    RegionCatalog: {
+      /**
+       * Can Manage
+       * @description True for the owner: only they may import or remove
+       */
+      can_manage: boolean;
+      /**
+       * Import Enabled
+       * @description False when the server has no GitHub token
+       */
+      import_enabled: boolean;
+      /**
+       * Geo Bytes
+       * @description Space the imported data takes in the database
+       */
+      geo_bytes: number;
+      /**
+       * Geo Limit Bytes
+       * @description The limit ADR 009 gate 6 allows for all regions
+       */
+      geo_limit_bytes: number;
+      /** Regions */
+      regions: components["schemas"]["CatalogRegion"][];
+    };
     /** RegionInfo */
     RegionInfo: {
       /** Id */
@@ -3346,6 +3479,124 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RegionInfo"][];
+        };
+      };
+    };
+  };
+  region_catalog: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RegionCatalog"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  import_region: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        region_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ImportRequest"] | null;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ImportJob"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
         };
       };
     };
