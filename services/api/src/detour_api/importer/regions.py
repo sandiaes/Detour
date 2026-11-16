@@ -29,14 +29,43 @@ REGIONS: dict[str, RegionDef] = {
         RegionDef("hungary", "Hungary", "europe/hungary", ("HU",)),
         RegionDef("italy", "Italy", "europe/italy", ("IT",)),
         RegionDef("japan", "Japan", "asia/japan", ("JP",)),
-        # Geofabrik lists Greater London under England with a 124 MB extract (read 2026-11-17,
-        # https://download.geofabrik.de/europe/great-britain/england.html). It shows no .poly
-        # file for it, so the region's coverage polygon stays unknown (the importer warns).
+        # Geofabrik lists Greater London under England (read 2026-11-17,
+        # https://download.geofabrik.de/europe/great-britain/england.html). That table shows no
+        # .poly link for it; if the file is missing the coverage polygon stays unknown and the
+        # importer warns.
         RegionDef(
             "greater-london",
             "Greater London",
             "europe/great-britain/england/greater-london",
             ("GB",),
         ),
+        # Whole countries, each a single extract at Geofabrik's europe page (links read
+        # 2026-11-17, https://download.geofabrik.de/europe.html). The country code decides which
+        # region a destination belongs to, so a country appears once. France and Germany (about
+        # 4.5 GB each) are left out until a smaller one has been imported and measured.
+        RegionDef("belgium", "Belgium", "europe/belgium", ("BE",)),
+        RegionDef("croatia", "Croatia", "europe/croatia", ("HR",)),
+        RegionDef("denmark", "Denmark", "europe/denmark", ("DK",)),
+        RegionDef("finland", "Finland", "europe/finland", ("FI",)),
+        RegionDef("greece", "Greece", "europe/greece", ("GR",)),
+        RegionDef("iceland", "Iceland", "europe/iceland", ("IS",)),
+        # The extract also holds Northern Ireland (code GB); the region claims only IE.
+        RegionDef(
+            "ireland",
+            "Ireland",
+            "europe/ireland-and-northern-ireland",
+            ("IE",),
+        ),
+        RegionDef("luxembourg", "Luxembourg", "europe/luxembourg", ("LU",)),
+        RegionDef("malta", "Malta", "europe/malta", ("MT",)),
+        RegionDef("netherlands", "Netherlands", "europe/netherlands", ("NL",)),
+        RegionDef("norway", "Norway", "europe/norway", ("NO",)),
+        RegionDef("poland", "Poland", "europe/poland", ("PL",)),
+        RegionDef("portugal", "Portugal", "europe/portugal", ("PT",)),
+        RegionDef("slovakia", "Slovakia", "europe/slovakia", ("SK",)),
+        RegionDef("slovenia", "Slovenia", "europe/slovenia", ("SI",)),
+        RegionDef("spain", "Spain", "europe/spain", ("ES",)),
+        RegionDef("sweden", "Sweden", "europe/sweden", ("SE",)),
+        RegionDef("switzerland", "Switzerland", "europe/switzerland", ("CH",)),
     )
 }

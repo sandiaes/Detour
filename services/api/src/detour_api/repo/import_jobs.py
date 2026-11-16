@@ -96,6 +96,8 @@ def catalog(
                 job=jobs.get(definition.id),
             )
         )
+    # Regions with data (or an import under way) first, then the rest by name.
+    regions.sort(key=lambda r: (r.state == "not_imported" and r.places_kept == 0, r.name))
     return RegionCatalog(
         can_manage=can_manage,
         import_enabled=import_enabled,

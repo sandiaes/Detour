@@ -233,3 +233,7 @@ def test_an_imported_catalog_region_shows_its_places_and_about_how_much_room_it_
     # Its share cannot be more than the whole of the place tables, or the database itself.
     assert austria["bytes"] <= cat["geo_bytes"]
     assert next(r for r in cat["regions"] if r["id"] == LONDON)["bytes"] is None
+    # Regions with data come first, the rest by name.
+    ids = [r["name"] for r in cat["regions"]]
+    assert ids[0] == "Austria" and ids[1:] == sorted(ids[1:])
+    assert len(ids) >= 20

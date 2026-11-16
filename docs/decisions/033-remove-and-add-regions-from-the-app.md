@@ -76,8 +76,13 @@ workflow reports back.
 3. **A catalog** (`importer/regions.py`) lists the regions that can be imported, with no size: the
    download's size (Geofabrik's file, hundreds of MB to GB) says nothing about what a region takes in
    the database, so none is shown before an import (owner decision of 2026-11-17). **Greater London** is added (`europe/great-britain/england/
-   greater-london`, a 124 MB download listed on Geofabrik's England page on 2026-11-17; the page shows no
-   `.poly` for it, so the region's coverage polygon stays unknown and the importer warns). Great
+   greater-london`, a 124 MB download listed on Geofabrik's England page on 2026-11-17; Geofabrik's England table lists no `.poly` link for it; if the file is missing the region's
+   coverage polygon stays unknown and the importer warns, which was not checked) **Twenty countries were added on 2026-11-17** (links read the same day on Geofabrik's europe page,
+   each a single extract): Belgium, Croatia, Denmark, Finland, Greece, Iceland, Ireland, Luxembourg,
+   Malta, Netherlands, Norway, Poland, Portugal, Slovakia, Slovenia, Spain, Sweden, Switzerland.
+   France and Germany (about 4.5 GB each) are left out until a smaller country has been imported and
+   measured. A country appears once, because its code decides where a destination is planned; the
+   catalog test enforces it. The list shows regions with data first, then the rest by name. Great
    Britain (2.1 GB download) is deliberately not offered yet: it is far larger than a city and its
    share of the free database is unknown. The download is filtered on the GitHub runner, so its size
    is not the size the region takes in the database.

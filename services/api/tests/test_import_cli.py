@@ -1,6 +1,7 @@
 """The commands the Import region workflow runs, driven through ``main()``."""
 
 import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -24,18 +25,23 @@ def test_countries_command_and_unknown_regions(capsys: pytest.CaptureFixture[str
 
 
 def test_every_known_region_has_a_geofabrik_url_and_countries() -> None:
-    assert set(REGIONS) == {
-        "austria",
-        "czech-republic",
-        "greater-london",
-        "hungary",
-        "italy",
-        "japan",
-    }
-    for region in REGIONS.values():
+    # The regions already imported or built on, plus the catalog added in ADR 033.
+    assert {"austria", "czech-republic", "greater-london", "hungary", "italy", "japan"} <= set(
+        REGIONS
+    )
+    for region_id, region in REGIONS.items():
+        assert region.id == region_id and re.fullmatch(r"[a-z0-9-]+", region_id)
         assert region.extract_url.startswith("https://download.geofabrik.de/")
         assert region.extract_url.endswith("-latest.osm.pbf")
         assert region.poly_url.endswith(".poly") and region.countries
+        assert all(re.fullmatch(r"[A-Z]{2}", c) for c in region.countries)
+
+
+def test_a_country_belongs_to_one_region() -> None:
+    """The country code decides which region a destination is planned in (geo.region_for_country),
+    so two regions must not claim one country."""
+    claimed = [c for region in REGIONS.values() for c in region.countries]
+    assert len(claimed) == len(set(claimed))
 
 
 def test_the_target_and_staging_urls_are_required(monkeypatch: pytest.MonkeyPatch) -> None:
