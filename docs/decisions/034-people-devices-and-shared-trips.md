@@ -5,7 +5,9 @@
   phone). **Step 1 (people and devices) is built** (2026-11-16, owner: "Go with codes, start step
   1"), awaiting acceptance; checked by tests only, not on a device; migration `0024` not yet run in
   production. **Step 2 (trip membership) is built** (2026-11-16, owner: "Lets start phase 2"),
-  awaiting acceptance, tests only, migration `0025` not yet run in production; no visible change. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
+  awaiting acceptance, tests only, migration `0025` not yet run in production; no visible change.
+  **Step 3 (names, partner links and sharing) is built** (2026-11-16, owner: "go ahead with step
+  3"), awaiting acceptance, tests only, migration `0026` not yet run in production. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
   (recorded there and in the decisions); question 1 (codes or a sign-in provider) is still open.
 - **Date:** 2026-11-16
 - **Changes when accepted:** D5 in `docs/app-plan.md` (anonymous installation, no accounts), the
@@ -263,6 +265,24 @@ the app's `screens/DevicesScreen.tsx`, `domain/devices.ts`, `api/connect.ts` (`p
   one row stays and the owner role wins.
 - `Trip` responses do not show members or role yet (step 3). Tests: `test_trip_members.py`,
   `test_migration_0025.py`.
+
+## Step 3 as built (2026-11-16)
+
+- Migration `0026`: `app.person.display_name`, `app.person_link`, `app.link_code.kind`
+  (`device` or `invite`).
+- API: `PATCH /v1/me` (name), `GET /v1/me` adds `display_name` and `people`;
+  `POST /v1/me/invite-codes`, `POST /v1/people/link` (400 `code_invalid`, 409 `already_linked`,
+  `own_invite`, `limit_reached`), `DELETE /v1/people/{id}`; `TripCreate.share_with` ("Who's going",
+  409 `not_linked`); `POST /v1/trips/{id}/members` and `DELETE /v1/trips/{id}/members/{person}`
+  (leave with your own id; the owner cannot leave, 409 `owner_cannot_leave`; owner-only actions 403
+  `not_trip_owner`); `Trip.role` and `Trip.members` (name, role, `you`).
+- App: More, People; Who's going; Who's on this trip in trip settings (Share, Stop sharing, Leave;
+  Delete only for the owner); "With Ana" on trip cards. Leaving deletes the trip's documents on that
+  phone, as deleting does.
+- **Not built:** "Give them a copy" (decision 13): the owner can export the trip instead (ADR 028).
+  Display-name overrides still rewrite stored names on shared trips (see step 2).
+- Tests: `test_sharing.py`, `screens/Sharing.test.tsx`, the Who's going test in
+  `CreateTripScreen.test.tsx`.
 
 ## Build order (each step shippable and tested on its own)
 

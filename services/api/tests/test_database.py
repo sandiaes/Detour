@@ -73,6 +73,7 @@ APP_TABLES = [
     "itinerary_version",
     "link_code",
     "person",
+    "person_link",
     "place_name_override",
     "provider_cache",
     "provider_usage",

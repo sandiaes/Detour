@@ -200,6 +200,80 @@
             "HTTPBearer": []
           }
         ]
+      },
+      "patch": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Change your name as others see it.",
+        "operationId": "update_me",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/me/link-codes": {
@@ -489,6 +563,229 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/v1/me/invite-codes": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "summary": "A one-time code (10 minutes) for someone else to type under People, to link the two of you so you can share trips. An earlier unused invite code stops working.",
+        "operationId": "create_invite_code",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkCode"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/people/link": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Link yourself to the person who showed this invite code. 400 code_invalid; 409 already_linked, own_invite or limit_reached.",
+        "operationId": "link_person",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/people/{person_id}": {
+      "delete": {
+        "tags": [
+          "people"
+        ],
+        "summary": "Unlink a person. Trips already shared stay shared; leave them or stop sharing them.",
+        "operationId": "unlink_person",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
       }
     },
     "/v1/regions": {
@@ -2119,7 +2416,7 @@
         "tags": [
           "trips"
         ],
-        "summary": "Delete a trip with its itineraries, days, items, transfers and archive rows.",
+        "summary": "Delete a trip with its itineraries, days, items, transfers and archive rows, for everyone on it. Only its owner may (403 not_trip_owner).",
         "operationId": "delete_trip",
         "security": [
           {
@@ -2181,6 +2478,205 @@
               }
             },
             "description": "Unprocessable Content"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/trips/{trip_id}/members": {
+      "post": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Share the trip with someone you are linked to (owner only, ADR 034). 409 not_linked or already_member; 403 not_trip_owner.",
+        "operationId": "add_member",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripMemberAdd"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trip"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/trips/{trip_id}/members/{person_id}": {
+      "delete": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Leave the trip (your own id), or stop sharing it with someone (owner only). The owner cannot leave (409 owner_cannot_leave).",
+        "operationId": "remove_member",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          },
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -7703,6 +8199,23 @@
         ],
         "title": "InstallationRegistration"
       },
+      "InviteRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code",
+            "description": "The invite code shown by the other person"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "InviteRequest"
+      },
       "IssueBody": {
         "properties": {
           "code": {
@@ -8605,6 +9118,39 @@
         ],
         "title": "LinkCode"
       },
+      "LinkedPerson": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Their display name; null when they set none"
+          },
+          "linked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Linked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "name",
+          "linked_at"
+        ],
+        "title": "LinkedPerson"
+      },
       "MapConfig": {
         "properties": {
           "style_url": {
@@ -8663,6 +9209,26 @@
             "format": "uuid",
             "title": "Person Id"
           },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name",
+            "description": "Your name as others see it; null when none"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/LinkedPerson"
+            },
+            "type": "array",
+            "title": "People",
+            "description": "People you may share trips with (ADR 034), in the order you linked them"
+          },
           "device_id": {
             "type": "string",
             "format": "uuid",
@@ -8694,11 +9260,33 @@
         "type": "object",
         "required": [
           "person_id",
+          "display_name",
+          "people",
           "device_id",
           "devices",
           "recovery_code_created_at"
         ],
         "title": "PersonInfo"
+      },
+      "PersonUpdate": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name",
+            "description": "Your name as others see it; null or blank clears"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PersonUpdate"
       },
       "Photo": {
         "properties": {
@@ -10627,6 +11215,24 @@
             "description": "False: Optimize considers walking only, never driving",
             "default": true
           },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor"
+            ],
+            "title": "Role",
+            "description": "The caller's role on this trip (ADR 034)",
+            "default": "owner"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/TripMember"
+            },
+            "type": "array",
+            "title": "Members",
+            "description": "Everyone on the trip, the owner first (ADR 034)"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -10778,6 +11384,16 @@
             ],
             "title": "Start Date"
           },
+          "share_with": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Share With",
+            "description": "\"Who's going\" (ADR 034): people you are linked to, added as editors"
+          },
           "uses_car": {
             "type": "boolean",
             "title": "Uses Car",
@@ -10837,6 +11453,66 @@
         ],
         "title": "TripFile",
         "description": "The contents of ``trip.json`` inside a ``.detour`` file."
+      },
+      "TripMember": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Their display name; null when they set none"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor"
+            ],
+            "title": "Role",
+            "description": "owner: created it and alone may delete it or change who is a member"
+          },
+          "you": {
+            "type": "boolean",
+            "title": "You",
+            "description": "This member is the caller"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "name",
+          "role",
+          "you"
+        ],
+        "title": "TripMember",
+        "description": "Someone who may see and change the trip (ADR 034)."
+      },
+      "TripMemberAdd": {
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Person Id",
+            "description": "A person you are linked to (More, People)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "person_id"
+        ],
+        "title": "TripMemberAdd"
       },
       "TripStop": {
         "properties": {

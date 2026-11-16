@@ -65,7 +65,10 @@ one-time link code (8 letters, 10 minutes) or the recovery code (26 letters; sig
 `device_removed` afterwards); More, Your phones in the app. **Step 2 is built** (tests only; migration `0025` not yet
 run in production): `app.trip.owner_person_id`, `app.trip_member` (one owner per trip, a trigger adds it), `user_place`
 and `place_name_override` by `person_id`; `Session.person_id`; every trip query authorises by membership; only the
-owner deletes a trip (403 `not_trip_owner`). Steps 3 to 6 are not started.
+owner deletes a trip (403 `not_trip_owner`). **Step 3 is built** (tests only; migration `0026` not yet run in production):
+your name (`PATCH /v1/me`), partner links by one-time invite code (`app.person_link`, `POST /v1/people/link`), "Who's
+going" (`TripCreate.share_with`), trip members endpoints (share, stop sharing, leave), `Trip.role` and `Trip.members`;
+the app's More, People and "Who's on this trip" in trip settings. Steps 4 to 6 are not started.
 
 **Regions can be imported from the app** (2026-11-17, ADR 033 step 3, built, awaiting acceptance; tests only; migration
 `0023` and the workflow change must reach `main` first; the GitHub token `DETOUR_GITHUB_TOKEN` and

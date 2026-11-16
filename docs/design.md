@@ -558,6 +558,19 @@ recovery code, which signs out the other phones); success is a green Notice and 
 code, and "Make a recovery code" (replacing one asks first); the code is shown once. Typed codes
 only: no QR scanning (it would need the camera and a module).
 
+### People and sharing (ADR 034, step 3)
+
+More, **People** (above Your phones): "Your name" (a field and an outlined "Save name"), **Linked
+people** as hairline rows with a small red "Unlink" (a ConfirmSheet saying shared trips stay shared),
+**Add someone** (green "Show my invite code", then the code in title type and "Works once, until
+14:32") and **Use an invite code** (a field and an outlined "Link"). The new-trip screen shows
+**Who's going** above Getting around only when someone is linked: a "Just me" chip (selected by
+default) and one chip per person, with a hint line. Trip settings open with **Who's on this trip**:
+for the owner, "Shared with Ana…" or "Only you…", a row per member with a red ghost "Stop sharing"
+(confirmed) and an outlined "Share with Ana" per linked person not on it; for a member, "Ana created
+this trip and shared it with you…" and a red outlined "Leave trip" (confirmed), and no Delete
+section. A shared trip's card adds "· With Ana" to its dates line.
+
 ## 5. Plans and times
 
 - **Suggested plans have no meals (ADR 026, built).** Each day has one

@@ -270,7 +270,18 @@ primary key `(trip_id, person_id)`; exactly one `owner` per trip (a partial uniq
 person as `app.trip.owner_person_id`. A trigger adds the owner's row when a trip is inserted. **Every
 trip read and change is authorised by membership** (the API joins `app.trip_member` on the caller's
 person); only the owner may delete the trip (403 `not_trip_owner`). The 100-trip limit counts the
-trips a person owns. An editor row is written by sharing (step 3, not built).
+trips a person owns. An editor row is written by sharing (step 3): "Who's going" when the trip is
+created, or Share in its settings, only with a linked person; it is removed when the member leaves
+or the owner stops sharing. The owner cannot leave.
+
+### 3.1c Names and links (ADR 034, step 3, migration `0026`)
+
+`app.person.display_name` (1 to 40 characters, optional): shown to the people on your shared trips.
+`app.person_link`: `person_a`, `person_b` (fks to `app.person`, cascade; stored once per pair with
+`person_a < person_b`), `created_at`: two people who may share trips, made with an **invite code**
+(`app.link_code.kind = 'invite'`; one use, 10 minutes, hashed with a purpose of its own so it can
+never add a phone, and a phone's code can never link a person). At most 5 links per person.
+Unlinking leaves trips already shared as they are. A phone that joins a person brings its links.
 
 `app.link_code`: `code_hash` (pk, HMAC-SHA256 of the code keyed with `DETOUR_TOKEN_SECRET`; the code
 itself is never stored), `person_id` (fk, cascade), `created_by` (the phone that showed it, fk,

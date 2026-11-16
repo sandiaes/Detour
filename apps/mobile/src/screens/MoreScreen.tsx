@@ -50,6 +50,13 @@ export function MoreScreen() {
         </RowGroup>
         <RowGroup>
           <ListRow
+            icon="trips"
+            title="People"
+            detail="Your name, and who you plan trips with"
+            testID="more-people"
+            onPress={() => nav.push({ name: "people" })}
+          />
+          <ListRow
             icon="lock"
             title="Your phones"
             detail="Use Detour on another phone, or get your trips back on a new one"

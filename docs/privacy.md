@@ -20,6 +20,7 @@ server) are made by the backend, without your installation or trip.
 | Data | Where | Who can read it | How long |
 |---|---|---|---|
 | Installation token | Phone, secure storage (Android Keystore) | The app | Until uninstall |
+| Your name and the people you linked with (ADR 034, optional) | Backend, `app.person.display_name`, `app.person_link` | The people on your shared trips see your name; a linked person sees that you are linked | Until you clear the name or unlink |
 | Your phones (ADR 034): which installations belong to you, when each was added and last used; a keyed hash of your recovery code and of each link code | Backend, `app.person`, `app.installation`, `app.link_code` | The owner of the Supabase project (hashes only: the codes cannot be read back) | Until deleted (see 5) |
 | Trips, days, stops, times, your own places, stays, visited marks | Backend database (Supabase Free, EU North), schema `app` | Anyone holding your token; the owner of the Supabase project | Until you delete the trip; your own places until deleted (see 5) |
 | A copy of what the app last read (trip list, plans) | Phone, SQLite `detour-cache.db`, table `cache` | The app | Replaced on each read; cleared if the installation changes |

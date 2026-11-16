@@ -62,6 +62,11 @@ class TripCreate(StrictModel):
     )
     duration_days: int = Field(ge=1, le=30)
     start_date: date | None = None
+    share_with: list[uuid.UUID] = Field(
+        default_factory=list,
+        max_length=5,
+        description='"Who\'s going" (ADR 034): people you are linked to, added as editors',
+    )
     uses_car: bool = Field(
         default=True,
         description="False: Optimize considers walking only, never driving",
@@ -131,6 +136,17 @@ class Destination(BaseModel):
     country_iso2: str | None = Field(default=None, description="Known for a place trip (ADR 027)")
 
 
+class TripMember(BaseModel):
+    """Someone who may see and change the trip (ADR 034)."""
+
+    person_id: uuid.UUID
+    name: str | None = Field(description="Their display name; null when they set none")
+    role: Literal["owner", "editor"] = Field(
+        description="owner: created it and alone may delete it or change who is a member"
+    )
+    you: bool = Field(description="This member is the caller")
+
+
 class Trip(BaseModel):
     id: uuid.UUID
     title: str
@@ -158,8 +174,18 @@ class Trip(BaseModel):
     uses_car: bool = Field(
         default=True, description="False: Optimize considers walking only, never driving"
     )
+    role: Literal["owner", "editor"] = Field(
+        default="owner", description="The caller's role on this trip (ADR 034)"
+    )
+    members: list[TripMember] = Field(
+        default_factory=list, description="Everyone on the trip, the owner first (ADR 034)"
+    )
     created_at: datetime
     updated_at: datetime
+
+
+class TripMemberAdd(StrictModel):
+    person_id: uuid.UUID = Field(description="A person you are linked to (More, People)")
 
 
 def end_date_of(start: date | None, days: int) -> date | None:

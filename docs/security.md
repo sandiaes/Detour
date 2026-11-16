@@ -114,6 +114,11 @@ the same `code_invalid`.
   and join a phone of theirs. Treat the app like the phone itself. There is no email fallback: a
   person who loses every phone and the recovery code cannot get the trips back, except from an
   export file.
+- **Invite codes** (step 3) link two people so they can share trips: same format, lifetime and
+  limits as a link code (they share the `POST /v1/people/link` and `/join` buckets), hashed with
+  their own purpose, so an invite code cannot add a phone and a link code cannot link a person.
+  A linked person sees only your name and the trips you share with them; only a trip's owner can
+  share it, stop sharing it or delete it.
 - **Rotating `DETOUR_TOKEN_SECRET`** invalidates every token and every stored code hash (the app
   registers again by itself; recovery codes must be made again).
 

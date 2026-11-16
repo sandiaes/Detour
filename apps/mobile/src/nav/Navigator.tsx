@@ -20,6 +20,8 @@ export type Route =
   | { name: "settings" }
   /** Your phones, link codes and the recovery code (ADR 034). */
   | { name: "devices" }
+  /** Your name, linked people and invite codes (ADR 034). */
+  | { name: "people" }
   /** Import and remove regions of imported sights (ADR 033). */
   | { name: "regions" }
   | { name: "imageCredits" }

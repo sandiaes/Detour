@@ -29,6 +29,7 @@ from detour_api.models.trips import (
     StayUpdate,
     Trip,
     TripCreate,
+    TripMemberAdd,
     TripUpdate,
     TripVisit,
     TripVisitUpdate,
@@ -38,6 +39,9 @@ from detour_api.repo import geo, itineraries, routes, stays, trips
 from detour_api.routers.responses import AUTH, ERRORS
 
 router = APIRouter(prefix="/v1/trips", tags=["trips"])
+
+# Owner-only actions are refused with 403 not_trip_owner (ADR 034).
+FORBIDDEN = {**ERRORS, 403: ERRORS[404]}
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Create a trip.", responses=ERRORS)
@@ -137,12 +141,37 @@ def update_trip(session: SessionDep, trip_id: uuid.UUID, body: TripUpdate) -> Tr
 @router.delete(
     "/{trip_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete a trip with its itineraries, days, items, transfers and archive rows.",
-    responses=ERRORS,
+    summary="Delete a trip with its itineraries, days, items, transfers and archive rows, for "
+    "everyone on it. Only its owner may (403 not_trip_owner).",
+    responses=FORBIDDEN,
 )
 def delete_trip(session: SessionDep, trip_id: uuid.UUID) -> Response:
     with session.tx() as conn:
         trips.delete_trip(conn, session.person_id, trip_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{trip_id}/members",
+    summary="Share the trip with someone you are linked to (owner only, ADR 034). 409 not_linked "
+    "or already_member; 403 not_trip_owner.",
+    responses=FORBIDDEN,
+)
+def add_member(session: SessionDep, trip_id: uuid.UUID, body: TripMemberAdd) -> Trip:
+    with session.tx() as conn:
+        return trips.add_member(conn, session.person_id, trip_id, body.person_id)
+
+
+@router.delete(
+    "/{trip_id}/members/{person_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Leave the trip (your own id), or stop sharing it with someone (owner only). The "
+    "owner cannot leave (409 owner_cannot_leave).",
+    responses=FORBIDDEN,
+)
+def remove_member(session: SessionDep, trip_id: uuid.UUID, person_id: uuid.UUID) -> Response:
+    with session.tx() as conn:
+        trips.remove_member(conn, session.person_id, trip_id, person_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

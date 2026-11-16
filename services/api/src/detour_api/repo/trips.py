@@ -14,6 +14,7 @@ from detour_api.models.trips import (
     Destination,
     Trip,
     TripCreate,
+    TripMember,
     TripStop,
     TripUpdate,
     TripVisit,
@@ -124,7 +125,8 @@ def get_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip
     if row is None:
         return None
     stops = trip_stops(conn, [row.id]) if row.destination_kind == "route" else {}
-    return _trip(row, images.trip_covers(conn, [row.id]).get(row.id), stops.get(row.id))
+    trip = _trip(row, images.trip_covers(conn, [row.id]).get(row.id), stops.get(row.id))
+    return _with_members(conn, person_id, [trip])[0]
 
 
 def require_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
@@ -164,7 +166,107 @@ def list_trips(conn: Connection, person_id: uuid.UUID, status: str | None = None
     ).all()
     covers = images.trip_covers(conn, [r.id for r in rows])
     stops = trip_stops(conn, [r.id for r in rows if r.destination_kind == "route"])
-    return [_trip(r, covers.get(r.id), stops.get(r.id)) for r in rows]
+    return _with_members(
+        conn, person_id, [_trip(r, covers.get(r.id), stops.get(r.id)) for r in rows]
+    )
+
+
+# -- members (ADR 034) ---------------------------------------------------------------------------
+
+
+def _with_members(conn: Connection, person_id: uuid.UUID, found: list[Trip]) -> list[Trip]:
+    """Each trip with its members (the owner first, then by when they were added) and the
+    caller's role."""
+    if not found:
+        return found
+    rows = conn.execute(
+        text(
+            """
+            SELECT m.trip_id, m.person_id, m.role, p.display_name FROM app.trip_member m
+            JOIN app.person p ON p.id = m.person_id
+            WHERE m.trip_id = ANY(CAST(:ids AS uuid[]))
+            ORDER BY m.trip_id, m.role = 'owner' DESC, m.added_at, m.person_id
+            """
+        ),
+        {"ids": [str(t.id) for t in found]},
+    ).all()
+    members: dict[uuid.UUID, list[TripMember]] = {}
+    for r in rows:
+        members.setdefault(r.trip_id, []).append(
+            TripMember(
+                person_id=r.person_id,
+                name=r.display_name,
+                role=r.role,
+                you=r.person_id == person_id,
+            )
+        )
+    for trip in found:
+        trip.members = members.get(trip.id, [])
+        trip.role = next((m.role for m in trip.members if m.you), "owner")
+    return found
+
+
+def _linked(conn: Connection, a: uuid.UUID, b: uuid.UUID) -> bool:
+    return (
+        conn.execute(
+            text("SELECT 1 FROM app.person_link WHERE person_a = :a AND person_b = :b"),
+            {"a": min(a, b), "b": max(a, b)},
+        ).first()
+        is not None
+    )
+
+
+def _require_owner(trip: Trip) -> None:
+    if trip.role != "owner":
+        raise ApiError(
+            403, "not_trip_owner", "only the person who created this trip can change who is on it"
+        )
+
+
+def add_member(
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, other: uuid.UUID
+) -> Trip:
+    """Share the trip with a linked person, who can then read and change it (role editor)."""
+    trip = require_trip(conn, person_id, trip_id)
+    _require_owner(trip)
+    if other == person_id or not _linked(conn, person_id, other):
+        raise conflict("not_linked", "you can share a trip only with someone linked under People")
+    added = conn.execute(
+        text(
+            """
+            INSERT INTO app.trip_member (trip_id, person_id, role, added_by)
+            VALUES (:t, :o, 'editor', :p) ON CONFLICT (trip_id, person_id) DO NOTHING RETURNING 1
+            """
+        ),
+        {"t": trip_id, "o": other, "p": person_id},
+    ).first()
+    if added is None:
+        raise conflict("already_member", "this person is already on the trip")
+    return require_trip(conn, person_id, trip_id)
+
+
+def remove_member(
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, other: uuid.UUID
+) -> None:
+    """Leave a trip (a member removes themself), or stop sharing it with someone (the owner).
+    The owner cannot leave: they delete the trip instead."""
+    trip = require_trip(conn, person_id, trip_id)
+    if other == person_id:
+        if trip.role == "owner":
+            raise conflict(
+                "owner_cannot_leave", "you created this trip; delete it or stop sharing it instead"
+            )
+    else:
+        _require_owner(trip)
+    removed = conn.execute(
+        text(
+            "DELETE FROM app.trip_member WHERE trip_id = :t AND person_id = :o AND role = 'editor'"
+            " RETURNING 1"
+        ),
+        {"t": trip_id, "o": other},
+    ).first()
+    if removed is None:
+        raise not_found("trip member")
 
 
 def create_trip(
@@ -216,6 +318,18 @@ def create_trip(
     )
     if stops:
         write_stops(conn, trip_id, stops)
+    for other in dict.fromkeys(body.share_with):  # "Who's going" (ADR 034)
+        if other == person_id or not _linked(conn, person_id, other):
+            raise conflict(
+                "not_linked", "you can share a trip only with someone linked under People"
+            )
+        conn.execute(
+            text(
+                "INSERT INTO app.trip_member (trip_id, person_id, role, added_by)"
+                " VALUES (:t, :o, 'editor', :p)"
+            ),
+            {"t": trip_id, "o": other, "p": person_id},
+        )
     return require_trip(conn, person_id, trip_id)
 
 

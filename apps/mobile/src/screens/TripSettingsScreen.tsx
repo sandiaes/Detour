@@ -1,4 +1,4 @@
-import type { Trip } from "@detour/shared";
+import type { Trip, TripMember } from "@detour/shared";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -16,18 +16,26 @@ import {
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useDocumentActions } from "../documents/DocumentsProvider";
+import type { PersonInfo } from "../domain/devices";
+import { canShareWith, otherMembers, ownerOf, personName } from "../domain/sharing";
 import { useNavigation } from "../nav/Navigator";
 import { colors, layout, spacing, type } from "../theme";
 import { formatTripSpan } from "../util/format";
 
-/** Settings of one trip: ask for new proposals, or delete the trip. */
+/** Settings of one trip: who is on it (ADR 034), new proposals, mark as past, delete or leave. */
 export function TripSettingsScreen({ tripId }: { tripId: string }) {
   const nav = useNavigation();
   const actions = useTripActions();
   const documents = useDocumentActions();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
-  const [busy, setBusy] = useState<"generate" | "delete" | "archive" | "reopen" | null>(null);
+  // The people you are linked to (More, People): who the trip can be shared with.
+  const me = useResource<PersonInfo>("me", (c) => call(c.GET("/v1/me")), { ttlMs: 0 });
+  const [busy, setBusy] = useState<
+    "generate" | "delete" | "archive" | "reopen" | "share" | "leave" | null
+  >(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [stopSharing, setStopSharing] = useState<TripMember | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -58,6 +66,10 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
   }
 
   const past = trip.status === "past";
+  const owner = trip.role !== "editor";
+  const others = otherMembers(trip);
+  const createdBy = ownerOf(trip);
+  const shareable = owner ? canShareWith(trip, me.data?.people ?? []) : [];
   const hasPlan = trip.selected_itinerary_id !== null;
 
   const regenerate = async () => {
@@ -104,6 +116,49 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
     }
   };
 
+  const share = async (personId: string) => {
+    setBusy("share");
+    setProblem(null);
+    try {
+      await actions.shareTrip(trip, personId);
+    } catch (e) {
+      setProblem(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const unshare = async (member: TripMember) => {
+    setBusy("share");
+    setProblem(null);
+    try {
+      await actions.removeMember(trip, member.person_id);
+      setStopSharing(null);
+    } catch (e) {
+      setStopSharing(null);
+      setProblem(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const leave = async () => {
+    const self = (trip.members ?? []).find((m) => m.you);
+    if (!self) return;
+    setBusy("leave");
+    setProblem(null);
+    try {
+      await actions.removeMember(trip, self.person_id);
+      // Documents of this trip on this phone could no longer be opened from anywhere.
+      await documents.removeTrip(trip.id).catch(() => undefined);
+      nav.switchRoot({ name: "trips" });
+    } catch (e) {
+      setConfirmLeave(false);
+      setProblem(describeError(e));
+      setBusy(null);
+    }
+  };
+
   const remove = async () => {
     setBusy("delete");
     setProblem(null);
@@ -132,6 +187,70 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
           {!actions.connected ? (
             <Notice tone="info">Changes to a trip need a connection to the server.</Notice>
           ) : null}
+
+          <Section title="Who's on this trip">
+            {owner ? (
+              <>
+                <Text style={styles.text}>
+                  {others.length > 0
+                    ? `Shared with ${others.map((m) => personName(m.name)).join(" and ")}. Everyone on it sees and changes the plan, stays, dates and name. Only you can delete the trip or change who is on it.`
+                    : "Only you. Share it with someone you are linked to and they see and change it too."}
+                </Text>
+                {others.map((m) => (
+                  <View key={m.person_id} style={styles.member}>
+                    <Text style={styles.memberName}>{personName(m.name)}</Text>
+                    <Button
+                      testID={`unshare-${m.person_id}`}
+                      label="Stop sharing"
+                      variant="ghost"
+                      tone="danger"
+                      size="sm"
+                      disabled={!actions.connected || busy !== null}
+                      accessibilityLabel={`Stop sharing this trip with ${personName(m.name)}`}
+                      onPress={() => setStopSharing(m)}
+                    />
+                  </View>
+                ))}
+                {shareable.map((p) => (
+                  <Button
+                    key={p.person_id}
+                    testID={`share-${p.person_id}`}
+                    label={`Share with ${personName(p.name)}`}
+                    variant="secondary"
+                    size="sm"
+                    loading={busy === "share"}
+                    disabled={!actions.connected || busy !== null}
+                    onPress={() => void share(p.person_id)}
+                  />
+                ))}
+                {others.length === 0 && me.data && me.data.people.length === 0 ? (
+                  <Button
+                    testID="open-people"
+                    label="Link someone under People"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => nav.push({ name: "people" })}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <>
+                <Text style={styles.text}>
+                  {`${personName(createdBy?.name)} created this trip and shared it with you. You can change it; only ${personName(createdBy?.name)} can delete it or change who is on it.`}
+                </Text>
+                <Button
+                  testID="leave-trip"
+                  label="Leave trip"
+                  variant="secondary"
+                  tone="danger"
+                  size="sm"
+                  disabled={!actions.connected || busy !== null}
+                  accessibilityLabel={`Leave the trip ${trip.title}`}
+                  onPress={() => setConfirmLeave(true)}
+                />
+              </>
+            )}
+          </Section>
 
           {past ? (
             <Section title="Reopen this trip">
@@ -216,22 +335,25 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
             </Section>
           ) : null}
 
-          <Section title="Delete this trip">
-            <Text style={styles.text}>
-              Removes the trip, all its plans and its documents on this phone for good. This cannot
-              be undone.
-            </Text>
-            <Button
-              testID="delete-trip"
-              label="Delete trip"
-              variant="secondary"
-              tone="danger"
-              size="sm"
-              disabled={!actions.connected || busy !== null}
-              accessibilityLabel={`Delete the trip ${trip.title}`}
-              onPress={() => setConfirmDelete(true)}
-            />
-          </Section>
+          {owner ? (
+            <Section title="Delete this trip">
+              <Text style={styles.text}>
+                {others.length > 0
+                  ? "Removes the trip and all its plans for everyone on it, and its documents on this phone, for good. This cannot be undone."
+                  : "Removes the trip, all its plans and its documents on this phone for good. This cannot be undone."}
+              </Text>
+              <Button
+                testID="delete-trip"
+                label="Delete trip"
+                variant="secondary"
+                tone="danger"
+                size="sm"
+                disabled={!actions.connected || busy !== null}
+                accessibilityLabel={`Delete the trip ${trip.title}`}
+                onPress={() => setConfirmDelete(true)}
+              />
+            </Section>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -249,13 +371,38 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
       <ConfirmSheet
         visible={confirmDelete}
         title="Delete this trip?"
-        message={`“${trip.title}” and all its plans will be deleted.`}
+        message={
+          others.length > 0
+            ? `“${trip.title}” and all its plans will be deleted, also for ${others.map((m) => personName(m.name)).join(" and ")}.`
+            : `“${trip.title}” and all its plans will be deleted.`
+        }
         confirmLabel="Yes, delete the trip"
         cancelLabel="Keep the trip"
         confirmTestID="confirm-delete"
         busy={busy === "delete"}
         onConfirm={() => void remove()}
         onCancel={() => setConfirmDelete(false)}
+      />
+      <ConfirmSheet
+        visible={confirmLeave}
+        title="Leave this trip?"
+        message={`“${trip.title}” disappears from your trips. ${personName(createdBy?.name)} keeps it. Its documents on this phone are deleted.`}
+        confirmLabel="Leave trip"
+        cancelLabel="Stay"
+        confirmTestID="confirm-leave"
+        busy={busy === "leave"}
+        onConfirm={() => void leave()}
+        onCancel={() => setConfirmLeave(false)}
+      />
+      <ConfirmSheet
+        visible={stopSharing !== null}
+        title="Stop sharing?"
+        message={`${personName(stopSharing?.name)} will no longer see “${trip.title}”. Places they added stay in the plan.`}
+        confirmLabel="Stop sharing"
+        confirmTestID="confirm-unshare"
+        busy={busy === "share"}
+        onConfirm={() => stopSharing && void unshare(stopSharing)}
+        onCancel={() => setStopSharing(null)}
       />
     </View>
   );
@@ -267,4 +414,6 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: layout.gutter, gap: layout.section },
   text: { ...type.label, color: colors.text },
   note: { ...type.caption, color: colors.muted },
+  member: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  memberName: { ...type.body, color: colors.text },
 });

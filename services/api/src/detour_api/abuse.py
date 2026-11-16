@@ -9,7 +9,8 @@ connections, the Photon and routing budgets shared by every installation, and Re
   (only a genuine, signed token gets its own bucket; anything else shares the anonymous one).
 * **Registrations:** one bucket for the whole service, because a new registration is the way
   around the per-installation limit.
-* **Codes** (ADR 034): ``POST /v1/installations/join`` has its own small bucket per phone and one
+* **Codes** (ADR 034): ``POST /v1/installations/join`` and ``/v1/people/link`` share a small
+  bucket per phone and one
   for the whole service, on top of the per-installation limit, so a one-time code cannot be guessed.
 * **Photos:** ``GET /v1/images/...`` and ``/v1/cover-previews/...`` are loaded by the phone's
   image view, which sends no token, so photos have one generous bucket of their own (a photo that
@@ -102,7 +103,7 @@ class RequestLimiter:
         if method == "GET" and path.startswith(("/v1/images/", "/v1/cover-previews/")):
             return self._images.try_acquire()
         key = self.caller_key(authorization)
-        if method == "POST" and path == "/v1/installations/join":
+        if method == "POST" and path in ("/v1/installations/join", "/v1/people/link"):
             settings = self._settings
             wait = self._keyed(
                 self._join_buckets,

@@ -14,6 +14,7 @@ export type InstallationInfo = components["schemas"]["InstallationInfo"];
 
 // Trips, itineraries and search (Phases 2 and 4).
 export type Trip = components["schemas"]["Trip"];
+export type TripMember = components["schemas"]["TripMember"];
 export type TripFile = components["schemas"]["TripFile"];
 export type FileTrip = components["schemas"]["FileTrip"];
 export type ImportResult = components["schemas"]["ImportResult"];

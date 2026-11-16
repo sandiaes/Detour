@@ -96,15 +96,28 @@ class DeviceRow:
 
 
 @dataclass(frozen=True)
+class LinkedRow:
+    id: uuid.UUID
+    display_name: str | None
+    linked_at: datetime
+
+
+@dataclass(frozen=True)
 class PersonRow:
     id: uuid.UUID
+    display_name: str | None
     recovery_created_at: datetime | None
     devices: list[DeviceRow]
+    people: list[LinkedRow]
+
+
+MAX_LINKS = 5
 
 
 def get_person(conn: Connection, person_id: uuid.UUID) -> PersonRow:
     person = conn.execute(
-        text("SELECT id, recovery_created_at FROM app.person WHERE id = :p"), {"p": person_id}
+        text("SELECT id, display_name, recovery_created_at FROM app.person WHERE id = :p"),
+        {"p": person_id},
     ).one()
     devices = conn.execute(
         text(
@@ -118,6 +131,8 @@ def get_person(conn: Connection, person_id: uuid.UUID) -> PersonRow:
     ).all()
     return PersonRow(
         id=person.id,
+        display_name=person.display_name,
+        people=linked_people(conn, person_id),
         recovery_created_at=person.recovery_created_at,
         devices=[
             DeviceRow(
@@ -128,31 +143,124 @@ def get_person(conn: Connection, person_id: uuid.UUID) -> PersonRow:
     )
 
 
-def create_link_code(
-    conn: Connection, secret: bytes, person_id: uuid.UUID, device_id: uuid.UUID
-) -> tuple[str, datetime]:
-    """A new one-time code; any earlier unused code of the person stops working."""
-    conn.execute(
-        text("DELETE FROM app.link_code WHERE person_id = :p AND used_at IS NULL"),
+def linked_people(conn: Connection, person_id: uuid.UUID) -> list[LinkedRow]:
+    """The people this person may share trips with, by name, then when they were linked."""
+    rows = conn.execute(
+        text(
+            """
+            SELECT p.id, p.display_name, l.created_at FROM app.person_link l
+            JOIN app.person p ON p.id = CASE WHEN l.person_a = :p THEN l.person_b ELSE l.person_a END
+            WHERE :p IN (l.person_a, l.person_b)
+            ORDER BY l.created_at, p.id
+            """
+        ),
         {"p": person_id},
+    ).all()
+    return [LinkedRow(id=r.id, display_name=r.display_name, linked_at=r.created_at) for r in rows]
+
+
+def are_linked(conn: Connection, a: uuid.UUID, b: uuid.UUID) -> bool:
+    return (
+        conn.execute(
+            text("SELECT 1 FROM app.person_link WHERE person_a = :a AND person_b = :b"),
+            {"a": min(a, b), "b": max(a, b)},
+        ).first()
+        is not None
+    )
+
+
+def set_display_name(conn: Connection, person_id: uuid.UUID, name: str | None) -> None:
+    clean = " ".join((name or "").split())[:40] or None
+    conn.execute(
+        text("UPDATE app.person SET display_name = :n WHERE id = :p"), {"n": clean, "p": person_id}
+    )
+
+
+_PURPOSE = {"device": "link", "invite": "invite"}
+
+
+def create_link_code(
+    conn: Connection,
+    secret: bytes,
+    person_id: uuid.UUID,
+    device_id: uuid.UUID,
+    kind: str = "device",
+) -> tuple[str, datetime]:
+    """A new one-time code of the kind (``device``: add one of your phones; ``invite``: link
+    another person to you); an earlier unused code of the same kind stops working."""
+    conn.execute(
+        text("DELETE FROM app.link_code WHERE person_id = :p AND kind = :k AND used_at IS NULL"),
+        {"p": person_id, "k": kind},
     )
     code = new_code(LINK_CODE_LENGTH)
     expires_at: datetime = conn.execute(
         text(
             """
-            INSERT INTO app.link_code (code_hash, person_id, created_by, expires_at)
-            VALUES (:h, :p, :d, now() + make_interval(mins => :m))
+            INSERT INTO app.link_code (code_hash, person_id, created_by, expires_at, kind)
+            VALUES (:h, :p, :d, now() + make_interval(mins => :m), :k)
             RETURNING expires_at
             """
         ),
         {
-            "h": code_hash(secret, "link", code),
+            "h": code_hash(secret, _PURPOSE[kind], code),
             "p": person_id,
             "d": device_id,
             "m": LINK_CODE_MINUTES,
+            "k": kind,
         },
     ).scalar_one()
     return code, expires_at
+
+
+INVALID_INVITE = "this invite code is not valid; an invite code works once and for 10 minutes"
+
+
+def link_people(
+    conn: Connection, secret: bytes, person_id: uuid.UUID, device_id: uuid.UUID, raw_code: str
+) -> uuid.UUID:
+    """Link the caller to the person who showed the invite code; returns that person's id."""
+    code = normalize_code(raw_code)
+    if code is None or len(code) != LINK_CODE_LENGTH:
+        raise ApiError(400, "code_invalid", INVALID_INVITE)
+    h = code_hash(secret, "invite", code)
+    other = conn.execute(
+        text(
+            """
+            SELECT person_id FROM app.link_code
+            WHERE code_hash = :h AND kind = 'invite' AND used_at IS NULL AND expires_at > now()
+            FOR UPDATE
+            """
+        ),
+        {"h": h},
+    ).scalar_one_or_none()
+    if other is None:
+        raise ApiError(400, "code_invalid", INVALID_INVITE)
+    if other == person_id:
+        raise conflict("own_invite", "this is your own invite code; type it on the other phone")
+    if are_linked(conn, person_id, other):
+        raise conflict("already_linked", "you are already linked")
+    for who in (person_id, other):
+        if len(linked_people(conn, who)) >= MAX_LINKS:
+            raise conflict("limit_reached", f"at most {MAX_LINKS} linked people each")
+    conn.execute(
+        text("INSERT INTO app.person_link (person_a, person_b) VALUES (:a, :b)"),
+        {"a": min(person_id, other), "b": max(person_id, other)},
+    )
+    conn.execute(
+        text("UPDATE app.link_code SET used_at = now(), used_by = :d WHERE code_hash = :h"),
+        {"d": device_id, "h": h},
+    )
+    return uuid.UUID(str(other))
+
+
+def unlink(conn: Connection, person_id: uuid.UUID, other: uuid.UUID) -> None:
+    """Remove the link. Trips already shared stay shared (each can leave or stop sharing)."""
+    removed = conn.execute(
+        text("DELETE FROM app.person_link WHERE person_a = :a AND person_b = :b RETURNING 1"),
+        {"a": min(person_id, other), "b": max(person_id, other)},
+    ).first()
+    if removed is None:
+        raise ApiError(404, "not_found", "you are not linked to this person")
 
 
 def create_recovery_code(
@@ -215,6 +323,11 @@ def _move_data(conn: Connection, source: uuid.UUID, target: uuid.UUID) -> int:
         "UPDATE app.trip_member SET person_id = :t WHERE person_id = :s",
         "UPDATE app.user_place SET person_id = :t WHERE person_id = :s",
         "UPDATE app.place_name_override SET person_id = :t WHERE person_id = :s",
+        # The phone's partner links come along (a link to the target itself is dropped).
+        "INSERT INTO app.person_link (person_a, person_b)"
+        " SELECT least(:t, o.other), greatest(:t, o.other) FROM (SELECT CASE WHEN person_a = :s"
+        " THEN person_b ELSE person_a END AS other FROM app.person_link"
+        " WHERE :s IN (person_a, person_b)) o WHERE o.other <> :t ON CONFLICT DO NOTHING",
     ):
         conn.execute(text(statement), {"s": source, "t": target})
     return trips
@@ -240,7 +353,8 @@ def join(conn: Connection, secret: bytes, device_id: uuid.UUID, raw_code: str) -
             text(
                 """
                 SELECT person_id FROM app.link_code
-                WHERE code_hash = :h AND used_at IS NULL AND expires_at > now()
+                WHERE code_hash = :h AND kind = 'device' AND used_at IS NULL
+                  AND expires_at > now()
                 FOR UPDATE
                 """
             ),
