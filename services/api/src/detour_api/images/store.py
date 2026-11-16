@@ -79,11 +79,18 @@ class SupabaseImageStore:
         settings: Settings,
         transport: httpx.BaseTransport | None = None,
         sleep: Callable[[float], None] = time.sleep,
+        *,
+        bucket: str | None = None,
+        private: bool = False,
     ) -> None:
         self._sleep = sleep
         assert settings.supabase_url and settings.supabase_service_key  # noqa: S101
         self._base = f"{settings.supabase_url}/storage/v1/object"
-        self._bucket = settings.photos_bucket
+        self._bucket = bucket or settings.photos_bucket
+        # A private bucket (ADR 034) is read with the service key on the authenticated path; the
+        # photos bucket is public and read on the public path.
+        self._read = "authenticated" if private else "public"
+        self._private = private
         self._key = settings.supabase_service_key.get_secret_value()
         self._transport = transport
 
@@ -106,6 +113,9 @@ class SupabaseImageStore:
 
         return with_retries(call, self._sleep)
 
+    def _read_headers(self) -> dict[str, str]:
+        return self._auth_headers() if self._private else {}
+
     def put(self, key: str, data: bytes, content_type: str = "image/jpeg") -> None:
         headers = {
             **self._auth_headers(),
@@ -120,7 +130,9 @@ class SupabaseImageStore:
             raise StoreError(f"upload refused: HTTP {response.status_code}")
 
     def get(self, key: str) -> bytes | None:
-        response = self._send("GET", f"{self._base}/public/{self._bucket}/{key}")
+        response = self._send(
+            "GET", f"{self._base}/{self._read}/{self._bucket}/{key}", headers=self._read_headers()
+        )
         if response.status_code in (400, 404):
             return None
         if response.status_code >= 400:
@@ -129,7 +141,9 @@ class SupabaseImageStore:
 
     def exists(self, key: str) -> bool:
         """Whether the object is there, without downloading it (a HEAD request)."""
-        response = self._send("HEAD", f"{self._base}/public/{self._bucket}/{key}")
+        response = self._send(
+            "HEAD", f"{self._base}/{self._read}/{self._bucket}/{key}", headers=self._read_headers()
+        )
         if response.status_code in (400, 404):
             return False
         if response.status_code >= 400:
@@ -151,4 +165,15 @@ def make_store(
     """Supabase Storage when it is configured, else nothing (photos are then not stored)."""
     if settings.supabase_url and settings.supabase_service_key:
         return SupabaseImageStore(settings, transport)
+    return None
+
+
+def make_file_store(
+    settings: Settings, transport: httpx.BaseTransport | None = None
+) -> ImageStore | None:
+    """The private bucket of trip files (ADR 034), when Supabase is configured."""
+    if settings.supabase_url and settings.supabase_service_key:
+        return SupabaseImageStore(
+            settings, transport, bucket=settings.trip_files_bucket, private=True
+        )
     return None

@@ -274,6 +274,17 @@ trips a person owns. An editor row is written by sharing (step 3): "Who's going"
 created, or Share in its settings, only with a linked person; it is removed when the member leaves
 or the owner stops sharing. The owner cannot leave.
 
+### 3.1e Album links and trip files (ADR 034, step 5, migration `0028`)
+
+`app.trip_album`: `id`, `trip_id` (fk, cascade), `url` (https, at most 2000 characters, unique per
+trip), `name` (1 to 80), `added_by` (fk to `app.person`, set null), `created_at`; at most 20 per
+trip. `app.trip_file`: `id`, `trip_id` (fk, cascade), `kind` (`cover` now, `document` from step 6;
+at most one cover per trip), `storage_key` (unique; `trips/<trip>/cover-<id>.jpg` in the private
+`trip-files` bucket), `content_type`, `bytes`, `sha256`, `uploaded_by`, `created_at`.
+`app.trip_file_orphan` lists the objects whose row was deleted (a trigger), so the API removes them
+from the bucket after the change commits (a replaced cover, a deleted trip). The sum of `bytes` is
+the storage budget's count. `Trip.own_cover` (id, bytes, upload time) is read with the trip.
+
 ### 3.1d Who changed it (ADR 034, step 4, migration `0027`)
 
 `app.itinerary.changed_by` (fk to `app.person`, `ON DELETE SET NULL`) and `changed_at`, set by a

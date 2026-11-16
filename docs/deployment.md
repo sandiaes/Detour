@@ -289,6 +289,20 @@ The backend streams stored photos to the app, so it needs the same two Storage s
    photos itself in the background after a trip is created or planned; the workflow is only an
    operator tool.
 
+## Shared covers and documents: the private bucket (ADR 034, steps 5 and 6)
+
+Covers chosen from a phone (and, from step 6, shared documents) are kept in a **private** Storage
+bucket that only the backend reads, with the same two variables as photos.
+
+1. In Supabase, **Storage**, **New bucket**: name `trip-files`, **Public bucket off**. Leave the
+   file size limit empty (the API refuses covers over 10 MB itself).
+2. Nothing to set on Render if `DETOUR_SUPABASE_URL` and `DETOUR_SUPABASE_SERVICE_KEY` are already
+   there; a different bucket name goes in `DETOUR_TRIP_FILES_BUCKET`.
+3. Check: choose a cover from the phone on a trip; `app.trip_file` gets a row and the bucket a file
+   under `trips/<trip id>/`. 503 `storage_unavailable` means the bucket or the variables are missing.
+   The request shapes for a private bucket (`/storage/v1/object/authenticated/...`) are written from
+   Supabase's Storage API and have not been tried against the live service yet.
+
 ## Deploying place names (ADR 025)
 
 1. **Merge to `main`.** `start.sh` runs migration `0013`, which also fills `geo.place.alias_norm` for

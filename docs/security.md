@@ -119,6 +119,12 @@ the same `code_invalid`.
   their own purpose, so an invite code cannot add a phone and a link code cannot link a person.
   A linked person sees only your name and the trips you share with them; only a trip's owner can
   share it, stop sharing it or delete it.
+- **Trip files** (step 5): covers chosen from a phone live in a **private** bucket read only by the
+  backend with the service key and served to the trip's members through the API (no public or
+  signed link leaves the backend). Uploads are decoded and re-encoded with Pillow (at most 10 MB in,
+  at most 60 megapixels, a JPEG of at most 1600 px out, no EXIF), so a file that is not a picture,
+  and the picture's location, never reach the bucket. All trip files together are capped at
+  `DETOUR_TRIP_FILES_BUDGET_BYTES` (250 MB; 409 `storage_full`).
 - **Rotating `DETOUR_TOKEN_SECRET`** invalidates every token and every stored code hash (the app
   registers again by itself; recovery codes must be made again).
 

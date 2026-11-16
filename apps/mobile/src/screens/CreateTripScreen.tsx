@@ -415,7 +415,7 @@ export function CreateTripScreen() {
                   />
                   {phoneCover ? (
                     <Text style={styles.credit} numberOfLines={1}>
-                      Your photo (stays on this phone)
+                      Your photo
                     </Text>
                   ) : cover ? (
                     <Text style={styles.credit} numberOfLines={1}>

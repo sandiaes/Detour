@@ -180,8 +180,55 @@ class Trip(BaseModel):
     members: list[TripMember] = Field(
         default_factory=list, description="Everyone on the trip, the owner first (ADR 034)"
     )
+    own_cover: "OwnCover | None" = Field(
+        default=None,
+        description="A cover picture chosen from a phone and uploaded (ADR 034, step 5); shown "
+        "instead of cover_image. Read it with GET /v1/trips/{id}/own-cover",
+    )
     created_at: datetime
     updated_at: datetime
+
+
+class OwnCover(BaseModel):
+    """A trip's cover chosen from a phone, kept in the private trip-files bucket."""
+
+    id: uuid.UUID = Field(description="Changes whenever the picture changes")
+    bytes: int
+    uploaded_at: datetime
+
+
+class OwnCoverUpload(StrictModel):
+    content_type: Literal["image/jpeg", "image/png", "image/webp"]
+    data: str = Field(
+        min_length=1,
+        max_length=14_000_000,
+        description="The picture, base64; the server keeps a JPEG of at most 1600 px",
+    )
+
+
+class OwnCoverFile(BaseModel):
+    id: uuid.UUID
+    content_type: Literal["image/jpeg"]
+    data: str = Field(description="The JPEG, base64")
+
+
+class TripAlbum(BaseModel):
+    """A link to the travellers' own photo album (ADR 031): opened in its app, never read."""
+
+    id: uuid.UUID
+    name: str
+    url: str
+    added_by: str | None = Field(description="Who linked it (their name); null when unknown")
+    created_at: datetime
+
+
+class TripAlbumCreate(StrictModel):
+    url: str = Field(min_length=9, max_length=2000)
+    name: str | None = Field(default=None, max_length=80)
+
+
+class TripAlbumUpdate(StrictModel):
+    name: str = Field(min_length=1, max_length=80)
 
 
 class TripMemberAdd(StrictModel):

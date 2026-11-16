@@ -9,7 +9,10 @@
   **Step 3 (names, partner links and sharing) is built** (2026-11-16, owner: "go ahead with step
   3"), awaiting acceptance, tests only, migration `0026` not yet run in production.
   **Step 4 (safe edits by two people) is built** (2026-11-16, owner: "step 4 go"), awaiting
-  acceptance, tests only, migration `0027` not yet run in production. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
+  acceptance, tests only, migration `0027` not yet run in production.
+  **Step 5 (album links and covers on the server) is built** (2026-11-16, owner: "go with step 5"),
+  awaiting acceptance, tests only, migration `0028` not yet run in production; the `trip-files`
+  bucket must be created by the owner (deployment.md). Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
   (recorded there and in the decisions); question 1 (codes or a sign-in provider) is still open.
 - **Date:** 2026-11-16
 - **Changes when accepted:** D5 in `docs/app-plan.md` (anonymous installation, no accounts), the
@@ -307,6 +310,37 @@ the app's `screens/DevicesScreen.tsx`, `domain/devices.ts`, `api/connect.ts` (`p
 - **Freshness:** no `GET /v1/trips/changes` endpoint. A shared trip's overview reads the plan and
   the trips again every 60 seconds and when the app comes back to the foreground.
 - Tests: `test_concurrency.py`, `screens/Concurrency.test.tsx`.
+
+## Step 5 as built (2026-11-16)
+
+Supabase's Free plan was **re-read on 2026-11-16** ✅ (<https://supabase.com/pricing>,
+<https://supabase.com/docs/guides/storage/management/pricing>,
+<https://supabase.com/docs/guides/storage/uploads/file-limits>): "1 GB file storage", "Max file
+upload size | 50 MB" ("For Free projects, the limit can't exceed 50 MB"), "5 GB egress" and "5 GB
+cached egress", "Free projects are paused after 1 week of inactivity". No date on the pages. Whether
+private buckets are available on Free is **not stated** on these pages (to confirm when the bucket
+is created).
+
+- Migration `0028`: `app.trip_album`, `app.trip_file` (kind `cover` now, `document` for step 6) and
+  `app.trip_file_orphan` (objects to remove after a change commits).
+- API: `GET/POST /v1/trips/{id}/albums`, `PATCH/DELETE .../albums/{album}` (409 `album_exists`,
+  `limit_reached`; allowed on past trips); `PUT/GET/DELETE /v1/trips/{id}/own-cover` with the
+  picture as base64 in JSON (the app has no binary upload path; a cover is small), re-encoded to a
+  JPEG of at most 1600 px without EXIF (no location), 10 MB in at most, a 250 MB budget for all trip
+  files (409 `storage_full`), 503 `storage_unavailable` without the bucket; `Trip.own_cover`.
+  Members only; a cover change bumps the trip's `updated_at` (so "who changed it" records it).
+- Storage: the private `trip-files` bucket through `SupabaseImageStore(private=True)`, read on the
+  `authenticated` path with the service key; never a public or signed URL.
+- App: album changes go to the server first, then the phone's copy; a cover chosen on the phone is
+  shown at once and uploaded; `syncTrip` (on the trips list, the Photos screen and a trip's Photos
+  tab, at most every 5 minutes per trip) uploads albums and covers an older build kept only on the
+  phone, downloads a cover chosen on another phone and drops one removed elsewhere. The phone's copy
+  keeps them visible offline. The wording no longer says "stays on this phone".
+- **Not built here:** iPhone HEIC pictures are refused by the server (`not_a_picture`; Pillow reads
+  JPEG, PNG and WebP). The phone does not shrink the picture before uploading (it would need a new
+  native module); the server does.
+- Tests: `test_trip_files.py`, `TripPhotos.test.tsx` (server albums, upload, download),
+  `util/base64.test.ts`.
 
 ## Build order (each step shippable and tested on its own)
 

@@ -12,6 +12,7 @@ from detour_api.models.images import Photo
 from detour_api.models.trips import (
     ArchiveInfo,
     Destination,
+    OwnCover,
     Trip,
     TripCreate,
     TripMember,
@@ -226,9 +227,18 @@ def _with_members(conn: Connection, person_id: uuid.UUID, found: list[Trip]) -> 
                 you=r.person_id == person_id,
             )
         )
+    covers = conn.execute(
+        text(
+            "SELECT trip_id, id, bytes, created_at FROM app.trip_file"
+            " WHERE kind = 'cover' AND trip_id = ANY(CAST(:ids AS uuid[]))"
+        ),
+        {"ids": [str(t.id) for t in found]},
+    ).all()
+    own = {c.trip_id: OwnCover(id=c.id, bytes=c.bytes, uploaded_at=c.created_at) for c in covers}
     for trip in found:
         trip.members = members.get(trip.id, [])
         trip.role = next((m.role for m in trip.members if m.you), "owner")
+        trip.own_cover = own.get(trip.id)
     return found
 
 

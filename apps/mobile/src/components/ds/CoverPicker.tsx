@@ -126,8 +126,8 @@ export function CoverPicker({
           />
           <Text style={s.note}>
             {local
-              ? "Your own picture is the cover now. It stays on this phone only."
-              : "A picture from your phone stays on this phone only; it is not uploaded."}
+              ? "Your own picture is the cover now, for everyone on this trip."
+              : "A picture from your phone is uploaded and shown to everyone on this trip, without its location or camera details."}
           </Text>
         </>
       ) : null}

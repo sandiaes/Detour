@@ -71,7 +71,10 @@ going" (`TripCreate.share_with`), trip members endpoints (share, stop sharing, l
 the app's More, People and "Who's on this trip" in trip settings. **Step 4 is built** (tests only; migration `0027` not
 yet run): `If-Match` plan versions on direct item changes (409 `plan_changed`) and trip `updated_at` (409
 `trip_changed`), `Itinerary.last_change` from triggers on `detour.person`, "Changed by Ana" and a 60 s refresh on shared
-trips. Steps 5 and 6 are not started.
+trips. **Step 5 is built** (tests only; migration `0028` not yet run; the private `trip-files` bucket must be created in
+Supabase): album links in `app.trip_album` and covers chosen from a phone in `app.trip_file` (JPEG ≤ 1600 px, no EXIF,
+base64 in JSON, 250 MB budget) behind `/v1/trips/{id}/albums` and `/own-cover`; the app uploads, downloads and keeps a copy
+(`syncTrip`). Step 6 (shared documents) is not started.
 
 **Regions can be imported from the app** (2026-11-17, ADR 033 step 3, built, awaiting acceptance; tests only; migration
 `0023` and the workflow change must reach `main` first; the GitHub token `DETOUR_GITHUB_TOKEN` and

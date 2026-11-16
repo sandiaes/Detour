@@ -19,7 +19,7 @@ import { Cover } from "../components/ds/Cover";
 import { openAlbum } from "../components/photos/TripAlbums";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
-import { useAllTripExtras } from "../documents/DocumentsProvider";
+import { useAllTripExtras, useSyncTrips } from "../documents/DocumentsProvider";
 import { type TripAlbum, albumSource } from "../documents/extras";
 import { shortSpan } from "../domain/trips";
 import { useNavigation } from "../nav/Navigator";
@@ -33,6 +33,8 @@ import { colors, layout, radius, size as sizes, spacing, type } from "../theme";
 export function PhotosScreen() {
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const extras = useAllTripExtras();
+  // Albums and covers are shared on the server (ADR 034, step 5): keep this phone's copy current.
+  useSyncTrips(trips.data);
   const nav = useNavigation();
   const [problem, setProblem] = useState<string | null>(null);
   const withAlbums = (trips.data ?? []).filter((t) => (extras[t.id]?.albums.length ?? 0) > 0);

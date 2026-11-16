@@ -19,7 +19,7 @@ import { Cover } from "../components/ds/Cover";
 import { ResourceNotices } from "../components/ResourceNotices";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
-import { useAllTripExtras } from "../documents/DocumentsProvider";
+import { useAllTripExtras, useSyncTrips } from "../documents/DocumentsProvider";
 import { sharedLine } from "../domain/sharing";
 import {
   TRIP_PHASE_LABEL,
@@ -139,6 +139,8 @@ export function TripsScreen() {
   const titleRef = useAnnounceOnMount();
   const trips = useResource<Trip[]>(keys.trips, (client) => call(client.GET("/v1/trips")));
   const extras = useAllTripExtras();
+  // Albums and covers are shared on the server (ADR 034, step 5): keep this phone's copy current.
+  useSyncTrips(trips.data);
   const [tab, setTab] = useState<TripTab>("upcoming");
   const create = () => nav.push({ name: "createTrip" });
 

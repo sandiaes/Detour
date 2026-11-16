@@ -9,7 +9,13 @@ import type { DocumentDatabase } from "./store";
 export type TripAlbum = { id: string; name: string; url: string; createdAt: number };
 
 /** A cover photo copied from the phone into the app's private storage. */
-export type LocalCover = { uri: string; fileName: string; setAt: number };
+export type LocalCover = {
+  uri: string;
+  fileName: string;
+  setAt: number;
+  /** The id of the copy on the server (ADR 034, step 5); absent until it is uploaded. */
+  serverId?: string;
+};
 
 export type TripExtras = { tripId: string; albums: TripAlbum[]; cover: LocalCover | null };
 
@@ -88,6 +94,7 @@ export function sanitiseExtras(tripId: string, raw: unknown): TripExtras {
       uri: c.uri,
       fileName: typeof c.fileName === "string" ? c.fileName : "photo",
       setAt: typeof c.setAt === "number" ? c.setAt : 0,
+      ...(typeof c.serverId === "string" ? { serverId: c.serverId } : {}),
     };
   }
   return out;

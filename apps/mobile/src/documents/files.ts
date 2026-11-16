@@ -16,6 +16,10 @@ export interface DocumentFiles {
   /** Copies a picked picture into the app's covers folder and returns the copy's URI. Each copy
    * has a new name, so a changed cover is never shown from an old cached image. */
   keepCover(picked: PickedFile, tripId: string): Promise<string>;
+  /** The bytes of a file kept by the app (a cover to upload, ADR 034). */
+  readBytes(uri: string): Promise<Uint8Array>;
+  /** Writes a cover received from the server into the covers folder and returns its URI. */
+  keepCoverBytes(bytes: Uint8Array, tripId: string): Promise<string>;
   remove(uri: string): Promise<void>;
   /** Shows the file with the platform's viewer (Quick Look on iOS, an installed app on Android). */
   open(doc: Pick<TripDocument, "uri" | "mimeType" | "title">): Promise<void>;
@@ -60,6 +64,17 @@ export function createDeviceFiles(): DocumentFiles {
       folder.create({ intermediates: true, idempotent: true });
       const target = new File(folder, `${tripId}-${Date.now()}${extensionOf(picked.name)}`);
       await new File(picked.uri).copy(target);
+      return target.uri;
+    },
+    async readBytes(uri) {
+      return new File(uri).bytes();
+    },
+    async keepCoverBytes(bytes, tripId) {
+      const folder = new Directory(Paths.document, "covers");
+      folder.create({ intermediates: true, idempotent: true });
+      const target = new File(folder, `${tripId}-${Date.now()}.jpg`);
+      target.create();
+      target.write(bytes);
       return target.uri;
     },
     async keep(picked, tripId, id) {

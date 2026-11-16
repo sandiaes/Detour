@@ -1,3 +1,4 @@
+import base64
 import uuid
 from typing import Annotated, Literal
 
@@ -5,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Query, Request, Response, status
 from sqlalchemy import text
 
 from detour_api.adapters.wikimedia import WikimediaClient
-from detour_api.deps import IfMatch, SessionDep
+from detour_api.deps import IfMatch, SessionDep, SettingsDep
 from detour_api.errors import ApiError, invalid
 from detour_api.images import background as photo_background
 from detour_api.images.candidates import (
@@ -24,10 +25,16 @@ from detour_api.models.trips import (
     GenerationResult,
     Itinerary,
     ItinerarySummary,
+    OwnCover,
+    OwnCoverFile,
+    OwnCoverUpload,
     Stay,
     StayCreate,
     StayUpdate,
     Trip,
+    TripAlbum,
+    TripAlbumCreate,
+    TripAlbumUpdate,
     TripCreate,
     TripMemberAdd,
     TripUpdate,
@@ -35,7 +42,7 @@ from detour_api.models.trips import (
     TripVisitUpdate,
 )
 from detour_api.planner.service import generate_for_trip
-from detour_api.repo import geo, itineraries, routes, stays, trips
+from detour_api.repo import geo, itineraries, routes, stays, trip_files, trips
 from detour_api.routers.responses import AUTH, ERRORS
 
 router = APIRouter(prefix="/v1/trips", tags=["trips"])
@@ -148,9 +155,121 @@ def update_trip(
     "everyone on it. Only its owner may (403 not_trip_owner).",
     responses=FORBIDDEN,
 )
-def delete_trip(session: SessionDep, trip_id: uuid.UUID) -> Response:
+def delete_trip(
+    session: SessionDep, request: Request, background: BackgroundTasks, trip_id: uuid.UUID
+) -> Response:
     with session.tx() as conn:
         trips.delete_trip(conn, session.person_id, trip_id)
+    _sweep(request, background)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _sweep(request: Request, background: BackgroundTasks) -> None:
+    """Remove stored files whose trip or cover went away, after the response (ADR 034)."""
+    background.add_task(
+        trip_files.sweep_orphans, request.app.state.engine, request.app.state.file_store
+    )
+
+
+# -- album links and the cover from a phone (ADR 031, ADR 034 step 5) ----------------------------
+
+
+@router.get("/{trip_id}/albums", summary="The trip's photo album links.", responses=ERRORS)
+def list_albums(session: SessionDep, trip_id: uuid.UUID) -> list[TripAlbum]:
+    with session.tx() as conn:
+        return trip_files.list_albums(conn, session.person_id, trip_id)
+
+
+@router.post(
+    "/{trip_id}/albums",
+    status_code=status.HTTP_201_CREATED,
+    summary="Link a photo album (its https share link; words around it are dropped). Up to 20; "
+    "409 album_exists or limit_reached.",
+    responses=ERRORS,
+)
+def add_album(session: SessionDep, trip_id: uuid.UUID, body: TripAlbumCreate) -> TripAlbum:
+    with session.tx() as conn:
+        return trip_files.add_album(conn, session.person_id, trip_id, body.url, body.name)
+
+
+@router.patch("/{trip_id}/albums/{album_id}", summary="Rename an album link.", responses=ERRORS)
+def rename_album(
+    session: SessionDep, trip_id: uuid.UUID, album_id: uuid.UUID, body: TripAlbumUpdate
+) -> TripAlbum:
+    with session.tx() as conn:
+        return trip_files.rename_album(conn, session.person_id, trip_id, album_id, body.name)
+
+
+@router.delete(
+    "/{trip_id}/albums/{album_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove an album link (the album itself is not touched).",
+    responses=ERRORS,
+)
+def remove_album(session: SessionDep, trip_id: uuid.UUID, album_id: uuid.UUID) -> Response:
+    with session.tx() as conn:
+        trip_files.remove_album(conn, session.person_id, trip_id, album_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{trip_id}/own-cover",
+    summary="Set the trip's cover from a picture on a phone, for everyone on the trip. Kept as a "
+    "JPEG of at most 1600 px without metadata. 422 not_a_picture or picture_too_large; 409 "
+    "storage_full; 503 storage_unavailable.",
+    responses={**ERRORS, 503: ERRORS[404]},
+)
+def set_own_cover(
+    session: SessionDep,
+    settings: SettingsDep,
+    request: Request,
+    background: BackgroundTasks,
+    trip_id: uuid.UUID,
+    body: OwnCoverUpload,
+) -> OwnCover:
+    with session.tx() as conn:
+        cover = trip_files.set_own_cover(
+            conn,
+            request.app.state.file_store,
+            settings,
+            session.person_id,
+            trip_id,
+            body.data,
+        )
+    _sweep(request, background)
+    return cover
+
+
+@router.get(
+    "/{trip_id}/own-cover",
+    summary="The trip's cover chosen from a phone (base64 JPEG), for its members only.",
+    responses={**ERRORS, 503: ERRORS[404]},
+)
+def get_own_cover(
+    session: SessionDep, request: Request, response: Response, trip_id: uuid.UUID
+) -> OwnCoverFile:
+    with session.tx() as conn:
+        file_id, data = trip_files.get_own_cover(
+            conn, request.app.state.file_store, session.person_id, trip_id
+        )
+    response.headers["Cache-Control"] = "private, no-store"
+    return OwnCoverFile(
+        id=file_id, content_type="image/jpeg", data=base64.b64encode(data).decode("ascii")
+    )
+
+
+@router.delete(
+    "/{trip_id}/own-cover",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Go back to the destination's photo, for everyone on the trip.",
+    responses=ERRORS,
+)
+def clear_own_cover(
+    session: SessionDep, request: Request, background: BackgroundTasks, trip_id: uuid.UUID
+) -> Response:
+    with session.tx() as conn:
+        trip_files.clear_own_cover(conn, session.person_id, trip_id)
+    _sweep(request, background)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
