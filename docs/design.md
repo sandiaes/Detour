@@ -330,8 +330,8 @@ not asked; it is the destination.
   separate Itinerary tab: the original proposals are in the trip menu and new ones in Trip settings.
 - **Map tab (screens 03, 14):** a compact header (small Back and menu buttons, the name) and the tabs close
   together, then the map (clipped to its area; the attribution "i" sits above the sheet's curve) of the day, then **the day pills**, then the day's stops. It uses the whole screen.
-- **Photos (ADR 031):** the trip's album links as hairline rows (name, "Google Photos · opens in Google
-  Photos", a dots button for Rename and Remove link), **Link an album** (a sheet with the link, a hint
+- **Photos (ADR 031):** the trip's album links as hairline rows (a soft green photo tile, name, "Google Photos · opens in Google
+  Photos", a dots button for Rename and Remove link), **Link an album** (always the green `primary` button) (a sheet with the link, a hint
   "In Google Photos, open the album, tap Share, then Copy link", and an optional name), and a muted
   note that the link stays on this phone. Empty: "No album linked yet". Detour shows no photo of an
   album; a row opens it outside the app.
@@ -508,8 +508,10 @@ A document's own screen has facts as `InfoRow`s, Open (`primary`), Edit (`second
 ### Photos, Explore, More (screens 07, 10, 11)
 
 Planned features and a menu of hairline rows. Items that are not built say "Coming later". **Photos**
-lists every trip's linked albums under the trip's name and dates (ADR 031); empty, it says to link
-an album on a trip's Photos tab.
+lists every trip with linked albums as one card (ADR 031; owner, 2026-11-16): a header row with the
+trip's cover thumbnail, its name and "dates · length", which opens the trip's Photos tab, then the
+albums as rows (photo tile, name, source, an external-link icon). Empty, it says to link an album on a
+trip's Photos tab and offers a green "Go to my trips" button.
 
 ## 5. Plans and times
 

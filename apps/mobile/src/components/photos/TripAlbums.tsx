@@ -21,6 +21,7 @@ import {
   Sheet,
   StateView,
   TextField,
+  Tile,
 } from "../ds";
 
 // A trip's Photos tab (ADR 031): links to the user's own albums, kept on this phone. Detour never
@@ -60,7 +61,6 @@ export function TripAlbums({ trip }: { trip: Trip }) {
     <Button
       label="Link an album"
       icon="add"
-      variant={extras.albums.length ? "secondary" : "primary"}
       fill
       testID="link-album"
       onPress={() => setAdding(true)}
@@ -90,7 +90,7 @@ export function TripAlbums({ trip }: { trip: Trip }) {
               <ListRow
                 key={album.id}
                 inset="none"
-                icon="photos"
+                leading={<Tile icon="photos" fg={colors.primary} bg={colors.selectedSoft} />}
                 title={album.name}
                 detail={`${albumSource(album.url)} · ${
                   isGooglePhotos(album.url) ? "opens in Google Photos" : "opens in the browser"
