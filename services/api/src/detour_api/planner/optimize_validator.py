@@ -44,15 +44,27 @@ def validate(
                 problems.append(f"{s.name}: more than 60 minutes from the chosen time")
             if p.start > RESTAURANT_LATEST_START:
                 problems.append(f"{s.name}: starts after 21:00")
+        if s.kind == "transport" and (day != s.day or p.start != s.start):
+            problems.append(f"{s.name}: a transport leg moved")
         if s.kind == "visit" and day not in s.allowed_days:
             problems.append(f"{s.name}: moved to a day it may not be on")
         if p.end - p.start != (
-            s.duration if s.kind != "free_time" else (s.end or 0) - (s.start or 0)
+            s.duration
+            if s.kind not in ("free_time", "transport")
+            else (s.end or 0) - (s.start or 0)
         ):
             problems.append(f"{s.name}: its length changed")
 
     for day in days:
         items = outcome.days.get(day, ())
+        # No stop crosses a transport leg the user entered (ADR 032).
+        before = [s.id for s in stops if s.day == day]
+        after = [p.id for p in items]
+        common = set(before) & set(after)
+        was = {k: v for k, v in _legs_before(by_id, before).items() if k in common}
+        now = {k: v for k, v in _legs_before(by_id, after).items() if k in common}
+        if was != now:
+            problems.append(f"day {day}: a stop crossed a transport leg")
         if day not in outcome.changed_days:
             continue  # a day that is not changed keeps the user's own times
         for a, b in pairwise(items):
@@ -74,6 +86,16 @@ def validate(
     if legs != outcome.travel_after:
         problems.append("the proposal's travel total does not match its legs")
     return problems
+
+
+def _legs_before(by_id: dict[str, Stop], ids: Sequence[str]) -> dict[str, int]:
+    out: dict[str, int] = {}
+    legs = 0
+    for i in ids:
+        if by_id[i].kind == "transport":
+            legs += 1
+        out[i] = legs
+    return out
 
 
 def _limit(stops: Sequence[Stop], day: int, rules: Rules) -> int:

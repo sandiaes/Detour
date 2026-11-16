@@ -6,7 +6,7 @@ summary and the engine, configuration and data versions:
     {"days": [{id, day_index, date, base_city_id, base_city_name, arrival}],
      "items": [{id, day_id, position, type, place_id, user_place_id, display_name,
                 lat, lon, start_minute, end_minute, duration_minutes, duration_source, origin,
-                locked, reasons}],
+                locked, reasons, transport}],
      "transfers": [{from_item_id, to_item_id, mode, seconds, meters, confidence}],
      "summary": {...}, "engine_version", "config_version", "import_run_id"}
 
@@ -63,7 +63,7 @@ def read_state(conn: Connection, itinerary_id: uuid.UUID) -> State:
             "SELECT i.id, i.day_id, i.position, i.type, i.place_id, i.user_place_id,"
             " i.display_name, ST_Y(i.display_point) AS lat, ST_X(i.display_point) AS lon,"
             " i.start_time, i.end_time, i.duration_minutes, i.duration_source, i.origin,"
-            " i.locked, i.reasons FROM app.itinerary_item i"
+            " i.locked, i.reasons, i.transport FROM app.itinerary_item i"
             " JOIN app.itinerary_day d ON d.id = i.day_id WHERE d.itinerary_id = :i"
             " ORDER BY d.day_index, i.position"
         ),
@@ -119,6 +119,7 @@ def read_state(conn: Connection, itinerary_id: uuid.UUID) -> State:
                 "origin": r.origin,
                 "locked": r.locked,
                 "reasons": list(r.reasons),
+                "transport": r.transport,
             }
             for r in items
         ],
@@ -200,11 +201,12 @@ def write_state(conn: Connection, itinerary_id: uuid.UUID, state: State) -> None
                 """
                 INSERT INTO app.itinerary_item (id, day_id, position, type, place_id,
                     user_place_id, display_name, display_point, start_time, end_time,
-                    duration_minutes, duration_source, origin, locked, reasons)
+                    duration_minutes, duration_source, origin, locked, reasons, transport)
                 VALUES (:id, :d, :pos, :type, :place, :uplace, :name,
                     CASE WHEN CAST(:lat AS float8) IS NULL THEN NULL
                          ELSE ST_SetSRID(ST_MakePoint(:lon, :lat), 4326) END,
-                    :start, :end, :minutes, :source, :origin, :locked, :reasons)
+                    :start, :end, :minutes, :source, :origin, :locked, :reasons,
+                    CAST(:transport AS jsonb))
                 """
             ),
             {
@@ -224,6 +226,10 @@ def write_state(conn: Connection, itinerary_id: uuid.UUID, state: State) -> None
                 "origin": r["origin"],
                 "locked": r["locked"],
                 "reasons": r["reasons"],
+                # Versions stored before ADR 032 have no transport key.
+                "transport": None
+                if r.get("transport") is None
+                else json.dumps(r["transport"], sort_keys=True),
             },
         )
     for t in state["transfers"]:
@@ -315,17 +321,31 @@ def _leg(t: dict[str, Any]) -> Leg:
 
 
 def unscheduled(state: State) -> list[Issue]:
-    """Days with items the recalculation cannot lay out: free time, or an item without a time or
-    a place (only hand edits make these)."""
+    """Days with items the recalculation cannot lay out: free time, an item without a time or a
+    place (only hand edits make these), or a transport leg the user entered (ADR 032)."""
     by_day: dict[str, list[str]] = {}
+    legs: dict[str, list[str]] = {}
     for r in state["items"]:
-        if r["type"] == "free_time" or r["start_minute"] is None or r["lat"] is None:
+        if r["type"] == "transport":
+            legs.setdefault(r["day_id"], []).append(r["display_name"])
+        elif r["type"] == "free_time" or r["start_minute"] is None or r["lat"] is None:
             by_day.setdefault(r["day_id"], []).append(r["display_name"])
-    return [
-        Issue("UNSCHEDULED_ITEMS", {"day": d["day_index"], "items": ", ".join(by_day[d["id"]])})
-        for d in state["days"]
-        if d["id"] in by_day
-    ]
+    out: list[Issue] = []
+    for d in state["days"]:
+        if d["id"] in legs:
+            out.append(
+                Issue(
+                    "TRANSPORT_LEG_DAY", {"day": d["day_index"], "items": ", ".join(legs[d["id"]])}
+                )
+            )
+        if d["id"] in by_day:
+            out.append(
+                Issue(
+                    "UNSCHEDULED_ITEMS",
+                    {"day": d["day_index"], "items": ", ".join(by_day[d["id"]])},
+                )
+            )
+    return out
 
 
 def to_rplan(state: State, profile: str, categories: dict[str, str] | None = None) -> RPlan:
@@ -345,7 +365,10 @@ def to_rplan(state: State, profile: str, categories: dict[str, str] | None = Non
             t = transfers.get(r["id"])
             entries.append(
                 Entry(
-                    key=entry_key(kind, r["place_id"], r["user_place_id"]),
+                    # A leg has no place: its own item is its identity (ADR 032).
+                    key=f"transport:{r['id']}"
+                    if kind == "transport"
+                    else entry_key(kind, r["place_id"], r["user_place_id"]),
                     kind=kind,
                     name=r["display_name"],
                     lat=r["lat"],
@@ -362,6 +385,7 @@ def to_rplan(state: State, profile: str, categories: dict[str, str] | None = Non
                     user_place_id=r["user_place_id"],
                     category=None if kind == "meal" else cats.get(r["place_id"] or ""),
                     item_id=r["id"],
+                    transport=r.get("transport"),
                 )
             )
         arrival = d["arrival"]
@@ -438,6 +462,7 @@ def from_rplan(
                     "origin": e.origin,
                     "locked": e.locked,
                     "reasons": list(e.reasons),
+                    "transport": e.transport,
                 }
             )
             if e.transfer is not None and pos < len(ids):

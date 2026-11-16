@@ -404,3 +404,23 @@ def test_only_day_far_from_the_addition_is_explained() -> None:
     assert [i.code for i in exc.value.issues] == ["DAY_NOT_NEAR_ADDITION"]
     rev = recalc.add_place(inp, add, FixedTravelSource(), only_day=1)
     assert rev.plan.days[0].base_city_id == town.city_id
+
+
+def test_a_day_with_a_transport_leg_is_named_for_the_recalculation() -> None:
+    """ADR 032: Add a place's recalculation cannot plan around a leg yet; it says which day."""
+    from detour_api.repo.plan_state import unscheduled
+
+    state = {
+        "days": [{"id": "d1", "day_index": 1}, {"id": "d2", "day_index": 2}],
+        "items": [
+            {
+                "day_id": "d2",
+                "type": "transport",
+                "display_name": "Train to Florence",
+                "start_minute": 600,
+                "lat": None,
+            }
+        ],
+    }
+    issues = unscheduled(state)
+    assert [(i.code, i.params["day"]) for i in issues] == [("TRANSPORT_LEG_DAY", 2)]

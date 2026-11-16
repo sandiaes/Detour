@@ -4493,6 +4493,19 @@
               "unknown"
             ],
             "title": "Confidence"
+          },
+          "covered_by_item_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Covered By Item Id",
+            "description": "A journey leg the user entered for this day (ADR 032): show it instead of this computed leg, and count its length, not this one"
           }
         },
         "type": "object",
@@ -6150,10 +6163,105 @@
               "city",
               "place",
               "restaurant",
-              "cafe"
+              "cafe",
+              "transport"
             ],
             "title": "Kind"
           },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "description": "WGS 84 latitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat",
+            "description": "Null only for a transport leg"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "description": "WGS 84 longitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1440.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes",
+            "description": "Null only for a leg whose length is unknown"
+          },
+          "duration_is_user": {
+            "type": "boolean",
+            "title": "Duration Is User",
+            "default": false
+          },
+          "locked": {
+            "type": "boolean",
+            "title": "Locked",
+            "default": false
+          },
+          "transport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Version 2: what the user entered for a transport leg"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "position",
+          "kind",
+          "name"
+        ],
+        "title": "FileItem"
+      },
+      "FileStay": {
+        "properties": {
           "name": {
             "type": "string",
             "maxLength": 200,
@@ -6174,46 +6282,30 @@
             "title": "Lon",
             "description": "WGS 84 longitude"
           },
-          "start_time": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Time"
-          },
-          "duration_minutes": {
+          "first_day": {
             "type": "integer",
-            "maximum": 1440.0,
+            "maximum": 30.0,
             "minimum": 1.0,
-            "title": "Duration Minutes"
+            "title": "First Day"
           },
-          "duration_is_user": {
-            "type": "boolean",
-            "title": "Duration Is User",
-            "default": false
-          },
-          "locked": {
-            "type": "boolean",
-            "title": "Locked",
-            "default": false
+          "last_day": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Last Day"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "position",
-          "kind",
           "name",
           "lat",
           "lon",
-          "duration_minutes"
+          "first_day",
+          "last_day"
         ],
-        "title": "FileItem"
+        "title": "FileStay",
+        "description": "Where the traveller slept, for a range of days (ADR 030). Version 2."
       },
       "FileStop": {
         "properties": {
@@ -6341,6 +6433,26 @@
             "type": "array",
             "maxItems": 1500,
             "title": "Visits"
+          },
+          "stays": {
+            "items": {
+              "$ref": "#/components/schemas/FileStay"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Stays"
+          },
+          "uses_car": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uses Car",
+            "description": "Version 2; a version 1 file has none and imports with a car"
           }
         },
         "additionalProperties": false,
@@ -6675,7 +6787,8 @@
             "enum": [
               "visit",
               "meal",
-              "free_time"
+              "free_time",
+              "transport"
             ],
             "title": "Type"
           },
@@ -6751,11 +6864,20 @@
                 "type": "null"
               }
             ],
-            "title": "End Time"
+            "title": "End Time",
+            "description": "Null when unscheduled; a transport leg may have a start without an end: its length is unknown, or it arrives the next day"
           },
           "duration_minutes": {
-            "type": "integer",
-            "title": "Duration Minutes"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes",
+            "description": "Null only for a transport leg whose length the user did not enter (unknown)"
           },
           "duration_source": {
             "type": "string",
@@ -6827,6 +6949,17 @@
             ],
             "description": "Restaurant and cafe stops only: its kind"
           },
+          "transport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Transport legs only (ADR 032): what the user entered"
+          },
           "image": {
             "anyOf": [
               {
@@ -6879,7 +7012,8 @@
             "enum": [
               "visit",
               "meal",
-              "free_time"
+              "free_time",
+              "transport"
             ],
             "title": "Type"
           },
@@ -6946,12 +7080,23 @@
               }
             ],
             "title": "Position",
-            "description": "Defaults to the end of the day"
+            "description": "Defaults to the end of the day; a journey leg defaults to the start"
           },
           "locked": {
             "type": "boolean",
             "title": "Locked",
             "default": false
+          },
+          "transport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required for type transport (ADR 032), and only then. Its length may be left out: it is then unknown"
           }
         },
         "additionalProperties": false,
@@ -7035,6 +7180,17 @@
             ],
             "title": "Day Index",
             "description": "Move to another day"
+          },
+          "transport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A transport leg only: replaces what the user entered (ADR 032). On a leg, duration_minutes: null makes its length unknown"
           }
         },
         "additionalProperties": false,
@@ -9011,6 +9167,118 @@
           "confidence"
         ],
         "title": "Transfer"
+      },
+      "TransportInfo": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "train",
+              "bus",
+              "metro_tram",
+              "ferry",
+              "taxi",
+              "walk",
+              "other"
+            ],
+            "title": "Mode"
+          },
+          "from_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "From Name"
+          },
+          "from_lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "description": "WGS 84 latitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Lat"
+          },
+          "from_lon": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "description": "WGS 84 longitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Lon"
+          },
+          "to_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "To Name"
+          },
+          "to_lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "description": "WGS 84 latitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Lat"
+          },
+          "to_lon": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "description": "WGS 84 longitude"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Lon"
+          },
+          "is_journey": {
+            "type": "boolean",
+            "title": "Is Journey",
+            "description": "The journey between two cities: it covers the day's computed arrival",
+            "default": false
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mode",
+          "from_name",
+          "to_name"
+        ],
+        "title": "TransportInfo",
+        "description": "A transport leg the user entered by hand (ADR 032). Every value is the user's: nothing is\ncomputed or looked up. A point is given only when the end was picked from the trip (a stop, a\ncity or a stay); a typed name has none. No price, operator or booking (ADR 017)."
       },
       "Trip": {
         "properties": {

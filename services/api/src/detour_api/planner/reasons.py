@@ -95,10 +95,14 @@ NOTE_TEMPLATES: dict[str, str] = {
     "OPTIMIZE_KEPT": "{count} stops stay exactly where they are (locked, or kept by you).",
     "OPTIMIZE_FAR_KEPT": "{count} stops far from {name} keep their day.",
     "OPTIMIZE_UNDONE": "The order from before Optimize is restored.",
+    "OPTIMIZE_LONG_WALKS": (
+        "Without a car every leg is a walk: {count} of them are over {km} km. Add a transport leg "
+        "for how you will travel."
+    ),
     "STOP_REMOVED_ITEMS": "These leave the plan with their days: {items}.",
     "ARRIVAL_TIME_UNKNOWN": (
         "Day {day} starts in {to_name}; the journey from {from_name} is not included in the "
-        "day's times (public transport is not planned yet)."
+        "day's times (add how you travel as a transport leg)."
     ),
     "STOP_TOO_SMALL_TO_VARY": (
         "{name} has few sights to choose from, so the two plans share most of them there."
@@ -179,6 +183,10 @@ ISSUE_TEMPLATES: dict[str, str] = {
     "DRIVE_LEAVES_NO_TIME": (
         "Day {day}: after the {drive_minutes} min drive to {base}, {name} ({minutes} min) "
         "no longer fits in the day."
+    ),
+    "TRANSPORT_LEG_DAY": (
+        "Day {day} has a transport leg you entered ({items}); recalculation cannot plan around it "
+        "yet: choose the day and time yourself."
     ),
     "UNSCHEDULED_ITEMS": (
         "Day {day}: {items} have no time or no place; recalculation needs a time and a place "

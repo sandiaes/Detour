@@ -30,6 +30,7 @@ from detour_api.models.trips import (
     PlanStats,
     RestaurantInfo,
     Transfer,
+    TransportInfo,
 )
 from detour_api.names.api import to_api
 from detour_api.names.resolver import ResolvedName
@@ -45,7 +46,7 @@ MANUAL_VERSION = "manual"
 _ITEM_COLUMNS = """
     i.id, i.day_id, i.position, i.type, i.place_id, i.user_place_id, i.display_name,
     ST_Y(i.display_point) AS lat, ST_X(i.display_point) AS lon, i.start_time, i.end_time,
-    i.duration_minutes, i.duration_source, i.origin, i.locked, i.reasons,
+    i.duration_minutes, i.duration_source, i.origin, i.locked, i.reasons, i.transport,
     up.kind AS r_venue, gp.default_visit_minutes AS g_default, gp.category AS g_category
 """
 # The kind of a restaurant or cafe stop is read from the user's place at read time (ADR 026).
@@ -151,7 +152,7 @@ def _default_minutes(row: Any) -> int | None:
     """The length "use the default" gives the item: an imported sight's own or its category's,
     a restaurant's or cafe's (ADR 026), and none for anything else (a place the user pinned has
     no known typical length)."""
-    if row.type == "free_time":
+    if row.type in ("free_time", "transport"):
         return None
     if row.place_id is not None:
         return row.g_default if row.g_default is not None else visit_minutes(row.g_category)
@@ -188,6 +189,7 @@ def _item(row: Any, transfer: Transfer | None = None) -> Item:
             if row.type == "meal"
             else None
         ),
+        transport=None if row.transport is None else TransportInfo(**row.transport),
     )
 
 
@@ -299,6 +301,14 @@ def get_itinerary(
         arrival = None
         if d.arrival_mode is not None:
             before = days[n - 1] if n > 0 else None
+            journey = next(
+                (
+                    i.id
+                    for i in by_day.get(d.id, [])
+                    if i.transport is not None and i.transport.is_journey
+                ),
+                None,
+            )
             arrival = Arrival(
                 from_base_city_id=None if before is None else before.base_city_id,
                 from_base_city_name=None if before is None else before.base_city_name,
@@ -306,6 +316,7 @@ def get_itinerary(
                 seconds=d.arrival_seconds,
                 meters=d.arrival_meters,
                 confidence=d.arrival_confidence,
+                covered_by_item_id=journey,
             )
         out.append(
             Day(
@@ -365,35 +376,70 @@ def _bump(conn: Connection, itinerary_id: uuid.UUID) -> None:
     )
 
 
-def _end_time(start: time | None, minutes: int) -> time | None:
-    if start is None:
+DAY_END_MINUTE = 24 * 60
+
+
+def _end_time(start: time | None, minutes: int | None, *, transport: bool = False) -> time | None:
+    """The end of an item that starts at ``start``. A transport leg (ADR 032) has no stored end
+    when its length is unknown, or when it arrives after midnight (a night train)."""
+    if start is None or minutes is None:
         return None
     base = datetime.combine(datetime(2000, 1, 1, tzinfo=UTC).date(), start)
     end = base + timedelta(minutes=minutes)
     if end.date() != base.date():
+        if transport:
+            return None
         raise invalid("crosses_midnight", "an item must end on the same day it starts")
     return end.time()
+
+
+def _minute(t: time) -> int:
+    return t.hour * 60 + t.minute
+
+
+def busy_span(start: time | None, end: time | None, minutes: int | None) -> tuple[int, int] | None:
+    """The minutes of the day an item takes, for the overlap check: start to end; to the end of
+    the day for a leg that arrives the next day; a single point for a leg of unknown length."""
+    if start is None:
+        return None
+    s = _minute(start)
+    if end is not None:
+        return s, _minute(end)
+    if minutes is None:
+        return s, s
+    return s, DAY_END_MINUTE
+
+
+def _clash(a: tuple[int, int], b: tuple[int, int]) -> bool:
+    if a[0] == a[1] and b[0] == b[1]:
+        return False  # two legs of unknown length at one minute say nothing about each other
+    if a[0] == a[1]:
+        return b[0] < a[0] < b[1]
+    if b[0] == b[1]:
+        return a[0] < b[0] < a[1]
+    return a[0] < b[1] and b[0] < a[1]
 
 
 def _check_overlap(
     conn: Connection,
     day_id: uuid.UUID,
-    start: time | None,
-    end: time | None,
+    span: tuple[int, int] | None,
     ignore: uuid.UUID | None,
 ) -> None:
-    if start is None or end is None:
+    if span is None:
         return
-    clash = conn.execute(
+    rows = conn.execute(
         text(
-            "SELECT 1 FROM app.itinerary_item WHERE day_id = :d AND start_time IS NOT NULL"
-            " AND start_time < :e AND end_time > :s AND (CAST(:x AS uuid) IS NULL OR id <> :x)"
-            " LIMIT 1"
+            "SELECT start_time, end_time, duration_minutes FROM app.itinerary_item"
+            " WHERE day_id = :d AND start_time IS NOT NULL"
+            " AND (CAST(:x AS uuid) IS NULL OR id <> :x)"
         ),
-        {"d": day_id, "s": start, "e": end, "x": ignore},
-    ).first()
-    if clash:
-        raise conflict("overlap", "the item overlaps another timed item of the day")
+        {"d": day_id, "x": ignore},
+    ).all()
+    for r in rows:
+        other = busy_span(r.start_time, r.end_time, r.duration_minutes)
+        if other is not None and _clash(span, other):
+            raise conflict("overlap", "the item overlaps another timed item of the day")
 
 
 def _resolve_place(
@@ -405,6 +451,9 @@ def _resolve_place(
     eating = ("restaurant", "cafe")
     if body.type == "free_time":
         return "Free time", None, None, None
+    if body.type == "transport":
+        assert body.transport is not None  # noqa: S101 - guaranteed by ItemCreate
+        return body.transport.display_name(), None, None, None
     if body.place_id is not None:
         found = geo.place_exists(conn, body.place_id, installation_id)
         if found is None or not found[4]:
@@ -440,24 +489,29 @@ def create_item(
     ctx = _day_context(conn, installation_id, itinerary_id, day_index)
     name, lat, lon, default_minutes = _resolve_place(conn, installation_id, body)
     plan_state.snapshot(conn, itinerary_id)
+    leg = body.type == "transport"
+    minutes: int | None
     if body.duration_minutes is not None:
         minutes, source = body.duration_minutes, "user"
     elif default_minutes is not None:
         minutes, source = default_minutes, "category_default"
+    elif leg:
+        minutes, source = None, "user"  # a length the user did not enter is unknown (ADR 032)
     else:
         raise invalid(
             "duration_required",
             "duration_minutes is required: no default duration is known for this place",
         )
-    end = _end_time(body.start_time, minutes)
-    _check_overlap(conn, ctx.day_id, body.start_time, end, None)
+    end = _end_time(body.start_time, minutes, transport=leg)
+    _check_overlap(conn, ctx.day_id, busy_span(body.start_time, end, minutes), None)
 
     count = conn.execute(
         text("SELECT count(*) FROM app.itinerary_item WHERE day_id = :d"), {"d": ctx.day_id}
     ).scalar_one()
     if count >= MAX_ITEMS_PER_DAY:
         raise conflict("day_full", f"at most {MAX_ITEMS_PER_DAY} items per day")
-    position = body.position or count + 1
+    journey = leg and body.transport is not None and body.transport.is_journey
+    position = body.position or (1 if journey else count + 1)
     if position > count + 1:
         raise invalid("bad_position", f"position must be between 1 and {count + 1}")
     conn.execute(
@@ -472,11 +526,11 @@ def create_item(
             """
             INSERT INTO app.itinerary_item (id, day_id, position, type, place_id,
                 user_place_id, display_name, display_point, start_time, end_time,
-                duration_minutes, duration_source, origin, locked)
+                duration_minutes, duration_source, origin, locked, transport)
             VALUES (:id, :d, :pos, :type, :place, :uplace, :name,
                 CASE WHEN CAST(:lat AS float8) IS NULL THEN NULL
                      ELSE ST_SetSRID(ST_MakePoint(:lon, :lat), 4326) END,
-                :start, :end, :minutes, :source, 'user', :locked)
+                :start, :end, :minutes, :source, 'user', :locked, CAST(:transport AS jsonb))
             """
         ),
         {
@@ -493,7 +547,9 @@ def create_item(
             "end": end,
             "minutes": minutes,
             "source": source,
-            "locked": body.locked,
+            # A leg is fixed (ADR 032): Optimize and recalculation never move it.
+            "locked": True if leg else body.locked,
+            "transport": None if body.transport is None else body.transport.model_dump_json(),
         },
     )
     drop_stale_transfers(conn, [ctx.day_id])
@@ -536,7 +592,8 @@ def update_item(
     row = conn.execute(
         text(
             "SELECT i.id, i.day_id, i.position, i.type, i.start_time, i.duration_minutes,"
-            " i.duration_source, i.place_id, i.user_place_id, d.itinerary_id, d.day_index,"
+            " i.duration_source, i.place_id, i.user_place_id, i.transport, d.itinerary_id,"
+            " d.day_index,"
             " t.status AS trip_status"
             " FROM app.itinerary_item i JOIN app.itinerary_day d ON d.id = i.day_id"
             " JOIN app.itinerary it ON it.id = d.itinerary_id JOIN app.trip t ON t.id = it.trip_id"
@@ -547,9 +604,12 @@ def update_item(
     if row is None:
         raise not_found("item")
     changed = body.model_fields_set
+    leg = row.type == "transport"
+    if "transport" in changed and not leg:
+        raise invalid("not_transport", "transport is changed only on a transport leg")
     plan_state.snapshot(conn, row.itinerary_id)
 
-    minutes = row.duration_minutes
+    minutes: int | None = row.duration_minutes
     source = row.duration_source
     if body.use_default_duration:
         # "Stick to the default": the length the item would have had when it was added.
@@ -558,11 +618,11 @@ def update_item(
             raise invalid("no_default_duration", "this stop has no default duration")
         minutes, source = current.default_duration_minutes, "category_default"
     elif "duration_minutes" in changed:
-        if body.duration_minutes is None:
+        if body.duration_minutes is None and not leg:
             raise invalid("duration_required", "duration_minutes cannot be cleared")
         minutes, source = body.duration_minutes, "user"
     start = body.start_time if "start_time" in changed else row.start_time
-    end = _end_time(start, minutes)
+    end = _end_time(start, minutes, transport=leg)
 
     target_day_id = row.day_id
     if "day_index" in changed and body.day_index is not None and body.day_index != row.day_index:
@@ -576,7 +636,7 @@ def update_item(
             raise invalid("bad_day", "day_index is not a day of this itinerary")
         target_day_id = target.id
     moving_day = target_day_id != row.day_id
-    _check_overlap(conn, target_day_id, start, end, item_id)
+    _check_overlap(conn, target_day_id, busy_span(start, end, minutes), item_id)
 
     if moving_day or ("position" in changed and body.position is not None):
         count = conn.execute(
@@ -619,9 +679,13 @@ def update_item(
         "minutes": minutes,
         "source": source,
     }
-    if "locked" in changed and body.locked is not None:
+    if "locked" in changed and body.locked is not None and not leg:
         sets.append("locked = :locked")
         params["locked"] = body.locked
+    if "transport" in changed and body.transport is not None:
+        sets += ["transport = CAST(:transport AS jsonb)", "display_name = :name"]
+        params["transport"] = body.transport.model_dump_json()
+        params["name"] = body.transport.display_name()
     conn.execute(text(f"UPDATE app.itinerary_item SET {', '.join(sets)} WHERE id = :i"), params)
     drop_stale_transfers(conn, [row.day_id, target_day_id])
     _bump(conn, row.itinerary_id)
