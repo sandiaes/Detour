@@ -93,7 +93,7 @@ test("a leg with no time says so and draws no line", () => {
     },
   } as unknown as Day;
   expect(arrivalText(day)).toBe(
-    "Travel from Tokyo · time not calculated: public transport is not built yet",
+    "Travel from Tokyo · time not calculated: add how you travel as transport",
   );
   expect(
     transportFeature({

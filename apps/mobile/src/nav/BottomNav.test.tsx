@@ -35,14 +35,23 @@ test("inside a trip, Add offers a place or restaurant through the adjustment flo
   await screen.findByTestId("day-row-1");
   await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
   expect(await screen.findByRole("header", { name: "Add to this trip" })).toBeOnTheScreen();
-  // Not built yet: transport, notes and documents say so and cannot be pressed.
-  for (const name of [/^Transport\./, /^Note\./]) {
-    const row = screen.getByRole("button", { name });
-    expect(row.props.accessibilityState).toMatchObject({ disabled: true });
-    expect(row.props.accessibilityLabel).toMatch(/Coming later$/);
-  }
+  // Not built yet: notes say so and cannot be pressed. Transport is built (ADR 032).
+  const note = screen.getByRole("button", { name: /^Note\./ });
+  expect(note.props.accessibilityState).toMatchObject({ disabled: true });
+  expect(note.props.accessibilityLabel).toMatch(/Coming later$/);
+  expect(
+    screen.getByRole("button", { name: /^Transport\./ }).props.accessibilityState,
+  ).toMatchObject({ disabled: false });
   await fireEvent.press(screen.getByRole("button", { name: /^Place\./ }));
   expect(await screen.findByRole("header", { name: /^Add a place/ })).toBeOnTheScreen();
+});
+
+test("Add on a trip opens Add transport for the active itinerary (ADR 032)", async () => {
+  await show({ name: "tripOverview", tripId: TRIP_ID });
+  await screen.findByTestId("day-row-1");
+  await fireEvent.press(screen.getByRole("button", { name: "Add to this trip" }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Transport\./ }));
+  expect(await screen.findByRole("header", { name: /^Add transport/ })).toBeOnTheScreen();
 });
 
 test("Add on a trip opens the restaurant flow for the active itinerary", async () => {

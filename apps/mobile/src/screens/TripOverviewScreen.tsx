@@ -388,7 +388,11 @@ export function TripOverviewScreen({
           remember({ itemId: id });
         }}
         onDetails={(item) =>
-          nav.push({ name: "placeDetail", tripId, itineraryId: planId, itemId: item.id })
+          nav.push(
+            item.type === "transport"
+              ? { name: "transportLeg", tripId, itineraryId: planId, itemId: item.id }
+              : { name: "placeDetail", tripId, itineraryId: planId, itemId: item.id },
+          )
         }
         onShowList={() => setSection("overview")}
       />

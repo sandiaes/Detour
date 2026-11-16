@@ -10,7 +10,7 @@ import { CATEGORIES, type DocCategory } from "../documents/model";
 // reads that zip; it never touches the device or the network.
 
 export const FORMAT = "detour-trip";
-export const FORMAT_VERSION = 1;
+export const FORMAT_VERSION = 2;
 export const MAX_ARCHIVE_BYTES = 50 * 1024 * 1024;
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const MAX_JSON_BYTES = 8 * 1024 * 1024;

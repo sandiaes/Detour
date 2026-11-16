@@ -27,7 +27,8 @@ export function optimizeStops(days: Day[], documents: TripDocument[]): OptimizeS
   const out: OptimizeStop[] = [];
   for (const day of [...days].sort((a, b) => a.day_index - b.day_index)) {
     for (const item of day.items) {
-      if (item.type === "free_time") continue;
+      // Free time and transport legs never move (ADR 029, ADR 032).
+      if (item.type === "free_time" || item.type === "transport") continue;
       out.push({
         id: item.id,
         name: item.display_name,

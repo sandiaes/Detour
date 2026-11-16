@@ -120,7 +120,7 @@ export function ItineraryScreen({ route }: { route: ItineraryRoute }) {
 
   const openDetails = (item: Item) =>
     nav.push({
-      name: "placeDetail",
+      name: item.type === "transport" ? "transportLeg" : "placeDetail",
       tripId: route.tripId,
       itineraryId: route.itineraryId,
       itemId: item.id,

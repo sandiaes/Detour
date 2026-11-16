@@ -3,6 +3,7 @@ import type {
   ArchiveInfo,
   ChangeSet,
   DestinationResult,
+  Item,
   Itinerary,
   ItinerarySummary,
   Photo,
@@ -563,4 +564,45 @@ export function makePlaceSuggestions(over: Partial<PlaceSuggestions> = {}): Plac
     ],
     ...over,
   } as PlaceSuggestions;
+}
+
+/** A transport leg the user entered (ADR 032): Rome to Florence by train, 10:12, 1 h 30. */
+export function makeLeg(
+  over: Partial<Item> = {},
+  transport: Partial<Item["transport"]> = {},
+): Item {
+  return {
+    id: "leg1",
+    day_id: "00000000-0000-4000-8000-0000000000d1",
+    position: 3,
+    type: "transport",
+    place_id: null,
+    user_place_id: null,
+    display_name: "Train to Florence",
+    lat: null,
+    lon: null,
+    start_time: "10:12:00",
+    end_time: "11:42:00",
+    duration_minutes: 90,
+    duration_source: "user",
+    origin: "user",
+    locked: true,
+    reasons: [],
+    reason_texts: [],
+    transfer: null,
+    restaurant: null,
+    transport: {
+      mode: "train",
+      from_name: "Rome",
+      from_lat: 41.9,
+      from_lon: 12.5,
+      to_name: "Florence",
+      to_lat: 43.77,
+      to_lon: 11.25,
+      is_journey: false,
+      note: null,
+      ...transport,
+    },
+    ...over,
+  } as Item;
 }

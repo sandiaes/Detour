@@ -322,18 +322,16 @@ test("an empty trip is created without proposals and opens on its own plan", asy
   expect(select?.body).toEqual({ selected_itinerary_id: manual.id });
 });
 
-test("public transport is shown but marked as not used yet, and there is no travel style", async () => {
-  const client = await openForm();
+test("there is no public transport pill and no travel style (ADR 032)", async () => {
+  await openForm();
   expect(screen.queryByRole("radio", { name: "Balanced" })).toBeNull();
-  expect(screen.getByText(/saved for later/)).toBeOnTheScreen();
-  // Not part of the trip sent to the server.
-  expect(client.count("POST /v1/trips")).toBe(0);
+  expect(screen.queryByTestId("public-transport")).toBeNull();
+  expect(screen.queryByText(/saved for later/)).toBeNull();
 });
 
-test("Car and Public transport start off; Car is sent as chosen; off means Optimize only walks", async () => {
+test("Car starts off; Car is sent as chosen; off means Optimize only walks", async () => {
   const client = await openForm();
   expect(screen.getByTestId("uses-car")).not.toBeSelected();
-  expect(screen.getByTestId("public-transport")).not.toBeSelected();
   await typeDestination("Vie");
   await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
   await fireEvent.press(screen.getByRole("button", { name: "Start a fresh trip" }));

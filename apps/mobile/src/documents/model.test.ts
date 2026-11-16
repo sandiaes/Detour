@@ -1,6 +1,6 @@
 import type { Day } from "@detour/shared";
 
-import { makeItinerary } from "../testing/fixtures";
+import { makeItinerary, makeLeg } from "../testing/fixtures";
 import {
   normaliseCategory,
   type TripDocument,
@@ -64,6 +64,23 @@ test("links read as words, with the date when the trip has one", () => {
     "Belvedere · day 1",
   );
   expect(linkLabel({ kind: "leg", day: 2, name: "Graz" }, null)).toBe("Journey to Graz · day 2");
+  expect(linkLabel({ kind: "leg", day: 2, name: "Train to Florence" }, null)).toBe(
+    "Train to Florence · day 2",
+  );
+});
+
+test("a transport leg the user entered can carry documents; a covered arrival is not listed twice", () => {
+  const days = makeItinerary("essentials").days as Day[];
+  const leg = makeLeg({ id: "j0", day_id: days[1]!.id }, { is_journey: true });
+  const day2 = {
+    ...days[1]!,
+    arrival: { ...days[1]!.arrival!, covered_by_item_id: "j0" },
+    items: [leg, ...days[1]!.items],
+  } as Day;
+  expect(linkableLegs([days[0]!, day2])).toEqual([
+    { day: 2, name: "Train to Florence", from: "Rome", entered: true },
+  ]);
+  expect(linkablePlaces([day2]).map((p) => p.name)).not.toContain("Train to Florence");
 });
 
 test("the places of a plan, once each in day order, and its journeys", () => {

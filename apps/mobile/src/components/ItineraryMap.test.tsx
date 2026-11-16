@@ -2,7 +2,7 @@ import type { Day } from "@detour/shared";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 
 import { __mock as maplibre } from "../testing/maplibreMock";
-import { makeItinerary } from "../testing/fixtures";
+import { makeItinerary, makeLeg } from "../testing/fixtures";
 import { MAP_CONFIG } from "../testing/harness";
 import { ItineraryMap } from "./ItineraryMap";
 
@@ -95,7 +95,7 @@ test("transfer lines are drawn solid when routed and dashed when estimated, and 
   await fireEvent.press(screen.getByRole("button", { name: "Map key" }));
   expect(screen.getByText("Attraction")).toBeOnTheScreen();
   expect(screen.getByText("Restaurant or café")).toBeOnTheScreen();
-  expect(screen.getByText("Travel to a new base city")).toBeOnTheScreen();
+  expect(screen.getByText("Travel to a new base city, or transport you entered")).toBeOnTheScreen();
   expect(screen.getByText(/dashed if estimated/)).toBeOnTheScreen();
 });
 
@@ -208,4 +208,34 @@ test("a day with nothing planned still shows a map and says so", async () => {
   await render(<ItineraryMap day={{ ...day1, id: "empty", items: [] }} {...props} />);
   expect(markers()).toHaveLength(0);
   expect(screen.getByText(/Nothing is planned on this day/)).toBeOnTheScreen();
+});
+
+test("a transport leg the user entered is a line with its mode at the middle (ADR 032)", async () => {
+  const leg = makeLeg({ id: "leg1", day_id: day1.id });
+  const day: Day = { ...day1, items: [...day1.items, leg] };
+  await render(<ItineraryMap day={day} {...props} />);
+  expect(screen.getByTestId("leg-marker-leg1")).toBeOnTheScreen();
+  expect(
+    screen.getByLabelText(/^Transport you entered\. Train from Rome to Florence/),
+  ).toBeTruthy();
+  const legs = maplibre.sources.legs as { features: { geometry: { coordinates: unknown } }[] };
+  expect(legs.features).toHaveLength(1);
+  expect(legs.features[0]!.geometry.coordinates).toEqual([
+    [12.5, 41.9],
+    [11.25, 43.77],
+  ]);
+  // The leg has a marker of its own, but it is not a numbered stop.
+  expect(screen.getAllByLabelText(/^Stop \d/)).toHaveLength(5);
+});
+
+test("a journey leg replaces the computed arrival's marker", async () => {
+  const leg = makeLeg({ id: "j0", day_id: day2.id }, { is_journey: true });
+  const day: Day = {
+    ...day2,
+    arrival: { ...day2.arrival!, covered_by_item_id: "j0" },
+    items: [leg, ...day2.items],
+  };
+  await render(<ItineraryMap day={day} previousDay={day1} {...props} />);
+  expect(screen.queryByLabelText(/^Transport: drive to Graz/)).toBeNull();
+  expect(screen.getByTestId("leg-marker-j0")).toBeOnTheScreen();
 });

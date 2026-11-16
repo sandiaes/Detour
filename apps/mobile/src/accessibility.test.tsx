@@ -240,7 +240,7 @@ test.each([
 });
 
 test("create trip form with search results", async () => {
-  await show({ name: "createTrip" }, "Public transport");
+  await show({ name: "createTrip" }, "Car");
   await fireEvent.changeText(screen.getByLabelText("Destination"), "Vie");
   await screen.findByText("Area", {}, { timeout: 3000 });
   checkControls();
@@ -397,6 +397,24 @@ test("optimize and add a restaurant", async () => {
     /^Add a restaurant or café/,
     planServer(),
   );
+  checkControls();
+});
+
+test("add transport (ADR 032): every control named, open lists included", async () => {
+  await showHeader(
+    { name: "transportLeg", tripId: TRIP_ID, itineraryId: ESSENTIALS_ID, day: 1 },
+    /^Add transport/,
+    createFakeClient({
+      "GET /v1/trips": () => [makeTrip({ selected_itinerary_id: ESSENTIALS_ID })],
+      "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
+      "GET /v1/trips/{trip_id}/stays": () => [],
+      "GET /v1/attributions": () => [],
+    } as never),
+  );
+  checkControls();
+  await fireEvent.press(screen.getByTestId("leg-mode"));
+  checkControls();
+  await fireEvent.press(screen.getByTestId("leg-from"));
   checkControls();
 });
 

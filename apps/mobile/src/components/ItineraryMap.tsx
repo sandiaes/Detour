@@ -22,6 +22,7 @@ import {
   transportFeature,
   transportPoint,
 } from "../domain/itinerary";
+import { MODE_ICON, legSentence, legsOnMap } from "../domain/transport";
 import { TOUCH, border, colors, radius, spacing, type } from "../theme";
 import { formatSeconds } from "../util/format";
 import { AttributionBar } from "./AttributionBar";
@@ -66,9 +67,35 @@ export function ItineraryMap({
   const transport = useMemo(() => transportPoint(day, previousDay), [day, previousDay]);
   const features = useMemo(() => transferFeatures(day), [day]);
   const stay = useMemo(() => stayPoint(day, stays), [day, stays]);
+  // Transport legs the user entered (ADR 032): a solid line and the mode at its middle.
+  const legs = useMemo(() => legsOnMap(day), [day]);
+  const legLines = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: legs.flatMap((l) =>
+        l.line
+          ? [
+              {
+                type: "Feature" as const,
+                id: l.id,
+                properties: {},
+                geometry: { type: "LineString" as const, coordinates: l.line },
+              },
+            ]
+          : [],
+      ),
+    }),
+    [legs],
+  );
   const bounds = useMemo(
-    () => boundsOf([...points, ...(transport ? [transport] : []), ...(stay ? [stay] : [])]),
-    [points, transport, stay],
+    () =>
+      boundsOf([
+        ...points,
+        ...(transport ? [transport] : []),
+        ...(stay ? [stay] : []),
+        ...legs.flatMap((l) => (l.line ?? [l.lngLat]).map((lngLat) => ({ lngLat }))),
+      ]),
+    [points, transport, stay, legs],
   );
   const shownCount = useProgressiveCount(points.length, day.id);
   const shown = points.slice(0, shownCount);
@@ -153,6 +180,36 @@ export function ItineraryMap({
             style={{ lineColor: colors.outline, lineWidth: 2, lineDasharray: [2, 2] }}
           />
         </GeoJSONSource>
+        <GeoJSONSource id="legs" data={legLines}>
+          <Layer id="legs-user" type="line" style={{ lineColor: colors.text, lineWidth: 2 }} />
+        </GeoJSONSource>
+        {legs.map((l) => (
+          <Marker
+            key={l.id}
+            id={l.id}
+            lngLat={l.lngLat}
+            anchor="center"
+            selected={selectedId === l.id}
+            onPress={() => onSelect(l.id)}
+          >
+            <View
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={`Transport you entered. ${legSentence(l.item)}`}
+              accessibilityHint="Highlights it in the list"
+              accessibilityState={{ selected: selectedId === l.id }}
+              style={styles.hit}
+              testID={`leg-marker-${l.id}`}
+            >
+              <StopMark
+                kind="transport"
+                icon={MODE_ICON[l.mode]}
+                size="map"
+                selected={selectedId === l.id}
+              />
+            </View>
+          </Marker>
+        ))}
         {stay ? (
           <Marker
             key={stay.id}
@@ -248,7 +305,7 @@ export function ItineraryMap({
       {points.length > shownCount ? (
         <MapChip text={`Placing stops ${shownCount} of ${points.length}…`} />
       ) : null}
-      {points.length === 0 && !transport ? (
+      {points.length === 0 && !transport && legs.length === 0 ? (
         <MapChip text="Nothing is planned on this day." />
       ) : null}
 
@@ -300,7 +357,7 @@ export function Legend() {
         <View style={styles.legendKey}>
           <StopMark kind="transport" size="key" />
         </View>
-        <Text style={styles.legendText}>Travel to a new base city</Text>
+        <Text style={styles.legendText}>Travel to a new base city, or transport you entered</Text>
       </View>
       <View style={styles.legendRow}>
         <View style={styles.legendKey}>
