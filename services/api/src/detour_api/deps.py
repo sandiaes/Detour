@@ -145,13 +145,13 @@ class Database:
 class Session:
     """The caller, and the means to talk to the database as it.
 
-    ``installation_id`` is the **data owner**: the id of the caller's person (ADR 034), which is
-    the id of the person's first phone, so every query that names an installation sees all of the
-    person's trips from any of their phones. ``device_id`` is the phone that sent the request.
+    ``person_id`` is the caller's person (ADR 034): trips are read and changed by membership, your
+    own places and display names belong to the person, so all of a person's phones see the same.
+    ``device_id`` is the phone that sent the request.
     """
 
     db: Database
-    installation_id: uuid.UUID
+    person_id: uuid.UUID
     photon: PhotonClient
     device_id: uuid.UUID
 
@@ -177,7 +177,7 @@ def get_session(request: Request, installation_id: InstallationDep) -> Session:
     device = resolve_device(engine, installation_id)
     return Session(
         db=Database(engine),
-        installation_id=device.person_id,
+        person_id=device.person_id,
         photon=request.app.state.photon,
         device_id=installation_id,
     )

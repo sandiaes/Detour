@@ -54,9 +54,7 @@ def preview(
 ) -> ChangeSet:
     started = time.perf_counter()
     with session.tx() as conn:
-        ctx = changes.load_context(
-            conn, session.installation_id, itinerary_id, body, config, rconfig
-        )
+        ctx = changes.load_context(conn, session.person_id, itinerary_id, body, config, rconfig)
     loaded = time.perf_counter()
 
     notes: list[Note]
@@ -73,7 +71,7 @@ def preview(
     planned = diff.compare(to_rplan(ctx.state, ctx.profile), to_rplan(proposal, ctx.profile))
     with session.tx() as conn:
         result = changes.save(
-            conn, session.installation_id, ctx, proposal, changes.diff_model(planned), notes
+            conn, session.person_id, ctx, proposal, changes.diff_model(planned), notes
         )
     saved = time.perf_counter()
     log.info(
@@ -171,7 +169,7 @@ def _proposal(
 
 def apply(session: Session, change_id: uuid.UUID) -> ChangeSetApplied:
     with session.tx() as conn:
-        result = changes.apply(conn, session.installation_id, change_id)
+        result = changes.apply(conn, session.person_id, change_id)
     if result is None:
         log.info("change_expired", change_set_id=str(change_id))
         raise conflict(
@@ -188,7 +186,7 @@ def apply(session: Session, change_id: uuid.UUID) -> ChangeSetApplied:
 
 def discard(session: Session, change_id: uuid.UUID) -> ChangeSet:
     with session.tx() as conn:
-        result = changes.discard(conn, session.installation_id, change_id)
+        result = changes.discard(conn, session.person_id, change_id)
     log.info("change_discarded", change_set_id=str(change_id))
     return result
 
@@ -234,9 +232,7 @@ def suggest_places(
         duration_minutes=body.duration_minutes,
     )
     with session.tx() as conn:
-        ctx = changes.load_context(
-            conn, session.installation_id, itinerary_id, request, config, rconfig
-        )
+        ctx = changes.load_context(conn, session.person_id, itinerary_id, request, config, rconfig)
     assert ctx.recalc is not None and ctx.addition is not None  # noqa: S101
     loaded = time.perf_counter()
     source = ServiceTravelSource(travel, max_seconds=settings.recalc_provider_max_seconds)

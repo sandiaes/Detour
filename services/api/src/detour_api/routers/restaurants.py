@@ -85,7 +85,7 @@ def search_restaurants(
         needle = " ".join(q.casefold().split())
         own = [
             p
-            for p in user_places.list_all(conn, session.installation_id)
+            for p in user_places.list_all(conn, session.person_id)
             if p.kind in PHOTON_VENUES and needle in p.name.casefold()
         ][:MAX_OWN]
     if own:

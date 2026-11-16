@@ -4,7 +4,8 @@
   to set a trip up with her, or solo"; also shared documents and the other things kept only on the
   phone). **Step 1 (people and devices) is built** (2026-11-16, owner: "Go with codes, start step
   1"), awaiting acceptance; checked by tests only, not on a device; migration `0024` not yet run in
-  production. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
+  production. **Step 2 (trip membership) is built** (2026-11-16, owner: "Lets start phase 2"),
+  awaiting acceptance, tests only, migration `0025` not yet run in production; no visible change. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
   (recorded there and in the decisions); question 1 (codes or a sign-in provider) is still open.
 - **Date:** 2026-11-16
 - **Changes when accepted:** D5 in `docs/app-plan.md` (anonymous installation, no accounts), the
@@ -242,6 +243,26 @@ Files: migration `0024_people_and_devices.py`; `repo/people.py`, `routers/people
 the app's `screens/DevicesScreen.tsx`, `domain/devices.ts`, `api/connect.ts` (`personId`),
 `data/DataProvider.tsx`. Tests: `test_people.py`, `test_migration_0024.py`, `test_abuse.py`,
 `screens/Devices.test.tsx`.
+
+## Step 2 as built (2026-11-16)
+
+- Migration `0025`: `app.trip.installation_id` is now `owner_person_id`, `app.user_place` and
+  `app.place_name_override` have `person_id`, all fks to `app.person`; `app.trip_member` with one
+  `owner` per trip, filled for every existing trip, and a trigger that adds the owner when a trip is
+  inserted (so imports, the seed and tests need no change).
+- The API's `Session.person_id` replaces `installation_id`. Every query that found a trip, plan,
+  day, item, change set, stay or visit "of this installation" now asks for membership
+  (`EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :p)`);
+  creating counts and stamps the owner; updates rely on the membership check made first.
+- `DELETE /v1/trips/{id}` is the owner's only: a member gets 403 `not_trip_owner` (owner, question 2).
+- A place on a shared trip is read with the plan (by id), so the partner's restaurant shows for both;
+  each person's list of own places stays their own. A display-name override is personal but also
+  rewrites the stored names of the trips the person is a member of, which the partner then sees
+  (until step 3 decides otherwise).
+- Joining a phone (step 1) also moves its memberships; where both people were members of one trip,
+  one row stays and the owner role wins.
+- `Trip` responses do not show members or role yet (step 3). Tests: `test_trip_members.py`,
+  `test_migration_0025.py`.
 
 ## Build order (each step shippable and tested on its own)
 

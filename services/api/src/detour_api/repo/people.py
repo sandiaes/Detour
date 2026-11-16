@@ -1,8 +1,8 @@
 """People and their devices (ADR 034, step 1).
 
-A person's id is the id of its first installation, so every row that names an installation
-(``app.trip``, ``app.user_place``, ``app.place_name_override``) names the person's **data owner**.
-A phone that joins a person brings its own trips and places along: they move to the person's id.
+A person's id is the id of its first installation. A phone that joins a person brings its own
+trips, places and display names along: they move to the person (step 2: trips by owner and
+membership, ``app.trip_member``).
 
 Codes are random from a 32-letter alphabet without 0, O, 1 and I, and only a keyed hash
 (HMAC-SHA256 with the token secret) is stored, so a copy of the database does not let anyone try
@@ -170,9 +170,13 @@ def create_recovery_code(
     return code, created_at
 
 
+_OWNER_COLUMN = {"trip": "owner_person_id", "user_place": "person_id"}
+
+
 def _count(conn: Connection, table: str, owner: uuid.UUID) -> int:
+    column = _OWNER_COLUMN[table]
     count: int = conn.execute(
-        text(f"SELECT count(*) FROM app.{table} WHERE installation_id = :o"), {"o": owner}
+        text(f"SELECT count(*) FROM app.{table} WHERE {column} = :o"), {"o": owner}
     ).scalar_one()
     return count
 
@@ -195,17 +199,24 @@ def _move_data(conn: Connection, source: uuid.UUID, target: uuid.UUID) -> int:
             """
             DELETE FROM app.place_name_override s
             USING app.place_name_override t
-            WHERE s.installation_id = :s AND t.installation_id = :t
+            WHERE s.person_id = :s AND t.person_id = :t
               AND s.entity_kind = t.entity_kind AND s.entity_ref = t.entity_ref
             """
         ),
         {"s": source, "t": target},
     )
-    for table in ("trip", "user_place", "place_name_override"):
-        conn.execute(
-            text(f"UPDATE app.{table} SET installation_id = :t WHERE installation_id = :s"),
-            {"s": source, "t": target},
-        )
+    for statement in (
+        "UPDATE app.trip SET owner_person_id = :t WHERE owner_person_id = :s",
+        # A trip both are members of keeps one row: the owner's role wins.
+        "DELETE FROM app.trip_member x WHERE x.person_id = :t AND EXISTS (SELECT 1 FROM"
+        " app.trip_member y WHERE y.trip_id = x.trip_id AND y.person_id = :s AND y.role = 'owner')",
+        "DELETE FROM app.trip_member x WHERE x.person_id = :s AND EXISTS (SELECT 1 FROM"
+        " app.trip_member y WHERE y.trip_id = x.trip_id AND y.person_id = :t)",
+        "UPDATE app.trip_member SET person_id = :t WHERE person_id = :s",
+        "UPDATE app.user_place SET person_id = :t WHERE person_id = :s",
+        "UPDATE app.place_name_override SET person_id = :t WHERE person_id = :s",
+    ):
+        conn.execute(text(statement), {"s": source, "t": target})
     return trips
 
 

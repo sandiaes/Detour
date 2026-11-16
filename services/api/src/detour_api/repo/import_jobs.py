@@ -111,7 +111,7 @@ def catalog(
 
 
 def start_job(
-    conn: Connection, settings: Settings, region_id: str, installation_id: uuid.UUID
+    conn: Connection, settings: Settings, region_id: str, person_id: uuid.UUID
 ) -> uuid.UUID:
     """Record a request. 404 for a region that is not in the catalog; 409 while an import of any
     region is running or was requested and is not stalled (one change to ``geo`` at a time)."""
@@ -135,7 +135,7 @@ def start_job(
     job_id = uuid.uuid4()
     conn.execute(
         text("INSERT INTO geo.import_job (id, region_id, requested_by) VALUES (:j, :r, :i)"),
-        {"j": job_id, "r": region_id, "i": installation_id},
+        {"j": job_id, "r": region_id, "i": person_id},
     )
     return job_id
 

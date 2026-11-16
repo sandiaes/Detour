@@ -89,6 +89,7 @@ const MESSAGES: Record<string, string> = {
   has_other_devices:
     "This phone is linked to other phones of its own. Remove them under Your phones first, then try again.",
   this_device: "A phone cannot remove itself. Remove it from another of your phones.",
+  not_trip_owner: "Only the person who created this trip can delete it.",
   device_removed: "This phone was removed from your phones. Restart the app to start again.",
 };
 

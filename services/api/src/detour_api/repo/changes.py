@@ -106,14 +106,14 @@ def impossible(issues: list[Issue]) -> ApiError:
     )
 
 
-def _itinerary_row(conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID) -> Any:
+def _itinerary_row(conn: Connection, person_id: uuid.UUID, itinerary_id: uuid.UUID) -> Any:
     row = conn.execute(
         text(
             "SELECT it.id, it.profile, it.version, t.status AS trip_status, t.destination_kind,"
             " t.destination_ref FROM app.itinerary it JOIN app.trip t ON t.id = it.trip_id"
-            " WHERE it.id = :i AND t.installation_id = :n"
+            " WHERE it.id = :i AND EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :n)"
         ),
-        {"i": itinerary_id, "n": installation_id},
+        {"i": itinerary_id, "n": person_id},
     ).first()
     if row is None:
         raise not_found("itinerary")
@@ -151,9 +151,9 @@ def _towns_near(conn: Connection, lat: float, lon: float, radius_m: int) -> list
 
 
 def _head(
-    conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID
+    conn: Connection, person_id: uuid.UUID, itinerary_id: uuid.UUID
 ) -> tuple[Any, geo.ResolvedDestination, State, dict[str, Any]]:
-    row = _itinerary_row(conn, installation_id, itinerary_id)
+    row = _itinerary_row(conn, person_id, itinerary_id)
     if row.profile not in ("essentials", "wider"):
         raise conflict(
             "not_recalculable", "only planned itineraries are recalculated; edit this one by hand"
@@ -187,13 +187,13 @@ def _head(
 
 def load_context(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     itinerary_id: uuid.UUID,
     body: ChangeSetCreate,
     config: PlannerConfig,
     rconfig: RecalcConfig,
 ) -> Context:
-    row, dest, state, common = _head(conn, installation_id, itinerary_id)
+    row, dest, state, common = _head(conn, person_id, itinerary_id)
 
     addition: Addition | None = None
     removed_key: str | None = None
@@ -216,7 +216,7 @@ def load_context(
         point = (item["lat"], item["lon"]) if item["lat"] is not None else None
         target_name = item["display_name"]
     else:
-        addition = _addition(conn, installation_id, body)
+        addition = _addition(conn, person_id, body)
         point = (addition.lat, addition.lon)
         target_name = addition.name
 
@@ -317,9 +317,9 @@ def _countries(conn: Connection, ids: list[int]) -> dict[int, str | None]:
     return {int(r.id): r.country_iso2 for r in rows}
 
 
-def _addition(conn: Connection, installation_id: uuid.UUID, body: ChangeSetCreate) -> Addition:
+def _addition(conn: Connection, person_id: uuid.UUID, body: ChangeSetCreate) -> Addition:
     if body.place_id is not None:
-        found = geo.place_exists(conn, body.place_id, installation_id)
+        found = geo.place_exists(conn, body.place_id, person_id)
         if found is None or not found[4]:
             raise invalid("place_not_found", "place_id is not an active place")
         kind, name, lat, lon, _, default_minutes, category = found
@@ -342,7 +342,7 @@ def _addition(conn: Connection, installation_id: uuid.UUID, body: ChangeSetCreat
             category=category,
         )
     assert body.user_place_id is not None  # noqa: S101 - guaranteed by ChangeSetCreate
-    place = user_places.get(conn, installation_id, body.user_place_id)
+    place = user_places.get(conn, person_id, body.user_place_id)
     if place is None:
         raise invalid("user_place_not_found", "user_place_id is not one of your places")
     if place.kind in ("restaurant", "cafe"):
@@ -510,13 +510,13 @@ def _change_set(row: Any) -> ChangeSet:
 
 def save(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     ctx: Context,
     proposal: State,
     diff: ChangeDiff,
     notes: list[Note],
 ) -> ChangeSet:
-    _itinerary_row(conn, installation_id, ctx.itinerary_id)
+    _itinerary_row(conn, person_id, ctx.itinerary_id)
     current = conn.execute(
         text("SELECT version FROM app.itinerary WHERE id = :i FOR UPDATE"), {"i": ctx.itinerary_id}
     ).scalar_one()
@@ -559,26 +559,26 @@ def save(
             "notes": json.dumps([{"code": n.code, "params": n.params} for n in notes]),
         },
     )
-    return require(conn, installation_id, change_id)
+    return require(conn, person_id, change_id)
 
 
-def _row(conn: Connection, installation_id: uuid.UUID, change_id: uuid.UUID, lock: bool) -> Any:
+def _row(conn: Connection, person_id: uuid.UUID, change_id: uuid.UUID, lock: bool) -> Any:
     row = conn.execute(
         text(
             f"SELECT c.{_CHANGE_COLUMNS.replace(', ', ', c.')}, c.proposal, t.status AS trip_status"
             " FROM app.change_set c JOIN app.itinerary it ON it.id = c.itinerary_id"
-            " JOIN app.trip t ON t.id = it.trip_id WHERE c.id = :c AND t.installation_id = :n"
+            " JOIN app.trip t ON t.id = it.trip_id WHERE c.id = :c AND EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :n)"
             + (" FOR UPDATE OF c" if lock else "")
         ),
-        {"c": change_id, "n": installation_id},
+        {"c": change_id, "n": person_id},
     ).first()
     if row is None:
         raise not_found("change set")
     return row
 
 
-def require(conn: Connection, installation_id: uuid.UUID, change_id: uuid.UUID) -> ChangeSet:
-    return _change_set(_row(conn, installation_id, change_id, lock=False))
+def require(conn: Connection, person_id: uuid.UUID, change_id: uuid.UUID) -> ChangeSet:
+    return _change_set(_row(conn, person_id, change_id, lock=False))
 
 
 def _close(conn: Connection, change_id: uuid.UUID, status: str) -> None:
@@ -591,12 +591,10 @@ def _close(conn: Connection, change_id: uuid.UUID, status: str) -> None:
     )
 
 
-def apply(
-    conn: Connection, installation_id: uuid.UUID, change_id: uuid.UUID
-) -> ChangeSetApplied | None:
+def apply(conn: Connection, person_id: uuid.UUID, change_id: uuid.UUID) -> ChangeSetApplied | None:
     """Apply a pending change set. None when the itinerary changed since the preview: the change
     set is then marked expired (the caller commits that and answers 409)."""
-    row = _row(conn, installation_id, change_id, lock=True)
+    row = _row(conn, person_id, change_id, lock=True)
     trips.refuse_if_past(row.trip_status)
     if row.status != "pending":
         raise conflict("change_set_closed", f"this change set is {row.status}")
@@ -636,8 +634,8 @@ def apply(
         {"c": change_id, "v": new_version},
     )
     return ChangeSetApplied(
-        change_set=require(conn, installation_id, change_id),
-        itinerary=itineraries.require_itinerary(conn, installation_id, row.itinerary_id),
+        change_set=require(conn, person_id, change_id),
+        itinerary=itineraries.require_itinerary(conn, person_id, row.itinerary_id),
     )
 
 
@@ -677,18 +675,18 @@ def _apply_stop_edit(conn: Connection, itinerary_id: uuid.UUID, edit: dict[str, 
     )
 
 
-def discard(conn: Connection, installation_id: uuid.UUID, change_id: uuid.UUID) -> ChangeSet:
-    row = _row(conn, installation_id, change_id, lock=True)
+def discard(conn: Connection, person_id: uuid.UUID, change_id: uuid.UUID) -> ChangeSet:
+    row = _row(conn, person_id, change_id, lock=True)
     if row.status != "pending":
         raise conflict("change_set_closed", f"this change set is {row.status}")
     _close(conn, change_id, "discarded")
-    return require(conn, installation_id, change_id)
+    return require(conn, person_id, change_id)
 
 
 def list_versions(
-    conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID
+    conn: Connection, person_id: uuid.UUID, itinerary_id: uuid.UUID
 ) -> list[ItineraryVersion]:
-    itineraries.require_itinerary(conn, installation_id, itinerary_id)
+    itineraries.require_itinerary(conn, person_id, itinerary_id)
     rows = conn.execute(
         text(
             "SELECT v.version, v.replaced_at, v.change_set_id, c.action, c.target_name,"
@@ -711,10 +709,10 @@ def list_versions(
     ]
 
 
-def itinerary_row(conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID) -> Any:
+def itinerary_row(conn: Connection, person_id: uuid.UUID, itinerary_id: uuid.UUID) -> Any:
     """The itinerary's row with its trip's status and destination; not found or a past trip is
     refused. For the actions that read a plan of any profile (Optimize, ADR 029)."""
-    return _itinerary_row(conn, installation_id, itinerary_id)
+    return _itinerary_row(conn, person_id, itinerary_id)
 
 
 def latest_optimize(

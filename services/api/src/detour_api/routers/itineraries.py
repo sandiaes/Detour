@@ -17,8 +17,8 @@ router = APIRouter(prefix="/v1", tags=["itineraries"])
 )
 def get_itinerary(request: Request, session: SessionDep, itinerary_id: uuid.UUID) -> Itinerary:
     with session.tx() as conn:
-        plan = itineraries.require_itinerary(conn, session.installation_id, itinerary_id)
-        return stays.with_starts(conn, session.installation_id, plan, request.app.state.travel_time)
+        plan = itineraries.require_itinerary(conn, session.person_id, itinerary_id)
+        return stays.with_starts(conn, session.person_id, plan, request.app.state.travel_time)
 
 
 @router.delete(
@@ -29,7 +29,7 @@ def get_itinerary(request: Request, session: SessionDep, itinerary_id: uuid.UUID
 )
 def delete_itinerary(session: SessionDep, itinerary_id: uuid.UUID) -> Response:
     with session.tx() as conn:
-        itineraries.delete_itinerary(conn, session.installation_id, itinerary_id)
+        itineraries.delete_itinerary(conn, session.person_id, itinerary_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -43,13 +43,13 @@ def create_item(
     session: SessionDep, itinerary_id: uuid.UUID, day_index: int, body: ItemCreate
 ) -> Item:
     with session.tx() as conn:
-        return itineraries.create_item(conn, session.installation_id, itinerary_id, day_index, body)
+        return itineraries.create_item(conn, session.person_id, itinerary_id, day_index, body)
 
 
 @router.get("/items/{item_id}", summary="One itinerary item.", responses=ERRORS)
 def get_item(session: SessionDep, item_id: uuid.UUID) -> Item:
     with session.tx() as conn:
-        return itineraries.require_item(conn, session.installation_id, item_id)
+        return itineraries.require_item(conn, session.person_id, item_id)
 
 
 @router.patch(
@@ -59,7 +59,7 @@ def get_item(session: SessionDep, item_id: uuid.UUID) -> Item:
 )
 def update_item(session: SessionDep, item_id: uuid.UUID, body: ItemUpdate) -> Item:
     with session.tx() as conn:
-        return itineraries.update_item(conn, session.installation_id, item_id, body)
+        return itineraries.update_item(conn, session.person_id, item_id, body)
 
 
 @router.delete(
@@ -70,5 +70,5 @@ def update_item(session: SessionDep, item_id: uuid.UUID, body: ItemUpdate) -> It
 )
 def delete_item(session: SessionDep, item_id: uuid.UUID) -> Response:
     with session.tx() as conn:
-        itineraries.delete_item(conn, session.installation_id, item_id)
+        itineraries.delete_item(conn, session.person_id, item_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -39,8 +39,8 @@ def list_for_trip(conn: Connection, trip_id: uuid.UUID) -> list[Stay]:
     return [_stay(r) for r in rows]
 
 
-def list_all(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> list[Stay]:
-    trips.require_trip(conn, installation_id, trip_id)
+def list_all(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> list[Stay]:
+    trips.require_trip(conn, person_id, trip_id)
     return list_for_trip(conn, trip_id)
 
 
@@ -56,15 +56,13 @@ def _check(first: int, last: int, days: int, others: list[Stay], own: uuid.UUID 
             )
 
 
-def _editable(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> int:
-    trip = trips.require_open_trip(conn, installation_id, trip_id)
+def _editable(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> int:
+    trip = trips.require_open_trip(conn, person_id, trip_id)
     return trip.duration_days
 
 
-def create(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, body: StayCreate
-) -> Stay:
-    days = _editable(conn, installation_id, trip_id)
+def create(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, body: StayCreate) -> Stay:
+    days = _editable(conn, person_id, trip_id)
     existing = list_for_trip(conn, trip_id)
     if len(existing) >= MAX_STAYS:
         raise conflict("too_many_stays", f"A trip has at most {MAX_STAYS} stays")
@@ -85,13 +83,11 @@ def create(
             "l": body.last_day,
         },
     )
-    return require(conn, installation_id, trip_id, stay_id)
+    return require(conn, person_id, trip_id, stay_id)
 
 
-def require(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, stay_id: uuid.UUID
-) -> Stay:
-    trips.require_trip(conn, installation_id, trip_id)
+def require(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, stay_id: uuid.UUID) -> Stay:
+    trips.require_trip(conn, person_id, trip_id)
     row = conn.execute(
         text(f"SELECT {_COLUMNS} FROM app.trip_stay WHERE id = :i AND trip_id = :t"),
         {"i": stay_id, "t": trip_id},
@@ -103,13 +99,13 @@ def require(
 
 def update(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     trip_id: uuid.UUID,
     stay_id: uuid.UUID,
     body: StayUpdate,
 ) -> Stay:
-    days = _editable(conn, installation_id, trip_id)
-    current = require(conn, installation_id, trip_id, stay_id)
+    days = _editable(conn, person_id, trip_id)
+    current = require(conn, person_id, trip_id, stay_id)
     changed = body.model_fields_set
     if {"name", "lat", "lon", "first_day", "last_day"} & changed and any(
         getattr(body, f) is None for f in changed
@@ -132,14 +128,12 @@ def update(
         ),
         {**merged, "i": stay_id},
     )
-    return require(conn, installation_id, trip_id, stay_id)
+    return require(conn, person_id, trip_id, stay_id)
 
 
-def delete(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, stay_id: uuid.UUID
-) -> None:
-    _editable(conn, installation_id, trip_id)
-    require(conn, installation_id, trip_id, stay_id)
+def delete(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, stay_id: uuid.UUID) -> None:
+    _editable(conn, person_id, trip_id)
+    require(conn, person_id, trip_id, stay_id)
     conn.execute(text("DELETE FROM app.trip_stay WHERE id = :i"), {"i": stay_id})
 
 
@@ -202,7 +196,7 @@ def start_cells(days: list[Day], stays: list[Stay]) -> list[Any]:
 
 def with_starts(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     itinerary: Itinerary,
     travel: TravelTimeService,
 ) -> Itinerary:
@@ -211,7 +205,7 @@ def with_starts(
     stays = list_for_trip(conn, itinerary.trip_id)
     if not stays:
         return itinerary
-    trip = trips.require_trip(conn, installation_id, itinerary.trip_id)
+    trip = trips.require_trip(conn, person_id, itinerary.trip_id)
     cells = start_cells(itinerary.days, stays)
     if not cells:
         return itinerary

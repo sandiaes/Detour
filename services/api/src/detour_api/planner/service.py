@@ -37,7 +37,7 @@ def generate_for_trip(
 ) -> GenerationResult:
     started = time.perf_counter()
     with session.tx() as conn:
-        context = planning.load_context(conn, session.installation_id, trip_id, config)
+        context = planning.load_context(conn, session.person_id, trip_id, config)
         # Where the traveller sleeps: each day then starts there (ADR 030).
         points = tuple(
             StayPoint(s.first_day, s.last_day, Coord.from_degrees(s.lat, s.lon))
@@ -75,7 +75,7 @@ def generate_for_trip(
     with session.tx() as conn:
         result = planning.save_generation(
             conn,
-            session.installation_id,
+            session.person_id,
             context,
             generation,
             sequencer.name,

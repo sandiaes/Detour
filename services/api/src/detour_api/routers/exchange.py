@@ -20,8 +20,8 @@ router = APIRouter(prefix="/v1/trips", tags=["exchange"])
 )
 def export_all(session: SessionDep) -> TripFile:
     with session.tx() as conn:
-        trips.archive_due_trips(conn, session.installation_id)
-        found = trips.list_trips(conn, session.installation_id)
+        trips.archive_due_trips(conn, session.person_id)
+        found = trips.list_trips(conn, session.person_id)
         # Oldest first, so an import keeps the order the trips were made in.
         return exchange.export_file([exchange.export_trip(conn, t) for t in reversed(found)])
 
@@ -33,8 +33,8 @@ def export_all(session: SessionDep) -> TripFile:
 )
 def export_one(session: SessionDep, trip_id: uuid.UUID) -> TripFile:
     with session.tx() as conn:
-        trips.archive_due_trips(conn, session.installation_id)
-        trip = trips.require_trip(conn, session.installation_id, trip_id)
+        trips.archive_due_trips(conn, session.person_id)
+        trip = trips.require_trip(conn, session.person_id, trip_id)
         return exchange.export_file([exchange.export_trip(conn, trip)])
 
 
@@ -47,4 +47,4 @@ def export_one(session: SessionDep, trip_id: uuid.UUID) -> TripFile:
 )
 def import_trips(session: SessionDep, body: TripFile) -> ImportResult:
     with session.tx() as conn:
-        return exchange.import_file(conn, session.installation_id, body)
+        return exchange.import_file(conn, session.person_id, body)

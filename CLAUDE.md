@@ -62,7 +62,10 @@ whose id is its first installation's id, so `Session.installation_id` is now the
 sees the person's trips from any phone (`Session.device_id` is the phone); `POST /v1/installations/join` with a
 one-time link code (8 letters, 10 minutes) or the recovery code (26 letters; signs out the other phones);
 `GET /v1/me`, `POST /v1/me/link-codes`, `POST /v1/me/recovery-code`, `DELETE /v1/me/devices/{id}` (401
-`device_removed` afterwards); More, Your phones in the app. Steps 2 to 6 are not started.
+`device_removed` afterwards); More, Your phones in the app. **Step 2 is built** (tests only; migration `0025` not yet
+run in production): `app.trip.owner_person_id`, `app.trip_member` (one owner per trip, a trigger adds it), `user_place`
+and `place_name_override` by `person_id`; `Session.person_id`; every trip query authorises by membership; only the
+owner deletes a trip (403 `not_trip_owner`). Steps 3 to 6 are not started.
 
 **Regions can be imported from the app** (2026-11-17, ADR 033 step 3, built, awaiting acceptance; tests only; migration
 `0023` and the workflow change must reach `main` first; the GitHub token `DETOUR_GITHUB_TOKEN` and

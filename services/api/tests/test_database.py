@@ -78,6 +78,7 @@ APP_TABLES = [
     "provider_usage",
     "transfer",
     "trip",
+    "trip_member",
     "trip_stay",
     "trip_stop",
     "trip_visit",

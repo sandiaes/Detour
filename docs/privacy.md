@@ -64,7 +64,7 @@ The backend's requests carry an identifying User-Agent that names the project, a
 | A document | The document, Delete (confirmation) | Nothing |
 | Everything on the phone | Uninstall Detour | The server data stays. Another of your phones still reaches it; so does a new phone with your recovery code (ADR 034). Without either, nothing can reach it any more |
 | Another of your phones | More, Your phones, Remove | It is signed out at once and starts again as a new, empty phone; documents kept only on it stay on it |
-| Everything on the server | No button. In Supabase's SQL editor, with the "Person" identifier from Settings, run `DELETE FROM app.trip WHERE installation_id = '<id>';` then `DELETE FROM app.person WHERE id = '<id>';` (in that order: a stop still using one of your places blocks the second statement). The second removes your phones, codes, places and overrides with it | Backups made before, for up to 30 days |
+| Everything on the server | No button. In Supabase's SQL editor, with the "Person" identifier from Settings, run `DELETE FROM app.trip WHERE owner_person_id = '<id>';` then `DELETE FROM app.person WHERE id = '<id>';` (in that order: a stop still using one of your places blocks the second statement). The second removes your phones, codes, places and overrides with it | Backups made before, for up to 30 days |
 
 The "Person" identifier is shown in Settings (it is the id of your first phone). A reinstalled app
 is a new, empty phone until you type a code from another phone of yours, or your recovery code,

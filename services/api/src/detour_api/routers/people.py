@@ -28,7 +28,7 @@ JOIN_ERRORS: Responses = {**ERRORS, 400: {"model": ErrorBody}}
 
 
 def _person(session: Session, conn: Connection) -> PersonInfo:
-    row = people.get_person(conn, session.installation_id)
+    row = people.get_person(conn, session.person_id)
     return PersonInfo(
         person_id=row.id,
         device_id=session.device_id,
@@ -63,7 +63,7 @@ def get_me(session: SessionDep) -> PersonInfo:
 def create_link_code(session: SessionDep, settings: SettingsDep, response: Response) -> LinkCode:
     with session.tx() as conn:
         code, expires_at = people.create_link_code(
-            conn, settings.token_secret_bytes, session.installation_id, session.device_id
+            conn, settings.token_secret_bytes, session.person_id, session.device_id
         )
     response.headers["Cache-Control"] = "no-store"
     return LinkCode(code=people.format_code(code), expires_at=expires_at)
@@ -80,7 +80,7 @@ def create_recovery_code(
 ) -> RecoveryCode:
     with session.tx() as conn:
         code, created_at = people.create_recovery_code(
-            conn, settings.token_secret_bytes, session.installation_id
+            conn, settings.token_secret_bytes, session.person_id
         )
     response.headers["Cache-Control"] = "no-store"
     return RecoveryCode(code=people.format_code(code), created_at=created_at)
@@ -94,7 +94,7 @@ def create_recovery_code(
 )
 def remove_device(device_id: uuid.UUID, session: SessionDep, request: Request) -> Response:
     with session.tx() as conn:
-        people.remove_device(conn, session.installation_id, session.device_id, device_id)
+        people.remove_device(conn, session.person_id, session.device_id, device_id)
     forget_devices(request.app.state.engine)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -115,7 +115,7 @@ def join(
     log.info("device_joined", recovered=result.recovered, moved_trips=result.moved_trips)
     joined = Session(
         db=session.db,
-        installation_id=result.person_id,
+        person_id=result.person_id,
         photon=session.photon,
         device_id=session.device_id,
     )

@@ -96,7 +96,7 @@ def place_suggestions(
 @router.get("/change-sets/{change_set_id}", summary="One change set.", responses=ERRORS)
 def get_change_set(session: SessionDep, change_set_id: uuid.UUID) -> ChangeSet:
     with session.tx() as conn:
-        return changes.require(conn, session.installation_id, change_set_id)
+        return changes.require(conn, session.person_id, change_set_id)
 
 
 @router.post(
@@ -113,9 +113,7 @@ def apply_change_set(
     # morning leg from its stay like a plan that is read (ADR 030); otherwise the line and the
     # "Walk from" row vanish after Optimize, its undo and every other change until it is read again.
     with session.tx() as conn:
-        stays.with_starts(
-            conn, session.installation_id, applied.itinerary, request.app.state.travel_time
-        )
+        stays.with_starts(conn, session.person_id, applied.itinerary, request.app.state.travel_time)
     return applied
 
 
@@ -135,7 +133,7 @@ def discard_change_set(session: SessionDep, change_set_id: uuid.UUID) -> ChangeS
 )
 def list_versions(session: SessionDep, itinerary_id: uuid.UUID) -> list[ItineraryVersion]:
     with session.tx() as conn:
-        return changes.list_versions(conn, session.installation_id, itinerary_id)
+        return changes.list_versions(conn, session.person_id, itinerary_id)
 
 
 @router.post(

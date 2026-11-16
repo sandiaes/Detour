@@ -141,12 +141,14 @@ def _has_stops(conn: Connection) -> bool:
     return bool(conn.execute(text("SELECT to_regclass('app.trip_stop') IS NOT NULL")).scalar())
 
 
-def installation_trips(conn: Connection, installation_id: uuid.UUID) -> list[uuid.UUID]:
+def installation_trips(conn: Connection, person_id: uuid.UUID) -> list[uuid.UUID]:
     rows = conn.execute(
         text(
-            "SELECT id FROM app.trip WHERE installation_id = :i AND status = 'active' ORDER BY id"
+            "SELECT id FROM app.trip"
+            " WHERE id IN (SELECT tm.trip_id FROM app.trip_member tm WHERE tm.person_id = :i)"
+            " AND status = 'active' ORDER BY id"
         ),
-        {"i": installation_id},
+        {"i": person_id},
     ).all()
     return [r[0] for r in rows]
 

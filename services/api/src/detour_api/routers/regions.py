@@ -28,10 +28,10 @@ def list_regions(db: DatabaseDep) -> list[RegionInfo]:
         return geo.list_regions(conn)
 
 
-def _owner_only(settings: Settings, installation_id: uuid.UUID) -> None:
+def _owner_only(settings: Settings, person_id: uuid.UUID) -> None:
     """Removing a region changes data every installation shares, so only the owner's installations
     (``DETOUR_OWNER_INSTALLATION_IDS``) may do it. With none configured nobody may (ADR 033)."""
-    if installation_id not in settings.owner_installations:
+    if person_id not in settings.owner_installations:
         raise ApiError(403, "not_owner", "only the owner of this server can change its regions")
 
 
@@ -46,7 +46,7 @@ def region_catalog(session: SessionDep, settings: SettingsDep, request: Request)
         return import_jobs.catalog(
             conn,
             settings,
-            can_manage=session.installation_id in settings.owner_installations,
+            can_manage=session.person_id in settings.owner_installations,
             import_enabled=request.app.state.github.enabled,
         )
 
@@ -65,12 +65,12 @@ def import_region(
     region_id: str,
     body: ImportRequest | None = None,
 ) -> ImportJob:
-    _owner_only(settings, session.installation_id)
+    _owner_only(settings, session.person_id)
     github = request.app.state.github
     if not github.enabled:
         raise ApiError(503, "import_unavailable", "this server cannot start imports")
     with session.tx() as conn:
-        job_id = import_jobs.start_job(conn, settings, region_id, session.installation_id)
+        job_id = import_jobs.start_job(conn, settings, region_id, session.person_id)
     # The job exists and is committed before GitHub is asked: the workflow updates it by id.
     outcome = github.dispatch_import(region_id, job_id, body.gazetteer if body else True)
     failed = {
@@ -95,9 +95,9 @@ def import_region(
     responses=ERRORS,
 )
 def removal_preview(session: SessionDep, settings: SettingsDep, region_id: str) -> RegionRemoval:
-    _owner_only(settings, session.installation_id)
+    _owner_only(settings, session.person_id)
     with session.tx() as conn:
-        return regions.preview(conn, session.installation_id, region_id)
+        return regions.preview(conn, session.person_id, region_id)
 
 
 @router.delete(
@@ -107,9 +107,9 @@ def removal_preview(session: SessionDep, settings: SettingsDep, region_id: str) 
     responses=ERRORS,
 )
 def remove_region(session: SessionDep, settings: SettingsDep, region_id: str) -> RegionRemoval:
-    _owner_only(settings, session.installation_id)
+    _owner_only(settings, session.person_id)
     with session.tx() as conn:
-        result = regions.remove(conn, session.installation_id, region_id)
+        result = regions.remove(conn, session.person_id, region_id)
     # After the commit, like the importer: rewrite the tables so the files and the size shrink.
     if result.places_removed >= regions.FULL_VACUUM_THRESHOLD:
         regions.vacuum_full(session.db.engine)

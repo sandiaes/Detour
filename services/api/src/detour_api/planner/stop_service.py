@@ -50,7 +50,7 @@ def preview_stops(
 ) -> ChangeSet:
     started = time.perf_counter()
     with session.tx() as conn:
-        trip = trips.require_open_trip(conn, session.installation_id, trip_id)
+        trip = trips.require_open_trip(conn, session.person_id, trip_id)
         if trip.destination.kind != "route":
             raise conflict("not_a_route", "only a multi-city trip has stops to edit")
         if trip.selected_itinerary_id is None:
@@ -199,7 +199,7 @@ def preview_stops(
     )
     with session.tx() as conn:
         result = changes.save(
-            conn, session.installation_id, ctx, proposal, changes.diff_model(planned), notes
+            conn, session.person_id, ctx, proposal, changes.diff_model(planned), notes
         )
     log.info(
         "stops_previewed",

@@ -19,7 +19,7 @@ router = APIRouter(prefix="/v1/user-places", tags=["user places"])
 )
 def create_user_place(session: SessionDep, body: UserPlaceCreate) -> UserPlace:
     with session.tx() as conn:
-        return user_places.create(conn, session.installation_id, body)
+        return user_places.create(conn, session.person_id, body)
 
 
 @router.get("", summary="The caller's own places.", responses=AUTH)
@@ -28,19 +28,19 @@ def list_user_places(
     kind: Annotated[Literal["city", "location", "restaurant", "cafe"] | None, Query()] = None,
 ) -> list[UserPlace]:
     with session.tx() as conn:
-        return user_places.list_all(conn, session.installation_id, kind)
+        return user_places.list_all(conn, session.person_id, kind)
 
 
 @router.get("/{place_id}", summary="One of the caller's places.", responses=ERRORS)
 def get_user_place(session: SessionDep, place_id: uuid.UUID) -> UserPlace:
     with session.tx() as conn:
-        return user_places.require(conn, session.installation_id, place_id)
+        return user_places.require(conn, session.person_id, place_id)
 
 
 @router.patch("/{place_id}", summary="Rename, move or re-describe a place.", responses=ERRORS)
 def update_user_place(session: SessionDep, place_id: uuid.UUID, body: UserPlaceUpdate) -> UserPlace:
     with session.tx() as conn:
-        return user_places.update(conn, session.installation_id, place_id, body)
+        return user_places.update(conn, session.person_id, place_id, body)
 
 
 @router.delete(
@@ -51,5 +51,5 @@ def update_user_place(session: SessionDep, place_id: uuid.UUID, body: UserPlaceU
 )
 def delete_user_place(session: SessionDep, place_id: uuid.UUID) -> Response:
     with session.tx() as conn:
-        user_places.delete(conn, session.installation_id, place_id)
+        user_places.delete(conn, session.person_id, place_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

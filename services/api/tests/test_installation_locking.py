@@ -99,7 +99,7 @@ def test_a_known_installation_makes_no_installation_write(
         device = uuid.uuid4()
         session = Session(
             db=Database(engine),
-            installation_id=device,
+            person_id=device,
             photon=None,  # type: ignore[arg-type]
             device_id=device,
         )
@@ -109,7 +109,7 @@ def test_a_known_installation_makes_no_installation_write(
         assert len(calls) == 1  # the first use only
         with psycopg.connect(api_env.database_url, autocommit=True) as admin:
             row = admin.execute(
-                "SELECT count(*) FROM app.installation WHERE id = %s", (session.installation_id,)
+                "SELECT count(*) FROM app.installation WHERE id = %s", (session.device_id,)
             ).fetchone()
         assert row == (1,)
     finally:
@@ -126,7 +126,7 @@ def test_a_failed_first_request_is_not_remembered(
         device = uuid.uuid4()
         session = Session(
             db=Database(engine),
-            installation_id=device,
+            person_id=device,
             photon=None,  # type: ignore[arg-type]
             device_id=device,
         )

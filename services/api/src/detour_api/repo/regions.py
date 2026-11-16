@@ -59,13 +59,13 @@ def _region(conn: Connection, region_id: str, lock: bool = False) -> Any:
 
 
 def _installation_trips(
-    conn: Connection, installation_id: uuid.UUID, region_id: str, countries: list[str]
+    conn: Connection, person_id: uuid.UUID, region_id: str, countries: list[str]
 ) -> list[RemovalTrip]:
     rows = conn.execute(
         text(
             """
             SELECT t.id, t.title, t.status FROM app.trip t
-            WHERE t.installation_id = :i AND NOT t.is_seed AND (
+            WHERE EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :i) AND NOT t.is_seed AND (
                 t.destination_country = ANY (:c)
                 OR EXISTS (
                     SELECT 1 FROM app.itinerary it
@@ -76,12 +76,12 @@ def _installation_trips(
             ORDER BY t.status DESC, t.start_date DESC NULLS LAST, t.id
             """
         ),
-        {"i": installation_id, "r": region_id, "c": countries},
+        {"i": person_id, "r": region_id, "c": countries},
     ).all()
     return [RemovalTrip(id=r.id, title=r.title, status=r.status) for r in rows]
 
 
-def preview(conn: Connection, installation_id: uuid.UUID, region_id: str) -> RegionRemoval:
+def preview(conn: Connection, person_id: uuid.UUID, region_id: str) -> RegionRemoval:
     region = _region(conn, region_id)
     counts = conn.execute(
         text(
@@ -114,12 +114,12 @@ def preview(conn: Connection, installation_id: uuid.UUID, region_id: str) -> Reg
         places_kept=int(counts.kept),
         admin_areas_removed=int(areas.total) - int(areas.kept),
         admin_areas_kept=int(areas.kept),
-        trips=_installation_trips(conn, installation_id, region_id, list(region.country_codes)),
+        trips=_installation_trips(conn, person_id, region_id, list(region.country_codes)),
         bytes_freed_estimate=int(counts.freed),
     )
 
 
-def remove(conn: Connection, installation_id: uuid.UUID, region_id: str) -> RegionRemoval:
+def remove(conn: Connection, person_id: uuid.UUID, region_id: str) -> RegionRemoval:
     """Remove the region's data as ``preview`` describes it. 409 ``import_running`` while any region
     is being imported (one change to ``geo`` at a time)."""
     region = _region(conn, region_id, lock=True)
@@ -128,7 +128,7 @@ def remove(conn: Connection, installation_id: uuid.UUID, region_id: str) -> Regi
     ).scalar_one_or_none()
     if running is not None:
         raise conflict("import_running", f"the region {running} is being imported: try again later")
-    result = preview(conn, installation_id, region_id)
+    result = preview(conn, person_id, region_id)
     conn.execute(
         text(f"DELETE FROM geo.place p WHERE p.region_id = :r AND NOT ({_PLACE_KEPT})"),
         {"r": region_id},

@@ -297,13 +297,13 @@ def build_place_search(
     lon: float | None,
     radius_m: float | None,
     limit: int,
-    installation_id: uuid.UUID | None = None,
+    person_id: uuid.UUID | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """The place-search SQL and its parameters (exposed so tests can EXPLAIN the real query).
-    ``installation_id`` applies that installation's approved display names (ADR 025)."""
+    ``person_id`` applies that installation's approved display names (ADR 025)."""
     params: dict[str, Any] = {
         "limit": limit,
-        "inst": str(installation_id) if installation_id is not None else None,
+        "inst": str(person_id) if person_id is not None else None,
     }
     where = ["p.is_active"]
     tier = "NULL::int"
@@ -422,7 +422,7 @@ def search_places(conn: Connection, **kwargs: Any) -> list[PlaceSummary]:
 
 
 def place_exists(
-    conn: Connection, place_id: uuid.UUID, installation_id: uuid.UUID | None = None
+    conn: Connection, place_id: uuid.UUID, person_id: uuid.UUID | None = None
 ) -> tuple[str, str, float, float, bool, int | None, str] | None:
     """(kind, display name, lat, lon, is_active, default_visit_minutes, category) of a
     geo.place."""
@@ -433,7 +433,7 @@ def place_exists(
             + PLACE_NAME_COLUMNS
             + " FROM geo.place p WHERE p.id = :i"
         ),
-        {"i": place_id, "inst": str(installation_id) if installation_id is not None else None},
+        {"i": place_id, "inst": str(person_id) if person_id is not None else None},
     ).first()
     # The resolved English-facing name (ADR 025), or the category for an unnamed place.
     return (
@@ -452,7 +452,7 @@ def place_exists(
 
 
 def get_place(
-    conn: Connection, place_id: uuid.UUID, installation_id: uuid.UUID | None = None
+    conn: Connection, place_id: uuid.UUID, person_id: uuid.UUID | None = None
 ) -> PlaceDetail | None:
     row = conn.execute(
         text(
@@ -467,7 +467,7 @@ def get_place(
             WHERE p.id = :i
             """
         ),
-        {"i": place_id, "inst": str(installation_id) if installation_id is not None else None},
+        {"i": place_id, "inst": str(person_id) if person_id is not None else None},
     ).first()
     if row is None:
         return None

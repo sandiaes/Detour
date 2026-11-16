@@ -113,10 +113,13 @@ def _trip(row: Any, cover: Photo | None = None, stops: list[TripStop] | None = N
     )
 
 
-def get_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip | None:
+def get_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip | None:
     row = conn.execute(
-        text(f"SELECT {_TRIP_COLUMNS} FROM app.trip t WHERE t.id = :t AND t.installation_id = :i"),
-        {"t": trip_id, "i": installation_id},
+        text(
+            f"SELECT {_TRIP_COLUMNS} FROM app.trip t WHERE t.id = :t"
+            f" AND EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :i)"
+        ),
+        {"t": trip_id, "i": person_id},
     ).first()
     if row is None:
         return None
@@ -124,8 +127,8 @@ def get_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -
     return _trip(row, images.trip_covers(conn, [row.id]).get(row.id), stops.get(row.id))
 
 
-def require_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
-    trip = get_trip(conn, installation_id, trip_id)
+def require_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+    trip = get_trip(conn, person_id, trip_id)
     if trip is None:
         raise not_found("trip")
     return trip
@@ -143,23 +146,21 @@ def refuse_if_past(status: str) -> None:
         raise past_refusal()
 
 
-def require_open_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+def require_open_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
     """The caller's trip, refused with 409 ``trip_past`` when it is a past trip."""
-    trip = require_trip(conn, installation_id, trip_id)
+    trip = require_trip(conn, person_id, trip_id)
     refuse_if_past(trip.status)
     return trip
 
 
-def list_trips(
-    conn: Connection, installation_id: uuid.UUID, status: str | None = None
-) -> list[Trip]:
+def list_trips(conn: Connection, person_id: uuid.UUID, status: str | None = None) -> list[Trip]:
     rows = conn.execute(
         text(
-            f"SELECT {_TRIP_COLUMNS} FROM app.trip t WHERE t.installation_id = :i"
+            f"SELECT {_TRIP_COLUMNS} FROM app.trip t WHERE EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :i)"
             " AND (CAST(:s AS text) IS NULL OR t.status = :s)"
             " ORDER BY t.created_at DESC, t.id"
         ),
-        {"i": installation_id, "s": status},
+        {"i": person_id, "s": status},
     ).all()
     covers = images.trip_covers(conn, [r.id for r in rows])
     stops = trip_stops(conn, [r.id for r in rows if r.destination_kind == "route"])
@@ -168,7 +169,7 @@ def list_trips(
 
 def create_trip(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     body: TripCreate,
     *,
     destination_name: str,
@@ -179,7 +180,7 @@ def create_trip(
     title: str | None = None,
 ) -> Trip:
     count = conn.execute(
-        text("SELECT count(*) FROM app.trip WHERE installation_id = :i"), {"i": installation_id}
+        text("SELECT count(*) FROM app.trip WHERE owner_person_id = :i"), {"i": person_id}
     ).scalar_one()
     if count >= MAX_TRIPS_PER_INSTALLATION:
         raise conflict(
@@ -189,7 +190,7 @@ def create_trip(
     conn.execute(
         text(
             """
-            INSERT INTO app.trip (id, installation_id, title, destination_kind, destination_ref,
+            INSERT INTO app.trip (id, owner_person_id, title, destination_kind, destination_ref,
                 destination_name, destination_point, duration_days, start_date, is_seed,
                 destination_country, uses_car)
             VALUES (:id, :inst, :title, :kind, :ref, :dname,
@@ -199,7 +200,7 @@ def create_trip(
         ),
         {
             "id": trip_id,
-            "inst": installation_id,
+            "inst": person_id,
             "title": title or body.title,
             "kind": body.destination_kind,
             "ref": body.destination_ref,
@@ -215,7 +216,7 @@ def create_trip(
     )
     if stops:
         write_stops(conn, trip_id, stops)
-    return require_trip(conn, installation_id, trip_id)
+    return require_trip(conn, person_id, trip_id)
 
 
 class ResolvedStop:
@@ -257,12 +258,12 @@ def write_stops(conn: Connection, trip_id: uuid.UUID, stops: list[ResolvedStop])
 
 
 def update_trip(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, body: TripUpdate
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, body: TripUpdate
 ) -> Trip:
-    trip = require_open_trip(conn, installation_id, trip_id)
+    trip = require_open_trip(conn, person_id, trip_id)
     changed = body.model_fields_set
     sets: list[str] = []
-    params: dict[str, Any] = {"t": trip_id, "i": installation_id}
+    params: dict[str, Any] = {"t": trip_id, "i": person_id}
 
     if "title" in changed:
         if body.title is None:
@@ -297,9 +298,7 @@ def update_trip(
         params["sel"] = body.selected_itinerary_id
     if sets:
         conn.execute(
-            text(
-                f"UPDATE app.trip SET {', '.join(sets)}, updated_at = now() WHERE id = :t AND installation_id = :i"
-            ),
+            text(f"UPDATE app.trip SET {', '.join(sets)}, updated_at = now() WHERE id = :t"),
             params,
         )
     if "start_date" in changed:
@@ -312,7 +311,7 @@ def update_trip(
             ),
             {"s": body.start_date, "t": trip_id},
         )
-    return require_trip(conn, installation_id, trip_id)
+    return require_trip(conn, person_id, trip_id)
 
 
 def _select_itinerary(conn: Connection, trip_id: uuid.UUID, itinerary_id: uuid.UUID | None) -> None:
@@ -346,15 +345,17 @@ def _select_itinerary(conn: Connection, trip_id: uuid.UUID, itinerary_id: uuid.U
         )
 
 
-def delete_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> None:
-    """Deletes the trip with its itineraries, days, items, transfers and archive rows. User places
-    stay (they belong to the installation)."""
+def delete_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> None:
+    """Deletes the trip with its itineraries, days, items, transfers and archive rows, for every
+    member. Only its owner may (ADR 034: both edit, the creator deletes); a member is refused with
+    403 ``not_trip_owner``. Places stay (they belong to the person who added them)."""
+    require_trip(conn, person_id, trip_id)
     result = conn.execute(
-        text("DELETE FROM app.trip WHERE id = :t AND installation_id = :i"),
-        {"t": trip_id, "i": installation_id},
+        text("DELETE FROM app.trip WHERE id = :t AND owner_person_id = :i"),
+        {"t": trip_id, "i": person_id},
     )
     if result.rowcount == 0:
-        raise not_found("trip")
+        raise ApiError(403, "not_trip_owner", "only the person who created this trip can delete it")
 
 
 # -- archive (ADR 006) -------------------------------------------------------------------------
@@ -394,19 +395,19 @@ def _archive(conn: Connection, trip: Trip, reason: str) -> bool:
     return True
 
 
-def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+def archive_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
     """Turn a trip into a past trip, on the user's request. The plan is kept; only the undo
     history is cut to five versions."""
-    trip = require_trip(conn, installation_id, trip_id)
+    trip = require_trip(conn, person_id, trip_id)
     if trip.status == "past" or not _archive(conn, trip, "user"):
         raise conflict("already_archived", "the trip is already a past trip")
-    return require_trip(conn, installation_id, trip_id)
+    return require_trip(conn, person_id, trip_id)
 
 
-def reopen_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+def reopen_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
     """Take a past trip out of the past: it is an ordinary trip again and the two-day rule leaves
     it alone (``reopened_at``), so it does not become past again by itself."""
-    trip = require_trip(conn, installation_id, trip_id)
+    trip = require_trip(conn, person_id, trip_id)
     if trip.status != "past":
         raise conflict("not_archived", "only a past trip can be reopened")
     conn.execute(
@@ -416,11 +417,11 @@ def reopen_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
         ),
         {"t": trip_id},
     )
-    return require_trip(conn, installation_id, trip_id)
+    return require_trip(conn, person_id, trip_id)
 
 
 def archive_due_trips(
-    conn: Connection, installation_id: uuid.UUID, today: date | None = None
+    conn: Connection, person_id: uuid.UUID, today: date | None = None
 ) -> list[uuid.UUID]:
     """Archives the installation's active trips whose last day ended
     ``AUTO_ARCHIVE_GRACE_DAYS`` ago. Trips without a start date never become past by themselves
@@ -430,18 +431,19 @@ def archive_due_trips(
     Called when the trips are read, so no scheduled job is needed."""
     due = conn.execute(
         text(
-            "SELECT id FROM app.trip WHERE installation_id = :i AND status = 'active' AND NOT is_seed"
+            "SELECT id FROM app.trip WHERE id IN (SELECT tm.trip_id FROM app.trip_member tm WHERE tm.person_id = :i)"
+            " AND status = 'active' AND NOT is_seed"
             " AND start_date IS NOT NULL AND reopened_at IS NULL"
             " AND start_date + (duration_days - 1 + :g) <= CAST(:today AS date)"
             # A trip made after its last day was entered as a journey already taken: the user
             # fills it and marks it past (ADR 026 decision 23).
             " AND CAST(created_at AS date) <= start_date + (duration_days - 1 + :g) ORDER BY id"
         ),
-        {"i": installation_id, "g": AUTO_ARCHIVE_GRACE_DAYS, "today": today or today_utc()},
+        {"i": person_id, "g": AUTO_ARCHIVE_GRACE_DAYS, "today": today or today_utc()},
     ).all()
     archived: list[uuid.UUID] = []
     for row in due:
-        trip = get_trip(conn, installation_id, row.id)
+        trip = get_trip(conn, person_id, row.id)
         if trip is not None and _archive(conn, trip, "after_last_day"):
             archived.append(row.id)
     return archived
@@ -473,19 +475,15 @@ def archive_info(conn: Connection, trip_id: uuid.UUID) -> ArchiveInfo:
     )
 
 
-def get_archive_info(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
-) -> ArchiveInfo:
-    trip = require_trip(conn, installation_id, trip_id)
+def get_archive_info(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> ArchiveInfo:
+    trip = require_trip(conn, person_id, trip_id)
     if trip.status != "past":
         raise conflict("not_archived", "only a past trip has an archive")
     return archive_info(conn, trip_id)
 
 
-def list_visits(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
-) -> list[TripVisit]:
-    require_trip(conn, installation_id, trip_id)
+def list_visits(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> list[TripVisit]:
+    require_trip(conn, person_id, trip_id)
     return list_visits_of(conn, trip_id)
 
 
@@ -520,19 +518,19 @@ def list_visits_of(conn: Connection, trip_id: uuid.UUID) -> list[TripVisit]:
 
 def set_visit_confirmed(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     trip_id: uuid.UUID,
     visit_id: uuid.UUID,
     confirmed: bool,
 ) -> TripVisit:
-    require_trip(conn, installation_id, trip_id)
+    require_trip(conn, person_id, trip_id)
     result = conn.execute(
         text("UPDATE app.trip_visit SET confirmed = :c WHERE id = :v AND trip_id = :t"),
         {"c": confirmed, "v": visit_id, "t": trip_id},
     )
     if result.rowcount == 0:
         raise not_found("visit")
-    return next(v for v in list_visits(conn, installation_id, trip_id) if v.id == visit_id)
+    return next(v for v in list_visits(conn, person_id, trip_id) if v.id == visit_id)
 
 
 def cover_destinations(conn: Connection, trip_id: uuid.UUID) -> list[tuple[str, str]]:

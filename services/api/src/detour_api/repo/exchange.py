@@ -191,7 +191,7 @@ def _destination_ref(d: FileDestination) -> str:
     return d.ref if d.ref is not None and PLACE_REF.fullmatch(d.ref) else "manual"
 
 
-def _import_trip(conn: Connection, installation_id: uuid.UUID, t: FileTrip) -> ImportedTrip:
+def _import_trip(conn: Connection, person_id: uuid.UUID, t: FileTrip) -> ImportedTrip:
     d = t.destination
     body = TripCreate(
         title=t.title,
@@ -206,16 +206,14 @@ def _import_trip(conn: Connection, installation_id: uuid.UUID, t: FileTrip) -> I
         # A version 1 file has no Car choice: the trip keeps a car, as it did before (ADR 032).
         uses_car=True if t.uses_car is None else t.uses_car,
     )
-    trip = trips.create_trip(
-        conn, installation_id, body, destination_name=d.name, lat=d.lat, lon=d.lon
-    )
+    trip = trips.create_trip(conn, person_id, body, destination_name=d.name, lat=d.lat, lon=d.lon)
     stops = 0
     if t.days:
-        stops = _write_plan(conn, installation_id, trip, t.days)
+        stops = _write_plan(conn, person_id, trip, t.days)
     for stay in t.stays:
         stays.create(
             conn,
-            installation_id,
+            person_id,
             trip.id,
             StayCreate(
                 name=stay.name,
@@ -268,11 +266,9 @@ def _write_visits(conn: Connection, trip_id: uuid.UUID, visits: list[FileVisit])
         )
 
 
-def _write_plan(
-    conn: Connection, installation_id: uuid.UUID, trip: Trip, days: list[FileDay]
-) -> int:
+def _write_plan(conn: Connection, person_id: uuid.UUID, trip: Trip, days: list[FileDay]) -> int:
     """A manual itinerary of the trip, chosen, with every stop as the user's own place."""
-    plan = itineraries.create_manual(conn, installation_id, trip.id)
+    plan = itineraries.create_manual(conn, person_id, trip.id)
     conn.execute(
         text("UPDATE app.trip SET selected_itinerary_id = :i WHERE id = :t"),
         {"i": plan.id, "t": trip.id},
@@ -295,7 +291,7 @@ def _write_plan(
                 # A leg comes back as a leg of the manual plan, as entered (ADR 032).
                 itineraries.create_item(
                     conn,
-                    installation_id,
+                    person_id,
                     plan.id,
                     day.day_index,
                     ItemCreate(
@@ -316,7 +312,7 @@ def _write_plan(
             if key not in made:
                 place = user_places.create(
                     conn,
-                    installation_id,
+                    person_id,
                     UserPlaceCreate(
                         kind=kind,
                         name=it.name,
@@ -328,7 +324,7 @@ def _write_plan(
                 made[key] = place.id
             item = itineraries.create_item(
                 conn,
-                installation_id,
+                person_id,
                 plan.id,
                 day.day_index,
                 ItemCreate(
@@ -352,13 +348,12 @@ def _write_plan(
     return count
 
 
-def import_file(conn: Connection, installation_id: uuid.UUID, file: TripFile) -> ImportResult:
+def import_file(conn: Connection, person_id: uuid.UUID, file: TripFile) -> ImportResult:
     """Write every trip of the file as a new trip, all or nothing (the caller's transaction)."""
     _check_file(file)
-    trips.ensure_installation(conn, installation_id)
     done: list[ImportedTrip] = []
     for index, t in enumerate(file.trips):
-        result = _import_trip(conn, installation_id, t)
+        result = _import_trip(conn, person_id, t)
         result.index = index
         done.append(result)
     return ImportResult(trips=done)

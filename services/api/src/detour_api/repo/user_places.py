@@ -30,51 +30,49 @@ def _place(row: Any) -> UserPlace:
     )
 
 
-def get(conn: Connection, installation_id: uuid.UUID, place_id: uuid.UUID) -> UserPlace | None:
+def get(conn: Connection, person_id: uuid.UUID, place_id: uuid.UUID) -> UserPlace | None:
     row = conn.execute(
-        text(f"SELECT {_COLUMNS} FROM app.user_place WHERE id = :i AND installation_id = :n"),
-        {"i": place_id, "n": installation_id},
+        text(f"SELECT {_COLUMNS} FROM app.user_place WHERE id = :i AND person_id = :n"),
+        {"i": place_id, "n": person_id},
     ).first()
     return None if row is None else _place(row)
 
 
-def require(conn: Connection, installation_id: uuid.UUID, place_id: uuid.UUID) -> UserPlace:
-    place = get(conn, installation_id, place_id)
+def require(conn: Connection, person_id: uuid.UUID, place_id: uuid.UUID) -> UserPlace:
+    place = get(conn, person_id, place_id)
     if place is None:
         raise not_found("user place")
     return place
 
 
-def list_all(
-    conn: Connection, installation_id: uuid.UUID, kind: str | None = None
-) -> list[UserPlace]:
+def list_all(conn: Connection, person_id: uuid.UUID, kind: str | None = None) -> list[UserPlace]:
     rows = conn.execute(
         text(
-            f"SELECT {_COLUMNS} FROM app.user_place WHERE installation_id = :n"
+            f"SELECT {_COLUMNS} FROM app.user_place WHERE person_id = :n"
             " AND (CAST(:k AS text) IS NULL OR kind = :k) ORDER BY created_at, id"
         ),
-        {"n": installation_id, "k": kind},
+        {"n": person_id, "k": kind},
     ).all()
     return [_place(r) for r in rows]
 
 
-def create(conn: Connection, installation_id: uuid.UUID, body: UserPlaceCreate) -> UserPlace:
+def create(conn: Connection, person_id: uuid.UUID, body: UserPlaceCreate) -> UserPlace:
     count = conn.execute(
-        text("SELECT count(*) FROM app.user_place WHERE installation_id = :n"),
-        {"n": installation_id},
+        text("SELECT count(*) FROM app.user_place WHERE person_id = :n"),
+        {"n": person_id},
     ).scalar_one()
     if count >= MAX_USER_PLACES:
         raise conflict("limit_reached", f"at most {MAX_USER_PLACES} user places per installation")
     place_id = uuid.uuid4()
     conn.execute(
         text(
-            "INSERT INTO app.user_place (id, installation_id, kind, name, geom, source,"
+            "INSERT INTO app.user_place (id, person_id, kind, name, geom, source,"
             " search_provider, search_ref) VALUES (:id, :n, :kind, :name,"
             " ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :source, :prov, :ref)"
         ),
         {
             "id": place_id,
-            "n": installation_id,
+            "n": person_id,
             "kind": body.kind,
             "name": body.name,
             "lon": body.lon,
@@ -84,16 +82,16 @@ def create(conn: Connection, installation_id: uuid.UUID, body: UserPlaceCreate) 
             "ref": body.search_ref,
         },
     )
-    return require(conn, installation_id, place_id)
+    return require(conn, person_id, place_id)
 
 
 def update(
-    conn: Connection, installation_id: uuid.UUID, place_id: uuid.UUID, body: UserPlaceUpdate
+    conn: Connection, person_id: uuid.UUID, place_id: uuid.UUID, body: UserPlaceUpdate
 ) -> UserPlace:
-    require(conn, installation_id, place_id)
+    require(conn, person_id, place_id)
     changed = body.model_fields_set
     sets: list[str] = []
-    params: dict[str, Any] = {"i": place_id, "n": installation_id}
+    params: dict[str, Any] = {"i": place_id, "n": person_id}
     if "name" in changed and body.name is not None:
         sets.append("name = :name")
         params["name"] = body.name
@@ -103,7 +101,7 @@ def update(
     if sets:
         conn.execute(
             text(
-                f"UPDATE app.user_place SET {', '.join(sets)}, updated_at = now() WHERE id = :i AND installation_id = :n"
+                f"UPDATE app.user_place SET {', '.join(sets)}, updated_at = now() WHERE id = :i AND person_id = :n"
             ),
             params,
         )
@@ -116,17 +114,17 @@ def update(
             ),
             {"i": place_id},
         )
-    return require(conn, installation_id, place_id)
+    return require(conn, person_id, place_id)
 
 
-def delete(conn: Connection, installation_id: uuid.UUID, place_id: uuid.UUID) -> None:
-    require(conn, installation_id, place_id)
+def delete(conn: Connection, person_id: uuid.UUID, place_id: uuid.UUID) -> None:
+    require(conn, person_id, place_id)
     used = conn.execute(
         text("SELECT 1 FROM app.itinerary_item WHERE user_place_id = :i LIMIT 1"), {"i": place_id}
     ).first()
     if used:
         raise conflict("in_use", "the place is used by an itinerary item; remove the item first")
     conn.execute(
-        text("DELETE FROM app.user_place WHERE id = :i AND installation_id = :n"),
-        {"i": place_id, "n": installation_id},
+        text("DELETE FROM app.user_place WHERE id = :i AND person_id = :n"),
+        {"i": place_id, "n": person_id},
     )

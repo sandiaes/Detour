@@ -92,7 +92,7 @@ def build_seed_trip(conn: Connection, region_id: str | None = None) -> uuid.UUID
         {"i": SEED_INSTALLATION_ID},
     )
     conn.execute(
-        text("DELETE FROM app.trip WHERE installation_id = :i AND is_seed"),
+        text("DELETE FROM app.trip WHERE owner_person_id = :i AND is_seed"),
         {"i": SEED_INSTALLATION_ID},
     )
     trip = trips.create_trip(
