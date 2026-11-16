@@ -932,6 +932,11 @@ export interface components {
       id: string;
       /** Name */
       name: string;
+      /**
+       * Continent
+       * @enum {string}
+       */
+      continent: "Africa" | "Asia" | "Europe" | "North America" | "Oceania" | "South America";
       /** Country Codes */
       country_codes: string[];
       /**

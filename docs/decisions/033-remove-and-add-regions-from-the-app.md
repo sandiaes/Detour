@@ -90,7 +90,12 @@ workflow reports back.
    London and Lyon inside Paris (`geo.region_for_country`, the destination search). A region with no
    polygon is still matched by country, so before a first import, and if the polygon cannot be
    loaded, a city extract still claims its whole country. Multi-city bases are still matched by
-   country only. Great
+   country only. **New York State** is added for the USA
+   (`north-america/us/new-york`, 475 MB, a `.poly` linked on its page, read 2026-11-17); Geofabrik has no
+   extract for New York City alone. Each region now has a **continent** (the Regions screen groups
+   by it) and a **scope**: `country` (a whole country, the only region that claims its code) or
+   `part` (a city or state that claims its country's code but is matched by its polygon, so several
+   may share a code; a test enforces this). Great
    Britain (2.1 GB download) is deliberately not offered yet: it is far larger than a city and its
    share of the free database is unknown. The download is filtered on the GitHub runner, so its size
    is not the size the region takes in the database.

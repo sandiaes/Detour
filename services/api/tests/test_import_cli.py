@@ -37,11 +37,25 @@ def test_every_known_region_has_a_geofabrik_url_and_countries() -> None:
         assert all(re.fullmatch(r"[A-Z]{2}", c) for c in region.countries)
 
 
-def test_a_country_belongs_to_one_region() -> None:
-    """The country code decides which region a destination is planned in (geo.region_for_country),
-    so two regions must not claim one country."""
-    claimed = [c for region in REGIONS.values() for c in region.countries]
-    assert len(claimed) == len(set(claimed))
+def test_a_country_is_claimed_by_one_whole_country_region_or_by_parts_only() -> None:
+    """The country code decides which region a destination is planned in (geo.region_for_country):
+    a whole-country region is the only one that claims its code; city and state regions (scope
+    "part") may share a code because they are matched by their coverage polygon as well."""
+    by_code: dict[str, list[str]] = {}
+    for region in REGIONS.values():
+        for code in region.countries:
+            by_code.setdefault(code, []).append(region.scope)
+    for code, scopes in by_code.items():
+        assert scopes.count("country") <= 1, code
+        assert scopes.count("country") == 0 or len(scopes) == 1, code
+
+
+def test_every_region_has_a_continent_and_the_known_parts_are_parts() -> None:
+    assert REGIONS["japan"].continent == "Asia"
+    assert REGIONS["new-york"].continent == "North America"
+    assert REGIONS["austria"].continent == "Europe"
+    parts = {r.id for r in REGIONS.values() if r.scope == "part"}
+    assert parts == {"greater-london", "paris", "berlin", "new-york"}
 
 
 def test_the_target_and_staging_urls_are_required(monkeypatch: pytest.MonkeyPatch) -> None:

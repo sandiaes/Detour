@@ -9,7 +9,19 @@ import { Harness } from "../testing/harness";
 const LONDON = {
   id: "greater-london",
   name: "Greater London",
+  continent: "Europe",
   country_codes: ["GB"],
+  state: "not_imported",
+  places: 0,
+  places_kept: 0,
+  bytes: null,
+  job: null,
+};
+const NEW_YORK = {
+  id: "new-york",
+  name: "New York State",
+  continent: "North America",
+  country_codes: ["US"],
   state: "not_imported",
   places: 0,
   places_kept: 0,
@@ -19,6 +31,7 @@ const LONDON = {
 const AUSTRIA = {
   id: "austria",
   name: "Austria",
+  continent: "Europe",
   country_codes: ["AT"],
   state: "available",
   places: 1200,
@@ -177,4 +190,13 @@ test("an import under way has a yellow badge", async () => {
   const badge = await screen.findByText("Importing");
   const pill = badge.parent;
   expect(pill && StyleSheet.flatten(pill.props.style).backgroundColor).toBe(colors.warning);
+});
+
+test("the regions are listed under their continent", async () => {
+  await open({
+    "GET /v1/regions/catalog": () => catalog({ regions: [AUSTRIA, LONDON, NEW_YORK] }),
+  });
+  expect(await screen.findByRole("header", { name: "Europe" })).toBeOnTheScreen();
+  expect(screen.getByRole("header", { name: "North America" })).toBeOnTheScreen();
+  expect(screen.getByText("New York State")).toBeOnTheScreen();
 });

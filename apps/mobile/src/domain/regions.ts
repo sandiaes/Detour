@@ -8,6 +8,20 @@ export type CatalogRegion = components["schemas"]["CatalogRegion"];
 export type ImportJob = components["schemas"]["ImportJob"];
 export type RegionRemoval = components["schemas"]["RegionRemoval"];
 
+/** The regions under their continent headings, in the order the server sent them (it sorts by
+ * continent, then imported first, then by name). */
+export function groupByContinent(
+  regions: CatalogRegion[],
+): { continent: string; regions: CatalogRegion[] }[] {
+  const groups: { continent: string; regions: CatalogRegion[] }[] = [];
+  for (const region of regions) {
+    const last = groups[groups.length - 1];
+    if (last && last.continent === region.continent) last.regions.push(region);
+    else groups.push({ continent: region.continent, regions: [region] });
+  }
+  return groups;
+}
+
 /** An import that was asked for and has not ended: the screen refreshes while one exists. */
 export function importInProgress(region: CatalogRegion): boolean {
   return (

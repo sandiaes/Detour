@@ -4980,6 +4980,18 @@
             "type": "string",
             "title": "Name"
           },
+          "continent": {
+            "type": "string",
+            "enum": [
+              "Africa",
+              "Asia",
+              "Europe",
+              "North America",
+              "Oceania",
+              "South America"
+            ],
+            "title": "Continent"
+          },
           "country_codes": {
             "items": {
               "type": "string"
@@ -5035,6 +5047,7 @@
         "required": [
           "id",
           "name",
+          "continent",
           "country_codes",
           "state",
           "places",

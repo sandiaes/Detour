@@ -187,6 +187,7 @@ class ImportJob(BaseModel):
 class CatalogRegion(BaseModel):
     id: str
     name: str
+    continent: Literal["Africa", "Asia", "Europe", "North America", "Oceania", "South America"]
     country_codes: list[str]
     state: Literal["not_imported", "available", "disabled", "importing"]
     places: int = Field(description="Searchable places of the region in the database")

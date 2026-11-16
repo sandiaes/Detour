@@ -254,6 +254,22 @@ Do this once so that **More, Regions** works. Nothing here is a secret in the re
 5. **Removing** a region asks first and shows what the trips keep. It frees database space; the
    region can be imported again.
 
+### Adding a region to the catalog (ADR 033)
+
+The catalog is `services/api/src/detour_api/importer/regions.py`. To add one:
+
+1. Find it on <https://download.geofabrik.de> and note its path (for example
+   `europe/france/ile-de-france`) from the region's own page, not from a list: the region's page
+   links the `.poly` file the importer reads, and shows the file size.
+2. Add a `RegionDef` with an id (lower case, letters, digits, hyphens), a name, the path, the
+   country code(s), the continent and the scope: `country` for a whole country (only one region may
+   claim a code), `part` for a city or a state.
+3. Prefer whole countries up to about 1 GB of download; for a larger country add a state, region or
+   city extract (`part`). The database limit (250 MB for all regions) is what decides, and the
+   Regions screen shows the usage after each import.
+4. Run the tests and merge to `main`; the region appears in More, Regions. If its path is wrong the
+   import fails and the row says so.
+
 ## Deploying photos (ADR 022)
 
 The backend streams stored photos to the app, so it needs the same two Storage settings as the

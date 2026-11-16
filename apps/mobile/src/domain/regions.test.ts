@@ -2,6 +2,7 @@ import {
   type CatalogRegion,
   type RegionCatalog,
   anyImportInProgress,
+  groupByContinent,
   megabytes,
   regionLine,
   removalMessage,
@@ -12,6 +13,7 @@ function region(over: Partial<CatalogRegion> = {}): CatalogRegion {
   return {
     id: "greater-london",
     name: "Greater London",
+    continent: "Europe",
     country_codes: ["GB"],
     state: "not_imported",
     places: 0,
@@ -110,4 +112,16 @@ test("the removal message says what goes, what stays and which trips use it", ()
   expect(text).toContain("1 place your trips use stay");
   expect(text).toContain("Graz");
   expect(text).toContain("import the region again");
+});
+
+test("regions are grouped under their continent in the order sent", () => {
+  const groups = groupByContinent([
+    region({ id: "japan", name: "Japan", continent: "Asia" }),
+    region({ id: "austria", name: "Austria", continent: "Europe" }),
+    region({ id: "spain", name: "Spain", continent: "Europe" }),
+    region({ id: "new-york", name: "New York State", continent: "North America" }),
+  ]);
+  expect(groups.map((g) => g.continent)).toEqual(["Asia", "Europe", "North America"]);
+  expect(groups[1]?.regions.map((r) => r.name)).toEqual(["Austria", "Spain"]);
+  expect(groupByContinent([])).toEqual([]);
 });
