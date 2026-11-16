@@ -2,7 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Request, Response, status
 
-from detour_api.deps import SessionDep
+from detour_api.deps import IfMatch, SessionDep
 from detour_api.models.trips import Item, ItemCreate, ItemUpdate, Itinerary
 from detour_api.repo import itineraries, stays
 from detour_api.routers.responses import ERRORS
@@ -27,8 +27,11 @@ def get_itinerary(request: Request, session: SessionDep, itinerary_id: uuid.UUID
     summary="Delete an itinerary with its days, items and transfers.",
     responses=ERRORS,
 )
-def delete_itinerary(session: SessionDep, itinerary_id: uuid.UUID) -> Response:
+def delete_itinerary(
+    session: SessionDep, itinerary_id: uuid.UUID, if_match: IfMatch = None
+) -> Response:
     with session.tx() as conn:
+        itineraries.check_version(conn, session.person_id, if_match, itinerary_id=itinerary_id)
         itineraries.delete_itinerary(conn, session.person_id, itinerary_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -40,9 +43,14 @@ def delete_itinerary(session: SessionDep, itinerary_id: uuid.UUID) -> Response:
     responses=ERRORS,
 )
 def create_item(
-    session: SessionDep, itinerary_id: uuid.UUID, day_index: int, body: ItemCreate
+    session: SessionDep,
+    itinerary_id: uuid.UUID,
+    day_index: int,
+    body: ItemCreate,
+    if_match: IfMatch = None,
 ) -> Item:
     with session.tx() as conn:
+        itineraries.check_version(conn, session.person_id, if_match, itinerary_id=itinerary_id)
         return itineraries.create_item(conn, session.person_id, itinerary_id, day_index, body)
 
 
@@ -57,8 +65,11 @@ def get_item(session: SessionDep, item_id: uuid.UUID) -> Item:
     summary="Change time, duration, lock, meal type, day or position of an item.",
     responses=ERRORS,
 )
-def update_item(session: SessionDep, item_id: uuid.UUID, body: ItemUpdate) -> Item:
+def update_item(
+    session: SessionDep, item_id: uuid.UUID, body: ItemUpdate, if_match: IfMatch = None
+) -> Item:
     with session.tx() as conn:
+        itineraries.check_version(conn, session.person_id, if_match, item_id=item_id)
         return itineraries.update_item(conn, session.person_id, item_id, body)
 
 
@@ -68,7 +79,8 @@ def update_item(session: SessionDep, item_id: uuid.UUID, body: ItemUpdate) -> It
     summary="Remove an item from its day.",
     responses=ERRORS,
 )
-def delete_item(session: SessionDep, item_id: uuid.UUID) -> Response:
+def delete_item(session: SessionDep, item_id: uuid.UUID, if_match: IfMatch = None) -> Response:
     with session.tx() as conn:
+        itineraries.check_version(conn, session.person_id, if_match, item_id=item_id)
         itineraries.delete_item(conn, session.person_id, item_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

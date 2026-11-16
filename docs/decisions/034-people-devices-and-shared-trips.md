@@ -7,7 +7,9 @@
   production. **Step 2 (trip membership) is built** (2026-11-16, owner: "Lets start phase 2"),
   awaiting acceptance, tests only, migration `0025` not yet run in production; no visible change.
   **Step 3 (names, partner links and sharing) is built** (2026-11-16, owner: "go ahead with step
-  3"), awaiting acceptance, tests only, migration `0026` not yet run in production. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
+  3"), awaiting acceptance, tests only, migration `0026` not yet run in production.
+  **Step 4 (safe edits by two people) is built** (2026-11-16, owner: "step 4 go"), awaiting
+  acceptance, tests only, migration `0027` not yet run in production. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
   (recorded there and in the decisions); question 1 (codes or a sign-in provider) is still open.
 - **Date:** 2026-11-16
 - **Changes when accepted:** D5 in `docs/app-plan.md` (anonymous installation, no accounts), the
@@ -283,6 +285,28 @@ the app's `screens/DevicesScreen.tsx`, `domain/devices.ts`, `api/connect.ts` (`p
   Display-name overrides still rewrite stored names on shared trips (see step 2).
 - Tests: `test_sharing.py`, `screens/Sharing.test.tsx`, the Who's going test in
   `CreateTripScreen.test.tsx`.
+
+## Step 4 as built (2026-11-16)
+
+- **Version check:** `If-Match: "<plan version>"` on `POST /v1/itineraries/{id}/days/{n}/items`,
+  `PATCH` and `DELETE /v1/items/{id}` and `DELETE /v1/itineraries/{id}`; a different version is
+  409 `plan_changed` with `current_version`. The plan row is locked while it is checked, so two
+  changes at the same moment are applied one after the other and the second is refused. `PATCH
+  /v1/trips/{id}` takes the trip's `updated_at` (409 `trip_changed`). The header is optional: a
+  call without it is not checked (older builds, scripts). Change sets, Optimize and undo already
+  refuse a stale preview (`change_set_stale`). Stays are separate rows and are not checked.
+- **The app** sends the version of the plan it holds with every direct plan change (Add with day
+  and time, Edit time and length, lock, remove, transport legs); on `plan_changed` it forgets its
+  copy and says "Someone else changed this plan after you opened it…". It does not send the trip's
+  `updated_at` yet (selecting a plan would be refused after any other trip change).
+- **Who changed it:** migration `0027` adds `app.itinerary.changed_by` and `changed_at` and
+  `app.trip.updated_by`, filled by triggers from a transaction setting (`detour.person`) the API
+  sets at the start of every transaction. `Itinerary.last_change` (person, name, `you`, time).
+  A shared trip's overview shows "Changed by Ana 5 minutes ago" when the last change was someone
+  else's (always, not only since you last opened it: simpler, and still true).
+- **Freshness:** no `GET /v1/trips/changes` endpoint. A shared trip's overview reads the plan and
+  the trips again every 60 seconds and when the app comes back to the foreground.
+- Tests: `test_concurrency.py`, `screens/Concurrency.test.tsx`.
 
 ## Build order (each step shippable and tested on its own)
 

@@ -588,8 +588,20 @@ class ItinerarySummary(BaseModel):
     )
 
 
+class PlanChange(BaseModel):
+    """Who changed the plan last, and when (ADR 034, step 4)."""
+
+    person_id: uuid.UUID | None = Field(description="Null when that person no longer exists")
+    name: str | None = Field(description="Their display name; null when none")
+    you: bool
+    at: datetime
+
+
 class Itinerary(ItinerarySummary):
     days: list[Day]
+    last_change: PlanChange | None = Field(
+        default=None, description="Who changed the plan last; null for plans from before it"
+    )
 
 
 class GenerationResult(BaseModel):

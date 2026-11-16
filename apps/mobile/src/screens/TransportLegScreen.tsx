@@ -31,6 +31,7 @@ import {
 } from "../components/ds";
 import { DurationField } from "../components/ds/DurationField";
 import { keys } from "../data/actions";
+import { ifMatch } from "../data/changes";
 import { useData, useResource } from "../data/DataProvider";
 import { parseClock } from "../domain/clock";
 import { minutesOf } from "../domain/itinerary";
@@ -167,6 +168,7 @@ export function TransportLegScreen({ route }: { route: LegRoute }) {
       route={route}
       trip={trip}
       days={itinerary.data.days}
+      version={itinerary.data.version}
       stays={stays.data ?? []}
       existing={existing}
       onDone={() => {
@@ -183,6 +185,7 @@ function LegForm({
   route,
   trip,
   days,
+  version,
   stays,
   existing,
   onDone,
@@ -191,6 +194,8 @@ function LegForm({
   route: LegRoute;
   trip: Trip;
   days: Day[];
+  /** The plan version read, sent so a change made after someone else's is refused (ADR 034). */
+  version: number;
   stays: Stay[];
   existing: { day: Day; item: Item } | null;
   onDone: () => void;
@@ -330,7 +335,10 @@ function LegForm({
         if (moved) body.position = position;
         if (shift) body.shift_later_minutes = shift;
         await call(
-          client.PATCH("/v1/items/{item_id}", { params: { path: { item_id: leg.id } }, body }),
+          client.PATCH("/v1/items/{item_id}", {
+            params: { path: { item_id: leg.id }, header: ifMatch(version) },
+            body,
+          }),
         );
       } else {
         const body: ItemCreate = {
@@ -344,7 +352,10 @@ function LegForm({
         };
         await call(
           client.POST("/v1/itineraries/{itinerary_id}/days/{day_index}/items", {
-            params: { path: { itinerary_id: route.itineraryId, day_index: dayIndex } },
+            params: {
+              path: { itinerary_id: route.itineraryId, day_index: dayIndex },
+              header: ifMatch(version),
+            },
             body,
           }),
         );
@@ -364,7 +375,9 @@ function LegForm({
     setBusy(true);
     try {
       await callEmpty(
-        client.DELETE("/v1/items/{item_id}", { params: { path: { item_id: leg.id } } }),
+        client.DELETE("/v1/items/{item_id}", {
+          params: { path: { item_id: leg.id }, header: ifMatch(version) },
+        }),
       );
       setRemoving(false);
       onDone();

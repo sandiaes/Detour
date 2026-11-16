@@ -16,7 +16,7 @@ from typing import Any
 
 from sqlalchemy import Connection, text
 
-from detour_api.errors import conflict, invalid, not_found
+from detour_api.errors import ApiError, conflict, invalid, not_found
 from detour_api.models.common import PlaceName
 from detour_api.models.trips import (
     Arrival,
@@ -26,6 +26,7 @@ from detour_api.models.trips import (
     ItemUpdate,
     Itinerary,
     ItinerarySummary,
+    PlanChange,
     PlanNote,
     PlanStats,
     RestaurantInfo,
@@ -331,7 +332,77 @@ def get_itinerary(
                 items=by_day.get(d.id, []),
             )
         )
-    return Itinerary(**summary.model_dump(), days=out)
+    return Itinerary(
+        **summary.model_dump(), days=out, last_change=_last_change(conn, itinerary_id, person_id)
+    )
+
+
+def _last_change(
+    conn: Connection, itinerary_id: uuid.UUID, person_id: uuid.UUID
+) -> PlanChange | None:
+    row = conn.execute(
+        text(
+            "SELECT it.changed_by, it.changed_at, p.display_name FROM app.itinerary it"
+            " LEFT JOIN app.person p ON p.id = it.changed_by WHERE it.id = :i"
+        ),
+        {"i": itinerary_id},
+    ).one()
+    if row.changed_at is None:
+        return None
+    return PlanChange(
+        person_id=row.changed_by,
+        name=row.display_name,
+        you=row.changed_by == person_id,
+        at=row.changed_at,
+    )
+
+
+def check_version(
+    conn: Connection,
+    person_id: uuid.UUID,
+    if_match: str | None,
+    *,
+    itinerary_id: uuid.UUID | None = None,
+    item_id: uuid.UUID | None = None,
+) -> None:
+    """Refuse a change made on an older version of the plan (ADR 034, step 4).
+
+    ``If-Match`` carries the plan version the app last read (``"12"``). Without it nothing is
+    checked. The plan row is locked, so two changes made at once are applied one after the other
+    and the second is refused. A plan the caller cannot see is left to the call that follows (404).
+    """
+    if if_match is None:
+        return
+    raw = if_match.strip().removeprefix("W/").strip('"')
+    if not raw.isdigit():
+        raise invalid("bad_if_match", 'If-Match must be the plan version, for example "12"')
+    member = (
+        "EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = it.trip_id"
+        " AND tm.person_id = :p)"
+    )
+    if item_id is not None:
+        found = conn.execute(
+            text(
+                "SELECT it.id, it.version FROM app.itinerary_item i"
+                " JOIN app.itinerary_day d ON d.id = i.day_id"
+                f" JOIN app.itinerary it ON it.id = d.itinerary_id WHERE i.id = :x AND {member}"
+            ),
+            {"x": item_id, "p": person_id},
+        ).first()
+        if found is None:
+            return
+        itinerary_id = found.id
+    current = conn.execute(
+        text(f"SELECT version FROM app.itinerary it WHERE it.id = :i AND {member} FOR UPDATE"),
+        {"i": itinerary_id, "p": person_id},
+    ).scalar_one_or_none()
+    if current is not None and current != int(raw):
+        raise ApiError(
+            409,
+            "plan_changed",
+            "the plan was changed by someone else after you opened it; it was not saved",
+            extra={"current_version": current},
+        )
 
 
 def require_itinerary(conn: Connection, person_id: uuid.UUID, itinerary_id: uuid.UUID) -> Itinerary:

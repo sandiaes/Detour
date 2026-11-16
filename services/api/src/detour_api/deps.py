@@ -10,9 +10,9 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import structlog
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import Connection, Engine
+from sqlalchemy import Connection, Engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from detour_api.adapters.photon import PhotonClient
@@ -162,6 +162,10 @@ class Session:
         with self.db.tx() as conn:
             if not known:
                 trips.ensure_installation(conn, self.device_id)
+            # Who is changing things, for the plan and trip triggers (ADR 034, migration 0027).
+            conn.execute(
+                text("SELECT set_config('detour.person', :p, true)"), {"p": str(self.person_id)}
+            )
             yield conn
         # The request's transaction has ended: its work is committed and nothing is locked.
         if not known and engine is not None:
@@ -191,3 +195,15 @@ def get_database(request: Request) -> Database:
 
 
 DatabaseDep = Annotated[Database, Depends(get_database)]
+
+
+# ADR 034, step 4: the version of the plan (or, for a trip, its updated_at) the app last read. A
+# change made on an older one is refused with 409 plan_changed or trip_changed. Optional: a call
+# without it is not checked.
+IfMatch = Annotated[
+    str | None,
+    Header(
+        alias="If-Match",
+        description='The plan version you last read, e.g. "12" (for a trip: its updated_at)',
+    ),
+]

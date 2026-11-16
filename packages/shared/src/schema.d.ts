@@ -2314,6 +2314,8 @@ export interface components {
       stops_version?: number | null;
       /** Days */
       days: components["schemas"]["Day"][];
+      /** @description Who changed the plan last; null for plans from before it */
+      last_change?: components["schemas"]["PlanChange"] | null;
     };
     /** ItinerarySummary */
     ItinerarySummary: {
@@ -2848,6 +2850,29 @@ export interface components {
       distance_m?: number | null;
       /** Match */
       match?: ("exact" | "prefix" | "word_prefix" | "contains" | "similar") | null;
+    };
+    /**
+     * PlanChange
+     * @description Who changed the plan last, and when (ADR 034, step 4).
+     */
+    PlanChange: {
+      /**
+       * Person Id
+       * @description Null when that person no longer exists
+       */
+      person_id: string | null;
+      /**
+       * Name
+       * @description Their display name; null when none
+       */
+      name: string | null;
+      /** You */
+      you: boolean;
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
     };
     /** PlanNote */
     PlanNote: {
@@ -5429,7 +5454,10 @@ export interface operations {
   update_trip: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         trip_id: string;
       };
@@ -6519,7 +6547,10 @@ export interface operations {
   delete_itinerary: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         itinerary_id: string;
       };
@@ -6575,7 +6606,10 @@ export interface operations {
   create_item: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         itinerary_id: string;
         day_index: number;
@@ -6696,7 +6730,10 @@ export interface operations {
   delete_item: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         item_id: string;
       };
@@ -6752,7 +6789,10 @@ export interface operations {
   update_item: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         item_id: string;
       };

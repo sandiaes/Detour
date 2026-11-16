@@ -14,6 +14,8 @@ export type FakeCall = {
   path: string;
   params: Record<string, unknown>;
   body: unknown;
+  /** Request headers given as params.header (If-Match, ADR 034). */
+  header?: Record<string, unknown>;
 };
 
 export type FakeClient = ApiClient & { calls: FakeCall[]; count: (key: string) => number };
@@ -27,7 +29,8 @@ export function createFakeClient(handlers: Record<string, FakeHandler>): FakeCli
         ...((init?.params?.path as Record<string, unknown> | undefined) ?? {}),
         ...((init?.params?.query as Record<string, unknown> | undefined) ?? {}),
       };
-      calls.push({ method, path, params, body: init?.body });
+      const header = init?.params?.header as Record<string, unknown> | undefined;
+      calls.push({ method, path, params, body: init?.body, ...(header ? { header } : {}) });
       const handler = handlers[`${method} ${path}`];
       if (!handler) throw new Error(`FakeClient: no handler for ${method} ${path}`);
       const result = await handler({ path, params, body: init?.body });

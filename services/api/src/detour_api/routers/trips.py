@@ -5,7 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Query, Request, Response, status
 from sqlalchemy import text
 
 from detour_api.adapters.wikimedia import WikimediaClient
-from detour_api.deps import SessionDep
+from detour_api.deps import IfMatch, SessionDep
 from detour_api.errors import ApiError, invalid
 from detour_api.images import background as photo_background
 from detour_api.images.candidates import (
@@ -133,8 +133,11 @@ def get_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
     summary="Change a trip. Only the fields sent are changed; null clears the optional ones.",
     responses=ERRORS,
 )
-def update_trip(session: SessionDep, trip_id: uuid.UUID, body: TripUpdate) -> Trip:
+def update_trip(
+    session: SessionDep, trip_id: uuid.UUID, body: TripUpdate, if_match: IfMatch = None
+) -> Trip:
     with session.tx() as conn:
+        trips.check_updated_at(conn, session.person_id, trip_id, if_match)
         return trips.update_trip(conn, session.person_id, trip_id, body)
 
 

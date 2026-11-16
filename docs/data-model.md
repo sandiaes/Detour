@@ -274,6 +274,14 @@ trips a person owns. An editor row is written by sharing (step 3): "Who's going"
 created, or Share in its settings, only with a linked person; it is removed when the member leaves
 or the owner stops sharing. The owner cannot leave.
 
+### 3.1d Who changed it (ADR 034, step 4, migration `0027`)
+
+`app.itinerary.changed_by` (fk to `app.person`, `ON DELETE SET NULL`) and `changed_at`, set by a
+trigger whenever a plan is created or its `version` changes; `app.trip.updated_by`, set whenever
+`updated_at` changes. Both come from the transaction setting `detour.person`, which the API sets to
+the caller's person at the start of every transaction (`app.current_person()`); outside the API
+(imports, scripts) they keep their value.
+
 ### 3.1c Names and links (ADR 034, step 3, migration `0026`)
 
 `app.person.display_name` (1 to 40 characters, optional): shown to the people on your shared trips.

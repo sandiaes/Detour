@@ -2347,6 +2347,24 @@
               "format": "uuid",
               "title": "Trip Id"
             }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)",
+              "title": "If-Match"
+            },
+            "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)"
           }
         ],
         "requestBody": {
@@ -3948,6 +3966,24 @@
               "format": "uuid",
               "title": "Itinerary Id"
             }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)",
+              "title": "If-Match"
+            },
+            "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)"
           }
         ],
         "responses": {
@@ -4028,6 +4064,24 @@
               "type": "integer",
               "title": "Day Index"
             }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)",
+              "title": "If-Match"
+            },
+            "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)"
           }
         ],
         "requestBody": {
@@ -4192,6 +4246,24 @@
               "format": "uuid",
               "title": "Item Id"
             }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)",
+              "title": "If-Match"
+            },
+            "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)"
           }
         ],
         "requestBody": {
@@ -4278,6 +4350,24 @@
               "format": "uuid",
               "title": "Item Id"
             }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)",
+              "title": "If-Match"
+            },
+            "description": "The plan version you last read, e.g. \"12\" (for a trip: its updated_at)"
           }
         ],
         "responses": {
@@ -8820,6 +8910,17 @@
             },
             "type": "array",
             "title": "Days"
+          },
+          "last_change": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who changed the plan last; null for plans from before it"
           }
         },
         "type": "object",
@@ -10051,6 +10152,53 @@
           "city_name"
         ],
         "title": "PlaceSummary"
+      },
+      "PlanChange": {
+        "properties": {
+          "person_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person Id",
+            "description": "Null when that person no longer exists"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Their display name; null when none"
+          },
+          "you": {
+            "type": "boolean",
+            "title": "You"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "person_id",
+          "name",
+          "you",
+          "at"
+        ],
+        "title": "PlanChange",
+        "description": "Who changed the plan last, and when (ADR 034, step 4)."
       },
       "PlanNote": {
         "properties": {

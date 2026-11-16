@@ -129,6 +129,32 @@ def get_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip
     return _with_members(conn, person_id, [trip])[0]
 
 
+def check_updated_at(
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, if_match: str | None
+) -> None:
+    """Refuse a change to a trip someone else changed after the caller read it (ADR 034, step
+    4): ``If-Match`` carries the trip's ``updated_at`` as the API sent it. The row is locked."""
+    if if_match is None:
+        return
+    try:
+        expected = datetime.fromisoformat(if_match.strip().strip('"').replace("Z", "+00:00"))
+    except ValueError:
+        raise invalid("bad_if_match", "If-Match must be the trip's updated_at") from None
+    current = conn.execute(
+        text(
+            "SELECT t.updated_at FROM app.trip t WHERE t.id = :t AND EXISTS (SELECT 1 FROM"
+            " app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :p) FOR UPDATE"
+        ),
+        {"t": trip_id, "p": person_id},
+    ).scalar_one_or_none()
+    if current is not None and current != expected:
+        raise ApiError(
+            409,
+            "trip_changed",
+            "the trip was changed by someone else after you opened it; it was not saved",
+        )
+
+
 def require_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
     trip = get_trip(conn, person_id, trip_id)
     if trip is None:
