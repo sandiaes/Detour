@@ -11,6 +11,11 @@ export interface DocumentFiles {
   pick(): Promise<PickedFile | null>;
   /** Copies the picked file into the app's storage and returns the copy's URI. */
   keep(picked: PickedFile, tripId: string, id: string): Promise<string>;
+  /** Opens the system picker for one picture (a trip's cover, ADR 031); null when cancelled. */
+  pickImage(): Promise<PickedFile | null>;
+  /** Copies a picked picture into the app's covers folder and returns the copy's URI. Each copy
+   * has a new name, so a changed cover is never shown from an old cached image. */
+  keepCover(picked: PickedFile, tripId: string): Promise<string>;
   remove(uri: string): Promise<void>;
   /** Shows the file with the platform's viewer (Quick Look on iOS, an installed app on Android). */
   open(doc: Pick<TripDocument, "uri" | "mimeType" | "title">): Promise<void>;
@@ -36,6 +41,26 @@ export function createDeviceFiles(): DocumentFiles {
         mimeType: f.type || mimeFromName(f.name),
         size: Number.isFinite(f.size) && f.size > 0 ? f.size : null,
       };
+    },
+    async pickImage() {
+      const picked = await File.pickFileAsync({ mimeTypes: ["image/*"] });
+      if (picked.canceled || !picked.result) return null;
+      const f = picked.result;
+      const mimeType = f.type || mimeFromName(f.name);
+      if (!mimeType.startsWith("image/")) return null;
+      return {
+        uri: f.uri,
+        name: f.name,
+        mimeType,
+        size: Number.isFinite(f.size) && f.size > 0 ? f.size : null,
+      };
+    },
+    async keepCover(picked, tripId) {
+      const folder = new Directory(Paths.document, "covers");
+      folder.create({ intermediates: true, idempotent: true });
+      const target = new File(folder, `${tripId}-${Date.now()}${extensionOf(picked.name)}`);
+      await new File(picked.uri).copy(target);
+      return target.uri;
     },
     async keep(picked, tripId, id) {
       const folder = new Directory(Paths.document, "documents", tripId);

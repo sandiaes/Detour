@@ -1,10 +1,12 @@
 import type { TripFile } from "@detour/shared";
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from "fflate";
 
+import { MAX_ALBUM_NAME, normaliseAlbumUrl } from "../documents/extras";
 import { CATEGORIES, type DocCategory } from "../documents/model";
 
 // The trip file (ADR 028): a zip named *.detour holding trip.json (what the server exports) and,
-// when the user asks, documents.json with the files under documents/. This module only builds and
+// when the user asks, documents.json with the files under documents/, and albums.json with the
+// trips' album links (ADR 031). This module only builds and
 // reads that zip; it never touches the device or the network.
 
 export const FORMAT = "detour-trip";
@@ -34,6 +36,11 @@ export type ArchiveDocument = {
   bytes: Uint8Array;
 };
 
+/** A link to the user's own photo album (ADR 031): only the link travels, never photos. */
+export type ArchiveAlbum = { tripIndex: number; name: string; url: string };
+
+const MAX_ARCHIVE_ALBUMS = 500;
+
 export class ArchiveError extends Error {
   constructor(message: string) {
     super(message);
@@ -58,8 +65,25 @@ function extensionOf(name: string): string {
   return match ? match[0].toLowerCase() : "";
 }
 
-export function buildArchive(file: TripFile, documents: ArchiveDocument[]): Uint8Array {
+export function buildArchive(
+  file: TripFile,
+  documents: ArchiveDocument[],
+  albums: ArchiveAlbum[] = [],
+): Uint8Array {
   const entries: Zippable = { "trip.json": strToU8(JSON.stringify(file, null, 1)) };
+  if (albums.length > 0) {
+    entries["albums.json"] = strToU8(
+      JSON.stringify(
+        {
+          format: "detour-albums",
+          format_version: 1,
+          albums: albums.map((a) => ({ trip_index: a.tripIndex, name: a.name, url: a.url })),
+        },
+        null,
+        1,
+      ),
+    );
+  }
   if (documents.length > 0) {
     const records: DocumentRecord[] = documents.map((d, n) => {
       const path = `documents/${n + 1}${extensionOf(d.fileName)}`;
@@ -91,6 +115,8 @@ export function buildArchive(file: TripFile, documents: ArchiveDocument[]): Uint
 export type ReadArchive = {
   file: TripFile;
   documents: ArchiveDocument[];
+  /** Album links (ADR 031); a link that is not an https address is dropped. */
+  albums: ArchiveAlbum[];
   /** Documents the file names but could not give (missing, too large or unreadable). */
   skipped: string[];
 };
@@ -189,13 +215,35 @@ export function readArchive(bytes: Uint8Array): ReadArchive {
     }
     if (records.length > MAX_DOCUMENTS) skipped.push(`${records.length - MAX_DOCUMENTS} more`);
   }
-  return { file, documents, skipped };
+  const albums: ArchiveAlbum[] = [];
+  const albumList = entries["albums.json"];
+  if (albumList) {
+    const records = (parseJson(albumList, "The list of albums") as { albums?: unknown })?.albums;
+    if (Array.isArray(records)) {
+      for (const r of records.slice(0, MAX_ARCHIVE_ALBUMS) as Record<string, unknown>[]) {
+        const url = typeof r?.url === "string" ? normaliseAlbumUrl(r.url) : null;
+        const tripIndex = r?.trip_index;
+        if (
+          !url ||
+          typeof tripIndex !== "number" ||
+          tripIndex < 0 ||
+          tripIndex >= file.trips.length
+        ) {
+          continue;
+        }
+        const name = typeof r.name === "string" && r.name.trim() ? r.name.trim() : "Trip album";
+        albums.push({ tripIndex, name: name.slice(0, MAX_ALBUM_NAME), url });
+      }
+    }
+  }
+  return { file, documents, albums, skipped };
 }
 
 /** What a file holds, for the screen that asks before importing. */
 export function describeFile(read: ReadArchive): {
   trips: { title: string; destination: string; days: number; stops: number; past: boolean }[];
   documents: number;
+  albums: number;
 } {
   return {
     trips: read.file.trips.map((t) => ({
@@ -209,6 +257,7 @@ export function describeFile(read: ReadArchive): {
       past: t.status === "past",
     })),
     documents: read.documents.length,
+    albums: read.albums.length,
   };
 }
 

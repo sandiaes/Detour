@@ -99,7 +99,7 @@ test("Explore, Photos and More are root tabs; the planned ones say they are not 
     selected: true,
   });
   await fireEvent.press(screen.getByRole("tab", { name: "Photos" }));
-  expect(await screen.findByTestId("photos-planned")).toBeOnTheScreen();
+  expect(await screen.findByTestId("photos-empty")).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("tab", { name: "More" }));
   for (const name of [/^Saved places\./, /^Travel preferences\./, /^Archive trip\./]) {
     expect(screen.getByRole("button", { name }).props.accessibilityState).toMatchObject({

@@ -7,6 +7,8 @@ import type { ExchangeFiles, PickedArchive } from "../exchange/files";
 export type FakeFiles = DocumentFiles & {
   /** The next pick's answer; null is a cancelled picker. */
   next: PickedFile | null;
+  /** The next picture pick's answer (a cover); null is a cancelled picker. */
+  nextImage: PickedFile | null;
   kept: string[];
   removed: string[];
   opened: string[];
@@ -21,9 +23,18 @@ export const PICKED_PDF: PickedFile = {
   size: 245_000,
 };
 
+export const PICKED_PHOTO: PickedFile = {
+  uri: "content://picker/IMG_2041.jpg",
+  name: "IMG_2041.jpg",
+  mimeType: "image/jpeg",
+  size: 3_100_000,
+};
+
 export function createFakeFiles(next: PickedFile | null = PICKED_PDF): FakeFiles {
+  let covers = 0;
   const fake: FakeFiles = {
     next,
+    nextImage: PICKED_PHOTO,
     kept: [],
     removed: [],
     opened: [],
@@ -32,6 +43,14 @@ export function createFakeFiles(next: PickedFile | null = PICKED_PDF): FakeFiles
     keep: async (picked, tripId, id) => {
       const ext = picked.name.includes(".") ? picked.name.slice(picked.name.lastIndexOf(".")) : "";
       const uri = `file:///app/documents/${tripId}/${id}${ext}`;
+      fake.kept.push(uri);
+      return uri;
+    },
+    pickImage: async () => fake.nextImage,
+    keepCover: async (picked, tripId) => {
+      covers += 1;
+      const ext = picked.name.includes(".") ? picked.name.slice(picked.name.lastIndexOf(".")) : "";
+      const uri = `file:///app/covers/${tripId}-${covers}${ext}`;
       fake.kept.push(uri);
       return uri;
     },

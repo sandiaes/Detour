@@ -7,7 +7,9 @@ import { keys } from "../data/actions";
 import { useData } from "../data/DataProvider";
 import { useDocumentsInternals } from "../documents/DocumentsProvider";
 import { type DocLink, type TripDocument, linkablePlaces, newDocumentId } from "../documents/model";
+import { MAX_ALBUMS, newAlbumId } from "../documents/extras";
 import {
+  type ArchiveAlbum,
   type ArchiveDocument,
   type ArchiveLink,
   type ReadArchive,
@@ -19,7 +21,7 @@ import {
 } from "./archive";
 
 // Trip export and import (ADR 028). The server writes and reads the trip itself; the phone adds
-// the documents, builds the zip and shares it, and puts documents back after an import.
+// the documents and album links, builds the zip and shares it, and puts them back after an import.
 
 export type ExportOutcome = {
   trips: number;
@@ -33,6 +35,8 @@ export type ExportOutcome = {
 export type ImportOutcome = {
   trips: { title: string; tripId: string }[];
   documents: number;
+  /** Album links restored (ADR 031). */
+  albums: number;
   /** Documents of the file that could not be restored, by title. */
   notRestored: string[];
 };
@@ -71,7 +75,7 @@ export function restoreLink(link: ArchiveLink, days: Day[], duration: number): D
 export function useExchange() {
   const { state } = useBackend();
   const data = useData();
-  const { store, exchange, changed } = useDocumentsInternals();
+  const { store, extras, exchange, changed } = useDocumentsInternals();
   const client = state.phase === "ready" ? state.connection.client : null;
 
   const need = useCallback(() => {
@@ -154,12 +158,18 @@ export function useExchange() {
           }
         }
       }
+      // Album links always go with their trip: they are a few bytes and the user's own (ADR 031).
+      const albums: ArchiveAlbum[] = [];
+      for (const [tripIndex, tripId] of ids.entries()) {
+        const own = await extras.get(tripId).catch(() => null);
+        for (const a of own?.albums ?? []) albums.push({ tripIndex, name: a.name, url: a.url });
+      }
       const fileName = exportFileName(title, new Date());
-      const uri = await exchange.saveShareable(fileName, buildArchive(file, documents));
+      const uri = await exchange.saveShareable(fileName, buildArchive(file, documents, albums));
       const shared = await exchange.share(uri);
       return { trips: trips.length, documents: documents.length, left, shared, fileName };
     },
-    [need, store, exchange],
+    [need, store, extras, exchange],
   );
 
   /** Reads a trip file from the phone. Throws ArchiveError for a file that is not one. */
@@ -230,10 +240,28 @@ export function useExchange() {
           notRestored.push(doc.title);
         }
       }
-      if (restored > 0) changed();
-      return { trips: made, documents: restored, notRestored };
+      let albums = 0;
+      for (const [tripIndex, target] of result.trips.entries()) {
+        const own = read.albums.filter((a) => a.tripIndex === tripIndex);
+        if (own.length === 0) continue;
+        try {
+          const now = await extras.get(target.trip_id);
+          const added = own.slice(0, MAX_ALBUMS - now.albums.length).map((a) => ({
+            id: newAlbumId(),
+            name: a.name,
+            url: a.url,
+            createdAt: Date.now(),
+          }));
+          await extras.put({ ...now, albums: [...now.albums, ...added] });
+          albums += added.length;
+        } catch {
+          notRestored.push(...own.map((a) => a.name));
+        }
+      }
+      if (restored > 0 || albums > 0) changed();
+      return { trips: made, documents: restored, albums, notRestored };
     },
-    [need, data, exchange, store, changed],
+    [need, data, exchange, store, extras, changed],
   );
 
   return {

@@ -138,7 +138,8 @@ export function Cover({
   seedKey: string;
   /** The photo the backend sent for this trip or place, if any. */
   photo?: Photo | null;
-  /** An address to show directly (tests, local files); `photo` is what screens pass. */
+  /** A picture to show instead of `photo` (a cover chosen from the phone, a preview); if it cannot
+   * be shown, `photo` is. */
   uri?: string | null;
   height: number;
   rounded?: number;
@@ -155,10 +156,14 @@ export function Cover({
 }) {
   const photoUri = usePhotoUri(photo);
   // A photo that fails to load (photo storage or the resolver down, no network) falls back to the
-  // illustration, never to an empty or broken frame, and its credit goes with it (Phase 9).
-  const [failedUri, setFailedUri] = useState<string | null>(null);
-  const wanted = givenUri ?? photoUri;
-  const uri = wanted && wanted !== failedUri ? wanted : null;
+  // illustration, never to an empty or broken frame, and its credit goes with it (Phase 9). A
+  // picture given directly (a cover from the phone, ADR 031) that fails falls back to the
+  // destination's photo first.
+  const [failed, setFailed] = useState<string[]>([]);
+  const local = givenUri && !failed.includes(givenUri) ? givenUri : null;
+  const remote = photoUri && !failed.includes(photoUri) ? photoUri : null;
+  const uri = local ?? remote;
+  const isRemote = uri !== null && local === null;
   const seed = coverSeed(seedKey);
   const tone = COVER_TONES[seed % COVER_TONES.length] as (typeof COVER_TONES)[number];
   const ridge = RIDGES[(seed >>> 4) % RIDGES.length] as (typeof RIDGES)[number];
@@ -169,7 +174,7 @@ export function Cover({
       style={[
         styles.frame,
         { height, borderRadius: rounded },
-        uri && photo && !givenUri ? { backgroundColor: photo.color } : null,
+        isRemote && photo ? { backgroundColor: photo.color } : null,
         style,
       ]}
       testID={testID}
@@ -178,9 +183,9 @@ export function Cover({
       {uri ? (
         <FittedPhoto
           uri={uri}
-          photoSize={givenUri ? null : photo}
+          photoSize={isRemote ? photo : null}
           testID="cover-photo"
-          onError={() => setFailedUri(uri)}
+          onError={() => setFailed((f) => [...f, uri])}
         />
       ) : (
         <Svg
@@ -208,9 +213,7 @@ export function Cover({
       )}
       {scrim ? <Scrim /> : null}
       {children}
-      {credit && uri && photo && !givenUri ? (
-        <PhotoCredit photo={photo} inset={creditInset} />
-      ) : null}
+      {credit && isRemote && photo ? <PhotoCredit photo={photo} inset={creditInset} /> : null}
     </View>
   );
 }

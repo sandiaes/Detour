@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { unzipSync } from "fflate";
 
 import { AppContent, isTripFileLink } from "../App";
+import { createMemoryExtrasStore } from "../documents/extras";
 import type { TripDocument } from "../documents/model";
 import { createMemoryDocumentStore } from "../documents/store";
 import { buildArchive } from "../exchange/archive";
@@ -78,17 +79,25 @@ async function show(
     documents?: ReturnType<typeof createMemoryDocumentStore>;
     exchange?: ReturnType<typeof createFakeExchange>;
     client?: ReturnType<typeof server>;
+    extras?: ReturnType<typeof createMemoryExtrasStore>;
   } = {},
 ) {
+  const extras = opts.extras ?? createMemoryExtrasStore();
   const documents = opts.documents ?? createMemoryDocumentStore();
   const exchange = opts.exchange ?? createFakeExchange();
   const client = opts.client ?? server();
   await render(
-    <Harness client={client} initial={initial} documents={documents} exchange={exchange}>
+    <Harness
+      client={client}
+      initial={initial}
+      documents={documents}
+      exchange={exchange}
+      extras={extras}
+    >
       <AppContent />
     </Harness>,
   );
-  return { documents, exchange, client };
+  return { documents, exchange, client, extras };
 }
 
 function sharedZip(exchange: ReturnType<typeof createFakeExchange>) {
@@ -333,4 +342,44 @@ test("only a content or file link is taken for a trip file", () => {
   expect(isTripFileLink("https://example.org/a.detour")).toBe(false);
   expect(isTripFileLink(null)).toBe(false);
   expect(isTripFileLink(undefined)).toBe(false);
+});
+
+// -- album links (ADR 031) -------------------------------------------------------------------
+
+test("a trip's album links go with its export and come back on import", async () => {
+  const exchange = createFakeExchange();
+  const extras = createMemoryExtrasStore([
+    {
+      tripId: TRIP_ID,
+      albums: [
+        { id: "a1", name: "Rome with Ana", url: "https://photos.app.goo.gl/r", createdAt: 1 },
+      ],
+      cover: { uri: "file:///app/covers/x.jpg", fileName: "x.jpg", setAt: 1 },
+    },
+  ]);
+  await show({ name: "exportTrips", tripId: TRIP_ID }, { exchange, extras });
+  expect(await screen.findByText(/Links to your photo albums go with it/)).toBeTruthy();
+  await fireEvent.press(screen.getByTestId("export-run"));
+  await screen.findByText(/holds 1 trip\./);
+  const zip = sharedZip(exchange);
+  // The link only: no cover picture and no photo leave the phone.
+  expect(Object.keys(zip).sort()).toEqual(["albums.json", "trip.json"]);
+  const list = JSON.parse(new TextDecoder().decode(zip["albums.json"]));
+  expect(list.albums).toEqual([
+    { trip_index: 0, name: "Rome with Ana", url: "https://photos.app.goo.gl/r" },
+  ]);
+
+  const back = createFakeExchange();
+  pickFile(back, exchange.disk.get(exchange.shared[0]?.uri ?? "") as Uint8Array);
+  const restored = createMemoryExtrasStore();
+  await screen.unmount();
+  await show({ name: "importTrips" }, { exchange: back, extras: restored });
+  await fireEvent.press(await screen.findByTestId("import-choose"));
+  expect(await screen.findByText(/1 photo album link too/)).toBeTruthy();
+  await fireEvent.press(screen.getByTestId("import-run"));
+  await screen.findByText(/1 trip added/);
+  expect((await restored.get(NEW_TRIP)).albums).toMatchObject([
+    { name: "Rome with Ana", url: "https://photos.app.goo.gl/r" },
+  ]);
+  expect((await restored.get(NEW_TRIP)).cover).toBeNull();
 });

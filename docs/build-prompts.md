@@ -672,7 +672,9 @@ ADR; no LLM.
 
 # Prompt 14 — Photos: design first (Phase 12)
 
-**Status:** after the MVP.  
+**Status:** discussed with the owner on 2026-11-16 and replaced by ADR 031 (built): album links per
+trip, opened in Google Photos, and a cover from the phone. Google's Library API no longer lets an app
+read albums it did not create. The storage comparison below stays open for a later photo step.  
 **Recommended model:** Claude Opus  
 **Effort:** Medium  
 **App-plan phase:** 12

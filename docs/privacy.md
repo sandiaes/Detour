@@ -21,6 +21,7 @@ server) are made by the backend, without your installation or trip.
 | Trips, days, stops, times, your own places, stays, visited marks | Backend database (Supabase Free, EU North), schema `app` | Anyone holding your token; the owner of the Supabase project | Until you delete the trip; your own places until deleted (see 5) |
 | A copy of what the app last read (trip list, plans) | Phone, SQLite `detour-cache.db`, table `cache` | The app | Replaced on each read; cleared if the installation changes |
 | Documents: files and their titles, links, dates, notes | Phone, the app's private files and table `trip_document` | The app | Until you delete them or the trip, or uninstall |
+| Links to your photo albums; a cover picture chosen from the phone (a copy) | Phone, table `trip_extra` and the app's private `covers/` folder (ADR 031) | The app; the album itself stays in Google Photos under its own sharing | Until you remove them or the trip, or uninstall |
 | Export files (`.detour`) | Wherever you send them (share sheet) | Whoever gets the file | Your choice |
 | Request logs | Render (the API host) | The owner of the Render account | Render's log retention |
 | Provider usage counters | Backend, `app.provider_usage` | Owner | Kept (a row a provider a day) |
@@ -56,7 +57,7 @@ The backend's requests carry an identifying User-Agent that names the project, a
 
 | To delete | How | What remains |
 |---|---|---|
-| A trip | Trip menu, Settings, Delete trip (confirmation) | Its documents and their files are deleted on the phone; on the server its plans, stops, stays and visits go. Your own places used by it stay (they belong to the installation) |
+| A trip | Trip menu, Settings, Delete trip (confirmation) | Its documents and their files, its album links and its cover picture are deleted on the phone; on the server its plans, stops, stays and visits go. Your own places used by it stay (they belong to the installation) |
 | A document | The document, Delete (confirmation) | Nothing |
 | Everything on the phone | Uninstall Detour | The server data stays, but nothing can reach it any more (the token is gone) |
 | Everything on the server | No button. In Supabase's SQL editor, with the "Installation" identifier from Settings, run `DELETE FROM app.trip WHERE installation_id = '<id>';` then `DELETE FROM app.installation WHERE id = '<id>';` (in that order: a stop still using one of your places blocks the second statement; tried on a scratch database in Phase 9) | Backups made before, for up to 30 days |
@@ -70,3 +71,5 @@ Imported and cached data keeps its licence, and the app shows the credits: OpenS
 GeoNames (CC BY 4.0), photos from Wikimedia Commons with author and licence on each photo and in
 "Image credits", travel times from the FOSSGIS server (cached in `geo.travel_time`). Export files carry
 your own trips and stops as snapshots (name and point), which is your data; they carry no photos.
+They do carry the links to your photo albums (ADR 031): anyone with a shared album's link can open
+the album, so treat the file like the link.

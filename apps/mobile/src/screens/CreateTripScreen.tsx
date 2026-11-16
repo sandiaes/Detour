@@ -1,5 +1,5 @@
 import type { CoverCandidate, DestinationResult, Trip } from "@detour/shared";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useBackend } from "../api/BackendProvider";
@@ -28,6 +28,7 @@ import {
   stopsProblem,
 } from "../components/StopList";
 import { useTripActions } from "../data/actions";
+import { useExtrasActions } from "../documents/DocumentsProvider";
 import { useNavigation } from "../nav/Navigator";
 import { colors, layout, radius, size as sizes, spacing, type, weight } from "../theme";
 import { formatDate, isValidIsoDate, pluralise } from "../util/format";
@@ -110,6 +111,26 @@ export function CreateTripScreen() {
   // "Change photo" (ADR 022 amendment): a candidate chosen before the trip exists is set as its
   // cover right after it is created.
   const [cover, setCoverChoice] = useState<CoverCandidate | null>(null);
+  // A picture from the phone (ADR 031), copied in when chosen and made the cover once the trip
+  // exists. It replaces a destination photo chosen here, and the other way round.
+  const [phoneCover, setPhoneCover] = useState<{ uri: string; name: string } | null>(null);
+  const extrasActions = useExtrasActions();
+  const staged = useRef<string | null>(null);
+  useEffect(() => {
+    staged.current = phoneCover?.uri ?? null;
+  }, [phoneCover]);
+  useEffect(
+    () => () => {
+      if (staged.current) void extrasActions.dropStaged(staged.current);
+    },
+    // Only on leaving the screen: a picture never adopted is not kept.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const replacePhoneCover = (next: { uri: string; name: string } | null) => {
+    if (phoneCover && phoneCover.uri !== next?.uri) void extrasActions.dropStaged(phoneCover.uri);
+    setPhoneCover(next);
+  };
   const [picker, setPicker] = useState(false);
   const apiUrl = (useBackend().apiUrl ?? "").replace(/\/$/, "");
 
@@ -243,6 +264,16 @@ export function CreateTripScreen() {
           // A cover that cannot be set leaves the automatic photo; the trip is not held up.
           trip = await actions.setCover(trip.id, cover.commons_file).catch(() => trip as Trip);
         }
+        if (phoneCover) {
+          const made = trip;
+          await extrasActions
+            .adoptCover(made.id, phoneCover.uri, phoneCover.name)
+            .then(() => {
+              staged.current = null; // the trip owns it now
+              setPhoneCover(null);
+            })
+            .catch(() => undefined);
+        }
       } catch (e) {
         setProblem({ message: describeError(e), issues: [] });
         setWorking(null);
@@ -259,6 +290,7 @@ export function CreateTripScreen() {
     setStops(null);
     setCreated(null);
     setCoverChoice(null);
+    replacePhoneCover(null);
   };
   return (
     <View style={styles.fill}>
@@ -349,30 +381,38 @@ export function CreateTripScreen() {
               <>
                 <Cover
                   seedKey={chosen.ref}
-                  uri={cover && apiUrl ? `${apiUrl}${cover.preview_url}` : null}
+                  uri={
+                    phoneCover?.uri ?? (cover && apiUrl ? `${apiUrl}${cover.preview_url}` : null)
+                  }
                   height={120}
                   rounded={radius.lg}
                   testID="create-cover"
                 />
-                {hasPhotos ? (
-                  <View style={styles.row}>
-                    <Button
-                      label="Change photo"
-                      icon="photos"
-                      variant="secondary"
-                      size="sm"
-                      hint="Choose the trip's photo from photos of the destination"
-                      disabled={!actions.connected}
-                      onPress={() => setPicker(true)}
-                      testID="change-photo"
-                    />
-                    {cover ? (
-                      <Text style={styles.credit} numberOfLines={1}>
-                        Photo: {cover.credit.author}, {cover.credit.licence}
-                      </Text>
-                    ) : null}
-                  </View>
-                ) : null}
+                <View style={styles.row}>
+                  <Button
+                    label="Change photo"
+                    icon="photos"
+                    variant="secondary"
+                    size="sm"
+                    hint={
+                      hasPhotos
+                        ? "Choose the trip's photo from your phone or photos of the destination"
+                        : "Choose the trip's photo from your phone"
+                    }
+                    disabled={hasPhotos && !actions.connected}
+                    onPress={() => setPicker(true)}
+                    testID="change-photo"
+                  />
+                  {phoneCover ? (
+                    <Text style={styles.credit} numberOfLines={1}>
+                      Your photo (stays on this phone)
+                    </Text>
+                  ) : cover ? (
+                    <Text style={styles.credit} numberOfLines={1}>
+                      Photo: {cover.credit.author}, {cover.credit.licence}
+                    </Text>
+                  ) : null}
+                </View>
                 {chosen.kind === "city" && plannable ? (
                   stops ? (
                     <StopList
@@ -434,23 +474,38 @@ export function CreateTripScreen() {
                   <CoverPicker
                     visible
                     sources={
-                      stops
-                        ? stops.map((x) => ({
-                            kind: "city" as const,
-                            ref: String(x.cityId),
-                            name: x.name,
-                          }))
-                        : [
-                            {
-                              kind: chosen.kind === "area" ? ("area" as const) : ("city" as const),
-                              ref: chosen.ref.replace(/^geonames:/, ""),
-                              name: chosen.name,
-                            },
-                          ]
+                      !hasPhotos
+                        ? []
+                        : stops
+                          ? stops.map((x) => ({
+                              kind: "city" as const,
+                              ref: String(x.cityId),
+                              name: x.name,
+                            }))
+                          : [
+                              {
+                                kind:
+                                  chosen.kind === "area" ? ("area" as const) : ("city" as const),
+                                ref: chosen.ref.replace(/^geonames:/, ""),
+                                name: chosen.name,
+                              },
+                            ]
                     }
                     load={actions.coverCandidates}
-                    chosen={cover?.commons_file ?? null}
-                    onChoose={(c) => setCoverChoice(c)}
+                    chosen={phoneCover ? null : (cover?.commons_file ?? null)}
+                    local={phoneCover !== null}
+                    onPickLocal={async () => {
+                      const picked = await extrasActions.pickImage();
+                      if (!picked) return false;
+                      const uri = await extrasActions.stageCover(picked);
+                      replacePhoneCover({ uri, name: picked.name });
+                      setCoverChoice(null);
+                      return true;
+                    }}
+                    onChoose={(c) => {
+                      setCoverChoice(c);
+                      replacePhoneCover(null);
+                    }}
                     onClose={() => setPicker(false)}
                   />
                 ) : null}

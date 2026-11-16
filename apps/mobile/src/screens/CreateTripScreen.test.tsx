@@ -185,8 +185,11 @@ test("Search more widely finds any place through Photon and starts an empty plac
   expect(await screen.findByText(/Nothing in the imported data matches “Hall”/)).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("search-wider"));
   await fireEvent.press(await screen.findByTestId("destination-result-photon:N42"));
-  // No photo choice for a place with no gazetteer entry: the illustration stays (ADR 027).
-  expect(screen.queryByTestId("change-photo")).toBeNull();
+  // No destination photos for a place with no gazetteer entry (ADR 027); a picture from the phone
+  // can still be chosen (ADR 031).
+  expect(screen.getByTestId("change-photo").props.accessibilityHint).toBe(
+    "Choose the trip's photo from your phone",
+  );
   await fireEvent.press(screen.getByTestId("empty-trip"));
   const create = client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips");
   expect(create?.body).toMatchObject({

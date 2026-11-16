@@ -17,7 +17,6 @@ import {
   ListRow,
   LoadingState,
   Notice,
-  PlannedFeature,
   RowGroup,
   Sheet,
   type Stat,
@@ -57,6 +56,8 @@ import { useBackend } from "../api/BackendProvider";
 import { PlanDayView, dayTitle } from "../components/plan/DayPlan";
 import { useItemActions } from "../data/itemActions";
 import { DocumentList } from "../components/documents/DocumentList";
+import { TripAlbums } from "../components/photos/TripAlbums";
+import { useExtrasActions, useLocalCover } from "../documents/DocumentsProvider";
 import { PastTripScreen } from "./PastTripScreen";
 
 // A trip's home (ADR 021): its cover, dates and status, then five tabs. Once a plan is chosen it is
@@ -314,6 +315,8 @@ export function TripOverviewScreen({
   const titleRef = useAnnounceOnMount();
   const { state } = useBackend();
   const items = useItemActions(tripId, trip?.selected_itinerary_id ?? "");
+  const localCover = useLocalCover(tripId);
+  const extrasActions = useExtrasActions();
 
   if (trips.data === undefined) {
     return (
@@ -393,14 +396,7 @@ export function TripOverviewScreen({
 
   let content;
   if (section === "photos") {
-    content = (
-      <PlannedFeature
-        icon="photos"
-        title="Photos are planned"
-        text="Photos of this trip, grouped by day or place, will appear here. Adding photos from the device or from Google Photos is not built yet."
-        testID="trip-photos-planned"
-      />
-    );
+    content = <TripAlbums trip={trip} />;
   } else if (section === "documents") {
     content = <DocumentList trip={trip} />;
   } else if (!hasPlan) {
@@ -479,19 +475,21 @@ export function TripOverviewScreen({
             }}
           />
         )}
-        {coverSources(trip).length === 0 ? null : (
-          <ListRow
-            inset="none"
-            icon="photos"
-            title="Change photo"
-            detail="Choose the trip's cover from photos of the destination"
-            testID="menu-change-photo"
-            onPress={() => {
-              setMenu(false);
-              setPicker(true);
-            }}
-          />
-        )}
+        <ListRow
+          inset="none"
+          icon="photos"
+          title="Change photo"
+          detail={
+            coverSources(trip).length === 0
+              ? "Choose the trip's cover from your phone"
+              : "Choose the trip's cover from your phone or photos of the destination"
+          }
+          testID="menu-change-photo"
+          onPress={() => {
+            setMenu(false);
+            setPicker(true);
+          }}
+        />
         <ListRow
           inset="none"
           icon="home"
@@ -559,10 +557,21 @@ export function TripOverviewScreen({
       visible
       sources={coverSources(trip)}
       load={actions.coverCandidates}
-      chosen={commonsFileOf(trip.cover_image?.credit.source_url)}
+      chosen={localCover ? null : commonsFileOf(trip.cover_image?.credit.source_url)}
+      local={localCover !== null}
+      onPickLocal={async () => {
+        const picked = await extrasActions.pickImage();
+        if (!picked) return false;
+        await extrasActions.setLocalCover(trip.id, picked);
+        return true;
+      }}
       onChoose={async (c) => {
-        await actions.setCover(trip.id, c?.commons_file ?? null);
-        trips.refresh();
+        // A destination photo (or the automatic one) replaces a picture from the phone.
+        if (coverSources(trip).length > 0) {
+          await actions.setCover(trip.id, c?.commons_file ?? null);
+          trips.refresh();
+        }
+        await extrasActions.clearLocalCover(trip.id);
       }}
       onClose={() => setPicker(false)}
     />
@@ -634,6 +643,7 @@ export function TripOverviewScreen({
         <Cover
           seedKey={trip.destination.ref}
           photo={trip.cover_image}
+          uri={localCover?.uri ?? null}
           height={COVER_HEIGHT + insets.top}
           scrim
           creditInset={SHEET_RADIUS}

@@ -38,7 +38,7 @@ sightseeing plans are an occasional help, not the main way in.
 | 8 | ~~Restaurants categorised by cuisine, meal type~~ | **Removed (ADR 026):** a restaurant is a name, a point and a kind (restaurant or café); Photon supplies no cuisine | Removed |
 | 9 | User-defined expected price or budget | **Removed for now** (owner, 2026-11-13; ADR 017): no budgets, currencies or prices | — |
 | 0b | **Optimize a hand-made trip** (ADR 029, accepted and built; third manager feature): the engine proposes a new order of the user's stops, within each day or across days, for the least travel; locked and ticketed stops stay, restaurants move at most 60 minutes and never start after 21:00 | Reorder search from the sequencer, travel times through the adapter, a preview with the saving, an undo | Built 2026-11-15, awaits acceptance |
-| 10 | Store travel photos linked to trip, day, city or item | Data model reserved; on-device first | Future (core to the history, owner's order) |
+| 10 | Store travel photos linked to trip, day, city or item | **Partly built (ADR 031):** a trip links its own photo albums (opened in Google Photos) and can take a cover from the phone; photos by day, city or item are not built | Future (core to the history, owner's order) |
 | 11 | No LLM at runtime | Deterministic engine, reason codes, fixed templates | Always |
 | 12 | Free or open APIs preferred | Open data imported and self-hosted; a few free public services behind adapters | Always |
 | 13 | See past trips on a map | Archive of visited cities and attractions, no routing (ADR 006) | Built 2026-11-13, awaits acceptance |
@@ -135,7 +135,8 @@ Not in the MVP (see `docs/app-plan.md` for the phase each belongs to):
 
 - public transport legs and real-time transit data
 - iOS build
-- photos (the user's own photos are planned, owner's order, ADR 026 item 26)
+- photos inside Detour (a trip links its own Google Photos albums, which open in Google Photos, and its
+  cover can be a picture from the phone: ADR 031; showing the photos themselves is not built)
 - weather
 - suggestions for destinations outside the imported pilot regions (trips there are empty, ADR 027)
 - user accounts, sharing and multi-device sync (a trip can be exported and imported as a file, ADR 028)

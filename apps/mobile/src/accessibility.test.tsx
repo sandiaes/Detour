@@ -232,7 +232,7 @@ test("trip overview: a day on the map with a stop chosen", async () => {
 
 test.each([
   ["explore", "Explore is planned"],
-  ["photos", "Trip photos are planned"],
+  ["photos", "No albums linked yet"],
   ["more", "Settings"],
 ] as const)("the %s tab", async (name, ready) => {
   await show({ name }, ready);
