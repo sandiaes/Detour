@@ -144,3 +144,29 @@ class PlaceSearchResponse(BaseModel):
     query: str | None
     results: list[PlaceSummary]
     external: ExternalStatus
+
+
+class RemovalTrip(BaseModel):
+    id: uuid.UUID
+    title: str
+    status: Literal["active", "past"]
+
+
+class RegionRemoval(BaseModel):
+    """What removing a region's imported data takes away and keeps (ADR 033). A place, or an area,
+    that one of the trips, a past-trip record or a display-name override names is kept (inactive,
+    with its names and photo link), so no trip loses anything it shows."""
+
+    region_id: str
+    name: str
+    places_total: int
+    places_removed: int
+    places_kept: int = Field(description="Places a trip still names: kept, no longer searchable")
+    admin_areas_removed: int
+    admin_areas_kept: int
+    trips: list[RemovalTrip] = Field(
+        description="The caller's trips that use this region's data, past trips included"
+    )
+    bytes_freed_estimate: int = Field(
+        description="About how much database space the removal frees; an estimate from row sizes"
+    )

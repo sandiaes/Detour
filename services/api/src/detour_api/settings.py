@@ -5,6 +5,7 @@ database URL and the token secret) are set only in the hosting provider's settin
 repository (see ``.env.example`` and ``docs/deployment.md``).
 """
 
+import uuid
 from functools import lru_cache
 from typing import Literal, Self
 
@@ -62,6 +63,9 @@ class Settings(BaseSettings):
 
     database_url: SecretStr | None = None
     token_secret: SecretStr | None = None
+    # The installations of the server's owner, comma separated (ADR 033): only they may remove a
+    # region. Empty means nobody may. An installation's id is shown in the app under More.
+    owner_installation_ids: str = ""
 
     # Photon (komoot's public geocoder) is the only external search provider, backend-side only.
     # Its terms (read 2026-11-12, ADR 012): "please be fair - extensive usage will be throttled",
@@ -216,6 +220,17 @@ class Settings(BaseSettings):
         if self.database_url is None:
             return None
         return normalize_database_url(self.database_url.get_secret_value())
+
+    @property
+    def owner_installations(self) -> frozenset[uuid.UUID]:
+        """The owner's installation ids; entries that are not UUIDs are ignored."""
+        found: set[uuid.UUID] = set()
+        for part in self.owner_installation_ids.split(","):
+            try:
+                found.add(uuid.UUID(part.strip()))
+            except ValueError:
+                continue
+        return frozenset(found)
 
     @property
     def token_secret_bytes(self) -> bytes:

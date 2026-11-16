@@ -106,6 +106,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/regions/{region_id}/removal-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What removing a region's imported data takes away and keeps (ADR 033). Owner only. */
+    get: operations["removal_preview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/regions/{region_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove a region's imported data, keeping every place a trip still names (ADR 033). Owner only; the region can be imported again. */
+    delete: operations["remove_region"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/attributions": {
     parameters: {
       query?: never;
@@ -2600,6 +2634,56 @@ export interface components {
       };
     };
     /**
+     * RegionRemoval
+     * @description What removing a region's imported data takes away and keeps (ADR 033). A place, or an area,
+     *     that one of the trips, a past-trip record or a display-name override names is kept (inactive,
+     *     with its names and photo link), so no trip loses anything it shows.
+     */
+    RegionRemoval: {
+      /** Region Id */
+      region_id: string;
+      /** Name */
+      name: string;
+      /** Places Total */
+      places_total: number;
+      /** Places Removed */
+      places_removed: number;
+      /**
+       * Places Kept
+       * @description Places a trip still names: kept, no longer searchable
+       */
+      places_kept: number;
+      /** Admin Areas Removed */
+      admin_areas_removed: number;
+      /** Admin Areas Kept */
+      admin_areas_kept: number;
+      /**
+       * Trips
+       * @description The caller's trips that use this region's data, past trips included
+       */
+      trips: components["schemas"]["RemovalTrip"][];
+      /**
+       * Bytes Freed Estimate
+       * @description About how much database space the removal frees; an estimate from row sizes
+       */
+      bytes_freed_estimate: number;
+    };
+    /** RemovalTrip */
+    RemovalTrip: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "active" | "past";
+    };
+    /**
      * RestaurantInfo
      * @description What is known about a restaurant or cafe stop: only its kind. There is no cuisine, meal
      *     type, price, rating or opening hours (ADR 026).
@@ -3262,6 +3346,122 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RegionInfo"][];
+        };
+      };
+    };
+  };
+  removal_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        region_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RegionRemoval"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  remove_region: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        region_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RegionRemoval"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
         };
       };
     };

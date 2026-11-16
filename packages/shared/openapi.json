@@ -161,6 +161,160 @@
         }
       }
     },
+    "/v1/regions/{region_id}/removal-preview": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "What removing a region's imported data takes away and keeps (ADR 033). Owner only.",
+        "operationId": "removal_preview",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionRemoval"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/regions/{region_id}": {
+      "delete": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Remove a region's imported data, keeping every place a trip still names (ADR 033). Owner only; the region can be imported again.",
+        "operationId": "remove_region",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionRemoval"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/attributions": {
       "get": {
         "tags": [
@@ -8882,6 +9036,94 @@
           "counts"
         ],
         "title": "RegionInfo"
+      },
+      "RegionRemoval": {
+        "properties": {
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "places_total": {
+            "type": "integer",
+            "title": "Places Total"
+          },
+          "places_removed": {
+            "type": "integer",
+            "title": "Places Removed"
+          },
+          "places_kept": {
+            "type": "integer",
+            "title": "Places Kept",
+            "description": "Places a trip still names: kept, no longer searchable"
+          },
+          "admin_areas_removed": {
+            "type": "integer",
+            "title": "Admin Areas Removed"
+          },
+          "admin_areas_kept": {
+            "type": "integer",
+            "title": "Admin Areas Kept"
+          },
+          "trips": {
+            "items": {
+              "$ref": "#/components/schemas/RemovalTrip"
+            },
+            "type": "array",
+            "title": "Trips",
+            "description": "The caller's trips that use this region's data, past trips included"
+          },
+          "bytes_freed_estimate": {
+            "type": "integer",
+            "title": "Bytes Freed Estimate",
+            "description": "About how much database space the removal frees; an estimate from row sizes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region_id",
+          "name",
+          "places_total",
+          "places_removed",
+          "places_kept",
+          "admin_areas_removed",
+          "admin_areas_kept",
+          "trips",
+          "bytes_freed_estimate"
+        ],
+        "title": "RegionRemoval",
+        "description": "What removing a region's imported data takes away and keeps (ADR 033). A place, or an area,\nthat one of the trips, a past-trip record or a display-name override names is kept (inactive,\nwith its names and photo link), so no trip loses anything it shows."
+      },
+      "RemovalTrip": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "past"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status"
+        ],
+        "title": "RemovalTrip"
       },
       "RestaurantInfo": {
         "properties": {

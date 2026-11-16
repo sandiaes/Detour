@@ -53,6 +53,12 @@ public** (ADR 007 addendum): workflows must never log or upload anything secret 
 backup is always encrypted, the signing key goes straight into secrets). No journey has been checked
 on a device (checked by tests only).
 
+**Regions can be removed** (2026-11-17, ADR 033 proposed, owner request; step 2 of 3 built, awaiting acceptance; tests only;
+no app screen yet): `DELETE /v1/regions/{id}` (owner only, `DETOUR_OWNER_INSTALLATION_IDS`) with
+`GET .../removal-preview` frees a region's imported data and keeps every place and area a trip, a past-trip record or a
+name override still names (inactive). Adding a region from the app (dispatching the import workflow) is step 3, not
+built.
+
 **Past trips are read-only and can be reopened** (2026-11-17, ADR 006 amendment, owner request; built, awaiting
 acceptance; tests only; migration `0022` not yet run in production): every change to a past trip's plan, stays,
 cities, dates, name or cover is refused with 409 `trip_past`; `POST /v1/trips/{id}/reopen` makes it active again
