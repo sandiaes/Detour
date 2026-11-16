@@ -4987,18 +4987,6 @@
             "type": "array",
             "title": "Country Codes"
           },
-          "download_mb": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Download Mb",
-            "description": "The extract's size at Geofabrik, if it was read"
-          },
           "state": {
             "type": "string",
             "enum": [
@@ -5048,7 +5036,6 @@
           "id",
           "name",
           "country_codes",
-          "download_mb",
           "state",
           "places",
           "places_kept",

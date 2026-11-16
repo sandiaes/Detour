@@ -10,7 +10,6 @@ const LONDON = {
   id: "greater-london",
   name: "Greater London",
   country_codes: ["GB"],
-  download_mb: 124,
   state: "not_imported",
   places: 0,
   places_kept: 0,
@@ -21,7 +20,6 @@ const AUSTRIA = {
   id: "austria",
   name: "Austria",
   country_codes: ["AT"],
-  download_mb: null,
   state: "available",
   places: 1200,
   places_kept: 0,
@@ -56,7 +54,7 @@ async function open(handlers: Record<string, unknown> = {}) {
 test("the regions are listed with their state and the space used", async () => {
   await open();
   expect(await screen.findByText("Greater London")).toBeOnTheScreen();
-  expect(screen.getByText("Not imported · about 124 MB to download")).toBeOnTheScreen();
+  expect(screen.getByText("Not imported")).toBeOnTheScreen();
   expect(screen.getByText("Available · 1,200 places · about 38 MB")).toBeOnTheScreen();
   expect(screen.getByTestId("regions-usage")).toHaveTextContent(
     "Imported data uses 38 MB of the 250 MB allowed.",
@@ -68,7 +66,7 @@ test("someone who is not the owner can read the list but not import or remove", 
   expect(await screen.findByText(/Only the owner of this server/)).toBeOnTheScreen();
   await fireEvent.press(await screen.findByTestId("region-greater-london"));
   // The row and the sheet both say it.
-  expect(await screen.findAllByText("Not imported · about 124 MB to download")).toHaveLength(2);
+  expect(await screen.findAllByText("Not imported")).toHaveLength(2);
   expect(screen.queryByTestId("region-import")).toBeNull();
   expect(screen.queryByTestId("region-remove")).toBeNull();
 });

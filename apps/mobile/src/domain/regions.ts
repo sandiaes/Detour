@@ -21,7 +21,7 @@ export function anyImportInProgress(catalog: RegionCatalog | undefined): boolean
   return catalog?.regions.some(importInProgress) ?? false;
 }
 
-/** A size in megabytes, or gigabytes from 1,000: "777 MB", "2.1 GB". */
+/** A size in megabytes, or gigabytes from 1,000: "38 MB", "2.1 GB". */
 export function megabytes(mb: number): string {
   if (mb >= 1000) return `${(mb / 1000).toFixed(1).replace(/\.0$/, "")} GB`;
   return `${Math.max(1, Math.round(mb))} MB`;
@@ -53,9 +53,7 @@ export function regionLine(region: CatalogRegion): string {
           ? `Removed · ${count(region.places_kept, "place", "places")} kept for trips${sizeSuffix(region)}`
           : "Not available";
     default:
-      return region.download_mb
-        ? `Not imported · about ${megabytes(region.download_mb)} to download`
-        : "Not imported";
+      return "Not imported";
   }
 }
 

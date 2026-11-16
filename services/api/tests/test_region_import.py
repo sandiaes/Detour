@@ -56,11 +56,9 @@ def test_the_catalog_lists_the_importable_regions_and_who_may_manage(api_env: Ap
     cat = c.get("/v1/regions/catalog", headers=h).json()
     assert cat["can_manage"] is False and cat["import_enabled"] is True
     by_id = {r["id"]: r for r in cat["regions"]}
-    assert by_id[LONDON]["state"] == "not_imported" and by_id[LONDON]["download_mb"] == 124
+    assert by_id[LONDON]["state"] == "not_imported"
     assert by_id[LONDON]["job"] is None and by_id[LONDON]["country_codes"] == ["GB"]
     assert cat["geo_limit_bytes"] == 250_000_000 and cat["geo_bytes"] > 0
-    assert by_id["austria"]["download_mb"] == 777 and by_id["italy"]["download_mb"] == 2100
-    assert all(r["download_mb"] for r in cat["regions"])
     # The fixture region is not in the catalog; an imported catalog region would show its size.
     assert by_id[LONDON]["bytes"] is None
     _setup(api_env)

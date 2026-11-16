@@ -89,7 +89,6 @@ def catalog(
                 id=definition.id,
                 name=definition.name,
                 country_codes=list(definition.countries),
-                download_mb=definition.download_mb,
                 state="not_imported" if row is None else row.status,
                 places=0 if row is None else int(row.n),
                 places_kept=0 if row is None else int(row.kept),

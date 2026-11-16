@@ -188,7 +188,6 @@ class CatalogRegion(BaseModel):
     id: str
     name: str
     country_codes: list[str]
-    download_mb: int | None = Field(description="The extract's size at Geofabrik, if it was read")
     state: Literal["not_imported", "available", "disabled", "importing"]
     places: int = Field(description="Searchable places of the region in the database")
     places_kept: int = Field(description="Places kept for trips after a removal (not searchable)")

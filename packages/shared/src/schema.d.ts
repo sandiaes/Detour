@@ -935,11 +935,6 @@ export interface components {
       /** Country Codes */
       country_codes: string[];
       /**
-       * Download Mb
-       * @description The extract's size at Geofabrik, if it was read
-       */
-      download_mb: number | null;
-      /**
        * State
        * @enum {string}
        */
