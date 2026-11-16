@@ -18,6 +18,13 @@ export interface DocumentFiles {
   keepCover(picked: PickedFile, tripId: string): Promise<string>;
   /** The bytes of a file kept by the app (a cover to upload, ADR 034). */
   readBytes(uri: string): Promise<Uint8Array>;
+  /** Writes a shared document received from the server into the trip's folder; returns its URI. */
+  keepDocumentBytes(
+    bytes: Uint8Array,
+    tripId: string,
+    id: string,
+    fileName: string,
+  ): Promise<string>;
   /** Writes a cover received from the server into the covers folder and returns its URI. */
   keepCoverBytes(bytes: Uint8Array, tripId: string): Promise<string>;
   remove(uri: string): Promise<void>;
@@ -73,6 +80,15 @@ export function createDeviceFiles(): DocumentFiles {
       const folder = new Directory(Paths.document, "covers");
       folder.create({ intermediates: true, idempotent: true });
       const target = new File(folder, `${tripId}-${Date.now()}.jpg`);
+      target.create();
+      target.write(bytes);
+      return target.uri;
+    },
+    async keepDocumentBytes(bytes, tripId, id, fileName) {
+      const folder = new Directory(Paths.document, "documents", tripId);
+      folder.create({ intermediates: true, idempotent: true });
+      const target = new File(folder, `${id}${extensionOf(fileName)}`);
+      if (target.exists) target.delete();
       target.create();
       target.write(bytes);
       return target.uri;

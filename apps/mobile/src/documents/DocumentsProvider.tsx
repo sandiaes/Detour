@@ -9,10 +9,10 @@ import {
   useState,
 } from "react";
 
-import type { Trip, components } from "@detour/shared";
+import type { ApiClient, Trip, components } from "@detour/shared";
 
 import { useBackend } from "../api/BackendProvider";
-import { ApiError, NetworkError, call, callEmpty } from "../api/unwrap";
+import { ApiError, NetworkError, call, callEmpty, describeError } from "../api/unwrap";
 import type { ExchangeFiles } from "../exchange/files";
 import { decodeBase64, encodeBase64 } from "../util/base64";
 import {
@@ -33,6 +33,7 @@ import {
   type PickedFile,
   type TripDocument,
   newDocumentId,
+  normaliseCategory,
 } from "./model";
 import type { DocumentStore } from "./store";
 
@@ -140,11 +141,173 @@ export type DocumentFields = {
   notes?: string | null;
 };
 
+// -- documents shared with the trip (ADR 034, step 6) -------------------------------------------
+
+/** A document was kept on this phone, but could not be uploaded (offline, too large, refused). */
+export class UploadError extends Error {}
+
+type ServerDocument = components["schemas"]["TripDocumentInfo"];
+type ServerContentType = components["schemas"]["TripDocumentUpload"]["content_type"];
+
+const UPLOADABLE: readonly string[] = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+];
+
+// Documents of a trip that starts within this many days (or is under way) are downloaded ahead,
+// so tickets open without a signal.
+export const DOWNLOAD_AHEAD_DAYS = 14;
+
+type DocDeps = {
+  store: DocumentStore;
+  files: DocumentFiles;
+  client: ApiClient;
+  changed: () => void;
+};
+
+function serverFields(doc: Pick<TripDocument, "title" | "category" | "link" | "date" | "notes">) {
+  return {
+    title: doc.title,
+    category: doc.category,
+    link: doc.link,
+    date: doc.date ?? null,
+    notes: doc.notes ?? null,
+  };
+}
+
+/** Whether a trip's shared documents should already be on the phone. */
+export function downloadsAhead(trip: Trip, today = new Date()): boolean {
+  if (!trip.start_date) return false;
+  const day = 86_400_000;
+  const start = Date.parse(`${trip.start_date}T00:00:00Z`);
+  const end = Date.parse(`${trip.end_date ?? trip.start_date}T00:00:00Z`);
+  const now = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  return start - now <= DOWNLOAD_AHEAD_DAYS * day && end >= now;
+}
+
+async function uploadDocument(deps: DocDeps, doc: TripDocument): Promise<TripDocument> {
+  if (!UPLOADABLE.includes(doc.mimeType)) {
+    throw new UploadError("This kind of file cannot be uploaded; it stays on this phone.");
+  }
+  const serverId = doc.serverId ?? (UUID.test(doc.id) ? doc.id : newDocumentId());
+  try {
+    const bytes = await deps.files.readBytes(doc.uri);
+    await call(
+      deps.client.POST("/v1/trips/{trip_id}/documents", {
+        params: { path: { trip_id: doc.tripId } },
+        body: {
+          id: serverId,
+          ...serverFields(doc),
+          file_name: doc.fileName.slice(0, 200) || "document",
+          content_type: doc.mimeType as ServerContentType,
+          data: encodeBase64(bytes),
+        },
+      }),
+    );
+  } catch (e) {
+    throw new UploadError(describeError(e));
+  }
+  const shared = { ...doc, serverId };
+  await deps.store.put(shared);
+  deps.changed();
+  return shared;
+}
+
+async function downloadDocument(deps: DocDeps, doc: TripDocument): Promise<TripDocument> {
+  if (!doc.serverId) return doc;
+  const file = await call(
+    deps.client.GET("/v1/trips/{trip_id}/documents/{document_id}/file", {
+      params: { path: { trip_id: doc.tripId, document_id: doc.serverId } },
+    }),
+  );
+  const uri = await deps.files.keepDocumentBytes(
+    decodeBase64(file.data),
+    doc.tripId,
+    doc.id,
+    doc.fileName,
+  );
+  const kept = { ...doc, uri };
+  await deps.store.put(kept);
+  deps.changed();
+  return kept;
+}
+
+/** Bring the phone's documents of a trip in line with the server: new shared documents are
+ * listed (and downloaded ahead for a trip that is near), changed ones take the new description,
+ * and those deleted elsewhere go. Documents only on this phone are left alone. */
+async function syncDocuments(deps: DocDeps, trip: Trip): Promise<void> {
+  const server: ServerDocument[] = await call(
+    deps.client.GET("/v1/trips/{trip_id}/documents", { params: { path: { trip_id: trip.id } } }),
+  );
+  const local = await deps.store.list(trip.id);
+  const byServer = new Map(local.filter((d) => d.serverId).map((d) => [d.serverId as string, d]));
+  let changed = false;
+  for (const s of server) {
+    const fields = {
+      title: s.title,
+      category: normaliseCategory(s.category),
+      link: s.link as DocLink,
+      date: s.date ?? null,
+      notes: s.notes ?? null,
+    };
+    const here = byServer.get(s.id);
+    if (!here) {
+      await deps.store.put({
+        id: s.id,
+        tripId: trip.id,
+        ...fields,
+        fileName: s.file_name,
+        mimeType: s.content_type,
+        sizeBytes: s.bytes,
+        uri: "",
+        createdAt: Date.parse(s.created_at) || Date.now(),
+        serverId: s.id,
+      });
+      changed = true;
+    } else if (JSON.stringify(serverFields(here)) !== JSON.stringify(serverFields(fields))) {
+      await deps.store.put({ ...here, ...fields });
+      changed = true;
+    }
+  }
+  const onServer = new Set(server.map((s) => s.id));
+  for (const d of local) {
+    if (d.serverId && !onServer.has(d.serverId)) {
+      await deps.store.remove(d.id);
+      if (d.uri) await deps.files.remove(d.uri).catch(() => undefined);
+      changed = true;
+    }
+  }
+  if (changed) deps.changed();
+  if (downloadsAhead(trip)) {
+    for (const d of await deps.store.list(trip.id)) {
+      if (d.serverId && !d.uri) await downloadDocument(deps, d).catch(() => undefined);
+    }
+  }
+}
+
 export function useDocumentActions() {
   const { store, extras, files, changed } = useDocumentsContext();
+  const { state } = useBackend();
+  const client = state.phase === "ready" ? state.connection.client : null;
+  const deps = useCallback((): DocDeps => {
+    if (!client) throw new NetworkError("Not connected to the server.");
+    return { store, files, client, changed };
+  }, [client, store, files, changed]);
 
+  /** Keeps the picked file on this phone; with `share`, also uploads it for everyone on the trip.
+   * A failed upload keeps the phone's copy and throws `UploadError` with the document attached. */
   const add = useCallback(
-    async (tripId: string, picked: PickedFile, fields: DocumentFields): Promise<TripDocument> => {
+    async (
+      tripId: string,
+      picked: PickedFile,
+      fields: DocumentFields,
+      share = false,
+    ): Promise<TripDocument> => {
       const id = newDocumentId();
       const uri = await files.keep(picked, tripId, id);
       const doc: TripDocument = {
@@ -167,39 +330,95 @@ export function useDocumentActions() {
         throw e;
       }
       changed();
-      return doc;
+      if (!share) return doc;
+      try {
+        return await uploadDocument(deps(), doc);
+      } catch (e) {
+        throw e instanceof UploadError ? Object.assign(e, { doc }) : e;
+      }
     },
-    [files, store, changed],
+    [files, store, changed, deps],
   );
 
+  /** A shared document is changed on the server first, so both phones agree. */
   const update = useCallback(
     async (doc: TripDocument, fields: DocumentFields) => {
-      await store.put({
+      const next = {
         ...doc,
         ...fields,
         title: fields.title.trim(),
         notes: fields.notes?.trim() || null,
         date: fields.date || null,
-      });
+      };
+      if (doc.serverId) {
+        await call(
+          deps().client.PATCH("/v1/trips/{trip_id}/documents/{document_id}", {
+            params: { path: { trip_id: doc.tripId, document_id: doc.serverId } },
+            body: serverFields(next),
+          }),
+        );
+      }
+      await store.put(next);
       changed();
     },
-    [store, changed],
+    [store, changed, deps],
   );
 
+  /** A shared document is deleted for everyone on the trip, then here. */
   const remove = useCallback(
     async (doc: TripDocument) => {
+      if (doc.serverId) {
+        await callEmpty(
+          deps().client.DELETE("/v1/trips/{trip_id}/documents/{document_id}", {
+            params: { path: { trip_id: doc.tripId, document_id: doc.serverId } },
+          }),
+        ).catch((e: unknown) => {
+          if (!(e instanceof ApiError && e.status === 404)) throw e; // already gone is fine
+        });
+      }
       await store.remove(doc.id);
-      await files.remove(doc.uri).catch(() => undefined);
+      if (doc.uri) await files.remove(doc.uri).catch(() => undefined);
       changed();
     },
-    [files, store, changed],
+    [files, store, changed, deps],
+  );
+
+  /** Upload a document kept only on this phone, for everyone on the trip. */
+  const share = useCallback((doc: TripDocument) => uploadDocument(deps(), doc), [deps]);
+
+  /** Keep a shared document on this phone only: the server's copy is deleted for everyone. */
+  const unshare = useCallback(
+    async (doc: TripDocument) => {
+      if (!doc.serverId) return;
+      await callEmpty(
+        deps().client.DELETE("/v1/trips/{trip_id}/documents/{document_id}", {
+          params: { path: { trip_id: doc.tripId, document_id: doc.serverId } },
+        }),
+      ).catch((e: unknown) => {
+        if (!(e instanceof ApiError && e.status === 404)) throw e;
+      });
+      await store.put({ ...doc, serverId: null });
+      changed();
+    },
+    [store, changed, deps],
+  );
+
+  /** Opens the file with the phone's viewer, downloading a shared one first if needed. */
+  const open = useCallback(
+    async (doc: TripDocument) => {
+      const ready = doc.uri ? doc : await downloadDocument(deps(), doc);
+      await files.open(ready);
+    },
+    [files, deps],
   );
 
   /** Called when a trip is deleted: its documents, album links and phone cover go too. */
   const removeTrip = useCallback(
     async (tripId: string) => {
       const gone = await store.removeTrip(tripId);
-      await Promise.all(gone.map((d) => files.remove(d.uri).catch(() => undefined)));
+      await Promise.all(
+        gone.filter((d) => d.uri).map((d) => files.remove(d.uri).catch(() => undefined)),
+      );
       const own = await extras.get(tripId).catch(() => emptyExtras(tripId));
       await extras.remove(tripId).catch(() => undefined);
       if (own.cover) await files.remove(own.cover.uri).catch(() => undefined);
@@ -208,7 +427,7 @@ export function useDocumentActions() {
     [files, store, extras, changed],
   );
 
-  return { pick: files.pick, open: files.open, add, update, remove, removeTrip };
+  return { pick: files.pick, open, add, update, remove, share, unshare, removeTrip };
 }
 
 // Album links and covers from the phone (ADR 031).
@@ -283,7 +502,7 @@ const ALBUM_MESSAGES: Record<string, string> = {
  * phone's copy in line with the server and uploads what an older build kept only on the phone.
  */
 export function useExtrasActions() {
-  const { extras, files, changed } = useDocumentsContext();
+  const { store, extras, files, changed } = useDocumentsContext();
   const { state } = useBackend();
   const client = state.phase === "ready" ? state.connection.client : null;
   const need = useCallback(() => {
@@ -488,6 +707,8 @@ export function useExtrasActions() {
         JSON.stringify(server.map((a) => [a.id, a.name, a.url]));
       if (!sameAlbums) await keepAlbums(trip.id, server);
 
+      await syncDocuments({ store, files, client, changed }, trip).catch(() => undefined);
+
       const own = trip.own_cover ?? null;
       const cover = (await extras.get(trip.id)).cover;
       if (own && cover?.serverId !== own.id) {
@@ -511,7 +732,7 @@ export function useExtrasActions() {
         await uploadCover(trip.id, cover);
       }
     },
-    [client, extras, files, changed, listAlbums, keepAlbums, uploadCover],
+    [client, store, extras, files, changed, listAlbums, keepAlbums, uploadCover],
   );
 
   return {

@@ -3,7 +3,12 @@ import { type ReactNode, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
 import { call } from "../api/unwrap";
-import { CATEGORY_ICON, DEVICE_ONLY_NOTE, KindTile } from "../components/documents/DocumentList";
+import {
+  CATEGORY_ICON,
+  DEVICE_ONLY_NOTE,
+  KindTile,
+  shareNote,
+} from "../components/documents/DocumentList";
 import { CalendarSheet } from "../components/ds/Calendar";
 import {
   Button,
@@ -26,7 +31,7 @@ import {
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useActivePlan } from "../data/tripCounts";
-import { useDocument, useDocumentActions } from "../documents/DocumentsProvider";
+import { UploadError, useDocument, useDocumentActions } from "../documents/DocumentsProvider";
 import {
   CATEGORIES,
   CATEGORY_LABEL,
@@ -145,6 +150,8 @@ function Form({
     start.kind === "leg" ? { day: start.day, name: start.name } : null,
   );
   const [busy, setBusy] = useState<"pick" | "save" | null>(null);
+  // "Upload to the trip" (ADR 034, step 6; owner, 2026-11-16): on unless the user turns it off.
+  const [share, setShare] = useState(true);
   const [problem, setProblem] = useState<string | null>(null);
 
   // A place or journey already linked stays choosable even if the plan no longer has it.
@@ -215,10 +222,17 @@ function Form({
         await actions.update(existing, fields);
         nav.back();
       } else if (picked) {
-        const doc = await actions.add(trip.id, picked, fields);
+        const doc = await actions.add(trip.id, picked, fields, share);
         nav.replace({ name: "document", tripId: trip.id, documentId: doc.id });
       }
-    } catch {
+    } catch (e) {
+      // Kept on this phone, not uploaded: its screen says so and offers to upload it again.
+      const kept =
+        e instanceof UploadError ? (e as UploadError & { doc?: TripDocument }).doc : null;
+      if (kept) {
+        nav.replace({ name: "document", tripId: trip.id, documentId: kept.id });
+        return;
+      }
       setProblem(
         "The document could not be saved on this phone. Check the free space and try again.",
       );
@@ -451,7 +465,19 @@ function Form({
             loading={busy === "save"}
             onPress={() => void save()}
           />
-          {!existing ? <Text style={styles.note}>{DEVICE_ONLY_NOTE}</Text> : null}
+          {!existing ? (
+            <View style={styles.share}>
+              <Chip
+                label="Upload to the trip"
+                icon="export"
+                selected={share}
+                onPress={() => setShare((v) => !v)}
+                accessibilityLabel="Upload to the trip"
+                testID="document-share"
+              />
+              <Text style={styles.note}>{shareNote(share)}</Text>
+            </View>
+          ) : null}
         </View>
       </KeyboardScrollView>
     </View>
@@ -543,6 +569,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   muted: { ...type.caption, color: colors.muted },
   note: { ...type.caption, color: colors.muted, textAlign: "center" },
+  share: { alignItems: "center", gap: spacing.sm },
   lead: { ...type.label, color: colors.muted },
   cards: { gap: spacing.sm },
   file: { flexDirection: "row", alignItems: "center", gap: spacing.md },

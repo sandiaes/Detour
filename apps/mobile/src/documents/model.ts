@@ -48,6 +48,9 @@ export type TripDocument = {
   date?: string | null;
   /** The user's own note, at most `NOTES_MAX` characters; optional. */
   notes?: string | null;
+  /** Shared with the trip (ADR 034, step 6): the document's id on the server. Absent or null for
+   * a document kept on this phone only. */
+  serverId?: string | null;
 };
 
 export const NOTES_MAX = 500;
@@ -204,14 +207,12 @@ export function groupByCategory(
   })).filter((g) => g.docs.length > 0);
 }
 
-/** A random identifier; documents never leave the device, so uniqueness on it is enough. */
-export function newDocumentId(
-  random: () => number = Math.random,
-  now: () => number = Date.now,
-): string {
-  const r = () =>
-    Math.floor(random() * 0x100000000)
-      .toString(16)
-      .padStart(8, "0");
-  return `${now().toString(16)}-${r()}${r()}`;
+/** A random version-4 UUID: a document shared with the trip keeps it as its id on the server
+ * (ADR 034, step 6). Older documents have other identifiers; they get a new one when shared. */
+export function newDocumentId(random: () => number = Math.random): string {
+  const hex = Array.from({ length: 32 }, () => Math.floor(random() * 16).toString(16));
+  hex[12] = "4";
+  hex[16] = ((parseInt(hex[16] ?? "0", 16) & 0x3) | 0x8).toString(16);
+  const h = hex.join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }

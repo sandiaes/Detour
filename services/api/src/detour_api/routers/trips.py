@@ -36,6 +36,10 @@ from detour_api.models.trips import (
     TripAlbumCreate,
     TripAlbumUpdate,
     TripCreate,
+    TripDocumentFields,
+    TripDocumentFile,
+    TripDocumentInfo,
+    TripDocumentUpload,
     TripMemberAdd,
     TripUpdate,
     TripVisit,
@@ -497,3 +501,90 @@ def delete_stay(session: SessionDep, trip_id: uuid.UUID, stay_id: uuid.UUID) -> 
     with session.tx() as conn:
         stays.delete(conn, session.person_id, trip_id, stay_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# -- shared documents (ADR 034, step 6) -----------------------------------------------------------
+
+
+@router.get(
+    "/{trip_id}/documents",
+    summary="The documents shared with everyone on the trip (not those kept only on a phone).",
+    responses=ERRORS,
+)
+def list_documents(session: SessionDep, trip_id: uuid.UUID) -> list[TripDocumentInfo]:
+    with session.tx() as conn:
+        return trip_files.list_documents(conn, session.person_id, trip_id)
+
+
+@router.post(
+    "/{trip_id}/documents",
+    status_code=status.HTTP_201_CREATED,
+    summary="Share a document (a PDF or a picture, base64, at most 10 MB) with everyone on the "
+    "trip. The phone chooses the id; sending it again returns what is stored. 422 not_a_document "
+    "or document_too_large; 409 storage_full; 503 storage_unavailable.",
+    responses={**ERRORS, 503: ERRORS[404]},
+)
+def add_document(
+    session: SessionDep,
+    settings: SettingsDep,
+    request: Request,
+    trip_id: uuid.UUID,
+    body: TripDocumentUpload,
+) -> TripDocumentInfo:
+    with session.tx() as conn:
+        return trip_files.add_document(
+            conn, request.app.state.file_store, settings, session.person_id, trip_id, body
+        )
+
+
+@router.patch(
+    "/{trip_id}/documents/{document_id}",
+    summary="Change a shared document's title, kind, what it is about, date or notes.",
+    responses=ERRORS,
+)
+def update_document(
+    session: SessionDep, trip_id: uuid.UUID, document_id: uuid.UUID, body: TripDocumentFields
+) -> TripDocumentInfo:
+    with session.tx() as conn:
+        return trip_files.update_document(conn, session.person_id, trip_id, document_id, body)
+
+
+@router.delete(
+    "/{trip_id}/documents/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a shared document for everyone on the trip.",
+    responses=ERRORS,
+)
+def remove_document(
+    session: SessionDep,
+    request: Request,
+    background: BackgroundTasks,
+    trip_id: uuid.UUID,
+    document_id: uuid.UUID,
+) -> Response:
+    with session.tx() as conn:
+        trip_files.remove_document(conn, session.person_id, trip_id, document_id)
+    _sweep(request, background)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{trip_id}/documents/{document_id}/file",
+    summary="A shared document's file (base64), for the trip's members only.",
+    responses={**ERRORS, 503: ERRORS[404]},
+)
+def get_document_file(
+    session: SessionDep,
+    request: Request,
+    response: Response,
+    trip_id: uuid.UUID,
+    document_id: uuid.UUID,
+) -> TripDocumentFile:
+    with session.tx() as conn:
+        content_type, data = trip_files.get_document_file(
+            conn, request.app.state.file_store, session.person_id, trip_id, document_id
+        )
+    response.headers["Cache-Control"] = "private, no-store"
+    return TripDocumentFile(
+        id=document_id, content_type=content_type, data=base64.b64encode(data).decode("ascii")
+    )

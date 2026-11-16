@@ -804,6 +804,59 @@ export interface paths {
     patch: operations["update_stay"];
     trace?: never;
   };
+  "/v1/trips/{trip_id}/documents": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The documents shared with everyone on the trip (not those kept only on a phone). */
+    get: operations["list_documents"];
+    put?: never;
+    /** Share a document (a PDF or a picture, base64, at most 10 MB) with everyone on the trip. The phone chooses the id; sending it again returns what is stored. 422 not_a_document or document_too_large; 409 storage_full; 503 storage_unavailable. */
+    post: operations["add_document"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/documents/{document_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete a shared document for everyone on the trip. */
+    delete: operations["remove_document"];
+    options?: never;
+    head?: never;
+    /** Change a shared document's title, kind, what it is about, date or notes. */
+    patch: operations["update_document"];
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/documents/{document_id}/file": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A shared document's file (base64), for the trip's members only. */
+    get: operations["get_document_file"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/itineraries/{itinerary_id}": {
     parameters: {
       query?: never;
@@ -1647,6 +1700,50 @@ export interface components {
     DisplayNameUpdate: {
       /** Name */
       name: string;
+    };
+    /** DocLinkDay */
+    DocLinkDay: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "day";
+      /** Day */
+      day: number;
+    };
+    /** DocLinkLeg */
+    DocLinkLeg: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "leg";
+      /** Day */
+      day: number;
+      /** Name */
+      name: string;
+    };
+    /** DocLinkPlace */
+    DocLinkPlace: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "place";
+      /** Key */
+      key: string;
+      /** Name */
+      name: string;
+      /** Day */
+      day?: number | null;
+    };
+    /** DocLinkTrip */
+    DocLinkTrip: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "trip";
     };
     /** ErrorBody */
     ErrorBody: {
@@ -3642,6 +3739,137 @@ export interface components {
        * @default true
        */
       uses_car: boolean;
+    };
+    /** TripDocumentFields */
+    TripDocumentFields: {
+      /** Title */
+      title: string;
+      /**
+       * Category
+       * @enum {string}
+       */
+      category: "ticket" | "booking" | "transport" | "other";
+      /** Link */
+      link:
+        | components["schemas"]["DocLinkTrip"]
+        | components["schemas"]["DocLinkDay"]
+        | components["schemas"]["DocLinkPlace"]
+        | components["schemas"]["DocLinkLeg"];
+      /** Date */
+      date?: string | null;
+      /** Notes */
+      notes?: string | null;
+    };
+    /** TripDocumentFile */
+    TripDocumentFile: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Content Type */
+      content_type: string;
+      /**
+       * Data
+       * @description The file, base64
+       */
+      data: string;
+    };
+    /**
+     * TripDocumentInfo
+     * @description A document shared with everyone on the trip (ADR 034, step 6). What it is about is kept as
+     *     the phone described it (ADR 023: a place by key, name and day), so it reads the same after the
+     *     plan changes.
+     */
+    TripDocumentInfo: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
+      /**
+       * Category
+       * @enum {string}
+       */
+      category: "ticket" | "booking" | "transport" | "other";
+      /** Link */
+      link:
+        | components["schemas"]["DocLinkTrip"]
+        | components["schemas"]["DocLinkDay"]
+        | components["schemas"]["DocLinkPlace"]
+        | components["schemas"]["DocLinkLeg"];
+      /** Date */
+      date: string | null;
+      /** Notes */
+      notes: string | null;
+      /** File Name */
+      file_name: string;
+      /** Content Type */
+      content_type: string;
+      /** Bytes */
+      bytes: number;
+      /**
+       * Added By
+       * @description Who uploaded it (their name); null when unknown
+       */
+      added_by: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /** TripDocumentUpload */
+    TripDocumentUpload: {
+      /** Title */
+      title: string;
+      /**
+       * Category
+       * @enum {string}
+       */
+      category: "ticket" | "booking" | "transport" | "other";
+      /** Link */
+      link:
+        | components["schemas"]["DocLinkTrip"]
+        | components["schemas"]["DocLinkDay"]
+        | components["schemas"]["DocLinkPlace"]
+        | components["schemas"]["DocLinkLeg"];
+      /** Date */
+      date?: string | null;
+      /** Notes */
+      notes?: string | null;
+      /**
+       * Id
+       * Format: uuid
+       * @description Chosen by the phone, so a repeated upload is stored once
+       */
+      id: string;
+      /** File Name */
+      file_name: string;
+      /**
+       * Content Type
+       * @enum {string}
+       */
+      content_type:
+        | "application/pdf"
+        | "image/jpeg"
+        | "image/png"
+        | "image/webp"
+        | "image/gif"
+        | "image/heic"
+        | "image/heif";
+      /**
+       * Data
+       * @description The file, base64
+       */
+      data: string;
     };
     /**
      * TripFile
@@ -7055,6 +7283,323 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  list_documents: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripDocumentInfo"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  add_document: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripDocumentUpload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripDocumentInfo"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  remove_document: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+        document_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  update_document: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+        document_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripDocumentFields"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripDocumentInfo"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  get_document_file: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+        document_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripDocumentFile"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

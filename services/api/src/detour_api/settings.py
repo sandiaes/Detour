@@ -149,6 +149,8 @@ class Settings(BaseSettings):
     trip_files_bucket: str = "trip-files"
     trip_files_budget_bytes: int = Field(default=250_000_000, ge=1)
     cover_upload_max_bytes: int = Field(default=10_000_000, ge=1)
+    # A shared document (step 6) is kept as it is, up to this size (as a document in a trip file).
+    document_upload_max_bytes: int = Field(default=10_000_000, ge=1)
     cover_max_side: int = Field(default=1600, ge=200, le=4000)
 
     # Plan generation (Phase 4, ADR 014). Whether it may ask the routing provider for the

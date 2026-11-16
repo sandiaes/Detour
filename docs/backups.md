@@ -76,7 +76,8 @@ restored itinerary version that points at a place the new import no longer has k
 
 - **Documents on the phone**, unless exported with "Back up all trips" (they never reach the server).
 - The photo files in Supabase Storage (rebuilt by "Resolve images" and the background resolver).
-- **Covers chosen from a phone** in the private `trip-files` bucket (ADR 034, step 5): the daily
-  backup has their rows, not the pictures. The phones that showed a cover keep a copy.
+- **Covers chosen from a phone and shared documents** in the private `trip-files` bucket (ADR 034,
+  steps 5 and 6): the daily backup has their rows, not the files. Phones that opened or downloaded
+  them ahead keep a copy; "Back up all trips" with documents puts the files in the export file.
 - Render's settings and secrets (written down in [`deployment.md`](deployment.md)).
 - Anything older than 30 days in the Actions backup.

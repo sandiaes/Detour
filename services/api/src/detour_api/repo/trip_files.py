@@ -11,8 +11,10 @@ import base64
 import binascii
 import hashlib
 import io
+import json
 import uuid
 from datetime import datetime
+from typing import Any
 
 import structlog
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -20,7 +22,13 @@ from sqlalchemy import Connection, Engine, text
 
 from detour_api.errors import ApiError, conflict, invalid, not_found
 from detour_api.images.store import ImageStore, StoreError
-from detour_api.models.trips import OwnCover, TripAlbum
+from detour_api.models.trips import (
+    OwnCover,
+    TripAlbum,
+    TripDocumentFields,
+    TripDocumentInfo,
+    TripDocumentUpload,
+)
 from detour_api.repo import trips
 from detour_api.settings import Settings
 
@@ -251,3 +259,227 @@ def sweep_orphans(engine: Engine | None, store: ImageStore | None, limit: int = 
             )
         removed += 1
     return removed
+
+
+# -- shared documents (ADR 034, step 6) ---------------------------------------------------------
+
+# What the first bytes of each accepted kind look like. Documents are kept as they are (a ticket's
+# QR code must not be re-encoded), so the check is on the bytes, not on what the phone says.
+_SIGNATURES: dict[str, tuple[bytes, ...]] = {
+    "application/pdf": (b"%PDF-",),
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+    "image/gif": (b"GIF87a", b"GIF89a"),
+}
+
+_DOCUMENT_COLUMNS = """
+    d.id, d.title, d.category, d.link, d.doc_date, d.notes, d.file_name, d.updated_at,
+    f.content_type, f.bytes, f.created_at, p.display_name
+"""
+_DOCUMENT_FROM = """
+    FROM app.trip_document d JOIN app.trip_file f ON f.id = d.id
+    LEFT JOIN app.person p ON p.id = f.uploaded_by
+"""
+
+
+def _looks_like(content_type: str, data: bytes) -> bool:
+    if content_type in _SIGNATURES:
+        return data.startswith(_SIGNATURES[content_type])
+    if content_type == "image/webp":
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    if content_type in ("image/heic", "image/heif"):
+        return data[4:8] == b"ftyp"
+    return False
+
+
+def _document(row: Any) -> TripDocumentInfo:
+    return TripDocumentInfo(
+        id=row.id,
+        title=row.title,
+        category=row.category,
+        link=row.link,
+        date=row.doc_date,
+        notes=row.notes,
+        file_name=row.file_name,
+        content_type=row.content_type,
+        bytes=row.bytes,
+        added_by=row.display_name,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+def list_documents(
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID
+) -> list[TripDocumentInfo]:
+    trips.require_trip(conn, person_id, trip_id)
+    rows = conn.execute(
+        text(
+            f"SELECT {_DOCUMENT_COLUMNS} {_DOCUMENT_FROM}"
+            " WHERE d.trip_id = :t ORDER BY f.created_at, d.id"
+        ),
+        {"t": trip_id},
+    ).all()
+    return [_document(r) for r in rows]
+
+
+def _require_document(
+    conn: Connection, trip_id: uuid.UUID, document_id: uuid.UUID
+) -> TripDocumentInfo:
+    row = conn.execute(
+        text(f"SELECT {_DOCUMENT_COLUMNS} {_DOCUMENT_FROM} WHERE d.id = :d AND d.trip_id = :t"),
+        {"d": document_id, "t": trip_id},
+    ).first()
+    if row is None:
+        raise not_found("document")
+    return _document(row)
+
+
+def _link_json(link: Any) -> str:
+    return json.dumps(link.model_dump(mode="json"))
+
+
+def add_document(
+    conn: Connection,
+    store: ImageStore | None,
+    settings: Settings,
+    person_id: uuid.UUID,
+    trip_id: uuid.UUID,
+    body: TripDocumentUpload,
+) -> TripDocumentInfo:
+    """Share a document with everyone on the trip. Allowed on past trips (ADR 006). Sending the
+    same id again returns what is stored, so a retried upload does not store it twice."""
+    trips.require_trip(conn, person_id, trip_id)
+    existing = conn.execute(
+        text("SELECT trip_id FROM app.trip_file WHERE id = :i"), {"i": body.id}
+    ).first()
+    if existing is not None:
+        if existing.trip_id != trip_id:
+            raise conflict("document_exists", "this document belongs to another trip")
+        return _require_document(conn, trip_id, body.id)
+    if store is None:
+        raise ApiError(503, "storage_unavailable", "documents cannot be stored on this server")
+    try:
+        raw = base64.b64decode(body.data, validate=True)
+    except (binascii.Error, ValueError):
+        raise invalid("not_a_document", "the file is not valid base64") from None
+    if len(raw) > settings.document_upload_max_bytes:
+        raise invalid(
+            "document_too_large",
+            f"a document can be at most {settings.document_upload_max_bytes // 1_000_000} MB",
+        )
+    if not _looks_like(body.content_type, raw):
+        raise invalid("not_a_document", "this file is not a PDF or a picture of the kind it says")
+    if _used_bytes(conn) + len(raw) > settings.trip_files_budget_bytes:
+        raise conflict("storage_full", "the server's space for trip files is full")
+    key = f"trips/{trip_id}/document-{body.id}"
+    try:
+        store.put(key, raw, body.content_type)
+    except StoreError as exc:
+        raise ApiError(503, "storage_unavailable", "the document could not be stored") from exc
+    conn.execute(
+        text(
+            "INSERT INTO app.trip_file (id, trip_id, kind, storage_key, content_type, bytes,"
+            " sha256, uploaded_by) VALUES (:i, :t, 'document', :k, :c, :b, :h, :p)"
+        ),
+        {
+            "i": body.id,
+            "t": trip_id,
+            "k": key,
+            "c": body.content_type,
+            "b": len(raw),
+            "h": hashlib.sha256(raw).digest(),
+            "p": person_id,
+        },
+    )
+    conn.execute(
+        text(
+            "INSERT INTO app.trip_document (id, trip_id, title, category, link, doc_date, notes,"
+            " file_name, updated_by) VALUES (:i, :t, :title, :cat, CAST(:link AS jsonb), :date,"
+            " :notes, :name, :p)"
+        ),
+        {
+            "i": body.id,
+            "t": trip_id,
+            "title": body.title.strip(),
+            "cat": body.category,
+            "link": _link_json(body.link),
+            "date": body.date,
+            "notes": (body.notes or "").strip() or None,
+            "name": body.file_name,
+            "p": person_id,
+        },
+    )
+    return _require_document(conn, trip_id, body.id)
+
+
+def update_document(
+    conn: Connection,
+    person_id: uuid.UUID,
+    trip_id: uuid.UUID,
+    document_id: uuid.UUID,
+    body: TripDocumentFields,
+) -> TripDocumentInfo:
+    trips.require_trip(conn, person_id, trip_id)
+    _require_document(conn, trip_id, document_id)
+    conn.execute(
+        text(
+            "UPDATE app.trip_document SET title = :title, category = :cat,"
+            " link = CAST(:link AS jsonb), doc_date = :date, notes = :notes, updated_by = :p,"
+            " updated_at = now() WHERE id = :d"
+        ),
+        {
+            "title": body.title.strip(),
+            "cat": body.category,
+            "link": _link_json(body.link),
+            "date": body.date,
+            "notes": (body.notes or "").strip() or None,
+            "p": person_id,
+            "d": document_id,
+        },
+    )
+    return _require_document(conn, trip_id, document_id)
+
+
+def remove_document(
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, document_id: uuid.UUID
+) -> None:
+    """For everyone on the trip; the phones that kept a copy drop it at their next sync."""
+    trips.require_trip(conn, person_id, trip_id)
+    gone = conn.execute(
+        text(
+            "DELETE FROM app.trip_file WHERE id = :d AND trip_id = :t AND kind = 'document'"
+            " RETURNING 1"
+        ),
+        {"d": document_id, "t": trip_id},
+    ).first()
+    if gone is None:
+        raise not_found("document")
+
+
+def get_document_file(
+    conn: Connection,
+    store: ImageStore | None,
+    person_id: uuid.UUID,
+    trip_id: uuid.UUID,
+    document_id: uuid.UUID,
+) -> tuple[str, bytes]:
+    trips.require_trip(conn, person_id, trip_id)
+    row = conn.execute(
+        text(
+            "SELECT storage_key, content_type FROM app.trip_file"
+            " WHERE id = :d AND trip_id = :t AND kind = 'document'"
+        ),
+        {"d": document_id, "t": trip_id},
+    ).first()
+    if row is None:
+        raise not_found("document")
+    if store is None:
+        raise ApiError(503, "storage_unavailable", "documents cannot be read on this server")
+    try:
+        data = store.get(row.storage_key)
+    except StoreError as exc:
+        raise ApiError(503, "storage_unavailable", "the document could not be read") from exc
+    if data is None:
+        raise not_found("document")
+    return row.content_type, data

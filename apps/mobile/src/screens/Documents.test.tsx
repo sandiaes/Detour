@@ -96,6 +96,10 @@ test("add a ticket for a place: pick, title from the file, kind, place; it is ke
   await fireEvent.press(screen.getByRole("button", { name: "Schönbrunn Palace, Day 1" }));
   // The menu closes on a choice.
   expect(screen.queryByTestId("attraction-select-list")).toBeNull();
+  // Uploading is on by default (ADR 034); this one stays on the phone only.
+  expect(screen.getByText(/Uploaded for everyone on this trip/)).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("document-share"));
+  expect(screen.getByText(/Kept on this phone only/)).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("save-document"));
 
   // The document opens; the file was copied into the app's storage.
@@ -118,7 +122,7 @@ test("add a ticket for a place: pick, title from the file, kind, place; it is ke
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
   expect(
     await screen.findByRole("button", {
-      name: "Train ticket Vienna. Ticket · PDF · 245.0 kB. Schönbrunn Palace · day 1.",
+      name: "Train ticket Vienna. Ticket · PDF · 245.0 kB · Only on this phone. Schönbrunn Palace · day 1.",
     }),
   ).toBeOnTheScreen();
 });
@@ -277,7 +281,9 @@ test("the document list filters by kind and sorts", async () => {
   expect(await screen.findByText("Palace tickets")).toBeOnTheScreen();
   // A document's own date is shown when it has one.
   expect(
-    screen.getByLabelText(/^Hotel\. Booking · PDF · 120\.0 kB\. Sat 1 May 2027\./),
+    screen.getByLabelText(
+      /^Hotel\. Booking · PDF · 120\.0 kB · Only on this phone\. Sat 1 May 2027\./,
+    ),
   ).toBeOnTheScreen();
   await fireEvent.press(screen.getByTestId("filter-ticket"));
   expect(screen.getByText("Palace tickets")).toBeOnTheScreen();

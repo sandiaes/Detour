@@ -4466,6 +4466,459 @@
         }
       }
     },
+    "/v1/trips/{trip_id}/documents": {
+      "get": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "The documents shared with everyone on the trip (not those kept only on a phone).",
+        "operationId": "list_documents",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TripDocumentInfo"
+                  },
+                  "title": "Response List Documents"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Share a document (a PDF or a picture, base64, at most 10 MB) with everyone on the trip. The phone chooses the id; sending it again returns what is stored. 422 not_a_document or document_too_large; 409 storage_full; 503 storage_unavailable.",
+        "operationId": "add_document",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripDocumentUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDocumentInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/v1/trips/{trip_id}/documents/{document_id}": {
+      "patch": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Change a shared document's title, kind, what it is about, date or notes.",
+        "operationId": "update_document",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripDocumentFields"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDocumentInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Delete a shared document for everyone on the trip.",
+        "operationId": "remove_document",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/trips/{trip_id}/documents/{document_id}/file": {
+      "get": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "A shared document's file (base64), for the trip's members only.",
+        "operationId": "get_document_file",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDocumentFile"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/v1/itineraries/{itinerary_id}": {
       "get": {
         "tags": [
@@ -7646,6 +8099,114 @@
           "name"
         ],
         "title": "DisplayNameUpdate"
+      },
+      "DocLinkDay": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "day",
+            "title": "Kind"
+          },
+          "day": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Day"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "day"
+        ],
+        "title": "DocLinkDay"
+      },
+      "DocLinkLeg": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "leg",
+            "title": "Kind"
+          },
+          "day": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Day"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "day",
+          "name"
+        ],
+        "title": "DocLinkLeg"
+      },
+      "DocLinkPlace": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "place",
+            "title": "Kind"
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 60.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "key",
+          "name"
+        ],
+        "title": "DocLinkPlace"
+      },
+      "DocLinkTrip": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "trip",
+            "title": "Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "DocLinkTrip"
       },
       "ErrorBody": {
         "properties": {
@@ -12334,6 +12895,346 @@
           "duration_days"
         ],
         "title": "TripCreate"
+      },
+      "TripDocumentFields": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ticket",
+              "booking",
+              "transport",
+              "other"
+            ],
+            "title": "Category"
+          },
+          "link": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocLinkTrip"
+              },
+              {
+                "$ref": "#/components/schemas/DocLinkDay"
+              },
+              {
+                "$ref": "#/components/schemas/DocLinkPlace"
+              },
+              {
+                "$ref": "#/components/schemas/DocLinkLeg"
+              }
+            ],
+            "title": "Link",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "day": "#/components/schemas/DocLinkDay",
+                "leg": "#/components/schemas/DocLinkLeg",
+                "place": "#/components/schemas/DocLinkPlace",
+                "trip": "#/components/schemas/DocLinkTrip"
+              }
+            }
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "category",
+          "link"
+        ],
+        "title": "TripDocumentFields"
+      },
+      "TripDocumentFile": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "data": {
+            "type": "string",
+            "title": "Data",
+            "description": "The file, base64"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "content_type",
+          "data"
+        ],
+        "title": "TripDocumentFile"
+      },
+      "TripDocumentInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ticket",
+              "booking",
+              "transport",
+              "other"
+            ],
+            "title": "Category"
+          },
+          "link": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocLinkTrip"
+              },
+              {
+                "$ref": "#/components/schemas/DocLinkDay"
+              },
+              {
+                "$ref": "#/components/schemas/DocLinkPlace"
+              },
+              {
+                "$ref": "#/components/schemas/DocLinkLeg"
+              }
+            ],
+            "title": "Link",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "day": "#/components/schemas/DocLinkDay",
+                "leg": "#/components/schemas/DocLinkLeg",
+                "place": "#/components/schemas/DocLinkPlace",
+                "trip": "#/components/schemas/DocLinkTrip"
+              }
+            }
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "bytes": {
+            "type": "integer",
+            "title": "Bytes"
+          },
+          "added_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added By",
+            "description": "Who uploaded it (their name); null when unknown"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "category",
+          "link",
+          "date",
+          "notes",
+          "file_name",
+          "content_type",
+          "bytes",
+          "added_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TripDocumentInfo",
+        "description": "A document shared with everyone on the trip (ADR 034, step 6). What it is about is kept as\nthe phone described it (ADR 023: a place by key, name and day), so it reads the same after the\nplan changes."
+      },
+      "TripDocumentUpload": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ticket",
+              "booking",
+              "transport",
+              "other"
+            ],
+            "title": "Category"
+          },
+          "link": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocLinkTrip"
+              },
+              {
+                "$ref": "#/components/schemas/DocLinkDay"
+              },
+              {
+                "$ref": "#/components/schemas/DocLinkPlace"
+              },
+              {
+                "$ref": "#/components/schemas/DocLinkLeg"
+              }
+            ],
+            "title": "Link",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "day": "#/components/schemas/DocLinkDay",
+                "leg": "#/components/schemas/DocLinkLeg",
+                "place": "#/components/schemas/DocLinkPlace",
+                "trip": "#/components/schemas/DocLinkTrip"
+              }
+            }
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id",
+            "description": "Chosen by the phone, so a repeated upload is stored once"
+          },
+          "file_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "File Name"
+          },
+          "content_type": {
+            "type": "string",
+            "enum": [
+              "application/pdf",
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif",
+              "image/heic",
+              "image/heif"
+            ],
+            "title": "Content Type"
+          },
+          "data": {
+            "type": "string",
+            "maxLength": 14000000,
+            "minLength": 1,
+            "title": "Data",
+            "description": "The file, base64"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "category",
+          "link",
+          "id",
+          "file_name",
+          "content_type",
+          "data"
+        ],
+        "title": "TripDocumentUpload"
       },
       "TripFile": {
         "properties": {

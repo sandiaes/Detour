@@ -285,6 +285,15 @@ at most one cover per trip), `storage_key` (unique; `trips/<trip>/cover-<id>.jpg
 from the bucket after the change commits (a replaced cover, a deleted trip). The sum of `bytes` is
 the storage budget's count. `Trip.own_cover` (id, bytes, upload time) is read with the trip.
 
+### 3.1f Shared documents (ADR 034, step 6, migration `0029`)
+
+`app.trip_document`: `id` (pk and fk to `app.trip_file`, cascade: the file row owns it), `trip_id`
+(fk, cascade), `title` (1 to 120), `category` (`ticket`, `booking`, `transport`, `other`), `link`
+(jsonb: `{kind: trip}`, `{kind: day, day}`, `{kind: place, key, name, day}` or `{kind: leg, day,
+name}`, as ADR 023 keeps it on the phone), `doc_date`, `notes` (at most 500), `file_name`,
+`updated_by` (fk to `app.person`, set null), `updated_at`. The file is the `app.trip_file` row of the
+same id, kind `document`, key `trips/<trip>/document-<id>`, stored as uploaded.
+
 ### 3.1d Who changed it (ADR 034, step 4, migration `0027`)
 
 `app.itinerary.changed_by` (fk to `app.person`, `ON DELETE SET NULL`) and `changed_at`, set by a

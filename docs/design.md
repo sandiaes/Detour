@@ -571,6 +571,16 @@ for the owner, "Shared with Ana…" or "Only you…", a row per member with a re
 this trip and shared it with you…" and a red outlined "Leave trip" (confirmed), and no Delete
 section. A shared trip's card adds "· With Ana" to its dates line.
 
+### Shared documents (ADR 034, step 6)
+
+Add document ends with an **"Upload to the trip" chip** (upload icon, selected by default) above the
+Save button's note, which says "Uploaded for everyone on this trip, and kept on this phone for when
+there is no signal" or "Kept on this phone only…". A row's line adds "· Only on this phone" or "· Not
+downloaded yet" and shows no thumbnail until the file is here. The Documents tab starts with a blue
+Notice when documents are only on this phone, with "Share them with the trip". A document's screen
+adds a "Kept" fact and an outlined "Upload to the trip" or "Keep on this phone only" (confirmed);
+deleting a shared document says it is deleted for everyone on the trip.
+
 ## 5. Plans and times
 
 - **Suggested plans have no meals (ADR 026, built).** Each day has one

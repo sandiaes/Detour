@@ -1,9 +1,10 @@
 """Models for trips, user places, itineraries, days and items."""
 
+import datetime as _dt
 import re
 import uuid
 from datetime import date, datetime, time, timedelta
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -229,6 +230,83 @@ class TripAlbumCreate(StrictModel):
 
 class TripAlbumUpdate(StrictModel):
     name: str = Field(min_length=1, max_length=80)
+
+
+class DocLinkTrip(StrictModel):
+    kind: Literal["trip"]
+
+
+class DocLinkDay(StrictModel):
+    kind: Literal["day"]
+    day: int = Field(ge=1, le=60)
+
+
+class DocLinkPlace(StrictModel):
+    kind: Literal["place"]
+    key: str = Field(min_length=1, max_length=200)
+    name: str = Field(min_length=1, max_length=200)
+    day: int | None = Field(default=None, ge=1, le=60)
+
+
+class DocLinkLeg(StrictModel):
+    kind: Literal["leg"]
+    day: int = Field(ge=1, le=60)
+    name: str = Field(min_length=1, max_length=200)
+
+
+DocLink = Annotated[
+    DocLinkTrip | DocLinkDay | DocLinkPlace | DocLinkLeg, Field(discriminator="kind")
+]
+DocCategory = Literal["ticket", "booking", "transport", "other"]
+DocContentType = Literal[
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/heic",
+    "image/heif",
+]
+
+
+class TripDocumentInfo(BaseModel):
+    """A document shared with everyone on the trip (ADR 034, step 6). What it is about is kept as
+    the phone described it (ADR 023: a place by key, name and day), so it reads the same after the
+    plan changes."""
+
+    id: uuid.UUID
+    title: str
+    category: DocCategory
+    link: DocLink
+    date: _dt.date | None
+    notes: str | None
+    file_name: str
+    content_type: str
+    bytes: int
+    added_by: str | None = Field(description="Who uploaded it (their name); null when unknown")
+    created_at: datetime
+    updated_at: datetime
+
+
+class TripDocumentFields(StrictModel):
+    title: str = Field(min_length=1, max_length=120)
+    category: DocCategory
+    link: DocLink
+    date: _dt.date | None = None
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class TripDocumentUpload(TripDocumentFields):
+    id: uuid.UUID = Field(description="Chosen by the phone, so a repeated upload is stored once")
+    file_name: str = Field(min_length=1, max_length=200)
+    content_type: DocContentType
+    data: str = Field(min_length=1, max_length=14_000_000, description="The file, base64")
+
+
+class TripDocumentFile(BaseModel):
+    id: uuid.UUID
+    content_type: str
+    data: str = Field(description="The file, base64")
 
 
 class TripMemberAdd(StrictModel):

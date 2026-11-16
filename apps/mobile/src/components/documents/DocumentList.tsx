@@ -1,8 +1,12 @@
 import type { Trip } from "@detour/shared";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { useTripDocuments } from "../../documents/DocumentsProvider";
+import {
+  useDocumentActions,
+  useSyncTrips,
+  useTripDocuments,
+} from "../../documents/DocumentsProvider";
 import {
   CATEGORIES,
   CATEGORY_GROUP,
@@ -55,9 +59,16 @@ export const CATEGORY_ICON: Record<DocCategory, IconName> = {
   other: "document",
 };
 
-/** Said wherever documents are added: where they are kept, and what that means. */
+/** Said wherever documents are added: where they are kept, and what that means (ADR 034). */
 export const DEVICE_ONLY_NOTE =
-  "Documents stay on this phone only. They are not uploaded, and deleting the app or the trip deletes them.";
+  "A document you upload is kept privately for the people on this trip, and on your phone for when there is no signal. One you keep on this phone only is never uploaded.";
+
+/** Under the upload switch: what happens to this one. */
+export function shareNote(share: boolean): string {
+  return share
+    ? "Uploaded for everyone on this trip, and kept on this phone for when there is no signal."
+    : "Kept on this phone only. Nobody else sees it, and deleting the app or the trip deletes it.";
+}
 
 type Filter = DocCategory | "all";
 
@@ -86,7 +97,8 @@ function DocumentRow({
 }) {
   const image = doc.mimeType.startsWith("image/");
   const about = doc.date ? formatDate(doc.date) : linkLabel(doc.link, trip.start_date);
-  const line = `${CATEGORY_LABEL[doc.category]} · ${fileLine(doc)}`;
+  const where = !doc.serverId ? " · Only on this phone" : !doc.uri ? " · Not downloaded yet" : "";
+  const line = `${CATEGORY_LABEL[doc.category]} · ${fileLine(doc)}${where}`;
   return (
     <View style={styles.row}>
       <FocusPressable
@@ -108,7 +120,7 @@ function DocumentRow({
             {about}
           </Text>
         </View>
-        {image ? (
+        {image && doc.uri ? (
           <Image
             source={{ uri: doc.uri }}
             style={styles.thumb}
@@ -146,6 +158,10 @@ export function DocumentList({
 }) {
   const nav = useNavigation();
   const { documents, error, reload } = useTripDocuments(trip.id);
+  const actions = useDocumentActions();
+  // Shared documents come from the server (ADR 034, step 6): read them when the list is shown.
+  useSyncTrips(useMemo(() => [trip], [trip]));
+  const [sharing, setSharing] = useState<string | null>(null);
   const [kind, setKind] = useState<Filter>("all");
   const [sort, setSort] = useState<DocSort>("newest");
   const [sorting, setSorting] = useState(false);
@@ -153,6 +169,23 @@ export function DocumentList({
   const add = (category?: DocCategory) =>
     nav.push({ name: "documentForm", tripId: trip.id, link: addLink, category });
   const shown = documents?.filter((d) => (filter ? filter(d.link) : true));
+  // Documents saved before sharing existed, or kept here on purpose: offered once, never sent
+  // without a tap.
+  const onlyHere = (shown ?? []).filter((d) => !d.serverId && d.uri);
+  const shareAll = async () => {
+    setSharing(null);
+    let failed = 0;
+    for (const d of onlyHere) {
+      await actions.share(d).catch(() => {
+        failed += 1;
+      });
+    }
+    setSharing(
+      failed === 0
+        ? null
+        : `${failed} could not be uploaded. Check the connection and try again from each document.`,
+    );
+  };
 
   if (error) {
     return (
@@ -244,6 +277,18 @@ export function DocumentList({
   );
   return (
     <View style={styles.list} testID="documents-list">
+      {!filter && onlyHere.length > 0 ? (
+        <Notice
+          tone="info"
+          label="Only on this phone"
+          action={{ label: "Share them with the trip", onPress: () => void shareAll() }}
+        >
+          {onlyHere.length === 1
+            ? "1 document is only on this phone. Upload it so everyone on the trip has it."
+            : `${onlyHere.length} documents are only on this phone. Upload them so everyone on the trip has them.`}
+        </Notice>
+      ) : null}
+      {sharing ? <Notice tone="error">{sharing}</Notice> : null}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
