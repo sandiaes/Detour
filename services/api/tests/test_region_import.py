@@ -46,7 +46,7 @@ def _setup(env: ApiEnv, *, owner: bool = True, token: bool = True) -> Github:
     return github
 
 
-def _post(env: ApiEnv, region: str = LONDON, body: Any = None) -> httpx.Response:
+def _post(env: ApiEnv, region: str = LONDON, body: Any = None) -> Any:
     return env.client.post(f"/v1/regions/{region}/import", json=body, headers=env.headers)
 
 
