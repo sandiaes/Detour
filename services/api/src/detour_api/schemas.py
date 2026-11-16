@@ -50,6 +50,10 @@ class InstallationRegistration(BaseModel):
 
 class InstallationInfo(BaseModel):
     installation_id: uuid.UUID
+    person_id: uuid.UUID | None = Field(
+        default=None,
+        description="The person this phone belongs to (ADR 034); the app keys its saved data by it",
+    )
 
 
 class ErrorResponse(BaseModel):

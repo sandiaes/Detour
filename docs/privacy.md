@@ -6,9 +6,11 @@ only user (ADR 004 addendum: the owner and one other person at most). Last revie
 
 ## 1. In one paragraph
 
-Detour has no accounts. The app registers an anonymous **installation** and keeps its token in the
-phone's secure storage. Trips, plans, your own places and stays are stored on the backend (Supabase,
-schema `app`) under that installation. **Documents (tickets, bookings, insurance) never leave the
+Detour has no sign-in: no email, password or phone number. The app registers an anonymous
+**installation** and keeps its token in the phone's secure storage. Since ADR 034 each installation
+belongs to a **person** (you), and other phones join you with a one-time code; a recovery code, if
+you made one, brings everything back on a new phone. Trips, plans, your own places and stays are
+stored on the backend (Supabase, schema `app`) under your person. **Documents (tickets, bookings, insurance) never leave the
 phone** unless you put them in an export file yourself. The app talks only to the Detour backend and
 the map tile host; searches that need an outside service (Photon, Wikidata, Commons, the routing
 server) are made by the backend, without your installation or trip.
@@ -18,6 +20,7 @@ server) are made by the backend, without your installation or trip.
 | Data | Where | Who can read it | How long |
 |---|---|---|---|
 | Installation token | Phone, secure storage (Android Keystore) | The app | Until uninstall |
+| Your phones (ADR 034): which installations belong to you, when each was added and last used; a keyed hash of your recovery code and of each link code | Backend, `app.person`, `app.installation`, `app.link_code` | The owner of the Supabase project (hashes only: the codes cannot be read back) | Until deleted (see 5) |
 | Trips, days, stops, times, your own places, stays, visited marks | Backend database (Supabase Free, EU North), schema `app` | Anyone holding your token; the owner of the Supabase project | Until you delete the trip; your own places until deleted (see 5) |
 | A copy of what the app last read (trip list, plans) | Phone, SQLite `detour-cache.db`, table `cache` | The app | Replaced on each read; cleared if the installation changes |
 | Documents: files and their titles, links, dates, notes | Phone, the app's private files and table `trip_document` | The app | Until you delete them or the trip, or uninstall |
@@ -59,11 +62,13 @@ The backend's requests carry an identifying User-Agent that names the project, a
 |---|---|---|
 | A trip | Trip menu, Settings, Delete trip (confirmation) | Its documents and their files, its album links and its cover picture are deleted on the phone; on the server its plans, stops, stays and visits go. Your own places used by it stay (they belong to the installation) |
 | A document | The document, Delete (confirmation) | Nothing |
-| Everything on the phone | Uninstall Detour | The server data stays, but nothing can reach it any more (the token is gone) |
-| Everything on the server | No button. In Supabase's SQL editor, with the "Installation" identifier from Settings, run `DELETE FROM app.trip WHERE installation_id = '<id>';` then `DELETE FROM app.installation WHERE id = '<id>';` (in that order: a stop still using one of your places blocks the second statement; tried on a scratch database in Phase 9) | Backups made before, for up to 30 days |
+| Everything on the phone | Uninstall Detour | The server data stays. Another of your phones still reaches it; so does a new phone with your recovery code (ADR 034). Without either, nothing can reach it any more |
+| Another of your phones | More, Your phones, Remove | It is signed out at once and starts again as a new, empty phone; documents kept only on it stay on it |
+| Everything on the server | No button. In Supabase's SQL editor, with the "Person" identifier from Settings, run `DELETE FROM app.trip WHERE installation_id = '<id>';` then `DELETE FROM app.person WHERE id = '<id>';` (in that order: a stop still using one of your places blocks the second statement). The second removes your phones, codes, places and overrides with it | Backups made before, for up to 30 days |
 
-The "Installation" identifier is shown in Settings. A reinstalled app is a new installation: its old
-trips cannot be reached from the phone, only restored from an export file.
+The "Person" identifier is shown in Settings (it is the id of your first phone). A reinstalled app
+is a new, empty phone until you type a code from another phone of yours, or your recovery code,
+under More, Your phones (ADR 034); an export file still works as well.
 
 ## 6. Licences of cached provider data
 

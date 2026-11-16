@@ -243,7 +243,28 @@ Anonymous identity (D5). The bearer token is an HMAC-signed string carrying the 
 and `last_seen_at` is refreshed at most hourly. No token or hash is stored.
 
 `id`, `is_seed` (true only for the seed installation), `created_at`,
-`last_seen_at`.
+`last_seen_at`; since ADR 034 (migration `0024`) also `person_id` (fk to `app.person`, `ON DELETE
+CASCADE`, not null; a trigger fills it with a new person of the same id when an insert leaves it
+out), `joined_at` (when the phone joined its person with a code; null for the phone that started
+it) and `revoked_at` (removed under Your phones, or signed out by the recovery code: its token is
+refused with 401 `device_removed`).
+
+### 3.1a `app.person` and `app.link_code` (ADR 034, step 1, migration `0024`)
+
+`app.person`: `id`, `recovery_hash` (unique, a keyed hash of the recovery code; null when there is
+none), `recovery_created_at` (set exactly when the hash is), `created_at`. **A person's id is the id
+of its first installation**, and every row that names an installation (`trip`, `user_place`,
+`place_name_override`) names the person's id: the API reads and writes them under the caller's
+person, so all of a person's phones see the same trips. A phone that joins a person brings its own
+trips, places and overrides along (moved to the person's id; an override the person already has for
+the same place wins), and its former person is deleted. Every installation that existed before
+`0024` became a person of its own with the same id. Step 2 of ADR 034 renames the columns.
+
+`app.link_code`: `code_hash` (pk, HMAC-SHA256 of the code keyed with `DETOUR_TOKEN_SECRET`; the code
+itself is never stored), `person_id` (fk, cascade), `created_by` (the phone that showed it, fk,
+cascade), `created_at`, `expires_at` (10 minutes later), `used_at` and `used_by` (set together). A
+person has at most one unused code: making a new one deletes the old. Used and expired rows are
+kept (a few bytes each) as a record of which phone joined when.
 
 ### 3.2 `app.trip`
 

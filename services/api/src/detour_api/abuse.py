@@ -9,6 +9,8 @@ connections, the Photon and routing budgets shared by every installation, and Re
   (only a genuine, signed token gets its own bucket; anything else shares the anonymous one).
 * **Registrations:** one bucket for the whole service, because a new registration is the way
   around the per-installation limit.
+* **Codes** (ADR 034): ``POST /v1/installations/join`` has its own small bucket per phone and one
+  for the whole service, on top of the per-installation limit, so a one-time code cannot be guessed.
 * **Photos:** ``GET /v1/images/...`` and ``/v1/cover-previews/...`` are loaded by the phone's
   image view, which sends no token, so photos have one generous bucket of their own (a photo that
   is refused falls back to the illustration in the app).
@@ -45,24 +47,36 @@ class RequestLimiter:
         self._registrations = TokenBucket(
             settings.registrations_per_hour / 3600.0, settings.registrations_burst, now=now
         )
+        self._joins_service = TokenBucket(
+            settings.join_attempts_service_per_hour / 3600.0,
+            settings.join_attempts_service_burst,
+            now=now,
+        )
+        self._join_buckets: OrderedDict[str, TokenBucket] = OrderedDict()
         self._images = TokenBucket(
             settings.image_requests_per_minute / 60.0, settings.image_requests_burst, now=now
         )
 
     def _bucket(self, key: str) -> TokenBucket:
+        return self._keyed(
+            self._buckets,
+            key,
+            self._settings.rate_limit_per_minute / 60.0,
+            self._settings.rate_limit_burst,
+        )
+
+    def _keyed(
+        self, buckets: "OrderedDict[str, TokenBucket]", key: str, rate: float, burst: int
+    ) -> TokenBucket:
         with self._lock:
-            bucket = self._buckets.get(key)
+            bucket = buckets.get(key)
             if bucket is None:
-                bucket = TokenBucket(
-                    self._settings.rate_limit_per_minute / 60.0,
-                    self._settings.rate_limit_burst,
-                    now=self._now,
-                )
-                self._buckets[key] = bucket
-                while len(self._buckets) > MAX_BUCKETS:
-                    self._buckets.popitem(last=False)
+                bucket = TokenBucket(rate, burst, now=self._now)
+                buckets[key] = bucket
+                while len(buckets) > MAX_BUCKETS:
+                    buckets.popitem(last=False)
             else:
-                self._buckets.move_to_end(key)
+                buckets.move_to_end(key)
             return bucket
 
     def caller_key(self, authorization: str | None) -> str:
@@ -87,7 +101,21 @@ class RequestLimiter:
             return self._registrations.try_acquire()
         if method == "GET" and path.startswith(("/v1/images/", "/v1/cover-previews/")):
             return self._images.try_acquire()
-        return self._bucket(self.caller_key(authorization)).try_acquire()
+        key = self.caller_key(authorization)
+        if method == "POST" and path == "/v1/installations/join":
+            settings = self._settings
+            wait = self._keyed(
+                self._join_buckets,
+                key,
+                settings.join_attempts_per_hour / 3600.0,
+                settings.join_attempts_burst,
+            ).try_acquire()
+            if wait > 0:
+                return wait
+            wait = self._joins_service.try_acquire()
+            if wait > 0:
+                return wait
+        return self._bucket(key).try_acquire()
 
 
 def retry_after_header(wait: float) -> str:

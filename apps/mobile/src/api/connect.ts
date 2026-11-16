@@ -11,6 +11,9 @@ export type Connection = {
   health: HealthResponse;
   config: ClientConfig;
   installationId: string;
+  /** The person this phone belongs to (ADR 034); null while the server cannot tell (database
+   * paused). Saved data on the phone belongs to the person, not to the phone. */
+  personId: string | null;
   /** True when this run created a new anonymous installation. */
   registered: boolean;
   /** The typed client, already carrying the installation token. */
@@ -44,12 +47,18 @@ export async function ensureInstallation(
   client: ApiClient,
   store: TokenStore,
   setToken: (token: string | null) => void,
-): Promise<{ installationId: string; registered: boolean }> {
+): Promise<{ installationId: string; personId: string | null; registered: boolean }> {
   const stored = await store.get();
   if (stored) {
     setToken(stored);
     const me = await client.GET("/v1/installations/me");
-    if (me.data) return { installationId: me.data.installation_id, registered: false };
+    if (me.data) {
+      return {
+        installationId: me.data.installation_id,
+        personId: me.data.person_id ?? null,
+        registered: false,
+      };
+    }
     if (me.response.status !== 401) {
       throw new ConnectionError(`Token check failed (HTTP ${me.response.status}).`);
     }
@@ -61,7 +70,9 @@ export async function ensureInstallation(
   }
   await store.set(created.data.token);
   setToken(created.data.token);
-  return { installationId: created.data.installation_id, registered: true };
+  // A new phone starts as a person of its own, with the phone's id (ADR 034).
+  const installationId = created.data.installation_id;
+  return { installationId, personId: installationId, registered: true };
 }
 
 export type ConnectOptions = {

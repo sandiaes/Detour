@@ -20,7 +20,7 @@ Recorded on 2026-11-12 from the owner's answers.
 | D2 | MVP coverage | **Pilot regions: Japan, Italy, and Central Europe (Austria, Czechia and Hungary at least).** | Decided |
 | D3 | Backend hosting: where the API server, the database and the routing engine run when not on a local machine | Open. S2 measured about 145 MB of imported data for five countries (before ADR 003), so Supabase Free could hold the `geo` data. ADR 005 (accepted): Supabase Free for the database, a Render free web service for the API, a GitHub Actions import job. | **Decided** |
 | D4 | Public transport after the MVP (Phase 10) | Approved. **Japan is planned as single-city trips** until then (owner, Phase 6 prompt; ADR 016). | Approved |
-| D5 | Anonymous installation token, no accounts | Approved. | Approved |
+| D5 | Anonymous installation token, no accounts | Approved. | Approved; amended by ADR 034 (2026-11-16): a person with phones joined by one-time codes and a recovery code, still no email or password |
 | D6 | Weather excluded from the MVP | Approved. | Approved |
 | D7 | OR-Tools only if the Phase 0 spike justifies it | **Not justified: the heuristic only.** Spike S5 found OR-Tools 6–8% better on two fixtures but 7–300 times slower, and unable to find any plan for the 14-day fixture with its usual strategies. See `docs/spikes/s5-sequencing-findings.md`. | Decided by the approved rule; the owner may override |
 | D8 | OpenFreeMap tiles now, self-hosted PMTiles as rehearsed fallback | Approved. | Approved |

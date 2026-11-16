@@ -54,21 +54,23 @@ export function DataProvider({ cache, children }: { cache: CacheStore; children:
   const [memory] = useState(() => new Map<string, MemoryEntry>());
   const [inflight] = useState(() => new Map<string, Promise<unknown>>());
   const [listeners] = useState(() => new Map<string, Set<(entry: MemoryEntry) => void>>());
-  // Trips on the device belong to the installation that fetched them. A token that no longer
-  // belongs to the same installation (a new registration) must not show the old data.
-  const installationId = state.phase === "ready" ? state.connection.installationId : null;
+  // Trips on the device belong to the person whose phone fetched them (ADR 034; before, to the
+  // installation, which for a person's first phone is the same id). Another person (a new
+  // registration, or this phone joined someone with a code) must not see the old data. While the
+  // server cannot tell the person (database paused), nothing is cleared.
+  const ownerId = state.phase === "ready" ? state.connection.personId : null;
 
   useEffect(() => {
-    if (!installationId) return;
+    if (!ownerId) return;
     void (async () => {
       const previous = await cache.get<string>(INSTALLATION_KEY);
-      if (previous && previous.value !== installationId) {
+      if (previous && previous.value !== ownerId) {
         memory.clear();
         await cache.clear();
       }
-      await cache.set(INSTALLATION_KEY, installationId);
+      await cache.set(INSTALLATION_KEY, ownerId);
     })();
-  }, [installationId, cache, memory]);
+  }, [ownerId, cache, memory]);
 
   const invalidate = useCallback(
     (prefix: string) => {

@@ -59,6 +59,10 @@ export function SettingsScreen() {
                   }`}
                 />
                 <InfoRow
+                  label="Person"
+                  value={state.connection.personId ?? "not known while the database is unavailable"}
+                />
+                <InfoRow
                   label="Installation"
                   value={`${state.connection.installationId}${
                     state.connection.registered ? " (new)" : ""

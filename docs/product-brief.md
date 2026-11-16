@@ -141,7 +141,7 @@ Not in the MVP (see `docs/app-plan.md` for the phase each belongs to):
   cover can be a picture from the phone: ADR 031; showing the photos themselves is not built)
 - weather
 - suggestions for destinations outside the imported pilot regions (trips there are empty, ADR 027)
-- user accounts, sharing and multi-device sync (a trip can be exported and imported as a file, ADR 028)
+- sign-in with email, passwords or outside accounts (ADR 034 gives a person several phones with one-time codes; sharing a trip with one other person is ADR 034 step 3, not built yet; a trip can also be exported and imported as a file, ADR 028)
 - offline map downloads
 - public-holiday opening rules
 
@@ -151,7 +151,7 @@ Not in the MVP (see `docs/app-plan.md` for the phase each belongs to):
 |---|---|
 | The MVP serves imported pilot regions: Japan, Italy, Austria, Czechia and Hungary | Decided (D2) |
 | The app is open source and non-commercial | Decided (D1) |
-| One anonymous installation per device is enough | Approved (D5) |
+| One anonymous installation per device is enough | Approved (D5); replaced by ADR 034: phones belong to a person, joined with codes |
 | Day start and end points are not tied to accommodation | Hotels are out of scope; days start at the first item |
 | Walking and driving are sufficient for the MVP | Approved (D4); weakest for multi-city trips in Japan |
 

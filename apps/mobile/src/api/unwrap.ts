@@ -83,6 +83,13 @@ const MESSAGES: Record<string, string> = {
   too_many_stops: "This plan has too many stops to optimize at once.",
   stay_overlap: "These days already have a stay. Change the other stay first.",
   day_out_of_range: "Those days are outside the trip.",
+  // Phones and codes (ADR 034).
+  code_invalid:
+    "That code does not work. A code from another phone works once and for 10 minutes; check it, or make a new one.",
+  has_other_devices:
+    "This phone is linked to other phones of its own. Remove them under Your phones first, then try again.",
+  this_device: "A phone cannot remove itself. Remove it from another of your phones.",
+  device_removed: "This phone was removed from your phones. Restart the app to start again.",
 };
 
 /** Each reason a plan cannot be made (`planning_impossible` carries them as `issues`). */

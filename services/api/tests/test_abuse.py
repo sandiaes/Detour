@@ -90,3 +90,23 @@ def test_photos_have_their_own_bucket() -> None:
 def test_limits_can_be_switched_off() -> None:
     with TestClient(create_app(_settings(rate_limit_enabled=False, registrations_burst=1))) as c:
         assert all(c.post("/v1/installations").status_code == 201 for _ in range(5))
+
+
+def test_typing_codes_is_limited_per_phone_and_for_the_service() -> None:
+    """ADR 034: five tries per phone, then one every two minutes; the service as a whole allows a
+    burst of ten, so a new registration does not buy more guesses."""
+    clock = Clock()
+    limiter = RequestLimiter(
+        _settings(join_attempts_service_burst=7, rate_limit_burst=100), now=clock
+    )
+    path = "/v1/installations/join"
+    _, a = issue_token(SECRET.encode())
+    for _ in range(5):
+        assert limiter.check("POST", path, f"Bearer {a}") == 0.0
+    assert 100 < limiter.check("POST", path, f"Bearer {a}") <= 120
+    assert limiter.check("GET", "/v1/trips", f"Bearer {a}") == 0.0  # other requests go on
+
+    _, b = issue_token(SECRET.encode())
+    assert limiter.check("POST", path, f"Bearer {b}") == 0.0
+    assert limiter.check("POST", path, f"Bearer {b}") == 0.0
+    assert limiter.check("POST", path, f"Bearer {b}") > 0  # the service's seven are used up

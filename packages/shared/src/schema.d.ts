@@ -79,10 +79,95 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Token check: returns the installation the bearer token belongs to. */
+    /** Token check: returns the installation the bearer token belongs to and its person (null while the database cannot be reached). 401 device_removed for a removed phone. */
     get: operations["current_installation"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** You: your phones and whether you have a recovery code. */
+    get: operations["get_me"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me/link-codes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** A one-time code (10 minutes) to type on another phone to make it one of yours. An earlier unused code stops working. */
+    post: operations["create_link_code"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me/recovery-code": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** A new recovery code, shown once. The earlier one stops working. */
+    post: operations["create_recovery_code"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me/devices/{device_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Sign out one of your other phones; its token is refused from then on. */
+    delete: operations["remove_device"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/installations/join": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Make this phone one of yours with a code from another phone, or with your recovery code (which signs out your other phones). This phone's own trips come along. 400 code_invalid; 409 has_other_devices or limit_reached. */
+    post: operations["join"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1298,6 +1383,27 @@ export interface components {
       results: components["schemas"]["DestinationResult"][];
       external: components["schemas"]["ExternalStatus"];
     };
+    /** DeviceInfo */
+    DeviceInfo: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Added At
+       * Format: date-time
+       * @description When the phone became one of the person's
+       */
+      added_at: string;
+      /**
+       * Last Seen At
+       * Format: date-time
+       */
+      last_seen_at: string;
+      /** This Device */
+      this_device: boolean;
+    };
     /** DiffBase */
     DiffBase: {
       /** Day */
@@ -1871,6 +1977,11 @@ export interface components {
        * Format: uuid
        */
       installation_id: string;
+      /**
+       * Person Id
+       * @description The person this phone belongs to (ADR 034); the app keys its saved data by it
+       */
+      person_id?: string | null;
     };
     /** InstallationRegistration */
     InstallationRegistration: {
@@ -2198,6 +2309,41 @@ export interface components {
        */
       restores_version?: number | null;
     };
+    /** JoinRequest */
+    JoinRequest: {
+      /**
+       * Code
+       * @description A link code from another phone (8 letters) or the recovery code (26 letters); spaces and hyphens are ignored
+       */
+      code: string;
+    };
+    /** JoinResult */
+    JoinResult: {
+      person: components["schemas"]["PersonInfo"];
+      /**
+       * Recovered
+       * @description The recovery code was used: every other phone of the person was signed out
+       */
+      recovered: boolean;
+      /**
+       * Moved Trips
+       * @description Trips of this phone that moved to the person
+       */
+      moved_trips: number;
+    };
+    /** LinkCode */
+    LinkCode: {
+      /**
+       * Code
+       * @description Eight letters in two groups, e.g. 'K7MQ-R4XT'. Works once.
+       */
+      code: string;
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+    };
     /** MapConfig */
     MapConfig: {
       /** Style Url */
@@ -2222,6 +2368,30 @@ export interface components {
        * @description Stops to keep exactly where they are for this change only, such as the ones with a ticket (documents are on the phone, so the app names them)
        */
       fixed_item_ids?: string[];
+    };
+    /** PersonInfo */
+    PersonInfo: {
+      /**
+       * Person Id
+       * Format: uuid
+       */
+      person_id: string;
+      /**
+       * Device Id
+       * Format: uuid
+       * @description The phone that asked
+       */
+      device_id: string;
+      /**
+       * Devices
+       * @description The person's phones, oldest first
+       */
+      devices: components["schemas"]["DeviceInfo"][];
+      /**
+       * Recovery Code Created At
+       * @description When the current recovery code was made; null when there is none
+       */
+      recovery_code_created_at: string | null;
     };
     /** Photo */
     Photo: {
@@ -2722,6 +2892,19 @@ export interface components {
        */
       status: "ok" | "unavailable";
       database: components["schemas"]["DatabaseStatus"];
+    };
+    /** RecoveryCode */
+    RecoveryCode: {
+      /**
+       * Code
+       * @description 26 letters in groups of four. Shown once; the earlier code stops working.
+       */
+      code: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
     };
     /** RegionCatalog */
     RegionCatalog: {
@@ -3464,6 +3647,299 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  get_me: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonInfo"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  create_link_code: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LinkCode"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  create_recovery_code: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecoveryCode"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  remove_device: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        device_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  join: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["JoinRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["JoinResult"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
         };
       };
     };

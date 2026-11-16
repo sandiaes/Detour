@@ -167,6 +167,12 @@ class Settings(BaseSettings):
     image_requests_burst: int = Field(default=300, ge=1)
     registrations_per_hour: float = Field(default=20.0, gt=0)
     registrations_burst: int = Field(default=10, ge=1)
+    # Typing a code to join a phone to a person (ADR 034): per phone 5 in 10 minutes, and for the
+    # whole service 20 an hour, so the 8-letter one-time codes cannot be guessed.
+    join_attempts_per_hour: float = Field(default=30.0, gt=0)
+    join_attempts_burst: int = Field(default=5, ge=1)
+    join_attempts_service_per_hour: float = Field(default=20.0, gt=0)
+    join_attempts_service_burst: int = Field(default=10, ge=1)
 
     # Client configuration served by GET /v1/config. The app holds none of these as constants.
     config_version: str = "1"
