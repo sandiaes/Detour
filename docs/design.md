@@ -53,7 +53,9 @@ change it in the same change as the screens (CLAUDE.md, "Update the affected doc
    Optimize the trip menu offers **Undo Optimize** (until the plan changes).
    **"Change photo"** (the new-trip screen under the destination, and the trip menu) opens a sheet of up
    to 12 photos of the destination, three across, each with its author and licence, and "Automatic
-   photo" (`CoverPicker`). For a multi-city trip it has one tab per stop. A day of the Overview
+   photo" (`CoverPicker`), with **Choose from your phone** at the top (ADR 031: the picture is copied
+   onto the phone and shown without a credit; a destination photo or "Automatic photo" replaces it).
+   For a multi-city trip it has one tab per stop. A day of the Overview
    shows the photo of its first visit that has one. **More, Image credits** lists the author, licence
    and page of every photo the app holds.
 5. **Honest about what is not built.** A control that does nothing yet says so in words
@@ -328,7 +330,11 @@ not asked; it is the destination.
   separate Itinerary tab: the original proposals are in the trip menu and new ones in Trip settings.
 - **Map tab (screens 03, 14):** a compact header (small Back and menu buttons, the name) and the tabs close
   together, then the map (clipped to its area; the attribution "i" sits above the sheet's curve) of the day, then **the day pills**, then the day's stops. It uses the whole screen.
-- **Photos:** a planned feature.
+- **Photos (ADR 031):** the trip's album links as hairline rows (name, "Google Photos · opens in Google
+  Photos", a dots button for Rename and Remove link), **Link an album** (a sheet with the link, a hint
+  "In Google Photos, open the album, tap Share, then Copy link", and an optional name), and a muted
+  note that the link stays on this phone. Empty: "No album linked yet". Detour shows no photo of an
+  album; a row opens it outside the app.
 - **Documents (screens 15, 16, ADR 023):** see "Documents" below.
 
 ### The day: map and stops (screens 03, 12)
@@ -501,7 +507,9 @@ A document's own screen has facts as `InfoRow`s, Open (`primary`), Edit (`second
 
 ### Photos, Explore, More (screens 07, 10, 11)
 
-Planned features and a menu of hairline rows. Items that are not built say "Coming later".
+Planned features and a menu of hairline rows. Items that are not built say "Coming later". **Photos**
+lists every trip's linked albums under the trip's name and dates (ADR 031); empty, it says to link
+an album on a trip's Photos tab.
 
 ## 5. Plans and times
 

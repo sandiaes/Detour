@@ -20,7 +20,8 @@ export type CoverSource = { kind: "city" | "area"; ref: string; name: string };
  * photos of the destination, three across, each with its credit. The previews come from the
  * backend; the app never asks Wikimedia. The first request for a destination can take a while (the
  * backend fetches and resizes the previews), so the sheet says so. "Automatic photo" goes back to
- * the photo found for the destination.
+ * the photo found for the destination. "Choose from your phone" (ADR 031) takes a picture from the
+ * phone instead; it stays on the phone.
  */
 export function CoverPicker({
   visible,
@@ -29,6 +30,8 @@ export function CoverPicker({
   onChoose,
   onClose,
   chosen,
+  onPickLocal,
+  local = false,
 }: {
   visible: boolean;
   sources: CoverSource[];
@@ -38,6 +41,10 @@ export function CoverPicker({
   onClose: () => void;
   /** The file chosen now, if any (marked as selected). */
   chosen?: string | null;
+  /** Opens the phone's picker for a picture; resolves true when one was chosen and kept. */
+  onPickLocal?: () => Promise<boolean>;
+  /** A picture from the phone is the cover now. */
+  local?: boolean;
 }) {
   const apiUrl = (useContext(BackendContext)?.apiUrl ?? "").replace(/\/$/, "");
   const [sourceIndex, setSourceIndex] = useState(0);
@@ -75,6 +82,19 @@ export function CoverPicker({
     };
   }, [needed, source, sourceKey, load]);
 
+  const pickLocal = async () => {
+    if (!onPickLocal) return;
+    setSaving("local");
+    setError(null);
+    try {
+      if (await onPickLocal()) onClose();
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const choose = async (candidate: CoverCandidate | null) => {
     setSaving(candidate?.commons_file ?? "automatic");
     setError(null);
@@ -90,6 +110,27 @@ export function CoverPicker({
 
   return (
     <Sheet visible={visible} title="Change photo" onClose={onClose}>
+      {onPickLocal ? (
+        <>
+          <Button
+            label="Choose from your phone"
+            variant="secondary"
+            size="sm"
+            icon="photos"
+            fill
+            loading={saving === "local"}
+            disabled={saving !== null}
+            hint="Use a picture from this phone as the trip's cover"
+            onPress={() => void pickLocal()}
+            testID="cover-from-phone"
+          />
+          <Text style={s.note}>
+            {local
+              ? "Your own picture is the cover now. It stays on this phone only."
+              : "A picture from your phone stays on this phone only; it is not uploaded."}
+          </Text>
+        </>
+      ) : null}
       {sources.length > 1 ? (
         <ScrollView
           horizontal
@@ -108,7 +149,7 @@ export function CoverPicker({
         </ScrollView>
       ) : null}
       {error ? <Notice tone="error">{error}</Notice> : null}
-      {state.status === "loading" ? (
+      {sources.length === 0 ? null : state.status === "loading" ? (
         <LoadingState
           layout="inline"
           text="Finding photos. The first time for a place can take half a minute."
@@ -162,9 +203,11 @@ export function CoverPicker({
         onPress={() => void choose(null)}
         testID="cover-automatic"
       />
-      <Text style={s.note}>
-        Photos from Wikimedia Commons, shown with their author and licence.
-      </Text>
+      {sources.length === 0 ? null : (
+        <Text style={s.note}>
+          Photos from Wikimedia Commons, shown with their author and licence.
+        </Text>
+      )}
     </Sheet>
   );
 }

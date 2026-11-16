@@ -151,6 +151,7 @@ test("the preview counts stops of a plan and visits of a past trip", () => {
       { title: "Old", destination: "Hallstatt", days: 2, stops: 1, past: true },
     ],
     documents: 1,
+    albums: 0,
   });
 });
 
@@ -161,4 +162,36 @@ test("the shared file's name is safe and dated", () => {
   );
   expect(exportFileName(null, day)).toBe("Detour-backup-2026-11-14.detour");
   expect(exportFileName("日本", day)).toBe("Detour-trip-2026-11-14.detour");
+});
+
+test("album links travel in albums.json; a link that is not https or names no trip is dropped", () => {
+  const bytes = buildArchive(
+    file(),
+    [],
+    [{ tripIndex: 0, name: "Rome with Ana", url: "https://photos.app.goo.gl/r" }],
+  );
+  const zip = unzipSync(bytes);
+  expect(Object.keys(zip).sort()).toEqual(["albums.json", "trip.json"]);
+  expect(readArchive(bytes).albums).toEqual([
+    { tripIndex: 0, name: "Rome with Ana", url: "https://photos.app.goo.gl/r" },
+  ]);
+  const hand = zipSync({
+    "trip.json": zip["trip.json"] as Uint8Array,
+    "albums.json": strToU8(
+      JSON.stringify({
+        albums: [
+          { trip_index: 0, name: "", url: "https://photos.app.goo.gl/ok" },
+          { trip_index: 0, name: "Bad", url: "javascript:alert(1)" },
+          { trip_index: 3, name: "Nowhere", url: "https://photos.app.goo.gl/x" },
+        ],
+      }),
+    ),
+  });
+  const read = readArchive(hand);
+  expect(read.albums).toEqual([
+    { tripIndex: 0, name: "Trip album", url: "https://photos.app.goo.gl/ok" },
+  ]);
+  expect(describeFile(read).albums).toBe(1);
+  // A file without albums has none.
+  expect(readArchive(buildArchive(file(), [])).albums).toEqual([]);
 });

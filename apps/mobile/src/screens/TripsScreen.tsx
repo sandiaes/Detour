@@ -19,6 +19,7 @@ import { Cover } from "../components/ds/Cover";
 import { ResourceNotices } from "../components/ResourceNotices";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
+import { useAllTripExtras } from "../documents/DocumentsProvider";
 import {
   TRIP_PHASE_LABEL,
   type TripPhase,
@@ -58,7 +59,16 @@ const CARD_HEIGHT = 168;
 
 /** The cover with the trip's name, dates and length on it, bottom left, and the status at the top
  * right (docs/design.md): nothing else. */
-export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
+export function TripCard({
+  trip,
+  onPress,
+  localCoverUri = null,
+}: {
+  trip: Trip;
+  onPress: () => void;
+  /** A cover chosen from the phone (ADR 031), shown instead of the destination's photo. */
+  localCoverUri?: string | null;
+}) {
   const phase = tripPhase(trip);
   const label = TRIP_PHASE_LABEL[phase];
   const span = shortSpan(trip);
@@ -80,6 +90,7 @@ export function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void })
       <Cover
         seedKey={trip.destination.ref}
         photo={trip.cover_image}
+        uri={localCoverUri}
         height={CARD_HEIGHT}
         rounded={radius.lg}
         scrim
@@ -121,6 +132,7 @@ export function TripsScreen() {
   const nav = useNavigation();
   const titleRef = useAnnounceOnMount();
   const trips = useResource<Trip[]>(keys.trips, (client) => call(client.GET("/v1/trips")));
+  const extras = useAllTripExtras();
   const [tab, setTab] = useState<TripTab>("upcoming");
   const create = () => nav.push({ name: "createTrip" });
 
@@ -174,7 +186,11 @@ export function TripsScreen() {
           data={shown}
           keyExtractor={(t) => t.id}
           renderItem={({ item }) => (
-            <TripCard trip={item} onPress={() => nav.push(tripRoute(item))} />
+            <TripCard
+              trip={item}
+              localCoverUri={extras[item.id]?.cover?.uri ?? null}
+              onPress={() => nav.push(tripRoute(item))}
+            />
           )}
           ListHeaderComponent={<ResourceNotices resource={trips} noun="trips" />}
           ListEmptyComponent={<EmptyState layout="inline" title={empty.title} text={empty.text} />}

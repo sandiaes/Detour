@@ -27,6 +27,7 @@ import { PlanNotes } from "../components/plan/PlanNotes";
 import { ResourceNotices } from "../components/ResourceNotices";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
+import { useLocalCover } from "../documents/DocumentsProvider";
 import { PROFILE_EMPHASIS, PROFILE_LABEL, buildComparison, planNames } from "../domain/compare";
 import { useNavigation } from "../nav/Navigator";
 import { PastTripScreen } from "./PastTripScreen";
@@ -111,12 +112,14 @@ function PlanCard({
   const selected = plan.status === "selected";
   const stale = madeForEarlierStops(plan, trip);
   const names = planNames(plan, trip.destination.name);
+  const localCover = useLocalCover(trip.id);
   const s = plan.stats;
   return (
     <Card testID={`plan-${plan.profile}`}>
       <Cover
         seedKey={`${trip.destination.ref}:${plan.profile}`}
         photo={trip.cover_image}
+        uri={localCover?.uri ?? null}
         height={140}
         rounded={radius.md}
       >

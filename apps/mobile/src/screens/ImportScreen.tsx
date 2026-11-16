@@ -117,6 +117,9 @@ export function ImportScreen({ uri }: { uri?: string }) {
                 {summary.documents > 0
                   ? `${plural(summary.documents, "document", "documents")} come with the trips.`
                   : "No documents are in this file."}
+                {summary.albums > 0
+                  ? ` ${plural(summary.albums, "photo album link", "photo album links")} too.`
+                  : ""}
                 {read && read.skipped.length > 0
                   ? ` ${plural(read.skipped.length, "document", "documents")} named in it cannot be read.`
                   : ""}
@@ -143,7 +146,7 @@ export function ImportScreen({ uri }: { uri?: string }) {
               </Notice>
               {done.notRestored.length > 0 ? (
                 <Notice tone="warning" label="Not restored">
-                  {`These documents could not be restored: ${done.notRestored.join(", ")}.`}
+                  {`These could not be restored: ${done.notRestored.join(", ")}.`}
                 </Notice>
               ) : null}
               <Button

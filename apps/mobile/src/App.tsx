@@ -9,7 +9,12 @@ import { EdgeFade } from "./components/EdgeFade";
 import { deviceCacheStore } from "./cache/sqliteStore";
 import type { CacheStore } from "./cache/store";
 import { DataProvider } from "./data/DataProvider";
-import { deviceDocumentFiles, deviceDocumentStore, deviceExchangeFiles } from "./documents/device";
+import {
+  deviceDocumentFiles,
+  deviceDocumentStore,
+  deviceExchangeFiles,
+  deviceExtrasStore,
+} from "./documents/device";
 import { DocumentsProvider } from "./documents/DocumentsProvider";
 import { DocumentFormScreen } from "./screens/DocumentFormScreen";
 import { DocumentScreen } from "./screens/DocumentScreen";
@@ -183,6 +188,7 @@ export default function App({ cache = deviceCacheStore }: { cache?: CacheStore }
         <DataProvider cache={cache}>
           <DocumentsProvider
             store={deviceDocumentStore}
+            extras={deviceExtrasStore}
             files={deviceDocumentFiles}
             exchange={deviceExchangeFiles}
           >

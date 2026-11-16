@@ -6,6 +6,7 @@ import type { Connection } from "../api/connect";
 import { type CacheStore, createMemoryStore } from "../cache/store";
 import { DataProvider } from "../data/DataProvider";
 import { DocumentsProvider } from "../documents/DocumentsProvider";
+import { type TripExtrasStore, createMemoryExtrasStore } from "../documents/extras";
 import { type DocumentStore, createMemoryDocumentStore } from "../documents/store";
 import {
   type FakeExchange,
@@ -44,6 +45,8 @@ type Props = {
   retry?: () => void;
   /** The documents on the "device" (ADR 023). */
   documents?: DocumentStore;
+  /** Album links and covers from the phone (ADR 031). */
+  extras?: TripExtrasStore;
   files?: FakeFiles;
   /** The trip file's reading, writing and sharing (ADR 028). */
   exchange?: FakeExchange;
@@ -58,6 +61,7 @@ export function Harness({
   initial,
   retry = () => {},
   documents = createMemoryDocumentStore(),
+  extras = createMemoryExtrasStore(),
   files = createFakeFiles(),
   exchange = createFakeExchange(),
 }: Props) {
@@ -71,7 +75,7 @@ export function Harness({
     >
       <BackendContext.Provider value={{ state: backend, apiUrl: "https://api.example.org", retry }}>
         <DataProvider cache={cache}>
-          <DocumentsProvider store={documents} files={files} exchange={exchange}>
+          <DocumentsProvider store={documents} extras={extras} files={files} exchange={exchange}>
             <NavigationProvider initial={initial}>{children}</NavigationProvider>
           </DocumentsProvider>
         </DataProvider>

@@ -462,7 +462,8 @@ a week. The background resolver and the candidates write these tables from the A
 `app.photo`: `id`, `installation_id`, `trip_id` (always), `day_id`, `city_id`, `itinerary_item_id`
 (the most specific association, nullable), `local_uri`, `storage_key` (nullable), `taken_at`,
 `geom` (only with the user's consent to keep location), `checksum`, `width`, `height`, `bytes`.
-In the first photo phase the files and this table live on the device only (D9).
+In the first photo phase the files and this table live on the device only (D9). **Not built:** the
+first photo step (ADR 031) keeps only album links and a cover picture, on the phone (section 8a).
 
 ## 8a. On the device: trip documents (ADR 023)
 
@@ -472,6 +473,11 @@ phone. The app's SQLite database (`detour-cache.db`) has a `trip_document` table
 number, a place key with its name and day as linked, or a journey's day and town), file name, type,
 size and the location of the copy in the app's private storage. Deleting a trip deletes its rows and
 files on the phone. The backend stores nothing about documents.
+
+**Album links and the phone cover (ADR 031):** a `trip_extra` table in the same database
+(`trip_id` primary key, `json`): `albums` (each `id`, `name`, `url` (https only), `createdAt`; up to
+20) and `cover` (`uri` of the copy under the app's `covers/` folder, the picked `fileName`, `setAt`)
+or null. Deleting a trip deletes its row and the cover copy. The backend stores nothing about them.
 
 ## 8b. The trip file (ADR 028)
 
@@ -486,7 +492,9 @@ kind `sight`, `city`, `place`, `restaurant` or `cafe`, name, point, start time, 
 user set the length, locked) and, for a past trip, `visits` (the archive rows with their visited
 mark). It holds no installation, trip, plan or place identifier, no `geo` identifier, no travel
 time and no cover photo. `documents.json` lists each document with its trip's position, title,
-kind, a link by name and day, date, note, file name and type. Import (`repo/exchange.py`) writes
+kind, a link by name and day, date, note, file name and type. `albums.json` (ADR 031, written
+whenever a trip has album links) is `{format: "detour-albums", format_version: 1, albums:
+[{trip_index, name, url}]}`; the cover picture from the phone is not in the file. Import (`repo/exchange.py`) writes
 every trip as a new `place` trip, a manual itinerary of the user's own places (`app.user_place`,
 `source = manual_pin`) and, for a past trip, `app.trip_visit` rows with no `geo` reference.
 Version 1 keeps importing in later versions.

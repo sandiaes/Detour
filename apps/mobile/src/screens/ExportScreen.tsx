@@ -97,6 +97,7 @@ export function ExportScreen({ tripId }: { tripId?: string }) {
                 Detour makes one file with the trip, its days and places, and a past trip&apos;s
                 record. You choose where it goes: messages, mail, a cloud folder or your computer.
                 Detour sends it nowhere. Import it on any phone to bring the trip back as a copy.
+                Links to your photo albums go with it; the photos themselves do not.
               </Text>
               {summary.count > 0 ? (
                 <Section title="Documents">

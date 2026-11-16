@@ -147,7 +147,7 @@ mechanically and a wrong licence is handled by `geo.image.hidden` (decision 21).
 | Hotlink `upload.wikimedia.org` from the app | Breaks "the app calls only the backend and the tile host"; Wikimedia discourages it; the photo vanishes if the file is renamed |
 | Store only metadata, redirect to Wikimedia at request time | Same objection, plus a third-party call in the request path |
 | Store images in the database | Counts against the 500 MB database allowance, which the `geo` data needs |
-| Own photos from the phone as the cover | Needs the Photos step and an upload path; not asked for here |
+| Own photos from the phone as the cover | Needs the Photos step and an upload path; not asked for here. **Built later by ADR 031**, on the phone only (no upload) |
 | Fetch every attraction's photo at import | Thousands of calls and stored bytes for places no plan uses; the cap and the resolve-on-plan rule avoid that |
 
 ## Consequences

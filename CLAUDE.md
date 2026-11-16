@@ -53,6 +53,15 @@ public** (ADR 007 addendum): workflows must never log or upload anything secret 
 backup is always encrypted, the signing key goes straight into secrets). No journey has been checked
 on a device (checked by tests only).
 
+**Photos, first step** (2026-11-16, ADR 031, accepted, built, awaiting acceptance; mobile app only,
+checked by tests only): Google's Library API no longer lets an app read albums it did not create, so
+a trip's Photos tab keeps **links to the user's own albums** (pasted from Google Photos' Share, Copy
+link), which open in Google Photos; the Photos screen lists them by trip. "Change photo" has
+**Choose from your phone**: the picture is copied into the app's `covers/` folder and shown instead of
+the destination photo. Both live on the phone only (SQLite table `trip_extra`); the trip file carries
+the links (`albums.json`), not the cover. No Google API, sign-in or permission. Prompt 14's storage
+comparison stays open for a later step.
+
 **Owner's UI requests of 2026-11-15** (ADR 021, decisions 92 to 97, built, awaiting acceptance): a Car pill on the new-trip screen (`app.trip.uses_car`, migration `0018`; off means Optimize only walks), a Day drop-down in Edit time, Add a place opening on the open day at its first free time, sight search around each city of a multi-city trip with the open day's city first and distances from it (`domain/searchAnchors.ts`), a pin map on the day's city showing the plan's stops and known sights, no city line above a day's stops, and the stay's morning row centred between hairlines.
 
 **Accommodation is built** (2026-11-15, ADR 030, awaiting acceptance; migration `0019`): a trip has stays, each for a range of days (`app.trip_stay`, `GET/POST/PATCH/DELETE /v1/trips/{id}/stays`), `Day.start` is the morning leg from the stay worked out on read (not stored), Optimize and the generator start each day at its stay (no leg back at night), and the app has "Where you're staying", a house mark on the map and a morning row in the day list. Migration `0019` has run in production (checked 2026-11-15); export does not carry stays.
