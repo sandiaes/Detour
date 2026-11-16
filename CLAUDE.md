@@ -60,6 +60,13 @@ capped at 5 versions for a past trip (`MAX_VERSIONS_PAST`; 30 otherwise), pruned
 `app.trip_visit` rows are written any more; trips archived earlier keep theirs and the old past-trip screen
 (`archiveOnly` in the app). Export and import carry a past trip's plan.
 
+**Manual transport legs** (2026-11-16, ADR 032, **proposed, not built**; owner's choice after the
+public-transport analysis): a train, bus, ferry or other leg the user enters by hand (mode, from, to,
+day, start, length or unknown, note), stored as an itinerary item of type `transport`, fixed for
+Optimize and recalculation, carried by trip file version 2. Four questions for the owner are at the
+top of the ADR; build only after the answers. Phase 10 (Transitous or MOTIS) is not started; a
+one-leg transit suggestion is recorded as a candidate only (ADR 032, "Later").
+
 **Photos, first step** (2026-11-16, ADR 031, accepted, built, awaiting acceptance; mobile app only,
 checked by tests only): Google's Library API no longer lets an app read albums it did not create, so
 a trip's Photos tab keeps **links to the user's own albums** (pasted from Google Photos' Share, Copy

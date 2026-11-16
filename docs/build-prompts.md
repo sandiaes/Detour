@@ -626,6 +626,11 @@ Scope guards: archive and display only; no re-planning of past trips; no photos;
 **Effort:** High  
 **App-plan phase:** 10
 
+> **Superseded as written (2026-11-16).** The owner chose manual transport legs first (ADR 032) and
+> recorded a narrower candidate for later: a suggested time for one leg from Transitous (ADR 032,
+> "Later: a suggestion for one leg"; `app-plan.md` section 4). That candidate is not approved. The
+> prompt below is kept for reference only.
+
 ```text
 Read CLAUDE.md, docs/architecture.md, docs/api-evaluation.md, docs/data-model.md, the routing
 implementation, and ADRs 005, 007, 008, 016.

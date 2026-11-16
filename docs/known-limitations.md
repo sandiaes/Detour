@@ -23,6 +23,7 @@ language model) are in the [product brief](product-brief.md), section 8.
 | Not built | Status |
 |---|---|
 | **Public transport** | After the MVP, Phase 10 (Transitous or nothing) |
+| Suggested transit time for a leg | Not built; manual legs only (ADR 032) |
 | **Weather** | After the MVP; needs an ADR (D6) |
 | **Sync between phones, accounts, sharing** | Parked (D5); a trip moves between phones as a `.detour` file (ADR 028) |
 | **Offline maps** | Not in the MVP; the map needs a connection, the day list works from the saved copy |
