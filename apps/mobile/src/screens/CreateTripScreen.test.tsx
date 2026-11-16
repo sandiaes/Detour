@@ -452,3 +452,29 @@ test("form helpers", () => {
   ).toMatch(/Japan/);
   expect([ESSENTIALS_ID, WIDER_ID, TRIP_ID]).toHaveLength(3);
 });
+
+test("Who's going: a linked person can be chosen and is sent with the new trip", async () => {
+  const ana = "22222222-2222-3333-4444-555555555555";
+  const client = server({
+    "GET /v1/me": () => ({
+      person_id: "p",
+      device_id: "p",
+      display_name: null,
+      devices: [],
+      recovery_code_created_at: null,
+      people: [{ person_id: ana, name: "Ana", linked_at: "2026-11-16T10:00:00Z" }],
+    }),
+  });
+  await openForm(client);
+  await typeDestination("Vie");
+  await fireEvent.press(await screen.findByRole("button", { name: /^Vienne/ }));
+  expect(await screen.findByText("Who's going")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId(`going-${ana}`));
+  expect(screen.getByText(/They see and change this trip too/)).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("empty-trip"));
+  await waitFor(() =>
+    expect(
+      client.calls.find((c) => c.method === "POST" && c.path === "/v1/trips")?.body,
+    ).toMatchObject({ share_with: [ana] }),
+  );
+});

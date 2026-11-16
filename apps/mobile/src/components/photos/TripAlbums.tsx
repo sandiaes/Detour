@@ -1,9 +1,14 @@
 import type { Trip } from "@detour/shared";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "../../api/unwrap";
-import { AlbumError, useExtrasActions, useTripExtras } from "../../documents/DocumentsProvider";
+import {
+  AlbumError,
+  useExtrasActions,
+  useSyncTrips,
+  useTripExtras,
+} from "../../documents/DocumentsProvider";
 import {
   type TripAlbum,
   MAX_ALBUM_NAME,
@@ -24,12 +29,13 @@ import {
   Tile,
 } from "../ds";
 
-// A trip's Photos tab (ADR 031): links to the user's own albums, kept on this phone. Detour never
-// reads an album: a link opens it in Google Photos (or the browser), where the photos stay.
+// A trip's Photos tab (ADR 031): links to the user's own albums, kept on the server for everyone
+// on the trip (ADR 034, step 5) with a copy on the phone. Detour never reads an album: a link opens
+// it in Google Photos (or the browser), where the photos stay.
 
 /** Said wherever album links are added: where the link is kept, and what a shared link means. */
 export const ALBUM_NOTE =
-  "The link stays on this phone only (and in a trip file you export). Detour does not read or copy the photos. Anyone who has a shared album's link can open it.";
+  "Everyone on this trip sees the links added here. Detour does not read or copy the photos. Anyone who has a shared album's link can open it.";
 
 export const HOW_TO_LINK =
   "In Google Photos, open the album, tap Share, then Copy link, and paste it here.";
@@ -41,6 +47,8 @@ export async function openAlbum(album: TripAlbum): Promise<void> {
 export function TripAlbums({ trip }: { trip: Trip }) {
   const { extras, error } = useTripExtras(trip.id);
   const actions = useExtrasActions();
+  // The server holds the trip's albums for everyone on it (ADR 034): read them when shown.
+  useSyncTrips(useMemo(() => [trip], [trip]));
   const [adding, setAdding] = useState(false);
   const [menu, setMenu] = useState<TripAlbum | null>(null);
   const [problem, setProblem] = useState<string | null>(null);

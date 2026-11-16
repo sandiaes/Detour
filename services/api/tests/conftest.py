@@ -15,6 +15,7 @@ from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import make_url
 
+from detour_api.images.store import MemoryImageStore
 from detour_api.main import create_app
 from detour_api.settings import Settings
 from detour_api.tokens import issue_token
@@ -162,7 +163,11 @@ def api_env(imported_template_name: str) -> Iterator[ApiEnv]:
     installation_id, token = issue_token(TEST_SECRET.encode())
     try:
         with TestClient(
-            create_app(settings, photon_transport=httpx.MockTransport(photon))
+            create_app(
+                settings,
+                photon_transport=httpx.MockTransport(photon),
+                file_store=MemoryImageStore(),
+            )
         ) as client:
             yield ApiEnv(
                 client=client,

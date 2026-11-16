@@ -258,7 +258,49 @@ of its first installation**, and every row that names an installation (`trip`, `
 person, so all of a person's phones see the same trips. A phone that joins a person brings its own
 trips, places and overrides along (moved to the person's id; an override the person already has for
 the same place wins), and its former person is deleted. Every installation that existed before
-`0024` became a person of its own with the same id. Step 2 of ADR 034 renames the columns.
+`0024` became a person of its own with the same id. Migration `0025` (step 2) renamed the columns:
+`app.trip.owner_person_id`, `app.user_place.person_id`, `app.place_name_override.person_id`, each a
+fk to `app.person` (`ON DELETE CASCADE`).
+
+### 3.1b `app.trip_member` (ADR 034, step 2, migration `0025`)
+
+Who may see and change a trip: `trip_id` (fk, cascade), `person_id` (fk to `app.person`, cascade),
+`role` (`owner` or `editor`), `added_at`, `added_by` (fk to `app.person`, `ON DELETE SET NULL`);
+primary key `(trip_id, person_id)`; exactly one `owner` per trip (a partial unique index), the same
+person as `app.trip.owner_person_id`. A trigger adds the owner's row when a trip is inserted. **Every
+trip read and change is authorised by membership** (the API joins `app.trip_member` on the caller's
+person); only the owner may delete the trip (403 `not_trip_owner`). The 100-trip limit counts the
+trips a person owns. An editor row is written by sharing (step 3): "Who's going" when the trip is
+created, or Share in its settings, only with a linked person; it is removed when the member leaves
+or the owner stops sharing. The owner cannot leave.
+
+### 3.1e Album links and trip files (ADR 034, step 5, migration `0028`)
+
+`app.trip_album`: `id`, `trip_id` (fk, cascade), `url` (https, at most 2000 characters, unique per
+trip), `name` (1 to 80), `added_by` (fk to `app.person`, set null), `created_at`; at most 20 per
+trip. `app.trip_file`: `id`, `trip_id` (fk, cascade), `kind` (`cover` now, `document` from step 6;
+at most one cover per trip), `storage_key` (unique; `trips/<trip>/cover-<id>.jpg` in the private
+`trip-files` bucket), `content_type`, `bytes`, `sha256`, `uploaded_by`, `created_at`.
+`app.trip_file_orphan` lists the objects whose row was deleted (a trigger), so the API removes them
+from the bucket after the change commits (a replaced cover, a deleted trip). The sum of `bytes` is
+the storage budget's count. `Trip.own_cover` (id, bytes, upload time) is read with the trip.
+
+### 3.1d Who changed it (ADR 034, step 4, migration `0027`)
+
+`app.itinerary.changed_by` (fk to `app.person`, `ON DELETE SET NULL`) and `changed_at`, set by a
+trigger whenever a plan is created or its `version` changes; `app.trip.updated_by`, set whenever
+`updated_at` changes. Both come from the transaction setting `detour.person`, which the API sets to
+the caller's person at the start of every transaction (`app.current_person()`); outside the API
+(imports, scripts) they keep their value.
+
+### 3.1c Names and links (ADR 034, step 3, migration `0026`)
+
+`app.person.display_name` (1 to 40 characters, optional): shown to the people on your shared trips.
+`app.person_link`: `person_a`, `person_b` (fks to `app.person`, cascade; stored once per pair with
+`person_a < person_b`), `created_at`: two people who may share trips, made with an **invite code**
+(`app.link_code.kind = 'invite'`; one use, 10 minutes, hashed with a purpose of its own so it can
+never add a phone, and a phone's code can never link a person). At most 5 links per person.
+Unlinking leaves trips already shared as they are. A phone that joins a person brings its links.
 
 `app.link_code`: `code_hash` (pk, HMAC-SHA256 of the code keyed with `DETOUR_TOKEN_SECRET`; the code
 itself is never stored), `person_id` (fk, cascade), `created_by` (the phone that showed it, fk,
@@ -270,7 +312,7 @@ kept (a few bytes each) as a record of which phone joined when.
 
 | Field | Notes |
 |---|---|
-| `id`, `installation_id` | fk, `ON DELETE CASCADE` |
+| `id`, `owner_person_id` | fk to `app.person`, `ON DELETE CASCADE` (`installation_id` before migration `0025`); who may read it is `app.trip_member` |
 | `title` | 1 to 120 characters |
 | `destination_kind`, `destination_ref` | `city` (a `geo.city.id`), `area` (a `geo.admin_area.id`) `route` (a multi-city trip, ADR 024: the first stop's city id) or `place` (ADR 027, migration `0016`: a place outside the imported regions, `destination_ref` is `photon:N123`, `geonames:123`, `area:<uuid>` or `manual` and nothing is checked against `geo`); existence and region availability of the other kinds are checked by the API |
 | `destination_country` | ISO 3166-1 alpha-2, known for a place trip when the source gave it (migration `0016`); null otherwise |
@@ -343,7 +385,7 @@ A place the user added that is not in `geo.place`: `kind` (`city`, `location`, `
 for a town from destination search saved to add it to a plan, ADR 018) with `search_ref` (for example
 `N123`, an OSM node, or a GeoNames id) **iff** the source is a search result. A restaurant or cafe is
 only a name, a point and a kind (Photon's `amenity` value or the user's choice): `cuisines` and
-`meal_types` were dropped by `0014` because Photon cannot supply them (ADR 026). At most 500 per
+`meal_types` were dropped by `0014` because Photon cannot supply them (ADR 026). Belongs to a person (`person_id`; ADR 034); a place on a shared trip is shown to every member of that trip, but only its creator's list holds it. At most 500 per
 installation.
 
 ### 3.5 `app.trip_visit`: the past-trip archive (ADR 006)
@@ -397,7 +439,7 @@ Every replaced version is kept, up to 30 per itinerary (the oldest are removed f
 
 ### 3.8 `app.place_name_override` (ADR 025)
 
-"Edit display name": `id`, `installation_id` (fk, `ON DELETE CASCADE`), `entity_kind` and
+"Edit display name": `id`, `person_id` (fk to `app.person`, `ON DELETE CASCADE`; `installation_id` before `0025`), `entity_kind` and
 `entity_ref` (a `geo.place` id as text; no foreign key), `name` (1 to 120 characters) and `name_norm`,
 `original_name` (the local name when it was approved), `approved_at`. Unique per installation and
 entity: it applies to that place only, for that installation only, and is removed by

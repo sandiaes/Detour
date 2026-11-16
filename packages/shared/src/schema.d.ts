@@ -103,7 +103,8 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    /** Change your name as others see it. */
+    patch: operations["update_me"];
     trace?: never;
   };
   "/v1/me/link-codes": {
@@ -169,6 +170,57 @@ export interface paths {
     /** Make this phone one of yours with a code from another phone, or with your recovery code (which signs out your other phones). This phone's own trips come along. 400 code_invalid; 409 has_other_devices or limit_reached. */
     post: operations["join"];
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me/invite-codes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** A one-time code (10 minutes) for someone else to type under People, to link the two of you so you can share trips. An earlier unused invite code stops working. */
+    post: operations["create_invite_code"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/people/link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Link yourself to the person who showed this invite code. 400 code_invalid; 409 already_linked, own_invite or limit_reached. */
+    post: operations["link_person"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/people/{person_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Unlink a person. Trips already shared stay shared; leave them or stop sharing them. */
+    delete: operations["unlink_person"];
     options?: never;
     head?: never;
     patch?: never;
@@ -481,12 +533,101 @@ export interface paths {
     get: operations["get_trip"];
     put?: never;
     post?: never;
-    /** Delete a trip with its itineraries, days, items, transfers and archive rows. */
+    /** Delete a trip with its itineraries, days, items, transfers and archive rows, for everyone on it. Only its owner may (403 not_trip_owner). */
     delete: operations["delete_trip"];
     options?: never;
     head?: never;
     /** Change a trip. Only the fields sent are changed; null clears the optional ones. */
     patch: operations["update_trip"];
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/albums": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The trip's photo album links. */
+    get: operations["list_albums"];
+    put?: never;
+    /** Link a photo album (its https share link; words around it are dropped). Up to 20; 409 album_exists or limit_reached. */
+    post: operations["add_album"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/albums/{album_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove an album link (the album itself is not touched). */
+    delete: operations["remove_album"];
+    options?: never;
+    head?: never;
+    /** Rename an album link. */
+    patch: operations["rename_album"];
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/own-cover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The trip's cover chosen from a phone (base64 JPEG), for its members only. */
+    get: operations["get_own_cover"];
+    /** Set the trip's cover from a picture on a phone, for everyone on the trip. Kept as a JPEG of at most 1600 px without metadata. 422 not_a_picture or picture_too_large; 409 storage_full; 503 storage_unavailable. */
+    put: operations["set_own_cover"];
+    post?: never;
+    /** Go back to the destination's photo, for everyone on the trip. */
+    delete: operations["clear_own_cover"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/members": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Share the trip with someone you are linked to (owner only, ADR 034). 409 not_linked or already_member; 403 not_trip_owner. */
+    post: operations["add_member"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/members/{person_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Leave the trip (your own id), or stop sharing it with someone (owner only). The owner cannot leave (409 owner_cannot_leave). */
+    delete: operations["remove_member"];
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/v1/trips/{trip_id}/archive": {
@@ -1996,6 +2137,14 @@ export interface components {
        */
       token: string;
     };
+    /** InviteRequest */
+    InviteRequest: {
+      /**
+       * Code
+       * @description The invite code shown by the other person
+       */
+      code: string;
+    };
     /** IssueBody */
     IssueBody: {
       /** Code */
@@ -2220,6 +2369,8 @@ export interface components {
       stops_version?: number | null;
       /** Days */
       days: components["schemas"]["Day"][];
+      /** @description Who changed the plan last; null for plans from before it */
+      last_change?: components["schemas"]["PlanChange"] | null;
     };
     /** ItinerarySummary */
     ItinerarySummary: {
@@ -2344,6 +2495,24 @@ export interface components {
        */
       expires_at: string;
     };
+    /** LinkedPerson */
+    LinkedPerson: {
+      /**
+       * Person Id
+       * Format: uuid
+       */
+      person_id: string;
+      /**
+       * Name
+       * @description Their display name; null when they set none
+       */
+      name: string | null;
+      /**
+       * Linked At
+       * Format: date-time
+       */
+      linked_at: string;
+    };
     /** MapConfig */
     MapConfig: {
       /** Style Url */
@@ -2369,6 +2538,56 @@ export interface components {
        */
       fixed_item_ids?: string[];
     };
+    /**
+     * OwnCover
+     * @description A trip's cover chosen from a phone, kept in the private trip-files bucket.
+     */
+    OwnCover: {
+      /**
+       * Id
+       * Format: uuid
+       * @description Changes whenever the picture changes
+       */
+      id: string;
+      /** Bytes */
+      bytes: number;
+      /**
+       * Uploaded At
+       * Format: date-time
+       */
+      uploaded_at: string;
+    };
+    /** OwnCoverFile */
+    OwnCoverFile: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Content Type
+       * @constant
+       */
+      content_type: "image/jpeg";
+      /**
+       * Data
+       * @description The JPEG, base64
+       */
+      data: string;
+    };
+    /** OwnCoverUpload */
+    OwnCoverUpload: {
+      /**
+       * Content Type
+       * @enum {string}
+       */
+      content_type: "image/jpeg" | "image/png" | "image/webp";
+      /**
+       * Data
+       * @description The picture, base64; the server keeps a JPEG of at most 1600 px
+       */
+      data: string;
+    };
     /** PersonInfo */
     PersonInfo: {
       /**
@@ -2376,6 +2595,16 @@ export interface components {
        * Format: uuid
        */
       person_id: string;
+      /**
+       * Display Name
+       * @description Your name as others see it; null when none
+       */
+      display_name: string | null;
+      /**
+       * People
+       * @description People you may share trips with (ADR 034), in the order you linked them
+       */
+      people: components["schemas"]["LinkedPerson"][];
       /**
        * Device Id
        * Format: uuid
@@ -2392,6 +2621,14 @@ export interface components {
        * @description When the current recovery code was made; null when there is none
        */
       recovery_code_created_at: string | null;
+    };
+    /** PersonUpdate */
+    PersonUpdate: {
+      /**
+       * Display Name
+       * @description Your name as others see it; null or blank clears
+       */
+      display_name?: string | null;
     };
     /** Photo */
     Photo: {
@@ -2718,6 +2955,29 @@ export interface components {
       distance_m?: number | null;
       /** Match */
       match?: ("exact" | "prefix" | "word_prefix" | "contains" | "similar") | null;
+    };
+    /**
+     * PlanChange
+     * @description Who changed the plan last, and when (ADR 034, step 4).
+     */
+    PlanChange: {
+      /**
+       * Person Id
+       * @description Null when that person no longer exists
+       */
+      person_id: string | null;
+      /**
+       * Name
+       * @description Their display name; null when none
+       */
+      name: string | null;
+      /** You */
+      you: boolean;
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
     };
     /** PlanNote */
     PlanNote: {
@@ -3264,6 +3524,20 @@ export interface components {
        */
       uses_car: boolean;
       /**
+       * Role
+       * @description The caller's role on this trip (ADR 034)
+       * @default owner
+       * @enum {string}
+       */
+      role: "owner" | "editor";
+      /**
+       * Members
+       * @description Everyone on the trip, the owner first (ADR 034)
+       */
+      members?: components["schemas"]["TripMember"][];
+      /** @description A cover picture chosen from a phone and uploaded (ADR 034, step 5); shown instead of cover_image. Read it with GET /v1/trips/{id}/own-cover */
+      own_cover?: components["schemas"]["OwnCover"] | null;
+      /**
        * Created At
        * Format: date-time
        */
@@ -3273,6 +3547,43 @@ export interface components {
        * Format: date-time
        */
       updated_at: string;
+    };
+    /**
+     * TripAlbum
+     * @description A link to the travellers' own photo album (ADR 031): opened in its app, never read.
+     */
+    TripAlbum: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /** Url */
+      url: string;
+      /**
+       * Added By
+       * @description Who linked it (their name); null when unknown
+       */
+      added_by: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** TripAlbumCreate */
+    TripAlbumCreate: {
+      /** Url */
+      url: string;
+      /** Name */
+      name?: string | null;
+    };
+    /** TripAlbumUpdate */
+    TripAlbumUpdate: {
+      /** Name */
+      name: string;
     };
     /** TripCreate */
     TripCreate: {
@@ -3321,6 +3632,11 @@ export interface components {
       /** Start Date */
       start_date?: string | null;
       /**
+       * Share With
+       * @description "Who's going" (ADR 034): people you are linked to, added as editors
+       */
+      share_with?: string[];
+      /**
        * Uses Car
        * @description False: Optimize considers walking only, never driving
        * @default true
@@ -3347,6 +3663,42 @@ export interface components {
       exported_at?: string | null;
       /** Trips */
       trips: components["schemas"]["FileTrip"][];
+    };
+    /**
+     * TripMember
+     * @description Someone who may see and change the trip (ADR 034).
+     */
+    TripMember: {
+      /**
+       * Person Id
+       * Format: uuid
+       */
+      person_id: string;
+      /**
+       * Name
+       * @description Their display name; null when they set none
+       */
+      name: string | null;
+      /**
+       * Role
+       * @description owner: created it and alone may delete it or change who is a member
+       * @enum {string}
+       */
+      role: "owner" | "editor";
+      /**
+       * You
+       * @description This member is the caller
+       */
+      you: boolean;
+    };
+    /** TripMemberAdd */
+    TripMemberAdd: {
+      /**
+       * Person Id
+       * Format: uuid
+       * @description A person you are linked to (More, People)
+       */
+      person_id: string;
     };
     /** TripStop */
     TripStop: {
@@ -3707,6 +4059,66 @@ export interface operations {
       };
     };
   };
+  update_me: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PersonUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonInfo"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
   create_link_code: {
     parameters: {
       query?: never;
@@ -3905,6 +4317,187 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["ErrorBody"];
         };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  create_invite_code: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LinkCode"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  link_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["InviteRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonInfo"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  unlink_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        person_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Unauthorized */
       401: {
@@ -4964,6 +5557,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorBody"];
         };
       };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
       /** @description Not Found */
       404: {
         headers: {
@@ -4996,7 +5598,10 @@ export interface operations {
   update_trip: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         trip_id: string;
       };
@@ -5019,6 +5624,577 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  list_albums: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripAlbum"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  add_album: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripAlbumCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripAlbum"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  remove_album: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+        album_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  rename_album: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+        album_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripAlbumUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripAlbum"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  get_own_cover: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OwnCoverFile"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  set_own_cover: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["OwnCoverUpload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OwnCover"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  clear_own_cover: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  add_member: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TripMemberAdd"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  remove_member: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+        person_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown;
         };
@@ -5949,7 +7125,10 @@ export interface operations {
   delete_itinerary: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         itinerary_id: string;
       };
@@ -6005,7 +7184,10 @@ export interface operations {
   create_item: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         itinerary_id: string;
         day_index: number;
@@ -6126,7 +7308,10 @@ export interface operations {
   delete_item: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         item_id: string;
       };
@@ -6182,7 +7367,10 @@ export interface operations {
   update_item: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The plan version you last read, e.g. "12" (for a trip: its updated_at) */
+        "If-Match"?: string | null;
+      };
       path: {
         item_id: string;
       };

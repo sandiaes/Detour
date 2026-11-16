@@ -19,7 +19,8 @@ import { Cover } from "../components/ds/Cover";
 import { ResourceNotices } from "../components/ResourceNotices";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
-import { useAllTripExtras } from "../documents/DocumentsProvider";
+import { useAllTripExtras, useSyncTrips } from "../documents/DocumentsProvider";
+import { sharedLine } from "../domain/sharing";
 import {
   TRIP_PHASE_LABEL,
   type TripPhase,
@@ -74,10 +75,13 @@ export function TripCard({
   const phase = tripPhase(trip);
   const label = TRIP_PHASE_LABEL[phase];
   const span = shortSpan(trip);
+  // ADR 034: a shared trip says who else is on it.
+  const shared = sharedLine(trip);
+  const meta = shared ? `${span} · ${shared}` : span;
   return (
     <FocusPressable
       accessibilityRole="button"
-      accessibilityLabel={`${trip.title}. ${span}. ${label}.`}
+      accessibilityLabel={`${trip.title}. ${meta}. ${label}.`}
       accessibilityHint={
         phase === "past"
           ? "Opens the trip and its itinerary"
@@ -105,7 +109,7 @@ export function TripCard({
             {trip.title}
           </Text>
           <Text style={styles.cardMeta} numberOfLines={1}>
-            {span}
+            {meta}
           </Text>
         </View>
       </Cover>
@@ -135,6 +139,8 @@ export function TripsScreen() {
   const titleRef = useAnnounceOnMount();
   const trips = useResource<Trip[]>(keys.trips, (client) => call(client.GET("/v1/trips")));
   const extras = useAllTripExtras();
+  // Albums and covers are shared on the server (ADR 034, step 5): keep this phone's copy current.
+  useSyncTrips(trips.data);
   const [tab, setTab] = useState<TripTab>("upcoming");
   const create = () => nav.push({ name: "createTrip" });
 

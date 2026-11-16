@@ -17,7 +17,7 @@ import type {
 import { useCallback } from "react";
 
 import { useBackend } from "../api/BackendProvider";
-import { NetworkError, call, callEmpty } from "../api/unwrap";
+import { ApiError, NetworkError, call, callEmpty } from "../api/unwrap";
 import { keys } from "./actions";
 import { useData } from "./DataProvider";
 
@@ -25,6 +25,12 @@ import { useData } from "./DataProvider";
 // as a change set and returns the diff. Nothing changes in the plan until it is applied.
 
 export const changeKey = (id: string) => `changeSet:${id}`;
+
+/** The If-Match header for a plan change (ADR 034, step 4): the version this phone last read, so
+ * a change made after someone else's is refused (409 plan_changed) instead of overwriting it. */
+export function ifMatch(version: number | undefined): { "If-Match": string } | undefined {
+  return version === undefined ? undefined : { "If-Match": `"${version}"` };
+}
 
 export function useChangeActions() {
   const { state } = useBackend();
@@ -37,6 +43,28 @@ export function useChangeActions() {
   }, [client]);
 
   /** Saves a pin, a town or an external search result as one of the user's places. */
+  // The version of a plan held on this phone, if any.
+  const versionOf = useCallback(
+    (itineraryId: string) =>
+      (data.memory.get(keys.itinerary(itineraryId))?.data as Itinerary | undefined)?.version,
+    [data],
+  );
+
+  /** A plan someone else changed is read again, so the next try starts from what they did. */
+  const guard = useCallback(
+    async <T>(itineraryId: string, request: Promise<T>): Promise<T> => {
+      try {
+        return await request;
+      } catch (e) {
+        if (e instanceof ApiError && e.code === "plan_changed") {
+          data.invalidate(keys.itinerary(itineraryId));
+        }
+        throw e;
+      }
+    },
+    [data],
+  );
+
   const savePlace = useCallback(
     async (body: UserPlaceCreate): Promise<UserPlace> =>
       call(need().POST("/v1/user-places", { body })),
@@ -151,16 +179,22 @@ export function useChangeActions() {
    * and as a direct choice on any plan. */
   const addItem = useCallback(
     async (tripId: string, itineraryId: string, day: number, body: ItemCreate): Promise<void> => {
-      await call(
-        need().POST("/v1/itineraries/{itinerary_id}/days/{day_index}/items", {
-          params: { path: { itinerary_id: itineraryId, day_index: day } },
-          body,
-        }),
+      await guard(
+        itineraryId,
+        call(
+          need().POST("/v1/itineraries/{itinerary_id}/days/{day_index}/items", {
+            params: {
+              path: { itinerary_id: itineraryId, day_index: day },
+              header: ifMatch(versionOf(itineraryId)),
+            },
+            body,
+          }),
+        ),
       );
       data.invalidate(keys.itinerary(itineraryId));
       data.invalidate(keys.itineraries(tripId));
     },
-    [need, data],
+    [need, data, guard, versionOf],
   );
 
   /** Changes when a stop starts, how long it lasts and/or which day it is on (`dayIndex`). `minutes` undefined leaves the length
@@ -184,12 +218,18 @@ export function useChangeActions() {
       if (change.dayIndex !== undefined) body.day_index = change.dayIndex;
       if (change.minutes === null) body.use_default_duration = true;
       else if (change.minutes !== undefined) body.duration_minutes = change.minutes;
-      await call(
-        need().PATCH("/v1/items/{item_id}", { params: { path: { item_id: itemId } }, body }),
+      await guard(
+        itineraryId,
+        call(
+          need().PATCH("/v1/items/{item_id}", {
+            params: { path: { item_id: itemId }, header: ifMatch(versionOf(itineraryId)) },
+            body,
+          }),
+        ),
       );
       data.invalidate(keys.itinerary(itineraryId));
     },
-    [need, data],
+    [need, data, guard, versionOf],
   );
 
   /** Sets how long a stop lasts (minutes), or goes back to its default length (null). */
@@ -203,23 +243,31 @@ export function useChangeActions() {
    * previewed change set instead). */
   const removeItem = useCallback(
     async (tripId: string, itineraryId: string, itemId: string): Promise<void> => {
-      await callEmpty(
-        need().DELETE("/v1/items/{item_id}", { params: { path: { item_id: itemId } } }),
+      await guard(
+        itineraryId,
+        callEmpty(
+          need().DELETE("/v1/items/{item_id}", {
+            params: { path: { item_id: itemId }, header: ifMatch(versionOf(itineraryId)) },
+          }),
+        ),
       );
       data.invalidate(keys.itinerary(itineraryId));
       data.invalidate(keys.itineraries(tripId));
     },
-    [need, data],
+    [need, data, guard, versionOf],
   );
 
   /** Locks or unlocks an item: a locked item is never moved or removed by a recalculation. */
   const setLocked = useCallback(
     async (itineraryId: string, itemId: string, locked: boolean): Promise<void> => {
-      const item = await call(
-        need().PATCH("/v1/items/{item_id}", {
-          params: { path: { item_id: itemId } },
-          body: { locked },
-        }),
+      const item = await guard(
+        itineraryId,
+        call(
+          need().PATCH("/v1/items/{item_id}", {
+            params: { path: { item_id: itemId }, header: ifMatch(versionOf(itineraryId)) },
+            body: { locked },
+          }),
+        ),
       );
       data.update<Itinerary>(keys.itinerary(itineraryId), (it) => ({
         ...it,
@@ -230,7 +278,7 @@ export function useChangeActions() {
         })),
       }));
     },
-    [need, data],
+    [need, data, guard, versionOf],
   );
 
   /** Edit display name (ADR 025): the name this user approved for one imported place, or null to

@@ -48,11 +48,11 @@ def preview_optimize(
 ) -> ChangeSet:
     started = time.perf_counter()
     with session.tx() as conn:
-        row = changes.itinerary_row(conn, session.installation_id, itinerary_id)
+        row = changes.itinerary_row(conn, session.person_id, itinerary_id)
         trip_id = conn.execute(
             text("SELECT trip_id FROM app.itinerary WHERE id = :i"), {"i": itinerary_id}
         ).scalar_one()
-        trip = trips.require_trip(conn, session.installation_id, trip_id)
+        trip = trips.require_trip(conn, session.person_id, trip_id)
         state = read_state(conn, itinerary_id)
         trip_stays = stays.list_for_trip(conn, trip_id)
     day_index = {d["id"]: d["day_index"] for d in state["days"]}
@@ -183,7 +183,7 @@ def preview_optimize(
         recalc=None,
     )
     with session.tx() as conn:
-        result = changes.save(conn, session.installation_id, ctx, proposal, diff_out, notes)
+        result = changes.save(conn, session.person_id, ctx, proposal, diff_out, notes)
     log.info(
         "optimize_previewed",
         itinerary_id=str(itinerary_id),
@@ -205,7 +205,7 @@ def preview_optimize(
 def preview_undo(session: Session, itinerary_id: uuid.UUID) -> ChangeSet:
     """Restore the plan from before the latest applied Optimize, if nothing changed it since."""
     with session.tx() as conn:
-        row = changes.itinerary_row(conn, session.installation_id, itinerary_id)
+        row = changes.itinerary_row(conn, session.person_id, itinerary_id)
         restores = changes.latest_optimize(conn, itinerary_id, row.version)
         state = read_state(conn, itinerary_id)
     if restores is None:
@@ -226,7 +226,7 @@ def preview_undo(session: Session, itinerary_id: uuid.UUID) -> ChangeSet:
     )
     with session.tx() as conn:
         result = changes.save(
-            conn, session.installation_id, ctx, proposal, changes.diff_model(planned), notes
+            conn, session.person_id, ctx, proposal, changes.diff_model(planned), notes
         )
     log.info("optimize_undo_previewed", itinerary_id=str(itinerary_id), restores=base_version)
     return result

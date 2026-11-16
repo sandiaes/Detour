@@ -34,7 +34,7 @@ _STORED = """
      FROM geo.place_name n WHERE n.entity_kind = '{kind}' AND n.entity_ref = {ref})
 """
 _OVERRIDE = """
-    (SELECT o.name FROM app.place_name_override o WHERE o.installation_id = CAST(:inst AS uuid)
+    (SELECT o.name FROM app.place_name_override o WHERE o.person_id = CAST(:inst AS uuid)
      AND o.entity_kind = '{kind}' AND o.entity_ref = {ref})
 """
 
@@ -101,7 +101,7 @@ PLACE_NAME_COLUMNS = (
 
 
 def resolve_places(
-    conn: Connection, place_ids: Iterable[uuid.UUID], installation_id: uuid.UUID | None = None
+    conn: Connection, place_ids: Iterable[uuid.UUID], person_id: uuid.UUID | None = None
 ) -> dict[uuid.UUID, ResolvedName]:
     ids = sorted({str(i) for i in place_ids})
     if not ids:
@@ -112,13 +112,13 @@ def resolve_places(
             + PLACE_NAME_COLUMNS
             + " FROM geo.place p WHERE p.id = ANY(CAST(:ids AS uuid[]))"
         ),
-        {"ids": ids, "inst": _inst(installation_id)},
+        {"ids": ids, "inst": _inst(person_id)},
     ).all()
     return {r.id: resolve_place_row(r) for r in rows}
 
 
 def resolve_cities(
-    conn: Connection, city_ids: Iterable[int], installation_id: uuid.UUID | None = None
+    conn: Connection, city_ids: Iterable[int], person_id: uuid.UUID | None = None
 ) -> dict[int, ResolvedName]:
     ids = sorted({int(i) for i in city_ids})
     if not ids:
@@ -131,7 +131,7 @@ def resolve_cities(
             + override_sql("city", "c.id::text")
             + " AS override FROM geo.city c WHERE c.id = ANY(:ids)"
         ),
-        {"ids": ids, "inst": _inst(installation_id)},
+        {"ids": ids, "inst": _inst(person_id)},
     ).all()
     out: dict[int, ResolvedName] = {}
     for r in rows:
@@ -141,8 +141,8 @@ def resolve_cities(
     return out
 
 
-def _inst(installation_id: uuid.UUID | None) -> str | None:
-    return str(installation_id) if installation_id is not None else None
+def _inst(person_id: uuid.UUID | None) -> str | None:
+    return str(person_id) if person_id is not None else None
 
 
 # -- writing ------------------------------------------------------------------------------------
@@ -234,7 +234,7 @@ def record_lookup(
 
 def set_override(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     kind: str,
     ref: str,
     name: str,
@@ -246,13 +246,13 @@ def set_override(
     clean = " ".join(name.split())
     conn.execute(
         text(
-            "INSERT INTO app.place_name_override (installation_id, entity_kind, entity_ref, name,"
+            "INSERT INTO app.place_name_override (person_id, entity_kind, entity_ref, name,"
             " name_norm, original_name, approved_at) VALUES (:i, :k, :r, :n, :norm, :orig, now())"
-            " ON CONFLICT (installation_id, entity_kind, entity_ref) DO UPDATE SET"
+            " ON CONFLICT (person_id, entity_kind, entity_ref) DO UPDATE SET"
             " name = EXCLUDED.name, name_norm = EXCLUDED.name_norm, approved_at = now()"
         ),
         {
-            "i": installation_id,
+            "i": person_id,
             "k": kind,
             "r": ref,
             "n": clean,
@@ -261,59 +261,59 @@ def set_override(
         },
     )
     if kind == "place":
-        _update_snapshots(conn, installation_id, uuid.UUID(ref), clean)
+        _update_snapshots(conn, person_id, uuid.UUID(ref), clean)
 
 
-def delete_override(conn: Connection, installation_id: uuid.UUID, kind: str, ref: str) -> bool:
+def delete_override(conn: Connection, person_id: uuid.UUID, kind: str, ref: str) -> bool:
     """Undo an override; the item snapshots go back to the resolved name."""
     deleted = conn.execute(
         text(
-            "DELETE FROM app.place_name_override WHERE installation_id = :i AND entity_kind = :k"
+            "DELETE FROM app.place_name_override WHERE person_id = :i AND entity_kind = :k"
             " AND entity_ref = :r"
         ),
-        {"i": installation_id, "k": kind, "r": ref},
+        {"i": person_id, "k": kind, "r": ref},
     ).rowcount
     if deleted and kind == "place":
-        resolved = resolve_places(conn, [uuid.UUID(ref)], installation_id).get(uuid.UUID(ref))
+        resolved = resolve_places(conn, [uuid.UUID(ref)], person_id).get(uuid.UUID(ref))
         if resolved is not None and resolved.display:
-            _update_snapshots(conn, installation_id, uuid.UUID(ref), resolved.display)
+            _update_snapshots(conn, person_id, uuid.UUID(ref), resolved.display)
     return bool(deleted)
 
 
 def _update_snapshots(
-    conn: Connection, installation_id: uuid.UUID, place_id: uuid.UUID, name: str
+    conn: Connection, person_id: uuid.UUID, place_id: uuid.UUID, name: str
 ) -> None:
     conn.execute(
         text(
             "UPDATE app.itinerary_item i SET display_name = :n FROM app.itinerary_day d,"
             " app.itinerary it, app.trip t WHERE i.day_id = d.id AND d.itinerary_id = it.id"
-            " AND it.trip_id = t.id AND t.installation_id = :inst AND i.place_id = :p"
+            " AND it.trip_id = t.id AND i.place_id = :p AND EXISTS (SELECT 1 FROM"
+            " app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :inst)"
             " AND i.display_name IS DISTINCT FROM :n"
         ),
-        {"n": name[:200], "inst": installation_id, "p": place_id},
+        {"n": name[:200], "inst": person_id, "p": place_id},
     )
     conn.execute(
         text(
             "UPDATE app.trip_visit v SET name = :n FROM app.trip t WHERE v.trip_id = t.id"
-            " AND t.installation_id = :inst AND v.geo_place_ref = :p AND v.name IS DISTINCT FROM :n"
+            " AND v.geo_place_ref = :p AND v.name IS DISTINCT FROM :n AND EXISTS (SELECT 1"
+            " FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :inst)"
         ),
-        {"n": name[:200], "inst": installation_id, "p": str(place_id)},
+        {"n": name[:200], "inst": person_id, "p": str(place_id)},
     )
 
 
-def apply_overrides_to_trip(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
-) -> None:
+def apply_overrides_to_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> None:
     """Write the installation's approved display names into a trip's item snapshots."""
     conn.execute(
         text(
             "UPDATE app.itinerary_item i SET display_name = o.name FROM app.itinerary_day d,"
             " app.itinerary it, app.place_name_override o WHERE i.day_id = d.id"
-            " AND d.itinerary_id = it.id AND it.trip_id = :t AND o.installation_id = :inst"
+            " AND d.itinerary_id = it.id AND it.trip_id = :t AND o.person_id = :inst"
             " AND o.entity_kind = 'place' AND o.entity_ref = i.place_id::text"
             " AND i.display_name IS DISTINCT FROM o.name"
         ),
-        {"t": trip_id, "inst": installation_id},
+        {"t": trip_id, "inst": person_id},
     )
 
 

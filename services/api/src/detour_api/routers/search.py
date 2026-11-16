@@ -136,7 +136,7 @@ def search_places(
             lon=lon,
             radius_m=radius_m,
             limit=limit,
-            installation_id=session.installation_id,
+            person_id=session.person_id,
         )
     external = ExternalStatus(state="not_requested")
     if include_external:
@@ -165,7 +165,7 @@ def search_places(
 )
 def get_place(session: SessionDep, place_id: uuid.UUID) -> PlaceDetail:
     with session.tx() as conn:
-        place = geo.get_place(conn, place_id, session.installation_id)
+        place = geo.get_place(conn, place_id, session.person_id)
     if place is None:
         raise ApiError(404, "not_found", "place not found")
     return place
@@ -183,13 +183,13 @@ def set_display_name(
     only (similarly named places are not affected). The original name is kept and shown beside
     it, and the itinerary items that name the place follow. Undo with DELETE."""
     with session.tx() as conn:
-        place = geo.get_place(conn, place_id, session.installation_id)
+        place = geo.get_place(conn, place_id, session.person_id)
         if place is None:
             raise ApiError(404, "not_found", "place not found")
         names_store.set_override(
-            conn, session.installation_id, "place", str(place_id), body.name, place.name
+            conn, session.person_id, "place", str(place_id), body.name, place.name
         )
-        resolved = names_store.resolve_places(conn, [place_id], session.installation_id)
+        resolved = names_store.resolve_places(conn, [place_id], session.person_id)
     return to_api(resolved[place_id])
 
 
@@ -200,9 +200,9 @@ def set_display_name(
 )
 def delete_display_name(session: SessionDep, place_id: uuid.UUID) -> PlaceName:
     with session.tx() as conn:
-        if not names_store.delete_override(conn, session.installation_id, "place", str(place_id)):
+        if not names_store.delete_override(conn, session.person_id, "place", str(place_id)):
             raise not_found("display name")
-        resolved = names_store.resolve_places(conn, [place_id], session.installation_id)
+        resolved = names_store.resolve_places(conn, [place_id], session.person_id)
     if place_id not in resolved:
         raise ApiError(404, "not_found", "place not found")
     return to_api(resolved[place_id])

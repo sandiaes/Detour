@@ -1,7 +1,7 @@
 import type { Day, Itinerary, ItineraryVersion, Stay, Trip } from "@detour/shared";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { AppState, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { call, describeError } from "../api/unwrap";
@@ -26,7 +26,9 @@ import {
   WakingServer,
   useAnnounceOnMount,
   FocusPressable,
+  MetaLine,
 } from "../components/ds";
+import { SHARED_REFRESH_MS, changedByLine, otherMembers } from "../domain/sharing";
 import { Cover } from "../components/ds/Cover";
 import { ResourceNotices } from "../components/ResourceNotices";
 import { keys, useTripActions } from "../data/actions";
@@ -257,6 +259,28 @@ export function TripOverviewScreen({
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
   const { counts, plan } = useTripCounts(trip);
+  // A shared trip (ADR 034, step 4) is read again every minute and when the app comes back, so
+  // the other person's changes show up; "now" moves with it for "Changed by Ana 5 minutes ago".
+  const shared = trip ? otherMembers(trip).length > 0 : false;
+  const [now, setNow] = useState(() => Date.now());
+  const refreshPlan = plan.refresh;
+  const refreshTrips = trips.refresh;
+  useEffect(() => {
+    if (!shared) return;
+    const tick = () => {
+      setNow(Date.now());
+      refreshPlan();
+      refreshTrips();
+    };
+    const id = setInterval(tick, SHARED_REFRESH_MS);
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "active") tick();
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
+  }, [shared, refreshPlan, refreshTrips]);
   const insets = useSafeAreaInsets();
   const planId0 = trip?.selected_itinerary_id ?? null;
   const stays = useResource<Stay[]>(
@@ -421,6 +445,9 @@ export function TripOverviewScreen({
     content = (
       <>
         <ResourceNotices resource={plan} noun="this itinerary" />
+        {trip && changedByLine(trip, plan.data, now) ? (
+          <MetaLine icon="history" text={changedByLine(trip, plan.data, now) as string} />
+        ) : null}
         {items.problem ? <Notice tone="error">{items.problem}</Notice> : null}
         {undoing ? <Notice tone="error">{undoing}</Notice> : null}
         {/* The figures' bottom hairline is the Optimize row's top one, so the row has the same

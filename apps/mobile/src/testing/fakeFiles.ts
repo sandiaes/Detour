@@ -61,6 +61,13 @@ export function createFakeFiles(next: PickedFile | null = PICKED_PDF): FakeFiles
       if (fake.openFails) throw new CannotOpenError(fake.openFails);
       fake.opened.push(doc.uri);
     },
+    readBytes: async () => Uint8Array.from([255, 216, 255, 224]),
+    keepCoverBytes: async (_bytes, tripId) => {
+      covers += 1;
+      const uri = `file:///app/covers/${tripId}-${covers}.jpg`;
+      fake.kept.push(uri);
+      return uri;
+    },
   };
   return fake;
 }

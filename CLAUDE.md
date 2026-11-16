@@ -62,7 +62,19 @@ whose id is its first installation's id, so `Session.installation_id` is now the
 sees the person's trips from any phone (`Session.device_id` is the phone); `POST /v1/installations/join` with a
 one-time link code (8 letters, 10 minutes) or the recovery code (26 letters; signs out the other phones);
 `GET /v1/me`, `POST /v1/me/link-codes`, `POST /v1/me/recovery-code`, `DELETE /v1/me/devices/{id}` (401
-`device_removed` afterwards); More, Your phones in the app. Steps 2 to 6 are not started.
+`device_removed` afterwards); More, Your phones in the app. **Step 2 is built** (tests only; migration `0025` not yet
+run in production): `app.trip.owner_person_id`, `app.trip_member` (one owner per trip, a trigger adds it), `user_place`
+and `place_name_override` by `person_id`; `Session.person_id`; every trip query authorises by membership; only the
+owner deletes a trip (403 `not_trip_owner`). **Step 3 is built** (tests only; migration `0026` not yet run in production):
+your name (`PATCH /v1/me`), partner links by one-time invite code (`app.person_link`, `POST /v1/people/link`), "Who's
+going" (`TripCreate.share_with`), trip members endpoints (share, stop sharing, leave), `Trip.role` and `Trip.members`;
+the app's More, People and "Who's on this trip" in trip settings. **Step 4 is built** (tests only; migration `0027` not
+yet run): `If-Match` plan versions on direct item changes (409 `plan_changed`) and trip `updated_at` (409
+`trip_changed`), `Itinerary.last_change` from triggers on `detour.person`, "Changed by Ana" and a 60 s refresh on shared
+trips. **Step 5 is built** (tests only; migration `0028` not yet run; the private `trip-files` bucket exists in
+Supabase since 2026-11-16): album links in `app.trip_album` and covers chosen from a phone in `app.trip_file` (JPEG ≤ 1600 px, no EXIF,
+base64 in JSON, 250 MB budget) behind `/v1/trips/{id}/albums` and `/own-cover`; the app uploads, downloads and keeps a copy
+(`syncTrip`). Step 6 (shared documents) is not started.
 
 **Regions can be imported from the app** (2026-11-17, ADR 033 step 3, built, awaiting acceptance; tests only; migration
 `0023` and the workflow change must reach `main` first; the GitHub token `DETOUR_GITHUB_TOKEN` and

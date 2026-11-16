@@ -16,7 +16,7 @@ from typing import Any
 
 from sqlalchemy import Connection, text
 
-from detour_api.errors import conflict, invalid, not_found
+from detour_api.errors import ApiError, conflict, invalid, not_found
 from detour_api.models.common import PlaceName
 from detour_api.models.trips import (
     Arrival,
@@ -26,6 +26,7 @@ from detour_api.models.trips import (
     ItemUpdate,
     Itinerary,
     ItinerarySummary,
+    PlanChange,
     PlanNote,
     PlanStats,
     RestaurantInfo,
@@ -196,9 +197,9 @@ def _item(row: Any, transfer: Transfer | None = None) -> Item:
 # -- itineraries -------------------------------------------------------------------------------
 
 
-def create_manual(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Itinerary:
+def create_manual(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Itinerary:
     """An empty itinerary with one day per trip day, to be filled by hand."""
-    trip = trips.require_open_trip(conn, installation_id, trip_id)
+    trip = trips.require_open_trip(conn, person_id, trip_id)
     count = conn.execute(
         text("SELECT count(*) FROM app.itinerary WHERE trip_id = :t"), {"t": trip_id}
     ).scalar_one()
@@ -237,13 +238,13 @@ def create_manual(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UU
                 "cname": base[1],
             },
         )
-    return require_itinerary(conn, installation_id, itinerary_id)
+    return require_itinerary(conn, person_id, itinerary_id)
 
 
 def list_for_trip(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID
 ) -> list[ItinerarySummary]:
-    trips.require_trip(conn, installation_id, trip_id)
+    trips.require_trip(conn, person_id, trip_id)
     rows = conn.execute(
         text(
             f"SELECT {_ITINERARY_COLUMNS} FROM app.itinerary it WHERE it.trip_id = :t"
@@ -255,14 +256,14 @@ def list_for_trip(
 
 
 def get_itinerary(
-    conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID
+    conn: Connection, person_id: uuid.UUID, itinerary_id: uuid.UUID
 ) -> Itinerary | None:
     row = conn.execute(
         text(
             f"SELECT {_ITINERARY_COLUMNS} FROM app.itinerary it"
-            " JOIN app.trip t ON t.id = it.trip_id WHERE it.id = :i AND t.installation_id = :n"
+            " JOIN app.trip t ON t.id = it.trip_id WHERE it.id = :i AND EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :n)"
         ),
-        {"i": itinerary_id, "n": installation_id},
+        {"i": itinerary_id, "n": person_id},
     ).first()
     if row is None:
         return None
@@ -288,7 +289,7 @@ def get_itinerary(
     transfers = _transfers(conn, [it.id for it in items])
     place_ids = [it.place_id for it in items if it.place_id is not None]
     photos = images.place_photos(conn, place_ids)
-    names = resolve_places(conn, place_ids, installation_id)
+    names = resolve_places(conn, place_ids, person_id)
     by_day: dict[uuid.UUID, list[Item]] = {}
     for it in items:
         item = _item(it, transfers.get(it.id))
@@ -331,21 +332,89 @@ def get_itinerary(
                 items=by_day.get(d.id, []),
             )
         )
-    return Itinerary(**summary.model_dump(), days=out)
+    return Itinerary(
+        **summary.model_dump(), days=out, last_change=_last_change(conn, itinerary_id, person_id)
+    )
 
 
-def require_itinerary(
-    conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID
-) -> Itinerary:
-    result = get_itinerary(conn, installation_id, itinerary_id)
+def _last_change(
+    conn: Connection, itinerary_id: uuid.UUID, person_id: uuid.UUID
+) -> PlanChange | None:
+    row = conn.execute(
+        text(
+            "SELECT it.changed_by, it.changed_at, p.display_name FROM app.itinerary it"
+            " LEFT JOIN app.person p ON p.id = it.changed_by WHERE it.id = :i"
+        ),
+        {"i": itinerary_id},
+    ).one()
+    if row.changed_at is None:
+        return None
+    return PlanChange(
+        person_id=row.changed_by,
+        name=row.display_name,
+        you=row.changed_by == person_id,
+        at=row.changed_at,
+    )
+
+
+def check_version(
+    conn: Connection,
+    person_id: uuid.UUID,
+    if_match: str | None,
+    *,
+    itinerary_id: uuid.UUID | None = None,
+    item_id: uuid.UUID | None = None,
+) -> None:
+    """Refuse a change made on an older version of the plan (ADR 034, step 4).
+
+    ``If-Match`` carries the plan version the app last read (``"12"``). Without it nothing is
+    checked. The plan row is locked, so two changes made at once are applied one after the other
+    and the second is refused. A plan the caller cannot see is left to the call that follows (404).
+    """
+    if if_match is None:
+        return
+    raw = if_match.strip().removeprefix("W/").strip('"')
+    if not raw.isdigit():
+        raise invalid("bad_if_match", 'If-Match must be the plan version, for example "12"')
+    member = (
+        "EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = it.trip_id"
+        " AND tm.person_id = :p)"
+    )
+    if item_id is not None:
+        found = conn.execute(
+            text(
+                "SELECT it.id, it.version FROM app.itinerary_item i"
+                " JOIN app.itinerary_day d ON d.id = i.day_id"
+                f" JOIN app.itinerary it ON it.id = d.itinerary_id WHERE i.id = :x AND {member}"
+            ),
+            {"x": item_id, "p": person_id},
+        ).first()
+        if found is None:
+            return
+        itinerary_id = found.id
+    current = conn.execute(
+        text(f"SELECT version FROM app.itinerary it WHERE it.id = :i AND {member} FOR UPDATE"),
+        {"i": itinerary_id, "p": person_id},
+    ).scalar_one_or_none()
+    if current is not None and current != int(raw):
+        raise ApiError(
+            409,
+            "plan_changed",
+            "the plan was changed by someone else after you opened it; it was not saved",
+            extra={"current_version": current},
+        )
+
+
+def require_itinerary(conn: Connection, person_id: uuid.UUID, itinerary_id: uuid.UUID) -> Itinerary:
+    result = get_itinerary(conn, person_id, itinerary_id)
     if result is None:
         raise not_found("itinerary")
     return result
 
 
-def delete_itinerary(conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID) -> None:
-    itinerary = require_itinerary(conn, installation_id, itinerary_id)
-    trips.require_open_trip(conn, installation_id, itinerary.trip_id)
+def delete_itinerary(conn: Connection, person_id: uuid.UUID, itinerary_id: uuid.UUID) -> None:
+    itinerary = require_itinerary(conn, person_id, itinerary_id)
+    trips.require_open_trip(conn, person_id, itinerary.trip_id)
     conn.execute(text("DELETE FROM app.itinerary WHERE id = :i"), {"i": itinerary_id})
 
 
@@ -353,17 +422,17 @@ def delete_itinerary(conn: Connection, installation_id: uuid.UUID, itinerary_id:
 
 
 def _day_context(
-    conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID, day_index: int
+    conn: Connection, person_id: uuid.UUID, itinerary_id: uuid.UUID, day_index: int
 ) -> Any:
     """Lock the day row and return it with the trip status; 404 if it is not the caller's."""
     row = conn.execute(
         text(
             "SELECT d.id AS day_id, d.itinerary_id, t.status AS trip_status FROM app.itinerary_day d"
             " JOIN app.itinerary it ON it.id = d.itinerary_id JOIN app.trip t ON t.id = it.trip_id"
-            " WHERE d.itinerary_id = :i AND d.day_index = :n AND t.installation_id = :inst"
+            " WHERE d.itinerary_id = :i AND d.day_index = :n AND EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :inst)"
             " FOR UPDATE OF d"
         ),
-        {"i": itinerary_id, "n": day_index, "inst": installation_id},
+        {"i": itinerary_id, "n": day_index, "inst": person_id},
     ).first()
     if row is None:
         raise not_found("itinerary day")
@@ -476,7 +545,7 @@ def _check_overlap(
 
 
 def _resolve_place(
-    conn: Connection, installation_id: uuid.UUID, body: ItemCreate
+    conn: Connection, person_id: uuid.UUID, body: ItemCreate
 ) -> tuple[str, float | None, float | None, int | None]:
     """(display name, lat, lon, default minutes) of the item's place, validating its kind. An
     imported attraction's default is its category's visit duration (planner/durations.py)."""
@@ -488,7 +557,7 @@ def _resolve_place(
         assert body.transport is not None  # noqa: S101 - guaranteed by ItemCreate
         return body.transport.display_name(), None, None, None
     if body.place_id is not None:
-        found = geo.place_exists(conn, body.place_id, installation_id)
+        found = geo.place_exists(conn, body.place_id, person_id)
         if found is None or not found[4]:
             raise invalid("place_not_found", "place_id is not an active place")
         kind, name, lat, lon, _, default_minutes, category = found
@@ -501,7 +570,7 @@ def _resolve_place(
             default_minutes = visit_minutes(category)
         return name, lat, lon, default_minutes
     assert body.user_place_id is not None  # noqa: S101 - guaranteed by ItemCreate
-    place = user_places.get(conn, installation_id, body.user_place_id)
+    place = user_places.get(conn, person_id, body.user_place_id)
     if place is None:
         raise invalid("user_place_not_found", "user_place_id is not one of your places")
     if (place.kind in eating) != want_restaurant:
@@ -514,13 +583,13 @@ def _resolve_place(
 
 def create_item(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     itinerary_id: uuid.UUID,
     day_index: int,
     body: ItemCreate,
 ) -> Item:
-    ctx = _day_context(conn, installation_id, itinerary_id, day_index)
-    name, lat, lon, default_minutes = _resolve_place(conn, installation_id, body)
+    ctx = _day_context(conn, person_id, itinerary_id, day_index)
+    name, lat, lon, default_minutes = _resolve_place(conn, person_id, body)
     plan_state.snapshot(conn, itinerary_id)
     leg = body.type == "transport"
     minutes: int | None
@@ -589,24 +658,24 @@ def create_item(
     )
     drop_stale_transfers(conn, [ctx.day_id])
     _bump(conn, itinerary_id)
-    return require_item(conn, installation_id, item_id)
+    return require_item(conn, person_id, item_id)
 
 
-def get_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -> Item | None:
+def get_item(conn: Connection, person_id: uuid.UUID, item_id: uuid.UUID) -> Item | None:
     row = conn.execute(
         text(
             f"SELECT {_ITEM_COLUMNS} FROM app.itinerary_item i {_ITEM_JOINS}"
             " JOIN app.itinerary_day d ON d.id = i.day_id JOIN app.itinerary it ON it.id = d.itinerary_id"
-            " JOIN app.trip t ON t.id = it.trip_id WHERE i.id = :i AND t.installation_id = :n"
+            " JOIN app.trip t ON t.id = it.trip_id WHERE i.id = :i AND EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :n)"
         ),
-        {"i": item_id, "n": installation_id},
+        {"i": item_id, "n": person_id},
     ).first()
     if row is None:
         return None
     item = _item(row, _transfers(conn, [row.id]).get(row.id))
     if row.place_id is not None:
         item.image = images.place_photos(conn, [row.place_id]).get(row.place_id)
-        item.names = _names(resolve_places(conn, [row.place_id], installation_id).get(row.place_id))
+        item.names = _names(resolve_places(conn, [row.place_id], person_id).get(row.place_id))
     return item
 
 
@@ -614,15 +683,15 @@ def _names(resolved: ResolvedName | None) -> PlaceName | None:
     return to_api(resolved) if resolved is not None and resolved.display else None
 
 
-def require_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -> Item:
-    item = get_item(conn, installation_id, item_id)
+def require_item(conn: Connection, person_id: uuid.UUID, item_id: uuid.UUID) -> Item:
+    item = get_item(conn, person_id, item_id)
     if item is None:
         raise not_found("item")
     return item
 
 
 def update_item(
-    conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID, body: ItemUpdate
+    conn: Connection, person_id: uuid.UUID, item_id: uuid.UUID, body: ItemUpdate
 ) -> Item:
     row = conn.execute(
         text(
@@ -632,9 +701,9 @@ def update_item(
             " t.status AS trip_status"
             " FROM app.itinerary_item i JOIN app.itinerary_day d ON d.id = i.day_id"
             " JOIN app.itinerary it ON it.id = d.itinerary_id JOIN app.trip t ON t.id = it.trip_id"
-            " WHERE i.id = :i AND t.installation_id = :n FOR UPDATE OF i"
+            " WHERE i.id = :i AND EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :n) FOR UPDATE OF i"
         ),
-        {"i": item_id, "n": installation_id},
+        {"i": item_id, "n": person_id},
     ).first()
     if row is None:
         raise not_found("item")
@@ -649,7 +718,7 @@ def update_item(
     source = row.duration_source
     if body.use_default_duration:
         # "Stick to the default": the length the item would have had when it was added.
-        current = require_item(conn, installation_id, item_id)
+        current = require_item(conn, person_id, item_id)
         if current.default_duration_minutes is None:
             raise invalid("no_default_duration", "this stop has no default duration")
         minutes, source = current.default_duration_minutes, "category_default"
@@ -730,18 +799,18 @@ def update_item(
     conn.execute(text(f"UPDATE app.itinerary_item SET {', '.join(sets)} WHERE id = :i"), params)
     drop_stale_transfers(conn, [row.day_id, target_day_id])
     _bump(conn, row.itinerary_id)
-    return require_item(conn, installation_id, item_id)
+    return require_item(conn, person_id, item_id)
 
 
-def delete_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID) -> None:
+def delete_item(conn: Connection, person_id: uuid.UUID, item_id: uuid.UUID) -> None:
     row = conn.execute(
         text(
             "SELECT i.day_id, i.position, d.itinerary_id, t.status AS trip_status"
             " FROM app.itinerary_item i JOIN app.itinerary_day d ON d.id = i.day_id"
             " JOIN app.itinerary it ON it.id = d.itinerary_id JOIN app.trip t ON t.id = it.trip_id"
-            " WHERE i.id = :i AND t.installation_id = :n FOR UPDATE OF i"
+            " WHERE i.id = :i AND EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :n) FOR UPDATE OF i"
         ),
-        {"i": item_id, "n": installation_id},
+        {"i": item_id, "n": person_id},
     ).first()
     if row is None:
         raise not_found("item")

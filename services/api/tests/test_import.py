@@ -187,7 +187,7 @@ def _itinerary_item_naming(conn: psycopg.Connection[Any], place_id: object) -> s
     inst, trip, itinerary, day, item = (uuid.uuid4() for _ in range(5))
     conn.execute("INSERT INTO app.installation (id) VALUES (%s)", (inst,))
     conn.execute(
-        "INSERT INTO app.trip (id, installation_id, title, destination_kind, destination_ref,"
+        "INSERT INTO app.trip (id, owner_person_id, title, destination_kind, destination_ref,"
         " destination_name, destination_point, duration_days)"
         " VALUES (%s, %s, 't', 'city', '1', 'X', ST_MakePoint(1, 2), 1)",
         (trip, inst),

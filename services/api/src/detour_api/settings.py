@@ -143,6 +143,13 @@ class Settings(BaseSettings):
     supabase_url: str | None = None
     supabase_service_key: SecretStr | None = None
     photos_bucket: str = "photos"
+    # Files of trips (ADR 034, steps 5 and 6): a PRIVATE bucket, read and written only by the
+    # backend. Covers chosen from the phone now, shared documents later. The budget keeps them
+    # inside Supabase Free's 1 GB of file storage next to the photos (read 2026-11-16).
+    trip_files_bucket: str = "trip-files"
+    trip_files_budget_bytes: int = Field(default=250_000_000, ge=1)
+    cover_upload_max_bytes: int = Field(default=10_000_000, ge=1)
+    cover_max_side: int = Field(default=1600, ge=200, le=4000)
 
     # Plan generation (Phase 4, ADR 014). Whether it may ask the routing provider for the
     # transfers a plan uses (cached times are always read), and the total time it may spend

@@ -1,3 +1,4 @@
+import base64
 import uuid
 from typing import Annotated, Literal
 
@@ -5,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Query, Request, Response, status
 from sqlalchemy import text
 
 from detour_api.adapters.wikimedia import WikimediaClient
-from detour_api.deps import SessionDep
+from detour_api.deps import IfMatch, SessionDep, SettingsDep
 from detour_api.errors import ApiError, invalid
 from detour_api.images import background as photo_background
 from detour_api.images.candidates import (
@@ -24,20 +25,30 @@ from detour_api.models.trips import (
     GenerationResult,
     Itinerary,
     ItinerarySummary,
+    OwnCover,
+    OwnCoverFile,
+    OwnCoverUpload,
     Stay,
     StayCreate,
     StayUpdate,
     Trip,
+    TripAlbum,
+    TripAlbumCreate,
+    TripAlbumUpdate,
     TripCreate,
+    TripMemberAdd,
     TripUpdate,
     TripVisit,
     TripVisitUpdate,
 )
 from detour_api.planner.service import generate_for_trip
-from detour_api.repo import geo, itineraries, routes, stays, trips
+from detour_api.repo import geo, itineraries, routes, stays, trip_files, trips
 from detour_api.routers.responses import AUTH, ERRORS
 
 router = APIRouter(prefix="/v1/trips", tags=["trips"])
+
+# Owner-only actions are refused with 403 not_trip_owner (ADR 034).
+FORBIDDEN = {**ERRORS, 403: ERRORS[404]}
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Create a trip.", responses=ERRORS)
@@ -57,7 +68,7 @@ def _create_trip(session: SessionDep, body: TripCreate) -> Trip:
             first = stops[0]
             return trips.create_trip(
                 conn,
-                session.installation_id,
+                session.person_id,
                 body.model_copy(update={"destination_ref": str(first.city_id)}),
                 destination_name=name,
                 lat=first.lat,
@@ -72,7 +83,7 @@ def _create_trip(session: SessionDep, body: TripCreate) -> Trip:
         with session.tx() as conn:
             return trips.create_trip(
                 conn,
-                session.installation_id,
+                session.person_id,
                 body,
                 destination_name=body.destination_name,
                 lat=body.destination_lat,
@@ -93,7 +104,7 @@ def _create_trip(session: SessionDep, body: TripCreate) -> Trip:
             raise invalid("area_single_city_only", geo.SINGLE_CITY_MESSAGE)
         return trips.create_trip(
             conn,
-            session.installation_id,
+            session.person_id,
             body,
             destination_name=dest.name,
             lat=dest.lat,
@@ -109,9 +120,9 @@ def list_trips(
     status_filter: Annotated[Literal["active", "past"] | None, Query(alias="status")] = None,
 ) -> list[Trip]:
     with session.tx() as conn:
-        trips.archive_due_trips(conn, session.installation_id)  # ADR 006: after the last day
-        found = trips.list_trips(conn, session.installation_id, status_filter)
-        active = photo_background.installation_trips(conn, session.installation_id)
+        trips.archive_due_trips(conn, session.person_id)  # ADR 006: after the last day
+        found = trips.list_trips(conn, session.person_id, status_filter)
+        active = photo_background.installation_trips(conn, session.person_id)
     # Self-healing: photos still missing for the active trips are looked up after the response.
     queue_resolve(request, background, trip_ids=active)
     return found
@@ -120,8 +131,8 @@ def list_trips(
 @router.get("/{trip_id}", summary="One trip.", responses=ERRORS)
 def get_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
     with session.tx() as conn:
-        trips.archive_due_trips(conn, session.installation_id)  # ADR 006: after the last day
-        return trips.require_trip(conn, session.installation_id, trip_id)
+        trips.archive_due_trips(conn, session.person_id)  # ADR 006: after the last day
+        return trips.require_trip(conn, session.person_id, trip_id)
 
 
 @router.patch(
@@ -129,20 +140,160 @@ def get_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
     summary="Change a trip. Only the fields sent are changed; null clears the optional ones.",
     responses=ERRORS,
 )
-def update_trip(session: SessionDep, trip_id: uuid.UUID, body: TripUpdate) -> Trip:
+def update_trip(
+    session: SessionDep, trip_id: uuid.UUID, body: TripUpdate, if_match: IfMatch = None
+) -> Trip:
     with session.tx() as conn:
-        return trips.update_trip(conn, session.installation_id, trip_id, body)
+        trips.check_updated_at(conn, session.person_id, trip_id, if_match)
+        return trips.update_trip(conn, session.person_id, trip_id, body)
 
 
 @router.delete(
     "/{trip_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete a trip with its itineraries, days, items, transfers and archive rows.",
+    summary="Delete a trip with its itineraries, days, items, transfers and archive rows, for "
+    "everyone on it. Only its owner may (403 not_trip_owner).",
+    responses=FORBIDDEN,
+)
+def delete_trip(
+    session: SessionDep, request: Request, background: BackgroundTasks, trip_id: uuid.UUID
+) -> Response:
+    with session.tx() as conn:
+        trips.delete_trip(conn, session.person_id, trip_id)
+    _sweep(request, background)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _sweep(request: Request, background: BackgroundTasks) -> None:
+    """Remove stored files whose trip or cover went away, after the response (ADR 034)."""
+    background.add_task(
+        trip_files.sweep_orphans, request.app.state.engine, request.app.state.file_store
+    )
+
+
+# -- album links and the cover from a phone (ADR 031, ADR 034 step 5) ----------------------------
+
+
+@router.get("/{trip_id}/albums", summary="The trip's photo album links.", responses=ERRORS)
+def list_albums(session: SessionDep, trip_id: uuid.UUID) -> list[TripAlbum]:
+    with session.tx() as conn:
+        return trip_files.list_albums(conn, session.person_id, trip_id)
+
+
+@router.post(
+    "/{trip_id}/albums",
+    status_code=status.HTTP_201_CREATED,
+    summary="Link a photo album (its https share link; words around it are dropped). Up to 20; "
+    "409 album_exists or limit_reached.",
     responses=ERRORS,
 )
-def delete_trip(session: SessionDep, trip_id: uuid.UUID) -> Response:
+def add_album(session: SessionDep, trip_id: uuid.UUID, body: TripAlbumCreate) -> TripAlbum:
     with session.tx() as conn:
-        trips.delete_trip(conn, session.installation_id, trip_id)
+        return trip_files.add_album(conn, session.person_id, trip_id, body.url, body.name)
+
+
+@router.patch("/{trip_id}/albums/{album_id}", summary="Rename an album link.", responses=ERRORS)
+def rename_album(
+    session: SessionDep, trip_id: uuid.UUID, album_id: uuid.UUID, body: TripAlbumUpdate
+) -> TripAlbum:
+    with session.tx() as conn:
+        return trip_files.rename_album(conn, session.person_id, trip_id, album_id, body.name)
+
+
+@router.delete(
+    "/{trip_id}/albums/{album_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove an album link (the album itself is not touched).",
+    responses=ERRORS,
+)
+def remove_album(session: SessionDep, trip_id: uuid.UUID, album_id: uuid.UUID) -> Response:
+    with session.tx() as conn:
+        trip_files.remove_album(conn, session.person_id, trip_id, album_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{trip_id}/own-cover",
+    summary="Set the trip's cover from a picture on a phone, for everyone on the trip. Kept as a "
+    "JPEG of at most 1600 px without metadata. 422 not_a_picture or picture_too_large; 409 "
+    "storage_full; 503 storage_unavailable.",
+    responses={**ERRORS, 503: ERRORS[404]},
+)
+def set_own_cover(
+    session: SessionDep,
+    settings: SettingsDep,
+    request: Request,
+    background: BackgroundTasks,
+    trip_id: uuid.UUID,
+    body: OwnCoverUpload,
+) -> OwnCover:
+    with session.tx() as conn:
+        cover = trip_files.set_own_cover(
+            conn,
+            request.app.state.file_store,
+            settings,
+            session.person_id,
+            trip_id,
+            body.data,
+        )
+    _sweep(request, background)
+    return cover
+
+
+@router.get(
+    "/{trip_id}/own-cover",
+    summary="The trip's cover chosen from a phone (base64 JPEG), for its members only.",
+    responses={**ERRORS, 503: ERRORS[404]},
+)
+def get_own_cover(
+    session: SessionDep, request: Request, response: Response, trip_id: uuid.UUID
+) -> OwnCoverFile:
+    with session.tx() as conn:
+        file_id, data = trip_files.get_own_cover(
+            conn, request.app.state.file_store, session.person_id, trip_id
+        )
+    response.headers["Cache-Control"] = "private, no-store"
+    return OwnCoverFile(
+        id=file_id, content_type="image/jpeg", data=base64.b64encode(data).decode("ascii")
+    )
+
+
+@router.delete(
+    "/{trip_id}/own-cover",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Go back to the destination's photo, for everyone on the trip.",
+    responses=ERRORS,
+)
+def clear_own_cover(
+    session: SessionDep, request: Request, background: BackgroundTasks, trip_id: uuid.UUID
+) -> Response:
+    with session.tx() as conn:
+        trip_files.clear_own_cover(conn, session.person_id, trip_id)
+    _sweep(request, background)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{trip_id}/members",
+    summary="Share the trip with someone you are linked to (owner only, ADR 034). 409 not_linked "
+    "or already_member; 403 not_trip_owner.",
+    responses=FORBIDDEN,
+)
+def add_member(session: SessionDep, trip_id: uuid.UUID, body: TripMemberAdd) -> Trip:
+    with session.tx() as conn:
+        return trips.add_member(conn, session.person_id, trip_id, body.person_id)
+
+
+@router.delete(
+    "/{trip_id}/members/{person_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Leave the trip (your own id), or stop sharing it with someone (owner only). The "
+    "owner cannot leave (409 owner_cannot_leave).",
+    responses=FORBIDDEN,
+)
+def remove_member(session: SessionDep, trip_id: uuid.UUID, person_id: uuid.UUID) -> Response:
+    with session.tx() as conn:
+        trips.remove_member(conn, session.person_id, trip_id, person_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -153,7 +304,7 @@ def delete_trip(session: SessionDep, trip_id: uuid.UUID) -> Response:
 )
 def archive_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
     with session.tx() as conn:
-        return trips.archive_trip(conn, session.installation_id, trip_id)
+        return trips.archive_trip(conn, session.person_id, trip_id)
 
 
 @router.post(
@@ -164,7 +315,7 @@ def archive_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
 )
 def reopen_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
     with session.tx() as conn:
-        return trips.reopen_trip(conn, session.installation_id, trip_id)
+        return trips.reopen_trip(conn, session.person_id, trip_id)
 
 
 @router.get(
@@ -174,13 +325,13 @@ def reopen_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
 )
 def get_trip_archive(session: SessionDep, trip_id: uuid.UUID) -> ArchiveInfo:
     with session.tx() as conn:
-        return trips.get_archive_info(conn, session.installation_id, trip_id)
+        return trips.get_archive_info(conn, session.person_id, trip_id)
 
 
 @router.get("/{trip_id}/visits", summary="The archived visits of a past trip.", responses=ERRORS)
 def list_trip_visits(session: SessionDep, trip_id: uuid.UUID) -> list[TripVisit]:
     with session.tx() as conn:
-        return trips.list_visits(conn, session.installation_id, trip_id)
+        return trips.list_visits(conn, session.person_id, trip_id)
 
 
 @router.patch(
@@ -192,9 +343,7 @@ def update_trip_visit(
     session: SessionDep, trip_id: uuid.UUID, visit_id: uuid.UUID, body: TripVisitUpdate
 ) -> TripVisit:
     with session.tx() as conn:
-        return trips.set_visit_confirmed(
-            conn, session.installation_id, trip_id, visit_id, body.confirmed
-        )
+        return trips.set_visit_confirmed(conn, session.person_id, trip_id, visit_id, body.confirmed)
 
 
 @router.post(
@@ -205,13 +354,13 @@ def update_trip_visit(
 )
 def create_itinerary(session: SessionDep, trip_id: uuid.UUID) -> Itinerary:
     with session.tx() as conn:
-        return itineraries.create_manual(conn, session.installation_id, trip_id)
+        return itineraries.create_manual(conn, session.person_id, trip_id)
 
 
 @router.get("/{trip_id}/itineraries", summary="The trip's itineraries.", responses=ERRORS)
 def list_itineraries(session: SessionDep, trip_id: uuid.UUID) -> list[ItinerarySummary]:
     with session.tx() as conn:
-        return itineraries.list_for_trip(conn, session.installation_id, trip_id)
+        return itineraries.list_for_trip(conn, session.person_id, trip_id)
 
 
 @router.post(
@@ -241,7 +390,7 @@ def set_trip_cover(
     session: SessionDep, request: Request, trip_id: uuid.UUID, body: CoverChoice
 ) -> Trip:
     with session.tx() as conn:
-        trip = trips.require_open_trip(conn, session.installation_id, trip_id)
+        trip = trips.require_open_trip(conn, session.person_id, trip_id)
         destinations = trips.cover_destinations(conn, trip_id)
     image_id = None
     if body.commons_file is not None:
@@ -270,7 +419,7 @@ def set_trip_cover(
             text("UPDATE app.trip SET cover_image_id = :img, updated_at = now() WHERE id = :id"),
             {"img": image_id, "id": trip_id},
         )
-        return trips.require_trip(conn, session.installation_id, trip_id)
+        return trips.require_trip(conn, session.person_id, trip_id)
 
 
 @router.put(
@@ -281,7 +430,7 @@ def set_trip_cover(
 )
 def replace_stops(session: SessionDep, trip_id: uuid.UUID, body: StopsEdit) -> Trip:
     with session.tx() as conn:
-        trip = trips.require_open_trip(conn, session.installation_id, trip_id)
+        trip = trips.require_open_trip(conn, session.person_id, trip_id)
         if trip.destination.kind != "route":
             raise ApiError(409, "not_a_route", "only a multi-city trip has stops to edit")
         if trip.selected_itinerary_id is not None:
@@ -308,7 +457,7 @@ def replace_stops(session: SessionDep, trip_id: uuid.UUID, body: StopsEdit) -> T
                 "t": trip_id,
             },
         )
-        return trips.require_trip(conn, session.installation_id, trip_id)
+        return trips.require_trip(conn, session.person_id, trip_id)
 
 
 @router.get(
@@ -316,7 +465,7 @@ def replace_stops(session: SessionDep, trip_id: uuid.UUID, body: StopsEdit) -> T
 )
 def list_stays(session: SessionDep, trip_id: uuid.UUID) -> list[Stay]:
     with session.tx() as conn:
-        return stays.list_all(conn, session.installation_id, trip_id)
+        return stays.list_all(conn, session.person_id, trip_id)
 
 
 @router.post(
@@ -327,7 +476,7 @@ def list_stays(session: SessionDep, trip_id: uuid.UUID) -> list[Stay]:
 )
 def create_stay(session: SessionDep, trip_id: uuid.UUID, body: StayCreate) -> Stay:
     with session.tx() as conn:
-        return stays.create(conn, session.installation_id, trip_id, body)
+        return stays.create(conn, session.person_id, trip_id, body)
 
 
 @router.patch("/{trip_id}/stays/{stay_id}", summary="Change a stay.", responses=ERRORS)
@@ -335,7 +484,7 @@ def update_stay(
     session: SessionDep, trip_id: uuid.UUID, stay_id: uuid.UUID, body: StayUpdate
 ) -> Stay:
     with session.tx() as conn:
-        return stays.update(conn, session.installation_id, trip_id, stay_id, body)
+        return stays.update(conn, session.person_id, trip_id, stay_id, body)
 
 
 @router.delete(
@@ -346,5 +495,5 @@ def update_stay(
 )
 def delete_stay(session: SessionDep, trip_id: uuid.UUID, stay_id: uuid.UUID) -> Response:
     with session.tx() as conn:
-        stays.delete(conn, session.installation_id, trip_id, stay_id)
+        stays.delete(conn, session.person_id, trip_id, stay_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

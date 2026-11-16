@@ -28,6 +28,9 @@ import {
   stopsProblem,
 } from "../components/StopList";
 import { useTripActions } from "../data/actions";
+import { useResource } from "../data/DataProvider";
+import type { PersonInfo } from "../domain/devices";
+import { personName } from "../domain/sharing";
 import { useExtrasActions } from "../documents/DocumentsProvider";
 import { useNavigation } from "../nav/Navigator";
 import { colors, layout, radius, size as sizes, spacing, type, weight } from "../theme";
@@ -103,6 +106,9 @@ export function CreateTripScreen() {
   // The car is sent: without it Optimize only considers walking. How the user travels otherwise
   // is entered as transport legs on the plan (ADR 032; the old "Public transport" pill is gone).
   const [usesCar, setUsesCar] = useState(false);
+  // "Who's going" (ADR 034): people linked under More, People; nobody chosen is a trip of your own.
+  const me = useResource<PersonInfo>("me", (c) => call(c.GET("/v1/me")), { ttlMs: 0 });
+  const [going, setGoing] = useState<string[]>([]);
   const [working, setWorking] = useState<"creating" | "planning" | "starting" | null>(null);
   const [mode, setMode] = useState<"generate" | "empty">("generate");
   const [problem, setProblem] = useState<{ message: string; issues: string[] } | null>(null);
@@ -243,8 +249,8 @@ export function CreateTripScreen() {
     if (!trip) {
       setWorking("creating");
       try {
-        trip = await actions.createTrip(
-          stops
+        trip = await actions.createTrip({
+          ...(stops
             ? {
                 // The server names a multi-city trip after its cities ("Tokyo to Osaka").
                 title: "Multi-city trip",
@@ -260,8 +266,9 @@ export function CreateTripScreen() {
                 point ? { ...chosen, ...point } : chosen,
                 { days, startDate: startDate.trim() || null, usesCar },
                 !isPlannable(chosen),
-              ),
-        );
+              )),
+          ...(going.length > 0 ? { share_with: going } : {}),
+        });
         setCreated(trip);
         if (cover) {
           // A cover that cannot be set leaves the automatic photo; the trip is not held up.
@@ -408,7 +415,7 @@ export function CreateTripScreen() {
                   />
                   {phoneCover ? (
                     <Text style={styles.credit} numberOfLines={1}>
-                      Your photo (stays on this phone)
+                      Your photo
                     </Text>
                   ) : cover ? (
                     <Text style={styles.credit} numberOfLines={1}>
@@ -575,6 +582,42 @@ export function CreateTripScreen() {
             }}
             onClose={() => setCalendar(false)}
           />
+
+          {me.data && me.data.people.length > 0 ? (
+            <View style={styles.block}>
+              <Text style={styles.label}>Who&apos;s going</Text>
+              <View style={styles.row}>
+                <Chip
+                  label="Just me"
+                  selected={going.length === 0}
+                  onPress={() => setGoing([])}
+                  accessibilityLabel="Just me"
+                  testID="going-just-me"
+                />
+                {me.data.people.map((p) => (
+                  <Chip
+                    key={p.person_id}
+                    label={personName(p.name)}
+                    selected={going.includes(p.person_id)}
+                    onPress={() =>
+                      setGoing((g) =>
+                        g.includes(p.person_id)
+                          ? g.filter((x) => x !== p.person_id)
+                          : [...g, p.person_id],
+                      )
+                    }
+                    accessibilityLabel={`Going with ${personName(p.name)}`}
+                    testID={`going-${p.person_id}`}
+                  />
+                ))}
+              </View>
+              <Text style={styles.hint}>
+                {going.length > 0
+                  ? "They see and change this trip too. Only you can delete it."
+                  : "Only you see this trip. You can share it later from its settings."}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.block}>
             <Text style={styles.label}>Getting around</Text>

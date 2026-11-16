@@ -126,6 +126,48 @@ export function useTripActions() {
     [need, data],
   );
 
+  /** Shares the trip with a linked person (ADR 034; owner only). */
+  const shareTrip = useCallback(
+    async (trip: Trip, personId: string): Promise<Trip> => {
+      const shared = await call(
+        need().POST("/v1/trips/{trip_id}/members", {
+          params: { path: { trip_id: trip.id } },
+          body: { person_id: personId },
+        }),
+      );
+      data.update<Trip[]>(keys.trips, (list) => list.map((t) => (t.id === trip.id ? shared : t)));
+      return shared;
+    },
+    [need, data],
+  );
+
+  /** Stops sharing the trip with someone (the owner), or leaves it (yourself, ADR 034). Leaving
+   * removes the trip from this person's lists, like a deletion does. */
+  const removeMember = useCallback(
+    async (trip: Trip, personId: string): Promise<void> => {
+      await callEmpty(
+        need().DELETE("/v1/trips/{trip_id}/members/{person_id}", {
+          params: { path: { trip_id: trip.id, person_id: personId } },
+        }),
+      );
+      const leaving = trip.members?.some((m) => m.you && m.person_id === personId) ?? false;
+      if (leaving) {
+        data.update<Trip[]>(keys.trips, (list) => list.filter((t) => t.id !== trip.id));
+        data.forget(keys.itineraries(trip.id));
+        if (trip.selected_itinerary_id) data.forget(keys.itinerary(trip.selected_itinerary_id));
+        return;
+      }
+      data.update<Trip[]>(keys.trips, (list) =>
+        list.map((t) =>
+          t.id === trip.id
+            ? { ...t, members: (t.members ?? []).filter((m) => m.person_id !== personId) }
+            : t,
+        ),
+      );
+    },
+    [need, data],
+  );
+
   /** Makes the trip a past trip (ADR 006): the server keeps the visits and deletes the plans, so
    * everything held for the plans is forgotten here too. */
   const archiveTrip = useCallback(
@@ -241,6 +283,8 @@ export function useTripActions() {
     startEmptyTrip,
     selectPlan,
     deleteTrip,
+    shareTrip,
+    removeMember,
     archiveTrip,
     reopenTrip,
     setVisitConfirmed,

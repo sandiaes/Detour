@@ -114,6 +114,17 @@ the same `code_invalid`.
   and join a phone of theirs. Treat the app like the phone itself. There is no email fallback: a
   person who loses every phone and the recovery code cannot get the trips back, except from an
   export file.
+- **Invite codes** (step 3) link two people so they can share trips: same format, lifetime and
+  limits as a link code (they share the `POST /v1/people/link` and `/join` buckets), hashed with
+  their own purpose, so an invite code cannot add a phone and a link code cannot link a person.
+  A linked person sees only your name and the trips you share with them; only a trip's owner can
+  share it, stop sharing it or delete it.
+- **Trip files** (step 5): covers chosen from a phone live in a **private** bucket read only by the
+  backend with the service key and served to the trip's members through the API (no public or
+  signed link leaves the backend). Uploads are decoded and re-encoded with Pillow (at most 10 MB in,
+  at most 60 megapixels, a JPEG of at most 1600 px out, no EXIF), so a file that is not a picture,
+  and the picture's location, never reach the bucket. All trip files together are capped at
+  `DETOUR_TRIP_FILES_BUDGET_BYTES` (250 MB; 409 `storage_full`).
 - **Rotating `DETOUR_TOKEN_SECRET`** invalidates every token and every stored code hash (the app
   registers again by itself; recovery codes must be made again).
 

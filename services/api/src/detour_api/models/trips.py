@@ -62,6 +62,11 @@ class TripCreate(StrictModel):
     )
     duration_days: int = Field(ge=1, le=30)
     start_date: date | None = None
+    share_with: list[uuid.UUID] = Field(
+        default_factory=list,
+        max_length=5,
+        description='"Who\'s going" (ADR 034): people you are linked to, added as editors',
+    )
     uses_car: bool = Field(
         default=True,
         description="False: Optimize considers walking only, never driving",
@@ -131,6 +136,17 @@ class Destination(BaseModel):
     country_iso2: str | None = Field(default=None, description="Known for a place trip (ADR 027)")
 
 
+class TripMember(BaseModel):
+    """Someone who may see and change the trip (ADR 034)."""
+
+    person_id: uuid.UUID
+    name: str | None = Field(description="Their display name; null when they set none")
+    role: Literal["owner", "editor"] = Field(
+        description="owner: created it and alone may delete it or change who is a member"
+    )
+    you: bool = Field(description="This member is the caller")
+
+
 class Trip(BaseModel):
     id: uuid.UUID
     title: str
@@ -158,8 +174,65 @@ class Trip(BaseModel):
     uses_car: bool = Field(
         default=True, description="False: Optimize considers walking only, never driving"
     )
+    role: Literal["owner", "editor"] = Field(
+        default="owner", description="The caller's role on this trip (ADR 034)"
+    )
+    members: list[TripMember] = Field(
+        default_factory=list, description="Everyone on the trip, the owner first (ADR 034)"
+    )
+    own_cover: "OwnCover | None" = Field(
+        default=None,
+        description="A cover picture chosen from a phone and uploaded (ADR 034, step 5); shown "
+        "instead of cover_image. Read it with GET /v1/trips/{id}/own-cover",
+    )
     created_at: datetime
     updated_at: datetime
+
+
+class OwnCover(BaseModel):
+    """A trip's cover chosen from a phone, kept in the private trip-files bucket."""
+
+    id: uuid.UUID = Field(description="Changes whenever the picture changes")
+    bytes: int
+    uploaded_at: datetime
+
+
+class OwnCoverUpload(StrictModel):
+    content_type: Literal["image/jpeg", "image/png", "image/webp"]
+    data: str = Field(
+        min_length=1,
+        max_length=14_000_000,
+        description="The picture, base64; the server keeps a JPEG of at most 1600 px",
+    )
+
+
+class OwnCoverFile(BaseModel):
+    id: uuid.UUID
+    content_type: Literal["image/jpeg"]
+    data: str = Field(description="The JPEG, base64")
+
+
+class TripAlbum(BaseModel):
+    """A link to the travellers' own photo album (ADR 031): opened in its app, never read."""
+
+    id: uuid.UUID
+    name: str
+    url: str
+    added_by: str | None = Field(description="Who linked it (their name); null when unknown")
+    created_at: datetime
+
+
+class TripAlbumCreate(StrictModel):
+    url: str = Field(min_length=9, max_length=2000)
+    name: str | None = Field(default=None, max_length=80)
+
+
+class TripAlbumUpdate(StrictModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class TripMemberAdd(StrictModel):
+    person_id: uuid.UUID = Field(description="A person you are linked to (More, People)")
 
 
 def end_date_of(start: date | None, days: int) -> date | None:
@@ -562,8 +635,20 @@ class ItinerarySummary(BaseModel):
     )
 
 
+class PlanChange(BaseModel):
+    """Who changed the plan last, and when (ADR 034, step 4)."""
+
+    person_id: uuid.UUID | None = Field(description="Null when that person no longer exists")
+    name: str | None = Field(description="Their display name; null when none")
+    you: bool
+    at: datetime
+
+
 class Itinerary(ItinerarySummary):
     days: list[Day]
+    last_change: PlanChange | None = Field(
+        default=None, description="Who changed the plan last; null for plans from before it"
+    )
 
 
 class GenerationResult(BaseModel):

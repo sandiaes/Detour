@@ -55,9 +55,9 @@ NOT_A_BASE = ("PPLX", "PPLH", "PPLQ", "PPLW")
 
 
 def load_context(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, config: PlannerConfig
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, config: PlannerConfig
 ) -> PlanningContext:
-    trip = trips.require_open_trip(conn, installation_id, trip_id)
+    trip = trips.require_open_trip(conn, person_id, trip_id)
     if trip.destination.kind == "place":
         raise ApiError(
             409,
@@ -306,7 +306,7 @@ def _summary(plan: Plan, generation: Generation, request: PlanRequest, sequencer
 
 def save_generation(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     context: PlanningContext,
     generation: Generation,
     sequencer: str,
@@ -315,9 +315,9 @@ def save_generation(
     trip_row = conn.execute(
         text(
             "SELECT status, selected_itinerary_id FROM app.trip"
-            " WHERE id = :t AND installation_id = :i FOR UPDATE"
+            " WHERE id = :t AND id IN (SELECT tm.trip_id FROM app.trip_member tm WHERE tm.person_id = :i) FOR UPDATE"
         ),
-        {"t": context.trip_id, "i": installation_id},
+        {"t": context.trip_id, "i": person_id},
     ).first()
     if trip_row is None:
         raise ApiError(404, "not_found", "trip not found")
@@ -373,7 +373,7 @@ def save_generation(
         )
         _write_days(conn, itinerary_id, plan)
     # The user's approved display names (ADR 025) replace the resolved ones in the snapshots.
-    apply_overrides_to_trip(conn, installation_id, context.trip_id)
+    apply_overrides_to_trip(conn, person_id, context.trip_id)
     return GenerationResult(
         generation_id=generation_id,
         distinct=generation.distinct,
@@ -382,7 +382,7 @@ def save_generation(
         notes=itineraries.render_notes(
             [{"code": n.code, "params": n.params} for n in generation.notes]
         ),
-        itineraries=[itineraries.require_itinerary(conn, installation_id, i) for i in ids],
+        itineraries=[itineraries.require_itinerary(conn, person_id, i) for i in ids],
     )
 
 

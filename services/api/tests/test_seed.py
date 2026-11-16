@@ -30,7 +30,7 @@ def test_the_seed_trip_is_marked_and_made_only_of_imported_places(api_env: ApiEn
     trip_id = build(api_env)
     with psycopg.connect(api_env.database_url) as conn:
         trip = conn.execute(
-            "SELECT title, is_seed, installation_id, destination_name, duration_days, status"
+            "SELECT title, is_seed, owner_person_id, destination_name, duration_days, status"
             " FROM app.trip WHERE id = %s",
             (trip_id,),
         ).fetchone()

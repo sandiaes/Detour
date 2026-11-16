@@ -31,7 +31,7 @@ def db(
 def trip(conn: psycopg.Connection[Any], **over: Any) -> uuid.UUID:
     values: dict[str, Any] = {
         "id": uuid.uuid4(),
-        "installation_id": INSTALLATION,
+        "owner_person_id": INSTALLATION,
         "title": "t",
         "destination_kind": "city",
         "destination_ref": "1",
@@ -157,7 +157,7 @@ def test_user_place_constraints(db: psycopg.Connection[Any]) -> None:
     def make(**over: Any) -> None:
         values: dict[str, Any] = {
             "id": uuid.uuid4(),
-            "installation_id": INSTALLATION,
+            "person_id": INSTALLATION,
             "kind": "location",
             "name": "n",
             "source": "manual_pin",
@@ -183,11 +183,15 @@ def test_user_place_constraints(db: psycopg.Connection[Any]) -> None:
             make(**bad)
 
 
-def test_deleting_an_installation_removes_everything_of_theirs(db: psycopg.Connection[Any]) -> None:
+def test_deleting_a_person_removes_everything_of_theirs(db: psycopg.Connection[Any]) -> None:
     d = day(db)
     item(db, d)
-    db.execute("DELETE FROM app.installation WHERE id = %s", (INSTALLATION,))
+    # ADR 034: the installation's person has the same id; the trip's owner is a member.
+    assert db.execute("SELECT role FROM app.trip_member").fetchall() == [("owner",)]
+    db.execute("DELETE FROM app.person WHERE id = %s", (INSTALLATION,))
     for table in (
+        "installation",
+        "trip_member",
         "trip",
         "itinerary",
         "itinerary_day",

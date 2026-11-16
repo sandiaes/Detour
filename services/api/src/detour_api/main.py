@@ -20,7 +20,7 @@ from detour_api.adapters.photon import PhotonClient
 from detour_api.adapters.valhalla import ValhallaClient
 from detour_api.db import make_engine
 from detour_api.errors import install_handlers
-from detour_api.images.store import ImageStore, make_store
+from detour_api.images.store import ImageStore, make_file_store, make_store
 from detour_api.logging import configure_logging, get_logger
 from detour_api.routers import (
     changes,
@@ -55,6 +55,7 @@ def create_app(
     routing_transport: httpx.BaseTransport | None = None,
     github_transport: httpx.BaseTransport | None = None,
     image_store: ImageStore | None = None,
+    file_store: ImageStore | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
@@ -66,6 +67,7 @@ def create_app(
         app.state.engine = make_engine(url) if url else None
         app.state.photon = PhotonClient(settings, app.state.engine, photon_transport)
         app.state.image_store = image_store or make_store(settings)
+        app.state.file_store = file_store or make_file_store(settings)
         app.state.github = GitHubDispatcher(settings, app.state.engine, github_transport)
         app.state.travel_time = TravelTimeService(
             settings,
@@ -95,6 +97,7 @@ def create_app(
     app.state.settings = settings
     app.state.engine = None
     app.state.image_store = image_store
+    app.state.file_store = file_store
     # Tests inject recorded Wikimedia answers here; production leaves it None (the network).
     app.state.wikimedia_transport = wikimedia_transport
     app.state.photon = PhotonClient(settings, None)

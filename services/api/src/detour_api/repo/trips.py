@@ -12,8 +12,10 @@ from detour_api.models.images import Photo
 from detour_api.models.trips import (
     ArchiveInfo,
     Destination,
+    OwnCover,
     Trip,
     TripCreate,
+    TripMember,
     TripStop,
     TripUpdate,
     TripVisit,
@@ -113,19 +115,49 @@ def _trip(row: Any, cover: Photo | None = None, stops: list[TripStop] | None = N
     )
 
 
-def get_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip | None:
+def get_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip | None:
     row = conn.execute(
-        text(f"SELECT {_TRIP_COLUMNS} FROM app.trip t WHERE t.id = :t AND t.installation_id = :i"),
-        {"t": trip_id, "i": installation_id},
+        text(
+            f"SELECT {_TRIP_COLUMNS} FROM app.trip t WHERE t.id = :t"
+            f" AND EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :i)"
+        ),
+        {"t": trip_id, "i": person_id},
     ).first()
     if row is None:
         return None
     stops = trip_stops(conn, [row.id]) if row.destination_kind == "route" else {}
-    return _trip(row, images.trip_covers(conn, [row.id]).get(row.id), stops.get(row.id))
+    trip = _trip(row, images.trip_covers(conn, [row.id]).get(row.id), stops.get(row.id))
+    return _with_members(conn, person_id, [trip])[0]
 
 
-def require_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
-    trip = get_trip(conn, installation_id, trip_id)
+def check_updated_at(
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, if_match: str | None
+) -> None:
+    """Refuse a change to a trip someone else changed after the caller read it (ADR 034, step
+    4): ``If-Match`` carries the trip's ``updated_at`` as the API sent it. The row is locked."""
+    if if_match is None:
+        return
+    try:
+        expected = datetime.fromisoformat(if_match.strip().strip('"').replace("Z", "+00:00"))
+    except ValueError:
+        raise invalid("bad_if_match", "If-Match must be the trip's updated_at") from None
+    current = conn.execute(
+        text(
+            "SELECT t.updated_at FROM app.trip t WHERE t.id = :t AND EXISTS (SELECT 1 FROM"
+            " app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :p) FOR UPDATE"
+        ),
+        {"t": trip_id, "p": person_id},
+    ).scalar_one_or_none()
+    if current is not None and current != expected:
+        raise ApiError(
+            409,
+            "trip_changed",
+            "the trip was changed by someone else after you opened it; it was not saved",
+        )
+
+
+def require_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+    trip = get_trip(conn, person_id, trip_id)
     if trip is None:
         raise not_found("trip")
     return trip
@@ -143,32 +175,139 @@ def refuse_if_past(status: str) -> None:
         raise past_refusal()
 
 
-def require_open_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+def require_open_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
     """The caller's trip, refused with 409 ``trip_past`` when it is a past trip."""
-    trip = require_trip(conn, installation_id, trip_id)
+    trip = require_trip(conn, person_id, trip_id)
     refuse_if_past(trip.status)
     return trip
 
 
-def list_trips(
-    conn: Connection, installation_id: uuid.UUID, status: str | None = None
-) -> list[Trip]:
+def list_trips(conn: Connection, person_id: uuid.UUID, status: str | None = None) -> list[Trip]:
     rows = conn.execute(
         text(
-            f"SELECT {_TRIP_COLUMNS} FROM app.trip t WHERE t.installation_id = :i"
+            f"SELECT {_TRIP_COLUMNS} FROM app.trip t WHERE EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :i)"
             " AND (CAST(:s AS text) IS NULL OR t.status = :s)"
             " ORDER BY t.created_at DESC, t.id"
         ),
-        {"i": installation_id, "s": status},
+        {"i": person_id, "s": status},
     ).all()
     covers = images.trip_covers(conn, [r.id for r in rows])
     stops = trip_stops(conn, [r.id for r in rows if r.destination_kind == "route"])
-    return [_trip(r, covers.get(r.id), stops.get(r.id)) for r in rows]
+    return _with_members(
+        conn, person_id, [_trip(r, covers.get(r.id), stops.get(r.id)) for r in rows]
+    )
+
+
+# -- members (ADR 034) ---------------------------------------------------------------------------
+
+
+def _with_members(conn: Connection, person_id: uuid.UUID, found: list[Trip]) -> list[Trip]:
+    """Each trip with its members (the owner first, then by when they were added) and the
+    caller's role."""
+    if not found:
+        return found
+    rows = conn.execute(
+        text(
+            """
+            SELECT m.trip_id, m.person_id, m.role, p.display_name FROM app.trip_member m
+            JOIN app.person p ON p.id = m.person_id
+            WHERE m.trip_id = ANY(CAST(:ids AS uuid[]))
+            ORDER BY m.trip_id, m.role = 'owner' DESC, m.added_at, m.person_id
+            """
+        ),
+        {"ids": [str(t.id) for t in found]},
+    ).all()
+    members: dict[uuid.UUID, list[TripMember]] = {}
+    for r in rows:
+        members.setdefault(r.trip_id, []).append(
+            TripMember(
+                person_id=r.person_id,
+                name=r.display_name,
+                role=r.role,
+                you=r.person_id == person_id,
+            )
+        )
+    covers = conn.execute(
+        text(
+            "SELECT trip_id, id, bytes, created_at FROM app.trip_file"
+            " WHERE kind = 'cover' AND trip_id = ANY(CAST(:ids AS uuid[]))"
+        ),
+        {"ids": [str(t.id) for t in found]},
+    ).all()
+    own = {c.trip_id: OwnCover(id=c.id, bytes=c.bytes, uploaded_at=c.created_at) for c in covers}
+    for trip in found:
+        trip.members = members.get(trip.id, [])
+        trip.role = next((m.role for m in trip.members if m.you), "owner")
+        trip.own_cover = own.get(trip.id)
+    return found
+
+
+def _linked(conn: Connection, a: uuid.UUID, b: uuid.UUID) -> bool:
+    return (
+        conn.execute(
+            text("SELECT 1 FROM app.person_link WHERE person_a = :a AND person_b = :b"),
+            {"a": min(a, b), "b": max(a, b)},
+        ).first()
+        is not None
+    )
+
+
+def _require_owner(trip: Trip) -> None:
+    if trip.role != "owner":
+        raise ApiError(
+            403, "not_trip_owner", "only the person who created this trip can change who is on it"
+        )
+
+
+def add_member(
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, other: uuid.UUID
+) -> Trip:
+    """Share the trip with a linked person, who can then read and change it (role editor)."""
+    trip = require_trip(conn, person_id, trip_id)
+    _require_owner(trip)
+    if other == person_id or not _linked(conn, person_id, other):
+        raise conflict("not_linked", "you can share a trip only with someone linked under People")
+    added = conn.execute(
+        text(
+            """
+            INSERT INTO app.trip_member (trip_id, person_id, role, added_by)
+            VALUES (:t, :o, 'editor', :p) ON CONFLICT (trip_id, person_id) DO NOTHING RETURNING 1
+            """
+        ),
+        {"t": trip_id, "o": other, "p": person_id},
+    ).first()
+    if added is None:
+        raise conflict("already_member", "this person is already on the trip")
+    return require_trip(conn, person_id, trip_id)
+
+
+def remove_member(
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, other: uuid.UUID
+) -> None:
+    """Leave a trip (a member removes themself), or stop sharing it with someone (the owner).
+    The owner cannot leave: they delete the trip instead."""
+    trip = require_trip(conn, person_id, trip_id)
+    if other == person_id:
+        if trip.role == "owner":
+            raise conflict(
+                "owner_cannot_leave", "you created this trip; delete it or stop sharing it instead"
+            )
+    else:
+        _require_owner(trip)
+    removed = conn.execute(
+        text(
+            "DELETE FROM app.trip_member WHERE trip_id = :t AND person_id = :o AND role = 'editor'"
+            " RETURNING 1"
+        ),
+        {"t": trip_id, "o": other},
+    ).first()
+    if removed is None:
+        raise not_found("trip member")
 
 
 def create_trip(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     body: TripCreate,
     *,
     destination_name: str,
@@ -179,7 +318,7 @@ def create_trip(
     title: str | None = None,
 ) -> Trip:
     count = conn.execute(
-        text("SELECT count(*) FROM app.trip WHERE installation_id = :i"), {"i": installation_id}
+        text("SELECT count(*) FROM app.trip WHERE owner_person_id = :i"), {"i": person_id}
     ).scalar_one()
     if count >= MAX_TRIPS_PER_INSTALLATION:
         raise conflict(
@@ -189,7 +328,7 @@ def create_trip(
     conn.execute(
         text(
             """
-            INSERT INTO app.trip (id, installation_id, title, destination_kind, destination_ref,
+            INSERT INTO app.trip (id, owner_person_id, title, destination_kind, destination_ref,
                 destination_name, destination_point, duration_days, start_date, is_seed,
                 destination_country, uses_car)
             VALUES (:id, :inst, :title, :kind, :ref, :dname,
@@ -199,7 +338,7 @@ def create_trip(
         ),
         {
             "id": trip_id,
-            "inst": installation_id,
+            "inst": person_id,
             "title": title or body.title,
             "kind": body.destination_kind,
             "ref": body.destination_ref,
@@ -215,7 +354,19 @@ def create_trip(
     )
     if stops:
         write_stops(conn, trip_id, stops)
-    return require_trip(conn, installation_id, trip_id)
+    for other in dict.fromkeys(body.share_with):  # "Who's going" (ADR 034)
+        if other == person_id or not _linked(conn, person_id, other):
+            raise conflict(
+                "not_linked", "you can share a trip only with someone linked under People"
+            )
+        conn.execute(
+            text(
+                "INSERT INTO app.trip_member (trip_id, person_id, role, added_by)"
+                " VALUES (:t, :o, 'editor', :p)"
+            ),
+            {"t": trip_id, "o": other, "p": person_id},
+        )
+    return require_trip(conn, person_id, trip_id)
 
 
 class ResolvedStop:
@@ -257,12 +408,12 @@ def write_stops(conn: Connection, trip_id: uuid.UUID, stops: list[ResolvedStop])
 
 
 def update_trip(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, body: TripUpdate
+    conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID, body: TripUpdate
 ) -> Trip:
-    trip = require_open_trip(conn, installation_id, trip_id)
+    trip = require_open_trip(conn, person_id, trip_id)
     changed = body.model_fields_set
     sets: list[str] = []
-    params: dict[str, Any] = {"t": trip_id, "i": installation_id}
+    params: dict[str, Any] = {"t": trip_id, "i": person_id}
 
     if "title" in changed:
         if body.title is None:
@@ -297,9 +448,7 @@ def update_trip(
         params["sel"] = body.selected_itinerary_id
     if sets:
         conn.execute(
-            text(
-                f"UPDATE app.trip SET {', '.join(sets)}, updated_at = now() WHERE id = :t AND installation_id = :i"
-            ),
+            text(f"UPDATE app.trip SET {', '.join(sets)}, updated_at = now() WHERE id = :t"),
             params,
         )
     if "start_date" in changed:
@@ -312,7 +461,7 @@ def update_trip(
             ),
             {"s": body.start_date, "t": trip_id},
         )
-    return require_trip(conn, installation_id, trip_id)
+    return require_trip(conn, person_id, trip_id)
 
 
 def _select_itinerary(conn: Connection, trip_id: uuid.UUID, itinerary_id: uuid.UUID | None) -> None:
@@ -346,15 +495,17 @@ def _select_itinerary(conn: Connection, trip_id: uuid.UUID, itinerary_id: uuid.U
         )
 
 
-def delete_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> None:
-    """Deletes the trip with its itineraries, days, items, transfers and archive rows. User places
-    stay (they belong to the installation)."""
+def delete_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> None:
+    """Deletes the trip with its itineraries, days, items, transfers and archive rows, for every
+    member. Only its owner may (ADR 034: both edit, the creator deletes); a member is refused with
+    403 ``not_trip_owner``. Places stay (they belong to the person who added them)."""
+    require_trip(conn, person_id, trip_id)
     result = conn.execute(
-        text("DELETE FROM app.trip WHERE id = :t AND installation_id = :i"),
-        {"t": trip_id, "i": installation_id},
+        text("DELETE FROM app.trip WHERE id = :t AND owner_person_id = :i"),
+        {"t": trip_id, "i": person_id},
     )
     if result.rowcount == 0:
-        raise not_found("trip")
+        raise ApiError(403, "not_trip_owner", "only the person who created this trip can delete it")
 
 
 # -- archive (ADR 006) -------------------------------------------------------------------------
@@ -394,19 +545,19 @@ def _archive(conn: Connection, trip: Trip, reason: str) -> bool:
     return True
 
 
-def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+def archive_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
     """Turn a trip into a past trip, on the user's request. The plan is kept; only the undo
     history is cut to five versions."""
-    trip = require_trip(conn, installation_id, trip_id)
+    trip = require_trip(conn, person_id, trip_id)
     if trip.status == "past" or not _archive(conn, trip, "user"):
         raise conflict("already_archived", "the trip is already a past trip")
-    return require_trip(conn, installation_id, trip_id)
+    return require_trip(conn, person_id, trip_id)
 
 
-def reopen_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+def reopen_trip(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
     """Take a past trip out of the past: it is an ordinary trip again and the two-day rule leaves
     it alone (``reopened_at``), so it does not become past again by itself."""
-    trip = require_trip(conn, installation_id, trip_id)
+    trip = require_trip(conn, person_id, trip_id)
     if trip.status != "past":
         raise conflict("not_archived", "only a past trip can be reopened")
     conn.execute(
@@ -416,11 +567,11 @@ def reopen_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
         ),
         {"t": trip_id},
     )
-    return require_trip(conn, installation_id, trip_id)
+    return require_trip(conn, person_id, trip_id)
 
 
 def archive_due_trips(
-    conn: Connection, installation_id: uuid.UUID, today: date | None = None
+    conn: Connection, person_id: uuid.UUID, today: date | None = None
 ) -> list[uuid.UUID]:
     """Archives the installation's active trips whose last day ended
     ``AUTO_ARCHIVE_GRACE_DAYS`` ago. Trips without a start date never become past by themselves
@@ -430,18 +581,19 @@ def archive_due_trips(
     Called when the trips are read, so no scheduled job is needed."""
     due = conn.execute(
         text(
-            "SELECT id FROM app.trip WHERE installation_id = :i AND status = 'active' AND NOT is_seed"
+            "SELECT id FROM app.trip WHERE id IN (SELECT tm.trip_id FROM app.trip_member tm WHERE tm.person_id = :i)"
+            " AND status = 'active' AND NOT is_seed"
             " AND start_date IS NOT NULL AND reopened_at IS NULL"
             " AND start_date + (duration_days - 1 + :g) <= CAST(:today AS date)"
             # A trip made after its last day was entered as a journey already taken: the user
             # fills it and marks it past (ADR 026 decision 23).
             " AND CAST(created_at AS date) <= start_date + (duration_days - 1 + :g) ORDER BY id"
         ),
-        {"i": installation_id, "g": AUTO_ARCHIVE_GRACE_DAYS, "today": today or today_utc()},
+        {"i": person_id, "g": AUTO_ARCHIVE_GRACE_DAYS, "today": today or today_utc()},
     ).all()
     archived: list[uuid.UUID] = []
     for row in due:
-        trip = get_trip(conn, installation_id, row.id)
+        trip = get_trip(conn, person_id, row.id)
         if trip is not None and _archive(conn, trip, "after_last_day"):
             archived.append(row.id)
     return archived
@@ -473,19 +625,15 @@ def archive_info(conn: Connection, trip_id: uuid.UUID) -> ArchiveInfo:
     )
 
 
-def get_archive_info(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
-) -> ArchiveInfo:
-    trip = require_trip(conn, installation_id, trip_id)
+def get_archive_info(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> ArchiveInfo:
+    trip = require_trip(conn, person_id, trip_id)
     if trip.status != "past":
         raise conflict("not_archived", "only a past trip has an archive")
     return archive_info(conn, trip_id)
 
 
-def list_visits(
-    conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID
-) -> list[TripVisit]:
-    require_trip(conn, installation_id, trip_id)
+def list_visits(conn: Connection, person_id: uuid.UUID, trip_id: uuid.UUID) -> list[TripVisit]:
+    require_trip(conn, person_id, trip_id)
     return list_visits_of(conn, trip_id)
 
 
@@ -520,19 +668,19 @@ def list_visits_of(conn: Connection, trip_id: uuid.UUID) -> list[TripVisit]:
 
 def set_visit_confirmed(
     conn: Connection,
-    installation_id: uuid.UUID,
+    person_id: uuid.UUID,
     trip_id: uuid.UUID,
     visit_id: uuid.UUID,
     confirmed: bool,
 ) -> TripVisit:
-    require_trip(conn, installation_id, trip_id)
+    require_trip(conn, person_id, trip_id)
     result = conn.execute(
         text("UPDATE app.trip_visit SET confirmed = :c WHERE id = :v AND trip_id = :t"),
         {"c": confirmed, "v": visit_id, "t": trip_id},
     )
     if result.rowcount == 0:
         raise not_found("visit")
-    return next(v for v in list_visits(conn, installation_id, trip_id) if v.id == visit_id)
+    return next(v for v in list_visits(conn, person_id, trip_id) if v.id == visit_id)
 
 
 def cover_destinations(conn: Connection, trip_id: uuid.UUID) -> list[tuple[str, str]]:

@@ -143,8 +143,8 @@ def test_adding_then_removing_a_place_restores_the_previous_plan(api_env: ApiEnv
     assert restored == original  # days, items (ids too), transfers, summary and versions
     after = _get(api_env, plan["id"])
     assert after["version"] == 3
-    assert {k: v for k, v in after.items() if k != "version"} == {
-        k: v for k, v in original_read.items() if k != "version"
+    assert {k: v for k, v in after.items() if k not in ("version", "last_change")} == {
+        k: v for k, v in original_read.items() if k not in ("version", "last_change")
     }
 
 

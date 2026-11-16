@@ -4,7 +4,15 @@
   to set a trip up with her, or solo"; also shared documents and the other things kept only on the
   phone). **Step 1 (people and devices) is built** (2026-11-16, owner: "Go with codes, start step
   1"), awaiting acceptance; checked by tests only, not on a device; migration `0024` not yet run in
-  production. Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
+  production. **Step 2 (trip membership) is built** (2026-11-16, owner: "Lets start phase 2"),
+  awaiting acceptance, tests only, migration `0025` not yet run in production; no visible change.
+  **Step 3 (names, partner links and sharing) is built** (2026-11-16, owner: "go ahead with step
+  3"), awaiting acceptance, tests only, migration `0026` not yet run in production.
+  **Step 4 (safe edits by two people) is built** (2026-11-16, owner: "step 4 go"), awaiting
+  acceptance, tests only, migration `0027` not yet run in production.
+  **Step 5 (album links and covers on the server) is built** (2026-11-16, owner: "go with step 5"),
+  awaiting acceptance, tests only, migration `0028` not yet run in production; the `trip-files`
+  bucket was created by the owner on 2026-11-16 (private). Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
   (recorded there and in the decisions); question 1 (codes or a sign-in provider) is still open.
 - **Date:** 2026-11-16
 - **Changes when accepted:** D5 in `docs/app-plan.md` (anonymous installation, no accounts), the
@@ -242,6 +250,98 @@ Files: migration `0024_people_and_devices.py`; `repo/people.py`, `routers/people
 the app's `screens/DevicesScreen.tsx`, `domain/devices.ts`, `api/connect.ts` (`personId`),
 `data/DataProvider.tsx`. Tests: `test_people.py`, `test_migration_0024.py`, `test_abuse.py`,
 `screens/Devices.test.tsx`.
+
+## Step 2 as built (2026-11-16)
+
+- Migration `0025`: `app.trip.installation_id` is now `owner_person_id`, `app.user_place` and
+  `app.place_name_override` have `person_id`, all fks to `app.person`; `app.trip_member` with one
+  `owner` per trip, filled for every existing trip, and a trigger that adds the owner when a trip is
+  inserted (so imports, the seed and tests need no change).
+- The API's `Session.person_id` replaces `installation_id`. Every query that found a trip, plan,
+  day, item, change set, stay or visit "of this installation" now asks for membership
+  (`EXISTS (SELECT 1 FROM app.trip_member tm WHERE tm.trip_id = t.id AND tm.person_id = :p)`);
+  creating counts and stamps the owner; updates rely on the membership check made first.
+- `DELETE /v1/trips/{id}` is the owner's only: a member gets 403 `not_trip_owner` (owner, question 2).
+- A place on a shared trip is read with the plan (by id), so the partner's restaurant shows for both;
+  each person's list of own places stays their own. A display-name override is personal but also
+  rewrites the stored names of the trips the person is a member of, which the partner then sees
+  (until step 3 decides otherwise).
+- Joining a phone (step 1) also moves its memberships; where both people were members of one trip,
+  one row stays and the owner role wins.
+- `Trip` responses do not show members or role yet (step 3). Tests: `test_trip_members.py`,
+  `test_migration_0025.py`.
+
+## Step 3 as built (2026-11-16)
+
+- Migration `0026`: `app.person.display_name`, `app.person_link`, `app.link_code.kind`
+  (`device` or `invite`).
+- API: `PATCH /v1/me` (name), `GET /v1/me` adds `display_name` and `people`;
+  `POST /v1/me/invite-codes`, `POST /v1/people/link` (400 `code_invalid`, 409 `already_linked`,
+  `own_invite`, `limit_reached`), `DELETE /v1/people/{id}`; `TripCreate.share_with` ("Who's going",
+  409 `not_linked`); `POST /v1/trips/{id}/members` and `DELETE /v1/trips/{id}/members/{person}`
+  (leave with your own id; the owner cannot leave, 409 `owner_cannot_leave`; owner-only actions 403
+  `not_trip_owner`); `Trip.role` and `Trip.members` (name, role, `you`).
+- App: More, People; Who's going; Who's on this trip in trip settings (Share, Stop sharing, Leave;
+  Delete only for the owner); "With Ana" on trip cards. Leaving deletes the trip's documents on that
+  phone, as deleting does.
+- **Not built:** "Give them a copy" (decision 13): the owner can export the trip instead (ADR 028).
+  Display-name overrides still rewrite stored names on shared trips (see step 2).
+- Tests: `test_sharing.py`, `screens/Sharing.test.tsx`, the Who's going test in
+  `CreateTripScreen.test.tsx`.
+
+## Step 4 as built (2026-11-16)
+
+- **Version check:** `If-Match: "<plan version>"` on `POST /v1/itineraries/{id}/days/{n}/items`,
+  `PATCH` and `DELETE /v1/items/{id}` and `DELETE /v1/itineraries/{id}`; a different version is
+  409 `plan_changed` with `current_version`. The plan row is locked while it is checked, so two
+  changes at the same moment are applied one after the other and the second is refused. `PATCH
+  /v1/trips/{id}` takes the trip's `updated_at` (409 `trip_changed`). The header is optional: a
+  call without it is not checked (older builds, scripts). Change sets, Optimize and undo already
+  refuse a stale preview (`change_set_stale`). Stays are separate rows and are not checked.
+- **The app** sends the version of the plan it holds with every direct plan change (Add with day
+  and time, Edit time and length, lock, remove, transport legs); on `plan_changed` it forgets its
+  copy and says "Someone else changed this plan after you opened it…". It does not send the trip's
+  `updated_at` yet (selecting a plan would be refused after any other trip change).
+- **Who changed it:** migration `0027` adds `app.itinerary.changed_by` and `changed_at` and
+  `app.trip.updated_by`, filled by triggers from a transaction setting (`detour.person`) the API
+  sets at the start of every transaction. `Itinerary.last_change` (person, name, `you`, time).
+  A shared trip's overview shows "Changed by Ana 5 minutes ago" when the last change was someone
+  else's (always, not only since you last opened it: simpler, and still true).
+- **Freshness:** no `GET /v1/trips/changes` endpoint. A shared trip's overview reads the plan and
+  the trips again every 60 seconds and when the app comes back to the foreground.
+- Tests: `test_concurrency.py`, `screens/Concurrency.test.tsx`.
+
+## Step 5 as built (2026-11-16)
+
+Supabase's Free plan was **re-read on 2026-11-16** ✅ (<https://supabase.com/pricing>,
+<https://supabase.com/docs/guides/storage/management/pricing>,
+<https://supabase.com/docs/guides/storage/uploads/file-limits>): "1 GB file storage", "Max file
+upload size | 50 MB" ("For Free projects, the limit can't exceed 50 MB"), "5 GB egress" and "5 GB
+cached egress", "Free projects are paused after 1 week of inactivity". No date on the pages. Whether
+private buckets are available on Free is not stated on these pages; the owner created the private
+`trip-files` bucket on the Free project on 2026-11-16 (no public flag, no policies, file size limit
+unset, so Supabase's 50 MB applies), which settles it.
+
+- Migration `0028`: `app.trip_album`, `app.trip_file` (kind `cover` now, `document` for step 6) and
+  `app.trip_file_orphan` (objects to remove after a change commits).
+- API: `GET/POST /v1/trips/{id}/albums`, `PATCH/DELETE .../albums/{album}` (409 `album_exists`,
+  `limit_reached`; allowed on past trips); `PUT/GET/DELETE /v1/trips/{id}/own-cover` with the
+  picture as base64 in JSON (the app has no binary upload path; a cover is small), re-encoded to a
+  JPEG of at most 1600 px without EXIF (no location), 10 MB in at most, a 250 MB budget for all trip
+  files (409 `storage_full`), 503 `storage_unavailable` without the bucket; `Trip.own_cover`.
+  Members only; a cover change bumps the trip's `updated_at` (so "who changed it" records it).
+- Storage: the private `trip-files` bucket through `SupabaseImageStore(private=True)`, read on the
+  `authenticated` path with the service key; never a public or signed URL.
+- App: album changes go to the server first, then the phone's copy; a cover chosen on the phone is
+  shown at once and uploaded; `syncTrip` (on the trips list, the Photos screen and a trip's Photos
+  tab, at most every 5 minutes per trip) uploads albums and covers an older build kept only on the
+  phone, downloads a cover chosen on another phone and drops one removed elsewhere. The phone's copy
+  keeps them visible offline. The wording no longer says "stays on this phone".
+- **Not built here:** iPhone HEIC pictures are refused by the server (`not_a_picture`; Pillow reads
+  JPEG, PNG and WebP). The phone does not shrink the picture before uploading (it would need a new
+  native module); the server does.
+- Tests: `test_trip_files.py`, `TripPhotos.test.tsx` (server albums, upload, download),
+  `util/base64.test.ts`.
 
 ## Build order (each step shippable and tested on its own)
 
