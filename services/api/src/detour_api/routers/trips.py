@@ -148,7 +148,7 @@ def delete_trip(session: SessionDep, trip_id: uuid.UUID) -> Response:
 
 @router.post(
     "/{trip_id}/archive",
-    summary="Make the trip a past trip (ADR 006): its plan is kept; only the undo history is cut to five versions.",
+    summary="Make the trip a past trip (ADR 006): its plan stays, undo history is cut to five.",
     responses=ERRORS,
 )
 def archive_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
