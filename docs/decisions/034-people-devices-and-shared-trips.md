@@ -12,7 +12,7 @@
   acceptance, tests only, migration `0027` not yet run in production.
   **Step 5 (album links and covers on the server) is built** (2026-11-16, owner: "go with step 5"),
   awaiting acceptance, tests only, migration `0028` not yet run in production; the `trip-files`
-  bucket must be created by the owner (deployment.md). Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
+  bucket was created by the owner on 2026-11-16 (private). Owner's answers of 2026-11-16 to section 9: questions 2 to 6 answered
   (recorded there and in the decisions); question 1 (codes or a sign-in provider) is still open.
 - **Date:** 2026-11-16
 - **Changes when accepted:** D5 in `docs/app-plan.md` (anonymous installation, no accounts), the
@@ -318,8 +318,9 @@ Supabase's Free plan was **re-read on 2026-11-16** ✅ (<https://supabase.com/pr
 <https://supabase.com/docs/guides/storage/uploads/file-limits>): "1 GB file storage", "Max file
 upload size | 50 MB" ("For Free projects, the limit can't exceed 50 MB"), "5 GB egress" and "5 GB
 cached egress", "Free projects are paused after 1 week of inactivity". No date on the pages. Whether
-private buckets are available on Free is **not stated** on these pages (to confirm when the bucket
-is created).
+private buckets are available on Free is not stated on these pages; the owner created the private
+`trip-files` bucket on the Free project on 2026-11-16 (no public flag, no policies, file size limit
+unset, so Supabase's 50 MB applies), which settles it.
 
 - Migration `0028`: `app.trip_album`, `app.trip_file` (kind `cover` now, `document` for step 6) and
   `app.trip_file_orphan` (objects to remove after a change commits).
