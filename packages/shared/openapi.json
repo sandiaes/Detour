@@ -7097,6 +7097,20 @@
               }
             ],
             "description": "Required for type transport (ADR 032), and only then. Its length may be left out: it is then unknown"
+          },
+          "shift_later_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1440.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shift Later Minutes",
+            "description": "A transport leg only (ADR 032): move every timed item after the leg on its day this many minutes later, in the same edit, so the leg fits. Refused when one would end after midnight"
           }
         },
         "additionalProperties": false,
@@ -7191,6 +7205,20 @@
               }
             ],
             "description": "A transport leg only: replaces what the user entered (ADR 032). On a leg, duration_minutes: null makes its length unknown"
+          },
+          "shift_later_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1440.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shift Later Minutes",
+            "description": "A transport leg only (ADR 032): move every timed item after the leg on its day this many minutes later, in the same edit, so the leg fits. Refused when one would end after midnight"
           }
         },
         "additionalProperties": false,

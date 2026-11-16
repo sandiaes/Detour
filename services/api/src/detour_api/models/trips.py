@@ -324,6 +324,14 @@ class ItemCreate(StrictModel):
         description="Required for type transport (ADR 032), and only then. Its length may be "
         "left out: it is then unknown",
     )
+    shift_later_minutes: int | None = Field(
+        default=None,
+        ge=1,
+        le=1440,
+        description="A transport leg only (ADR 032): move every timed item after the leg on its "
+        "day this many minutes later, in the same edit, so the leg fits. Refused when one would "
+        "end after midnight",
+    )
 
     @model_validator(mode="after")
     def _shape(self) -> Self:
@@ -331,6 +339,8 @@ class ItemCreate(StrictModel):
         neither = self.place_id is None and self.user_place_id is None
         if (self.type == "transport") != (self.transport is not None):
             raise ValueError("transport is given for a transport item, and only for one")
+        if self.shift_later_minutes is not None and self.type != "transport":
+            raise ValueError("shift_later_minutes is for a transport leg only")
         if self.type in ("free_time", "transport"):
             if not neither:
                 raise ValueError(f"{self.type} has no place")
@@ -358,6 +368,14 @@ class ItemUpdate(StrictModel):
         default=None,
         description="A transport leg only: replaces what the user entered (ADR 032). On a leg, "
         "duration_minutes: null makes its length unknown",
+    )
+    shift_later_minutes: int | None = Field(
+        default=None,
+        ge=1,
+        le=1440,
+        description="A transport leg only (ADR 032): move every timed item after the leg on its "
+        "day this many minutes later, in the same edit, so the leg fits. Refused when one would "
+        "end after midnight",
     )
 
 

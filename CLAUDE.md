@@ -67,7 +67,9 @@ length or arrival time, or "not known", note), stored as an itinerary item of ty
 `transport` jsonb value. It is locked; Optimize never moves it or a stop across it and uses its length
 as the travel of that stretch; a journey leg covers the day's computed arrival (`Arrival.covered_by_item_id`,
 including the Japan "time not calculated" row). Add a place's recalculation names a day with a leg
-(`TRANSPORT_LEG_DAY`) rather than planning around it. Without a car Optimize still walks every computed
+(`TRANSPORT_LEG_DAY`) rather than planning around it. A new leg goes right after its From stop (replacing
+the walk from it), else first for a journey, else by time; if it runs into later stops the app offers to
+move them all later in the same edit (`shift_later_minutes`; refused past midnight). Without a car Optimize still walks every computed
 leg and names the walks over 2 km. The trip file is **version 2** (legs, stays and Car; version 1 still
 imports). The dead "Public transport" pill is removed (ADR 021, decision 100). Phase 10 (Transitous or
 MOTIS) is not started; a one-leg transit suggestion is recorded as a candidate only (ADR 032, "Later").

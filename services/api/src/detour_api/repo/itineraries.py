@@ -420,6 +420,38 @@ def _clash(a: tuple[int, int], b: tuple[int, int]) -> bool:
     return a[0] < b[1] and b[0] < a[1]
 
 
+def shift_later(conn: Connection, day_id: uuid.UUID, after_position: int, minutes: int) -> None:
+    """Moves every timed item after ``after_position`` on the day ``minutes`` later (ADR 032: a
+    transport leg the user adds or changes pushes the stops after it back, when they ask). Refused
+    when an item would then end after midnight; nothing wraps round to the morning."""
+    rows = conn.execute(
+        text(
+            "SELECT display_name, start_time, end_time, duration_minutes FROM app.itinerary_item"
+            " WHERE day_id = :d AND position > :p AND start_time IS NOT NULL"
+        ),
+        {"d": day_id, "p": after_position},
+    ).all()
+    for r in rows:
+        span = busy_span(r.start_time, r.end_time, r.duration_minutes)
+        assert span is not None  # noqa: S101 - only timed items are read
+        # The last minute an item reaches once moved; a night train already runs to midnight.
+        reach = span[0] + minutes if span[1] >= DAY_END_MINUTE else span[1] + minutes
+        if reach > DAY_END_MINUTE - 1:
+            raise invalid(
+                "shift_past_midnight",
+                f"moving the later stops {minutes} min back would take {r.display_name} past "
+                "midnight",
+            )
+    conn.execute(
+        text(
+            "UPDATE app.itinerary_item SET start_time = start_time + make_interval(mins => :m),"
+            " end_time = end_time + make_interval(mins => :m), updated_at = now()"
+            " WHERE day_id = :d AND position > :p AND start_time IS NOT NULL"
+        ),
+        {"d": day_id, "p": after_position, "m": minutes},
+    )
+
+
 def _check_overlap(
     conn: Connection,
     day_id: uuid.UUID,
@@ -503,7 +535,6 @@ def create_item(
             "duration_minutes is required: no default duration is known for this place",
         )
     end = _end_time(body.start_time, minutes, transport=leg)
-    _check_overlap(conn, ctx.day_id, busy_span(body.start_time, end, minutes), None)
 
     count = conn.execute(
         text("SELECT count(*) FROM app.itinerary_item WHERE day_id = :d"), {"d": ctx.day_id}
@@ -520,6 +551,9 @@ def create_item(
         ),
         {"d": ctx.day_id, "p": position},
     )
+    if body.shift_later_minutes:
+        shift_later(conn, ctx.day_id, position, body.shift_later_minutes)
+    _check_overlap(conn, ctx.day_id, busy_span(body.start_time, end, minutes), None)
     item_id = uuid.uuid4()
     conn.execute(
         text(
@@ -605,7 +639,7 @@ def update_item(
         raise not_found("item")
     changed = body.model_fields_set
     leg = row.type == "transport"
-    if "transport" in changed and not leg:
+    if ("transport" in changed or body.shift_later_minutes) and not leg:
         raise invalid("not_transport", "transport is changed only on a transport leg")
     plan_state.snapshot(conn, row.itinerary_id)
 
@@ -636,7 +670,6 @@ def update_item(
             raise invalid("bad_day", "day_index is not a day of this itinerary")
         target_day_id = target.id
     moving_day = target_day_id != row.day_id
-    _check_overlap(conn, target_day_id, busy_span(start, end, minutes), item_id)
 
     if moving_day or ("position" in changed and body.position is not None):
         count = conn.execute(
@@ -665,6 +698,12 @@ def update_item(
             text("UPDATE app.itinerary_item SET day_id = :d, position = :p WHERE id = :i"),
             {"d": target_day_id, "p": new_position, "i": item_id},
         )
+    if body.shift_later_minutes:
+        at = conn.execute(
+            text("SELECT position FROM app.itinerary_item WHERE id = :i"), {"i": item_id}
+        ).scalar_one()
+        shift_later(conn, target_day_id, at, body.shift_later_minutes)
+    _check_overlap(conn, target_day_id, busy_span(start, end, minutes), item_id)
     sets = [
         "start_time = :start",
         "end_time = :end",

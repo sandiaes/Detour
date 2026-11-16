@@ -1843,6 +1843,11 @@ export interface components {
       locked: boolean;
       /** @description Required for type transport (ADR 032), and only then. Its length may be left out: it is then unknown */
       transport?: components["schemas"]["TransportInfo"] | null;
+      /**
+       * Shift Later Minutes
+       * @description A transport leg only (ADR 032): move every timed item after the leg on its day this many minutes later, in the same edit, so the leg fits. Refused when one would end after midnight
+       */
+      shift_later_minutes?: number | null;
     };
     /**
      * ItemUpdate
@@ -1869,6 +1874,11 @@ export interface components {
       day_index?: number | null;
       /** @description A transport leg only: replaces what the user entered (ADR 032). On a leg, duration_minutes: null makes its length unknown */
       transport?: components["schemas"]["TransportInfo"] | null;
+      /**
+       * Shift Later Minutes
+       * @description A transport leg only (ADR 032): move every timed item after the leg on its day this many minutes later, in the same edit, so the leg fits. Refused when one would end after midnight
+       */
+      shift_later_minutes?: number | null;
     };
     /** Itinerary */
     Itinerary: {

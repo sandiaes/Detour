@@ -222,6 +222,27 @@ Migration `0021_transport_legs`. Backend and app tested on synthetic fixtures an
 - **Not built / not verified.** No device check; no production run; recalculation around legs
   (deviation b); listing a leg's documents on its screen.
 
+## Amendment of 2026-11-16: where a leg goes, and the stops after it (owner request)
+
+The owner found that a leg added after an Optimize landed at the bottom of the day, while the walk
+it was meant to replace stayed between the two stops. Owner decisions of the same day:
+
+1. **Placement.** A new leg, or a changed one whose day, From, start or journey mark changed, goes
+   (a) right after its **From stop** when From is a stop of that day, so it replaces the computed
+   walk or drive from that stop (the server already drops a transfer that no longer joins two
+   neighbours); (b) otherwise **first** for a journey between cities; (c) otherwise in **time
+   order** by its start; (d) otherwise after the last item. The app works the position out
+   (`legPosition` in `domain/transport.ts`) and sends it; the server is unchanged here.
+2. **Times: move the later stops (owner's choice (b)).** When the leg runs into the items after it,
+   the app asks "Move the later stops?" and names the first one and the minutes ("Move them 24 min
+   later"); on yes, every timed item after the leg on that day moves that many minutes later in the
+   same edit (`shift_later_minutes` on `ItemCreate` and `ItemUpdate`, transport legs only; one
+   version, so one undo). Order and lengths stay; locked stops and restaurants move too, because the
+   user asked. A move that would take an item past midnight is refused (`422 shift_past_midnight`;
+   the app says so before sending). A leg that leaves before the stop **before** it ends is not
+   fixed for the user: the app names that stop and its end, and nothing is saved. A leg of unknown
+   length is a point and pushes nothing.
+
 ## Alternatives
 
 | Alternative | Why not |

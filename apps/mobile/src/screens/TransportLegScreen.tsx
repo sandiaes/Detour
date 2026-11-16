@@ -40,6 +40,8 @@ import {
   TRANSPORT_MODES,
   type TransportMode,
   isLeg,
+  legClash,
+  legPosition,
 } from "../domain/transport";
 import { type Route, useNavigation } from "../nav/Navigator";
 import { colors, layout, spacing, type, weight } from "../theme";
@@ -55,8 +57,8 @@ type Option = End & { key: string; group: string };
 const NOTE_MAX = 500;
 const NAME_MAX = 120;
 
-/** What the From and To lists offer: the day's stops, the trip's cities, its stays and its
- * destination, each once by name. */
+/** What the From and To lists offer, in this order: the trip's cities (its destination when it has
+ * one city), its stays, then the day's stops, each once by name. */
 export function endOptions(trip: Trip, day: Day | undefined, stays: Stay[]): Option[] {
   const out: Option[] = [];
   const seen = new Set<string>();
@@ -66,15 +68,16 @@ export function endOptions(trip: Trip, day: Day | undefined, stays: Stay[]): Opt
     seen.add(key);
     out.push({ key, group, name, lat, lon });
   };
-  for (const item of day?.items ?? []) {
-    if (item.type === "transport" || item.lat === null || item.lon === null) continue;
-    add("Stops of this day", item.display_name, item.lat, item.lon);
-  }
+  // Cities first, then stays, then the day's stops (owner, 2026-11-16); "Type a name" comes last.
   for (const s of trip.stops ?? []) add("Cities of the trip", s.name, s.lat, s.lon);
   if (!trip.stops?.length) {
     add("Cities of the trip", trip.destination.name, trip.destination.lat, trip.destination.lon);
   }
   for (const s of stays) add("Where you're staying", s.name, s.lat, s.lon);
+  for (const item of day?.items ?? []) {
+    if (item.type === "transport" || item.lat === null || item.lon === null) continue;
+    add("Stops of this day", item.display_name, item.lat, item.lon);
+  }
   return out;
 }
 
@@ -249,7 +252,42 @@ function LegForm({
     setOpen(null);
   };
 
-  const save = async () => {
+  // Where the leg goes (after its From stop, else first for a journey, else by time, else last)
+  // and what its times run into (owner, 2026-11-16). A changed leg is placed again only when its
+  // day, From, start or journey mark changed, so a leg the user left alone stays where it is.
+  const moved =
+    !leg ||
+    !existing ||
+    dayIndex !== existing.day.day_index ||
+    from?.name !== leg.transport.from_name ||
+    (from?.lat ?? null) !== (leg.transport.from_lat ?? null) ||
+    (startClock ?? null) !== (leg.start_time?.slice(0, 5) ?? null) ||
+    journey !== leg.transport.is_journey;
+  const position =
+    moved || !leg || !existing
+      ? legPosition(day, { from, start: startClock, journey }, leg?.id)
+      : existing.day.items.findIndex((i) => i.id === leg.id) + 1;
+  const clash = legClash(day, position, { start: startClock, minutes: length }, leg?.id);
+  const [shifting, setShifting] = useState(false);
+
+  const attempt = () => {
+    setProblem(null);
+    if (clash.kind === "earlier") {
+      setProblem(
+        `It leaves before ${clash.name} ends at ${clash.end}. Change the start time, or that stop's time.`,
+      );
+    } else if (clash.kind === "midnight") {
+      setProblem(
+        `Moving the later stops ${formatMinutes(clash.minutes)} back would take ${clash.name} past midnight. Change the times.`,
+      );
+    } else if (clash.kind === "later") {
+      setShifting(true);
+    } else {
+      void save();
+    }
+  };
+
+  const save = async (shift?: number) => {
     if (!ready || !from || !to || !client) return;
     setBusy(true);
     setProblem(null);
@@ -273,6 +311,8 @@ function LegForm({
           duration_minutes: length,
         };
         if (dayIndex !== existing.day.day_index) body.day_index = dayIndex;
+        if (moved) body.position = position;
+        if (shift) body.shift_later_minutes = shift;
         await call(
           client.PATCH("/v1/items/{item_id}", { params: { path: { item_id: leg.id } }, body }),
         );
@@ -283,6 +323,8 @@ function LegForm({
           start_time: startTime,
           duration_minutes: length,
           locked: true,
+          position,
+          ...(shift ? { shift_later_minutes: shift } : {}),
         };
         await call(
           client.POST("/v1/itineraries/{itinerary_id}/days/{day_index}/items", {
@@ -291,8 +333,10 @@ function LegForm({
           }),
         );
       }
+      setShifting(false);
       onDone();
     } catch (e) {
+      setShifting(false);
       setProblem(describeError(e));
     } finally {
       setBusy(false);
@@ -524,7 +568,7 @@ function LegForm({
           fill
           loading={busy}
           disabled={!ready}
-          onPress={() => void save()}
+          onPress={attempt}
           testID="leg-save"
         />
         <Button label="Cancel" variant="secondary" fill onPress={nav.back} />
@@ -557,6 +601,24 @@ function LegForm({
         ) : null}
       </View>
 
+      <ConfirmSheet
+        visible={shifting && clash.kind === "later"}
+        title="Move the later stops?"
+        message={
+          clash.kind === "later"
+            ? `This ${MODE_LABEL[mode].toLowerCase()} runs until after ${clash.name} starts at ${clash.start}. Move ${clash.count === 1 ? "it" : `the ${clash.count} stops after it`} on day ${dayIndex} ${formatMinutes(clash.minutes)} later? Their order and lengths stay the same.`
+            : ""
+        }
+        confirmLabel={
+          clash.kind === "later"
+            ? `Move ${clash.count === 1 ? "it" : "them"} ${formatMinutes(clash.minutes)} later`
+            : "Move them"
+        }
+        cancelLabel="Change the times"
+        busy={busy}
+        onConfirm={() => void save(clash.kind === "later" ? clash.minutes : undefined)}
+        onCancel={() => setShifting(false)}
+      />
       <ConfirmSheet
         visible={removing}
         title="Remove this transport?"
