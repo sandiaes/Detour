@@ -20,6 +20,7 @@ export {
   Radio,
   RowGroup,
   Section,
+  GroupHeader,
   SectionHeader,
   SegmentedControl,
   type Stat,

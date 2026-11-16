@@ -22,6 +22,18 @@ export function groupByContinent(
   return groups;
 }
 
+/** True when the region holds data or has an import under way: it is worth showing open. */
+export function hasData(region: CatalogRegion): boolean {
+  return region.state === "available" || region.places > 0 || importInProgress(region);
+}
+
+/** "3 imported · 24 regions", or just "24 regions" when none is imported. */
+export function groupSummary(regions: CatalogRegion[]): string {
+  const total = `${regions.length} ${regions.length === 1 ? "region" : "regions"}`;
+  const imported = regions.filter(hasData).length;
+  return imported > 0 ? `${imported} imported · ${total}` : total;
+}
+
 /** An import that was asked for and has not ended: the screen refreshes while one exists. */
 export function importInProgress(region: CatalogRegion): boolean {
   return (

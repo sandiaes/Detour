@@ -162,7 +162,7 @@ Everything below is exported from `components/ds`. A screen uses these and nothi
 | **Headers** | `ScreenHeader` (Back, a 24 pt title, a subtitle, right actions: Trips, More and pushed screens), `CompactHeader` (Back, a one-line 18 pt title, a subtitle, an action: screens inside a trip), `CoverBar` (Back and menu over a cover). A header is announced when its screen opens |
 | **Map overlays** | `MapChip` (a status tag), `MapPanel` (the white key panel), `MapFailure` (what happened, "Try the map again", a way to the list); a button on a map is `IconButton variant="onMap"` |
 | **`FocusPressable`** | A `Pressable` that draws the focus ring; for every tappable thing that is not one of the shared controls (a document row, a calendar day, a card, a stop row) |
-| **Other** | `StatRow` (flat figures), `SectionHeader` (a title and an action), `Cover`, `CoverPicker`, `Calendar`, `KindIcon`, `SuggestionCard`, `EdgeFade` |
+| **Other** | `StatRow` (flat figures), `SectionHeader` (a title and an action), `GroupHeader` (a soft full-width band with a group's name, a quiet summary and a chevron that folds the group: the continents on Regions, ADR 033), `Cover`, `CoverPicker`, `Calendar`, `KindIcon`, `SuggestionCard`, `EdgeFade` |
 
 ### Interaction states
 

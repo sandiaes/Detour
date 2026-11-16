@@ -13,7 +13,7 @@ import {
   Notice,
   RowGroup,
   ScreenHeader,
-  SectionHeader,
+  GroupHeader,
   Sheet,
 } from "../components/ds";
 import { useResource } from "../data/DataProvider";
@@ -23,6 +23,8 @@ import {
   type RegionRemoval,
   anyImportInProgress,
   groupByContinent,
+  groupSummary,
+  hasData,
   importInProgress,
   regionLine,
   removalMessage,
@@ -47,6 +49,8 @@ export function RegionsScreen() {
     ttlMs: 0,
   });
   const [openId, setOpenId] = useState<string | null>(null);
+  // The continents the user opened or closed; the others follow the default below.
+  const [folded, setFolded] = useState<Record<string, boolean>>({});
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [removal, setRemoval] = useState<RegionRemoval | null>(null);
@@ -60,6 +64,8 @@ export function RegionsScreen() {
     return () => clearInterval(id);
   }, [watching, refresh]);
 
+  const groups = groupByContinent(catalog.data?.regions ?? []);
+  const anyData = groups.some((g) => g.regions.some(hasData));
   const region = catalog.data?.regions.find((r) => r.id === openId) ?? null;
   const canManage = catalog.data?.can_manage === true;
 
@@ -142,34 +148,49 @@ export function RegionsScreen() {
               ) : null}
               {problem && !region && !removal ? <Notice tone="error">{problem}</Notice> : null}
             </View>
-            {groupByContinent(catalog.data.regions).map((group) => (
-              <View key={group.continent} style={styles.group}>
-                <View style={styles.groupHead}>
-                  <SectionHeader title={group.continent} />
-                </View>
-                <RowGroup>
-                  {group.regions.map((r) => (
-                    <ListRow
-                      key={r.id}
-                      title={r.name}
-                      detail={regionLine(r)}
-                      testID={`region-${r.id}`}
-                      trailing={
-                        importInProgress(r) ? (
-                          <Badge label="Importing" tone="warning" />
-                        ) : r.state === "available" ? (
-                          <Badge label="Available" tone="primary" />
-                        ) : undefined
-                      }
-                      onPress={() => {
-                        setProblem(null);
-                        setOpenId(r.id);
-                      }}
+            <View>
+              {groups.map((group, index) => {
+                // A continent starts open when it holds data or an import; when none does, the
+                // first one is open so the screen is never a list of closed bands.
+                const startsOpen = anyData ? group.regions.some(hasData) : index === 0;
+                const open =
+                  folded[group.continent] === undefined ? startsOpen : !folded[group.continent];
+                return (
+                  <View key={group.continent}>
+                    <GroupHeader
+                      title={group.continent}
+                      summary={groupSummary(group.regions)}
+                      expanded={open}
+                      onToggle={() => setFolded((f) => ({ ...f, [group.continent]: open }))}
+                      testID={`continent-${group.continent}`}
                     />
-                  ))}
-                </RowGroup>
-              </View>
-            ))}
+                    {open ? (
+                      <RowGroup>
+                        {group.regions.map((r) => (
+                          <ListRow
+                            key={r.id}
+                            title={r.name}
+                            detail={regionLine(r)}
+                            testID={`region-${r.id}`}
+                            trailing={
+                              importInProgress(r) ? (
+                                <Badge label="Importing" tone="warning" />
+                              ) : r.state === "available" ? (
+                                <Badge label="Available" tone="primary" />
+                              ) : undefined
+                            }
+                            onPress={() => {
+                              setProblem(null);
+                              setOpenId(r.id);
+                            }}
+                          />
+                        ))}
+                      </RowGroup>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
           </>
         )}
       </ScrollView>
@@ -231,8 +252,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { gap: layout.section, paddingBottom: spacing.xxl },
   intro: { paddingHorizontal: layout.gutter, gap: spacing.sm },
-  group: { gap: spacing.xs },
-  groupHead: { paddingHorizontal: layout.gutter },
   text: { ...type.label, color: colors.text },
   muted: { ...type.caption, color: colors.muted },
   actions: { gap: spacing.sm },

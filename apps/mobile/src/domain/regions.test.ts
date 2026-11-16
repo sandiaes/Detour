@@ -3,6 +3,8 @@ import {
   type RegionCatalog,
   anyImportInProgress,
   groupByContinent,
+  groupSummary,
+  hasData,
   megabytes,
   regionLine,
   removalMessage,
@@ -124,4 +126,20 @@ test("regions are grouped under their continent in the order sent", () => {
   expect(groups.map((g) => g.continent)).toEqual(["Asia", "Europe", "North America"]);
   expect(groups[1]?.regions.map((r) => r.name)).toEqual(["Austria", "Spain"]);
   expect(groupByContinent([])).toEqual([]);
+});
+
+test("a region has data when it is available, has places or has an import under way", () => {
+  expect(hasData(region())).toBe(false);
+  expect(hasData(region({ state: "available", places: 2 }))).toBe(true);
+  expect(hasData(region({ state: "disabled", places: 5 }))).toBe(true);
+  expect(hasData(region({ state: "disabled", places_kept: 3 }))).toBe(false);
+  expect(hasData(region({ job: job("running") }))).toBe(true);
+});
+
+test("a group says how many regions it has and how many are imported", () => {
+  expect(groupSummary([region()])).toBe("1 region");
+  expect(groupSummary([region(), region()])).toBe("2 regions");
+  expect(groupSummary([region({ state: "available", places: 1 }), region()])).toBe(
+    "1 imported · 2 regions",
+  );
 });

@@ -568,6 +568,49 @@ export function ListRow({
   );
 }
 
+/**
+ * The header of a group of rows that can be folded away (the continents on the Regions screen): a
+ * soft band across the screen with the group's name, a quiet summary and a chevron. A tap opens or
+ * closes the group; the state is announced as expanded or collapsed.
+ */
+export function GroupHeader({
+  title,
+  summary,
+  expanded,
+  onToggle,
+  testID,
+}: {
+  title: string;
+  summary?: string;
+  expanded: boolean;
+  onToggle: () => void;
+  testID?: string;
+}) {
+  const focus = useFocusRing();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={[title, summary].filter(Boolean).join(". ")}
+      accessibilityHint={expanded ? "Hides the group" : "Shows the group"}
+      accessibilityState={{ expanded }}
+      onPress={onToggle}
+      {...focus.focusProps}
+      testID={testID}
+      style={({ pressed }) => [
+        styles.groupHeader,
+        pressed && styles.groupHeaderPressed,
+        focus.ring,
+      ]}
+    >
+      <Text accessibilityRole="header" style={styles.groupHeaderTitle}>
+        {title}
+      </Text>
+      {summary ? <Text style={styles.groupHeaderSummary}>{summary}</Text> : null}
+      <Icon name={expanded ? "up" : "down"} size="sm" color={colors.muted} />
+    </Pressable>
+  );
+}
+
 /** A group of rows divided by hairlines: no card, no shadow. */
 export function RowGroup({ children }: { children: ReactNode }) {
   return <View style={styles.group}>{children}</View>;
@@ -877,6 +920,17 @@ const styles = StyleSheet.create({
   sectionTitle: { ...type.headline, color: colors.text, flexShrink: 1 },
 
   group: { borderTopWidth: border.hairline, borderTopColor: colors.border },
+  groupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    minHeight: sizes.rowCompact,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surfaceMuted,
+  },
+  groupHeaderPressed: { backgroundColor: colors.border },
+  groupHeaderTitle: { ...type.body, fontWeight: weight.semibold, color: colors.text, flex: 1 },
+  groupHeaderSummary: { ...type.caption, color: colors.muted },
   row: {
     flexDirection: "row",
     alignItems: "center",
