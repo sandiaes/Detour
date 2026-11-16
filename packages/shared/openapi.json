@@ -161,6 +161,320 @@
         }
       }
     },
+    "/v1/regions/catalog": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "The regions that can be imported, their state and the latest import started from the app (ADR 033). Anyone may read it; only the owner can_manage.",
+        "operationId": "region_catalog",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionCatalog"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/regions/{region_id}/import": {
+      "post": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Start importing a region from the catalog: asks GitHub to run the 'Import region' workflow, which reports its progress (ADR 033). Owner only. 503 without a GitHub token.",
+        "operationId": "import_region",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ImportRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/regions/{region_id}/removal-preview": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "What removing a region's imported data takes away and keeps (ADR 033). Owner only.",
+        "operationId": "removal_preview",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionRemoval"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/regions/{region_id}": {
+      "delete": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Remove a region's imported data, keeping every place a trip still names (ADR 033). Owner only; the region can be imported again.",
+        "operationId": "remove_region",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionRemoval"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/v1/attributions": {
       "get": {
         "tags": [
@@ -1623,6 +1937,84 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ArchiveInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/v1/trips/{trip_id}/reopen": {
+      "post": {
+        "tags": [
+          "trips"
+        ],
+        "summary": "Take a past trip out of the past (ADR 006, amendment of 2026-11-17): it can be changed again and is not made past by the two-day rule a second time.",
+        "operationId": "reopen_trip",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trip"
                 }
               }
             }
@@ -4578,6 +4970,80 @@
         ],
         "title": "AttributionLine"
       },
+      "CatalogRegion": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "country_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Country Codes"
+          },
+          "download_mb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Mb",
+            "description": "The extract's size at Geofabrik, if it was read"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "not_imported",
+              "available",
+              "disabled",
+              "importing"
+            ],
+            "title": "State"
+          },
+          "places": {
+            "type": "integer",
+            "title": "Places",
+            "description": "Searchable places of the region in the database"
+          },
+          "places_kept": {
+            "type": "integer",
+            "title": "Places Kept",
+            "description": "Places kept for trips after a removal (not searchable)"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportJob"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The latest import started from the app"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "country_codes",
+          "download_mb",
+          "state",
+          "places",
+          "places_kept",
+          "job"
+        ],
+        "title": "CatalogRegion"
+      },
       "ChangeDiff": {
         "properties": {
           "added": {
@@ -6660,6 +7126,82 @@
           "version"
         ],
         "title": "HealthResponse"
+      },
+      "ImportJob": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "running",
+              "succeeded",
+              "failed",
+              "stalled"
+            ],
+            "title": "Status"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "run_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Url",
+            "description": "The workflow run on GitHub, when GitHub gave it"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Requested At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "message",
+          "run_url",
+          "requested_at",
+          "updated_at"
+        ],
+        "title": "ImportJob",
+        "description": "A region import started from the app (ADR 033). ``stalled`` means it was not reported on\nfor too long: the workflow probably failed before it could say so."
+      },
+      "ImportRequest": {
+        "properties": {
+          "gazetteer": {
+            "type": "boolean",
+            "title": "Gazetteer",
+            "description": "Also import the GeoNames cities first",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "ImportRequest"
       },
       "ImportResult": {
         "properties": {
@@ -8748,6 +9290,46 @@
         ],
         "title": "ReadinessResponse"
       },
+      "RegionCatalog": {
+        "properties": {
+          "can_manage": {
+            "type": "boolean",
+            "title": "Can Manage",
+            "description": "True for the owner: only they may import or remove"
+          },
+          "import_enabled": {
+            "type": "boolean",
+            "title": "Import Enabled",
+            "description": "False when the server has no GitHub token"
+          },
+          "geo_bytes": {
+            "type": "integer",
+            "title": "Geo Bytes",
+            "description": "Space the imported data takes in the database"
+          },
+          "geo_limit_bytes": {
+            "type": "integer",
+            "title": "Geo Limit Bytes",
+            "description": "The limit ADR 009 gate 6 allows for all regions"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogRegion"
+            },
+            "type": "array",
+            "title": "Regions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "can_manage",
+          "import_enabled",
+          "geo_bytes",
+          "geo_limit_bytes",
+          "regions"
+        ],
+        "title": "RegionCatalog"
+      },
       "RegionInfo": {
         "properties": {
           "id": {
@@ -8804,6 +9386,94 @@
           "counts"
         ],
         "title": "RegionInfo"
+      },
+      "RegionRemoval": {
+        "properties": {
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "places_total": {
+            "type": "integer",
+            "title": "Places Total"
+          },
+          "places_removed": {
+            "type": "integer",
+            "title": "Places Removed"
+          },
+          "places_kept": {
+            "type": "integer",
+            "title": "Places Kept",
+            "description": "Places a trip still names: kept, no longer searchable"
+          },
+          "admin_areas_removed": {
+            "type": "integer",
+            "title": "Admin Areas Removed"
+          },
+          "admin_areas_kept": {
+            "type": "integer",
+            "title": "Admin Areas Kept"
+          },
+          "trips": {
+            "items": {
+              "$ref": "#/components/schemas/RemovalTrip"
+            },
+            "type": "array",
+            "title": "Trips",
+            "description": "The caller's trips that use this region's data, past trips included"
+          },
+          "bytes_freed_estimate": {
+            "type": "integer",
+            "title": "Bytes Freed Estimate",
+            "description": "About how much database space the removal frees; an estimate from row sizes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region_id",
+          "name",
+          "places_total",
+          "places_removed",
+          "places_kept",
+          "admin_areas_removed",
+          "admin_areas_kept",
+          "trips",
+          "bytes_freed_estimate"
+        ],
+        "title": "RegionRemoval",
+        "description": "What removing a region's imported data takes away and keeps (ADR 033). A place, or an area,\nthat one of the trips, a past-trip record or a display-name override names is kept (inactive,\nwith its names and photo link), so no trip loses anything it shows."
+      },
+      "RemovalTrip": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "past"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status"
+        ],
+        "title": "RemovalTrip"
       },
       "RestaurantInfo": {
         "properties": {

@@ -60,7 +60,7 @@ export function SettingsScreen() {
                 />
                 <InfoRow
                   label="Installation"
-                  value={`${state.connection.installationId.slice(0, 8)}…${
+                  value={`${state.connection.installationId}${
                     state.connection.registered ? " (new)" : ""
                   }`}
                 />

@@ -6,6 +6,7 @@ import { call } from "../api/unwrap";
 import { Icon, type IconName, ListRow, RowGroup, Sheet, useFocusRing } from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
+import { isReadOnly } from "../domain/trips";
 import { TOUCH, colors, radius, size as sizes, spacing, type, weight } from "../theme";
 import { type RootName, type Route, useNavigation } from "./Navigator";
 
@@ -136,7 +137,13 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
   const planId = trip?.selected_itinerary_id ?? null;
-  const why = !planId ? "Choose a plan first" : undefined;
+  const readOnly = isReadOnly(trip);
+  const why = readOnly
+    ? "A past trip cannot be changed"
+    : !planId
+      ? "Choose a plan first"
+      : undefined;
+  const canChange = planId !== null && !readOnly;
 
   const go = (route: Route) => {
     onClose();
@@ -156,22 +163,24 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
           icon="attraction"
           title="Place"
           detail={why ?? "A sight, town, address or pin; Detour suggests the best days"}
-          disabled={!planId}
+          disabled={!canChange}
           disabledLabel="Not now"
           testID="add-sheet-place"
           onPress={
-            planId ? () => go({ name: "addPlace", tripId, itineraryId: planId, ...day }) : undefined
+            planId && canChange
+              ? () => go({ name: "addPlace", tripId, itineraryId: planId, ...day })
+              : undefined
           }
         />
         <ListRow
           icon="restaurant"
           title="Restaurant"
           detail={why ?? "Search or enter one, then choose the day and time"}
-          disabled={!planId}
+          disabled={!canChange}
           disabledLabel="Not now"
           testID="add-sheet-restaurant"
           onPress={
-            planId
+            planId && canChange
               ? () => go({ name: "addRestaurant", tripId, itineraryId: planId, ...day })
               : undefined
           }
@@ -180,11 +189,11 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
           icon="transport"
           title="Transport"
           detail={why ?? "A train, bus or ferry you took or will take, entered by you"}
-          disabled={!planId}
+          disabled={!canChange}
           disabledLabel="Not now"
           testID="add-sheet-transport"
           onPress={
-            planId
+            planId && canChange
               ? () => go({ name: "transportLeg", tripId, itineraryId: planId, ...day })
               : undefined
           }

@@ -133,3 +133,31 @@ and the amendment of 2026-11-14.
 Consequences: a past trip costs what any trip costs (a few hundred KB at most), plus nothing for
 routing, because route lines are fetched for the selected plan only and cached travel times are
 shared. The archive size report is only meaningful for older archives.
+
+## Amendment of 2026-11-17: a past trip is read-only and can be reopened (owner request; built, awaits acceptance)
+
+The owner reviewed the 2026-11-16 behaviour on the phone and asked that a past trip not be
+editable: only photo-album links and documents (both kept on the phone) may be added. This reverses
+point 3 of the amendment of 2026-11-16 and adds the "back to upcoming" step it said was missing.
+
+1. **Every change to a past trip's plan is refused with 409 `trip_past`**: adding, changing or
+   removing an item, a stay or a transport leg; change sets (preview, apply, Optimize and its
+   undo, place suggestions, city edits); a new empty plan, new proposals and deleting a plan; the
+   trip's own fields (name, dates, days, car, chosen plan); and the cover choice. The check is in
+   the server (`trips.require_open_trip`, `trips.refuse_if_past`), not only in the app. Reading,
+   export, deleting the whole trip and discarding a change set that was already pending still work.
+   Import creates a new trip, so it is unaffected. Documents and photo links need no server call.
+2. **Reopen**: `POST /v1/trips/{id}/reopen` makes a past trip `active` again, clears `archived_at`
+   and sets `app.trip.reopened_at` (migration `0022`). The two-day rule skips a trip with
+   `reopened_at`, so it does not become past again by itself the next time the trips are read; the
+   user can mark it past by hand again. Only a past trip can be reopened (409 `not_archived`).
+3. **App**: a past trip hides Optimize, Undo Optimize, Where you're staying, Original proposals,
+   Get new proposals and Edit cities; the Add sheet disables Place, Restaurant and Transport (the
+   Document row stays); a transport leg opens as a read-only note; the cover can still be chosen
+   from the phone but not from destination photos; Trip settings offers **Reopen trip** and
+   Delete. The place screen already hid Edit time, Lock and Remove for a past trip.
+4. **New-trip screen**: a start date before today shows a warning (the whole trip is over, or its
+   first days have happened). It never blocks: a journey already taken stays a valid trip (ADR 026,
+   decision 23).
+5. The undo-history cap of five versions for a past trip stays; reopening does not restore versions
+   that were pruned.

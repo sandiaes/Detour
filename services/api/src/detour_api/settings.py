@@ -5,6 +5,7 @@ database URL and the token secret) are set only in the hosting provider's settin
 repository (see ``.env.example`` and ``docs/deployment.md``).
 """
 
+import uuid
 from functools import lru_cache
 from typing import Literal, Self
 
@@ -62,6 +63,25 @@ class Settings(BaseSettings):
 
     database_url: SecretStr | None = None
     token_secret: SecretStr | None = None
+    # Starting a region import from the app (ADR 033, step 3): the backend asks GitHub to run the
+    # repository's "Import region" workflow. The token is a fine-grained personal access token
+    # limited to this repository with the Actions read and write permission, kept as a secret of
+    # the hosting settings; without it the app's Import button answers 503. The daily budget is
+    # our own limit (GitHub's primary limit for a token is 5,000 requests an hour, read 2026-11-17).
+    github_token: SecretStr | None = None
+    github_api_url: str = "https://api.github.com"
+    github_repository: str = "sandiaes/Detour"
+    github_workflow: str = "import-region.yml"
+    github_ref: str = "main"
+    github_user_agent: str = "Detour-backend/0.1 (+https://github.com/sandiaes/Detour)"
+    github_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+    github_daily_budget: int = Field(default=20, ge=0)
+    # An import not reported on for this long is shown as stalled (and may be asked for again).
+    import_job_stall_minutes: int = Field(default=45, ge=5)
+
+    # The installations of the server's owner, comma separated (ADR 033): only they may remove a
+    # region. Empty means nobody may. An installation's id is shown in the app under More.
+    owner_installation_ids: str = ""
 
     # Photon (komoot's public geocoder) is the only external search provider, backend-side only.
     # Its terms (read 2026-11-12, ADR 012): "please be fair - extensive usage will be throttled",
@@ -216,6 +236,17 @@ class Settings(BaseSettings):
         if self.database_url is None:
             return None
         return normalize_database_url(self.database_url.get_secret_value())
+
+    @property
+    def owner_installations(self) -> frozenset[uuid.UUID]:
+        """The owner's installation ids; entries that are not UUIDs are ignored."""
+        found: set[uuid.UUID] = set()
+        for part in self.owner_installation_ids.split(","):
+            try:
+                found.add(uuid.UUID(part.strip()))
+            except ValueError:
+                continue
+        return frozenset(found)
 
     @property
     def token_secret_bytes(self) -> bytes:

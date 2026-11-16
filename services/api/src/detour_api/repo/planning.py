@@ -57,7 +57,7 @@ NOT_A_BASE = ("PPLX", "PPLH", "PPLQ", "PPLW")
 def load_context(
     conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, config: PlannerConfig
 ) -> PlanningContext:
-    trip = trips.require_trip(conn, installation_id, trip_id)
+    trip = trips.require_open_trip(conn, installation_id, trip_id)
     if trip.destination.kind == "place":
         raise ApiError(
             409,

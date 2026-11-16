@@ -106,6 +106,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/regions/catalog": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The regions that can be imported, their state and the latest import started from the app (ADR 033). Anyone may read it; only the owner can_manage. */
+    get: operations["region_catalog"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/regions/{region_id}/import": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start importing a region from the catalog: asks GitHub to run the 'Import region' workflow, which reports its progress (ADR 033). Owner only. 503 without a GitHub token. */
+    post: operations["import_region"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/regions/{region_id}/removal-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What removing a region's imported data takes away and keeps (ADR 033). Owner only. */
+    get: operations["removal_preview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/regions/{region_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove a region's imported data, keeping every place a trip still names (ADR 033). Owner only; the region can be imported again. */
+    delete: operations["remove_region"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/attributions": {
     parameters: {
       query?: never;
@@ -348,6 +416,23 @@ export interface paths {
     put?: never;
     /** Make the trip a past trip (ADR 006): its plan stays, undo history is cut to five. */
     post: operations["archive_trip"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/trips/{trip_id}/reopen": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Take a past trip out of the past (ADR 006, amendment of 2026-11-17): it can be changed again and is not made past by the two-day rule a second time. */
+    post: operations["reopen_trip"];
     delete?: never;
     options?: never;
     head?: never;
@@ -840,6 +925,37 @@ export interface components {
       text: string;
       /** Url */
       url: string;
+    };
+    /** CatalogRegion */
+    CatalogRegion: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Country Codes */
+      country_codes: string[];
+      /**
+       * Download Mb
+       * @description The extract's size at Geofabrik, if it was read
+       */
+      download_mb: number | null;
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "not_imported" | "available" | "disabled" | "importing";
+      /**
+       * Places
+       * @description Searchable places of the region in the database
+       */
+      places: number;
+      /**
+       * Places Kept
+       * @description Places kept for trips after a removal (not searchable)
+       */
+      places_kept: number;
+      /** @description The latest import started from the app */
+      job: components["schemas"]["ImportJob"] | null;
     };
     /**
      * ChangeDiff
@@ -1675,6 +1791,49 @@ export interface components {
        * @description Commit identifier of the deployed build
        */
       release?: string | null;
+    };
+    /**
+     * ImportJob
+     * @description A region import started from the app (ADR 033). ``stalled`` means it was not reported on
+     *     for too long: the workflow probably failed before it could say so.
+     */
+    ImportJob: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "requested" | "running" | "succeeded" | "failed" | "stalled";
+      /** Message */
+      message: string | null;
+      /**
+       * Run Url
+       * @description The workflow run on GitHub, when GitHub gave it
+       */
+      run_url: string | null;
+      /**
+       * Requested At
+       * Format: date-time
+       */
+      requested_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /** ImportRequest */
+    ImportRequest: {
+      /**
+       * Gazetteer
+       * @description Also import the GeoNames cities first
+       * @default true
+       */
+      gazetteer: boolean;
     };
     /** ImportResult */
     ImportResult: {
@@ -2559,6 +2718,31 @@ export interface components {
       status: "ok" | "unavailable";
       database: components["schemas"]["DatabaseStatus"];
     };
+    /** RegionCatalog */
+    RegionCatalog: {
+      /**
+       * Can Manage
+       * @description True for the owner: only they may import or remove
+       */
+      can_manage: boolean;
+      /**
+       * Import Enabled
+       * @description False when the server has no GitHub token
+       */
+      import_enabled: boolean;
+      /**
+       * Geo Bytes
+       * @description Space the imported data takes in the database
+       */
+      geo_bytes: number;
+      /**
+       * Geo Limit Bytes
+       * @description The limit ADR 009 gate 6 allows for all regions
+       */
+      geo_limit_bytes: number;
+      /** Regions */
+      regions: components["schemas"]["CatalogRegion"][];
+    };
     /** RegionInfo */
     RegionInfo: {
       /** Id */
@@ -2581,6 +2765,56 @@ export interface components {
       counts: {
         [key: string]: number;
       };
+    };
+    /**
+     * RegionRemoval
+     * @description What removing a region's imported data takes away and keeps (ADR 033). A place, or an area,
+     *     that one of the trips, a past-trip record or a display-name override names is kept (inactive,
+     *     with its names and photo link), so no trip loses anything it shows.
+     */
+    RegionRemoval: {
+      /** Region Id */
+      region_id: string;
+      /** Name */
+      name: string;
+      /** Places Total */
+      places_total: number;
+      /** Places Removed */
+      places_removed: number;
+      /**
+       * Places Kept
+       * @description Places a trip still names: kept, no longer searchable
+       */
+      places_kept: number;
+      /** Admin Areas Removed */
+      admin_areas_removed: number;
+      /** Admin Areas Kept */
+      admin_areas_kept: number;
+      /**
+       * Trips
+       * @description The caller's trips that use this region's data, past trips included
+       */
+      trips: components["schemas"]["RemovalTrip"][];
+      /**
+       * Bytes Freed Estimate
+       * @description About how much database space the removal frees; an estimate from row sizes
+       */
+      bytes_freed_estimate: number;
+    };
+    /** RemovalTrip */
+    RemovalTrip: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "active" | "past";
     };
     /**
      * RestaurantInfo
@@ -3245,6 +3479,240 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RegionInfo"][];
+        };
+      };
+    };
+  };
+  region_catalog: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RegionCatalog"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  import_region: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        region_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ImportRequest"] | null;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ImportJob"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  removal_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        region_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RegionRemoval"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  remove_region: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        region_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RegionRemoval"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
         };
       };
     };
@@ -4165,6 +4633,64 @@ export interface operations {
     };
   };
   archive_trip: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        trip_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Trip"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorBody"];
+        };
+      };
+    };
+  };
+  reopen_trip: {
     parameters: {
       query?: never;
       header?: never;

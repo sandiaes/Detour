@@ -233,3 +233,21 @@ test("the trip's photo hides its credit behind a small i in the corner; the days
   expect(screen.getAllByTestId("cover-photo")[0]).toBeOnTheScreen();
   expect(screen.getByRole("button", { name: "Hide the photo credit" })).toBeOnTheScreen();
 });
+
+test("a past trip's overview offers no way to change the plan (ADR 006, 2026-11-17)", async () => {
+  await open(
+    server({
+      "GET /v1/trips": () => [makeTrip({ status: "past", selected_itinerary_id: ESSENTIALS_ID })],
+    }),
+  );
+  expect(await screen.findByTestId("day-row-1")).toBeOnTheScreen();
+  expect(screen.queryByTestId("itinerary-optimize")).toBeNull();
+  await fireEvent.press(screen.getByRole("button", { name: "Trip menu" }));
+  expect(await screen.findByTestId("menu-settings")).toBeOnTheScreen();
+  for (const id of ["menu-optimize", "menu-undo-optimize", "menu-stays", "menu-proposals"]) {
+    expect(screen.queryByTestId(id)).toBeNull();
+  }
+  // Export and the phone-only cover stay.
+  expect(screen.getByTestId("menu-export")).toBeOnTheScreen();
+  expect(screen.getByTestId("menu-change-photo")).toBeOnTheScreen();
+});

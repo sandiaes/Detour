@@ -24,7 +24,14 @@ def test_countries_command_and_unknown_regions(capsys: pytest.CaptureFixture[str
 
 
 def test_every_known_region_has_a_geofabrik_url_and_countries() -> None:
-    assert set(REGIONS) == {"austria", "czech-republic", "hungary", "italy", "japan"}
+    assert set(REGIONS) == {
+        "austria",
+        "czech-republic",
+        "greater-london",
+        "hungary",
+        "italy",
+        "japan",
+    }
     for region in REGIONS.values():
         assert region.extract_url.startswith("https://download.geofabrik.de/")
         assert region.extract_url.endswith("-latest.osm.pbf")

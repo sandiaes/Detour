@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { AppContent } from "../App";
 import { createMemoryStore } from "../cache/store";
@@ -103,10 +103,27 @@ test("a failed deletion says so and keeps the trip", async () => {
   expect(screen.getByRole("header", { name: "Trip settings" })).toBeOnTheScreen();
 });
 
-test("a past trip can be deleted and planned again", async () => {
+test("a past trip can be reopened or deleted, and offers no changes", async () => {
   await open({ "GET /v1/trips": () => [makeTrip({ status: "past" })] });
   expect(await screen.findByRole("button", { name: /^Delete the trip/ })).toBeOnTheScreen();
-  expect(screen.getByRole("button", { name: "Get new proposals" })).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: /^Reopen the trip/ })).toBeOnTheScreen();
+  expect(screen.queryByRole("button", { name: "Get new proposals" })).toBeNull();
+  expect(screen.queryByTestId("archive-trip")).toBeNull();
+});
+
+test("reopening a past trip calls the server and returns to the trip", async () => {
+  const reopen = jest.fn(() =>
+    makeTrip({ status: "active", selected_itinerary_id: ESSENTIALS_ID }),
+  );
+  const client = await open({
+    "GET /v1/trips": () => [makeTrip({ status: "past", selected_itinerary_id: ESSENTIALS_ID })],
+    "POST /v1/trips/{trip_id}/reopen": reopen,
+    "GET /v1/itineraries/{itinerary_id}": () => makeItinerary("essentials"),
+  });
+  await fireEvent.press(await screen.findByRole("button", { name: /^Reopen the trip/ }));
+  await waitFor(() => expect(reopen).toHaveBeenCalled());
+  expect(client).toBeDefined();
+  expect(screen.queryByRole("header", { name: "Trip settings" })).toBeNull();
 });
 
 test("the settings are reachable from the plan and from the proposals", async () => {

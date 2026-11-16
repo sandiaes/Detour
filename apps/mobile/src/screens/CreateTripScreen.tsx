@@ -33,7 +33,7 @@ import { useNavigation } from "../nav/Navigator";
 import { colors, layout, radius, size as sizes, spacing, type, weight } from "../theme";
 import { formatDate, isValidIsoDate, pluralise } from "../util/format";
 import { CalendarSheet } from "../components/ds/Calendar";
-import { localToday } from "../domain/trips";
+import { localToday, pastDateWarning } from "../domain/trips";
 import {
   type Choice,
   choiceFromExternal,
@@ -204,6 +204,10 @@ export function CreateTripScreen() {
   const hasPhotos =
     chosen !== null && !(chosen.kind === "place" && !chosen.ref.startsWith("geonames:"));
   const errors = validateForm({ startDate });
+  const pastWarning = pastDateWarning(
+    startDate.trim(),
+    stops ? stops.reduce((n, x) => n + x.days, 0) : days,
+  );
   const hasErrors = Object.keys(errors).length > 0;
 
   const planNow = async (trip: Trip) => {
@@ -552,6 +556,11 @@ export function CreateTripScreen() {
               </View>
             </View>
           </View>
+          {pastWarning ? (
+            <Notice tone="warning" label="Date in the past">
+              {pastWarning}
+            </Notice>
+          ) : null}
           <CalendarSheet
             visible={calendar}
             value={startDate}

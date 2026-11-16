@@ -12,10 +12,12 @@ import os
 import shutil
 import sys
 import tempfile
+import uuid
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import psycopg
 import structlog
 from sqlalchemy.engine import make_url
 
@@ -335,6 +337,24 @@ def _cmd_names(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_job(args: argparse.Namespace) -> int:
+    """Report an app-started import's progress (ADR 033): called by the workflow. The message is
+    a fixed short text and the run URL is GitHub's own; nothing secret or personal is written."""
+    try:
+        job_id = uuid.UUID(args.job_id)
+    except ValueError:
+        raise SystemExit("job id is not a UUID") from None
+    target = _env("DETOUR_IMPORT_DATABASE_URL", args.target_url)
+    run_url = args.run_url if args.run_url and args.run_url.startswith("https://") else None
+    with psycopg.connect(pipeline.libpq_url(target)) as conn:
+        conn.execute(
+            "UPDATE geo.import_job SET status = %s, message = %s,"
+            " run_url = COALESCE(%s, run_url), updated_at = now() WHERE id = %s",
+            (args.status, (args.message or None) and args.message[:500], run_url, job_id),
+        )
+    return 0
+
+
 def _cmd_countries(args: argparse.Namespace) -> int:
     region = REGIONS.get(args.region)
     if region is None:
@@ -402,6 +422,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     names.add_argument("--target-url")
     names.add_argument("--out", help="write the report as JSON to this file")
     names.set_defaults(func=_cmd_names)
+
+    job = sub.add_parser("job", help="report an app-started import's progress (ADR 033)")
+    job.add_argument("job_id")
+    job.add_argument("status", choices=["running", "succeeded", "failed"])
+    job.add_argument("--message")
+    job.add_argument("--run-url")
+    job.add_argument("--target-url")
+    job.set_defaults(func=_cmd_job)
 
     countries = sub.add_parser("countries", help="print the country codes of a region")
     countries.add_argument("region")

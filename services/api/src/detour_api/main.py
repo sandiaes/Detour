@@ -15,6 +15,7 @@ from sqlalchemy.exc import OperationalError
 
 from detour_api import __version__
 from detour_api.abuse import RequestLimiter, retry_after_header
+from detour_api.adapters.github import GitHubDispatcher
 from detour_api.adapters.photon import PhotonClient
 from detour_api.adapters.valhalla import ValhallaClient
 from detour_api.db import make_engine
@@ -51,6 +52,7 @@ def create_app(
     photon_transport: httpx.BaseTransport | None = None,
     wikimedia_transport: httpx.BaseTransport | None = None,
     routing_transport: httpx.BaseTransport | None = None,
+    github_transport: httpx.BaseTransport | None = None,
     image_store: ImageStore | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
@@ -63,6 +65,7 @@ def create_app(
         app.state.engine = make_engine(url) if url else None
         app.state.photon = PhotonClient(settings, app.state.engine, photon_transport)
         app.state.image_store = image_store or make_store(settings)
+        app.state.github = GitHubDispatcher(settings, app.state.engine, github_transport)
         app.state.travel_time = TravelTimeService(
             settings,
             app.state.engine,
@@ -94,6 +97,7 @@ def create_app(
     # Tests inject recorded Wikimedia answers here; production leaves it None (the network).
     app.state.wikimedia_transport = wikimedia_transport
     app.state.photon = PhotonClient(settings, None)
+    app.state.github = GitHubDispatcher(settings, None)
     app.state.travel_time = TravelTimeService(settings, None, ValhallaClient(settings, None))
     install_handlers(app)
 

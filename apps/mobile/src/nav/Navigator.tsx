@@ -18,6 +18,8 @@ export type Route =
   | { name: "photos" }
   | { name: "more" }
   | { name: "settings" }
+  /** Import and remove regions of imported sights (ADR 033). */
+  | { name: "regions" }
   | { name: "imageCredits" }
   /** Export one trip, or every trip as a backup (ADR 028). */
   | { name: "exportTrips"; tripId?: string }

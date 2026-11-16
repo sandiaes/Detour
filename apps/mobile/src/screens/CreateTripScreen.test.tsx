@@ -340,6 +340,31 @@ test("Car starts off; Car is sent as chosen; off means Optimize only walks", asy
   expect(create?.body).toMatchObject({ uses_car: false });
 });
 
+test("a start date in the past shows a warning that does not stop the trip", async () => {
+  await openForm();
+  await typeDestination("Vie");
+  await fireEvent.press(await screen.findByRole("button", { name: /^Vienna, Vienna, Austria/ }));
+  expect(screen.queryByText(/This date is in the past/)).toBeNull();
+  // A future date: no warning.
+  await fireEvent.press(screen.getByRole("button", { name: "Start date, not set" }));
+  await fireEvent.press(screen.getByLabelText("Next month"));
+  await fireEvent.press(screen.getByTestId(`cal-${nextMonth()}-15`));
+  expect(screen.queryByText(/This date is in the past/)).toBeNull();
+  // A date well before today (the calendar opens on the chosen month; go back two months).
+  await fireEvent.press(screen.getByRole("button", { name: /^Start date, .* 15 / }));
+  await fireEvent.press(screen.getByLabelText("Previous month"));
+  await fireEvent.press(screen.getByLabelText("Previous month"));
+  await fireEvent.press(screen.getByLabelText("Previous month"));
+  const [y, m] = nextMonth().split("-").map(Number) as [number, number];
+  const back = new Date(y, m - 1 - 3, 1);
+  const month = `${back.getFullYear()}-${String(back.getMonth() + 1).padStart(2, "0")}`;
+  await fireEvent.press(screen.getByTestId(`cal-${month}-05`));
+  expect(await screen.findByText(/This date is in the past/)).toBeOnTheScreen();
+  // The trip can still be started.
+  const start = screen.getByRole("button", { name: "Start a fresh trip" });
+  expect(start.props.accessibilityState).not.toMatchObject({ disabled: true });
+});
+
 test("the start date can be cleared again from the calendar", async () => {
   const client = await openForm();
   await typeDestination("Vie");

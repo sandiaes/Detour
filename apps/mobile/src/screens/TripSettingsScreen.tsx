@@ -27,7 +27,7 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
   const documents = useDocumentActions();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
-  const [busy, setBusy] = useState<"generate" | "delete" | "archive" | null>(null);
+  const [busy, setBusy] = useState<"generate" | "delete" | "archive" | "reopen" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -71,6 +71,18 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
         { name: "tripOverview", tripId: trip.id },
         { name: "trip", tripId: trip.id },
       ]);
+    } catch (e) {
+      setProblem(describeError(e));
+      setBusy(null);
+    }
+  };
+
+  const reopen = async () => {
+    setBusy("reopen");
+    setProblem(null);
+    try {
+      await actions.reopenTrip(trip);
+      nav.resetTo([{ name: "trips" }, { name: "tripOverview", tripId: trip.id }]);
     } catch (e) {
       setProblem(describeError(e));
       setBusy(null);
@@ -121,7 +133,27 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
             <Notice tone="info">Changes to a trip need a connection to the server.</Notice>
           ) : null}
 
-          {trip.destination.kind === "route" ? (
+          {past ? (
+            <Section title="Reopen this trip">
+              <Text style={styles.text}>
+                A past trip cannot be changed. Reopen it to edit its plan, stays, dates and name
+                again. It moves back to Upcoming and does not become a past trip by itself a second
+                time. Documents and photo links can be added without reopening.
+              </Text>
+              <Button
+                testID="reopen-trip"
+                label="Reopen trip"
+                variant="secondary"
+                size="sm"
+                loading={busy === "reopen"}
+                disabled={!actions.connected || busy !== null}
+                accessibilityLabel={`Reopen the trip ${trip.title}`}
+                onPress={() => void reopen()}
+              />
+            </Section>
+          ) : null}
+
+          {!past && trip.destination.kind === "route" ? (
             <Section title="Your cities">
               <Text style={styles.text}>
                 {`${(trip.stops ?? []).map((x) => `${x.name} (${x.days})`).join(", ")}. Add, remove or reorder cities and change their days. ${
@@ -141,7 +173,7 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
             </Section>
           ) : null}
 
-          {trip.destination.kind !== "place" ? (
+          {!past && trip.destination.kind !== "place" ? (
             <Section title="Proposals">
               <Text style={styles.text}>
                 {hasPlan
@@ -167,8 +199,9 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
             <Section title="Mark as a past trip">
               <Text style={styles.text}>
                 A trip also becomes a past trip by itself two days after its last day, when it has
-                dates. It moves to the Past tab and keeps its plan, routes and documents, and you
-                can still change it. Only the undo history is cut to the last five changes.
+                dates. It moves to the Past tab and keeps its plan, routes and documents, but it can
+                no longer be changed unless you reopen it. Documents and photo links can still be
+                added. The undo history is cut to the last five changes.
               </Text>
               <Button
                 testID="archive-trip"
@@ -205,7 +238,7 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
       <ConfirmSheet
         visible={confirmArchive}
         title="Mark as a past trip?"
-        message={`“${trip.title}” moves to the Past tab. Its plan stays, and the undo history is cut to the last five changes.`}
+        message={`“${trip.title}” moves to the Past tab. Its plan stays but cannot be changed unless you reopen the trip. The undo history is cut to the last five changes.`}
         confirmLabel="Yes, mark as past"
         cancelLabel="Not yet"
         confirmTestID="confirm-archive"

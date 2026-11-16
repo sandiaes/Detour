@@ -198,7 +198,7 @@ def _item(row: Any, transfer: Transfer | None = None) -> Item:
 
 def create_manual(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Itinerary:
     """An empty itinerary with one day per trip day, to be filled by hand."""
-    trip = trips.require_trip(conn, installation_id, trip_id)
+    trip = trips.require_open_trip(conn, installation_id, trip_id)
     count = conn.execute(
         text("SELECT count(*) FROM app.itinerary WHERE trip_id = :t"), {"t": trip_id}
     ).scalar_one()
@@ -345,7 +345,7 @@ def require_itinerary(
 
 def delete_itinerary(conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID) -> None:
     itinerary = require_itinerary(conn, installation_id, itinerary_id)
-    trips.require_trip(conn, installation_id, itinerary.trip_id)
+    trips.require_open_trip(conn, installation_id, itinerary.trip_id)
     conn.execute(text("DELETE FROM app.itinerary WHERE id = :i"), {"i": itinerary_id})
 
 
@@ -367,6 +367,7 @@ def _day_context(
     ).first()
     if row is None:
         raise not_found("itinerary day")
+    trips.refuse_if_past(row.trip_status)
     return row
 
 
@@ -637,6 +638,7 @@ def update_item(
     ).first()
     if row is None:
         raise not_found("item")
+    trips.refuse_if_past(row.trip_status)
     changed = body.model_fields_set
     leg = row.type == "transport"
     if ("transport" in changed or body.shift_later_minutes) and not leg:
@@ -743,6 +745,7 @@ def delete_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID
     ).first()
     if row is None:
         raise not_found("item")
+    trips.refuse_if_past(row.trip_status)
     plan_state.snapshot(conn, row.itinerary_id)
     conn.execute(text("DELETE FROM app.itinerary_item WHERE id = :i"), {"i": item_id})
     conn.execute(

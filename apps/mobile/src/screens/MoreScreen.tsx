@@ -57,6 +57,13 @@ export function MoreScreen() {
             onPress={() => nav.push({ name: "imageCredits" })}
           />
           <ListRow
+            icon="map"
+            title="Regions"
+            detail="Where sights come from; import or remove a region"
+            testID="more-regions"
+            onPress={() => nav.push({ name: "regions" })}
+          />
+          <ListRow
             icon="settings"
             title="Settings"
             detail="Connection, version and data credits"

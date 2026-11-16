@@ -4,7 +4,9 @@ import {
   countsFromItinerary,
   countsLine,
   countsWithoutPlan,
+  isReadOnly,
   localToday,
+  pastDateWarning,
   shortSpan,
   tripPhase,
   tripsInTab,
@@ -142,4 +144,33 @@ describe("shortSpan", () => {
       "5 days",
     );
   });
+});
+
+describe("pastDateWarning", () => {
+  const today = "2027-06-10";
+
+  test("says nothing for today, the future or no date", () => {
+    expect(pastDateWarning("", 3, today)).toBeNull();
+    expect(pastDateWarning("2027-06-10", 3, today)).toBeNull();
+    expect(pastDateWarning("2027-07-01", 3, today)).toBeNull();
+    expect(pastDateWarning("2027-6-1", 3, today)).toBeNull(); // not a date yet
+  });
+
+  test("warns when the whole trip is already over", () => {
+    expect(pastDateWarning("2027-06-01", 3, today)).toMatch(/whole trip/);
+    // The last day (8 June) is before today.
+    expect(pastDateWarning("2027-06-06", 3, today)).toMatch(/whole trip/);
+  });
+
+  test("warns that the first days have happened when the trip runs into today", () => {
+    expect(pastDateWarning("2027-06-08", 5, today)).toMatch(/first days/);
+    // A trip whose last day is today is not over.
+    expect(pastDateWarning("2027-06-08", 3, today)).toMatch(/first days/);
+  });
+});
+
+test("only a past trip is read-only", () => {
+  expect(isReadOnly(makeTrip({ status: "past" }))).toBe(true);
+  expect(isReadOnly(makeTrip())).toBe(false);
+  expect(isReadOnly(undefined)).toBe(false);
 });
