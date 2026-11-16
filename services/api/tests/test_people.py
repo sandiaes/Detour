@@ -157,15 +157,11 @@ def test_a_phone_with_other_phones_cannot_move_to_another_person(api_env: ApiEnv
     assert refused.status_code == 409 and code(refused) == "has_other_devices"
 
 
-def test_joining_keeps_the_trip_limit(api_env: ApiEnv) -> None:
+def test_joining_keeps_the_trip_limit(api_env: ApiEnv, monkeypatch: pytest.MonkeyPatch) -> None:
     phone_b = api_env.other_installation()
     make_trip(api_env, title="Mine")
     _trip_as(api_env, phone_b, "B's")
-    original = people.MAX_TRIPS_PER_INSTALLATION
-    people.MAX_TRIPS_PER_INSTALLATION = 1
-    try:
-        refused = _join(api_env, phone_b, _link_code(api_env, api_env.headers))
-    finally:
-        people.MAX_TRIPS_PER_INSTALLATION = original
+    monkeypatch.setattr(people, "MAX_TRIPS_PER_INSTALLATION", 1)
+    refused = _join(api_env, phone_b, _link_code(api_env, api_env.headers))
     assert refused.status_code == 409 and code(refused) == "limit_reached"
     assert _trip_titles(api_env, phone_b) == ["B's"]  # nothing moved
