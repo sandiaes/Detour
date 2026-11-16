@@ -17,7 +17,7 @@ from detour_api.models.changes import (
 )
 from detour_api.models.common import PlanningErrorBody
 from detour_api.planner import change_service, optimize_service, stop_service
-from detour_api.repo import changes
+from detour_api.repo import changes, stays
 from detour_api.routers.responses import ERRORS
 
 router = APIRouter(prefix="/v1", tags=["changes"])
@@ -105,8 +105,18 @@ def get_change_set(session: SessionDep, change_set_id: uuid.UUID) -> ChangeSet:
     "the previous version is kept. 409 change_set_stale if the plan changed since the preview.",
     responses=ERRORS,
 )
-def apply_change_set(session: SessionDep, change_set_id: uuid.UUID) -> ChangeSetApplied:
-    return change_service.apply(session, change_set_id)
+def apply_change_set(
+    request: Request, session: SessionDep, change_set_id: uuid.UUID
+) -> ChangeSetApplied:
+    applied = change_service.apply(session, change_set_id)
+    # The plan comes back whole and the app stores it as the plan, so it carries each day's
+    # morning leg from its stay like a plan that is read (ADR 030); otherwise the line and the
+    # "Walk from" row vanish after Optimize, its undo and every other change until it is read again.
+    with session.tx() as conn:
+        stays.with_starts(
+            conn, session.installation_id, applied.itinerary, request.app.state.travel_time
+        )
+    return applied
 
 
 @router.post(

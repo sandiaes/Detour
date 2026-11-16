@@ -76,3 +76,20 @@ def test_optimize_starts_each_day_at_its_stay(api_env: ApiEnv) -> None:
     order = [s["item_id"] for s in sorted(day1, key=lambda s: s["position"])]
     assert change["proposed"]["starts"][0]["to_item_id"] == order[0]
     assert change["diff"]["travel_minutes_added"] < 0
+
+
+def test_an_applied_change_and_its_undo_keep_the_morning_leg(api_env: ApiEnv) -> None:
+    """The app stores the plan an apply returns, so it must carry each day's morning leg like a
+    plan that is read; otherwise the line and the "Walk from" row vanish until it is read again."""
+    trip, plan = _trip(api_env)
+    _zigzag(api_env, plan)
+    assert _stay(api_env, trip, 1, 2, x=7).status_code == 201
+    change = _optimize(api_env, plan, "within_days").json()
+    applied = api_env.client.post(f"/v1/change-sets/{change['id']}/apply", headers=api_env.headers)
+    assert applied.status_code == 200, applied.text
+    assert applied.json()["itinerary"]["days"][0]["start"] is not None
+    undo = api_env.client.post(
+        f"/v1/itineraries/{plan['id']}/optimize/undo", headers=api_env.headers
+    ).json()
+    restored = api_env.client.post(f"/v1/change-sets/{undo['id']}/apply", headers=api_env.headers)
+    assert restored.json()["itinerary"]["days"][0]["start"] is not None
