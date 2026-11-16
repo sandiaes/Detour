@@ -465,6 +465,14 @@ makes them distinct even when their visits overlap more than 60 %.
 > checks every proposal independently. Applying makes a new version; undo restores the version
 > before it while nothing changed the plan since. It is deterministic and a heuristic: "a shorter
 > order, not necessarily the shortest".
+>
+> **Transport legs ([ADR 032](decisions/032-manual-transport-legs.md), 2026-11-16):** a leg the
+> user entered (item type `transport`, migration `0021`) is fixed: it keeps its day, start and length,
+> no stop moves across it (each side of it is reordered on its own), no computed leg is counted
+> across it, and in the across-days scope a day with a leg keeps its own stops. A day with a leg of
+> unknown length is left as it is. Without a car every computed leg is walked and the preview names
+> the walks over 2 km. The recalculation of Add a place refuses a day with a leg
+> (`TRANSPORT_LEG_DAY`); generation does not see legs (they belong to the plan they were added to).
 
 - **Add a city or location.** The new place becomes a mandatory visit. The engine re-solves with
   a **stability cost** that penalises moving existing items to another day or reordering them,

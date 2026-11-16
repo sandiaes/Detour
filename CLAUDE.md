@@ -60,12 +60,17 @@ capped at 5 versions for a past trip (`MAX_VERSIONS_PAST`; 30 otherwise), pruned
 `app.trip_visit` rows are written any more; trips archived earlier keep theirs and the old past-trip screen
 (`archiveOnly` in the app). Export and import carry a past trip's plan.
 
-**Manual transport legs** (2026-11-16, ADR 032, **proposed, not built**; owner's choice after the
-public-transport analysis): a train, bus, ferry or other leg the user enters by hand (mode, from, to,
-day, start, length or unknown, note), stored as an itinerary item of type `transport`, fixed for
-Optimize and recalculation, carried by trip file version 2. Four questions for the owner are at the
-top of the ADR; build only after the answers. Phase 10 (Transitous or MOTIS) is not started; a
-one-leg transit suggestion is recorded as a candidate only (ADR 032, "Later").
+**Manual transport legs** (2026-11-16, ADR 032, accepted, built, awaiting acceptance; checked by tests
+only, not on a device; migration `0021` not yet run in production): a train, bus, metro or tram, ferry,
+taxi, walk or other leg the user enters by hand (from and to picked from the trip or typed, day, start,
+length or arrival time, or "not known", note), stored as an itinerary item of type `transport` with a
+`transport` jsonb value. It is locked; Optimize never moves it or a stop across it and uses its length
+as the travel of that stretch; a journey leg covers the day's computed arrival (`Arrival.covered_by_item_id`,
+including the Japan "time not calculated" row). Add a place's recalculation names a day with a leg
+(`TRANSPORT_LEG_DAY`) rather than planning around it. Without a car Optimize still walks every computed
+leg and names the walks over 2 km. The trip file is **version 2** (legs, stays and Car; version 1 still
+imports). The dead "Public transport" pill is removed (ADR 021, decision 100). Phase 10 (Transitous or
+MOTIS) is not started; a one-leg transit suggestion is recorded as a candidate only (ADR 032, "Later").
 
 **Photos, first step** (2026-11-16, ADR 031, accepted, built, awaiting acceptance; mobile app only,
 checked by tests only): Google's Library API no longer lets an app read albums it did not create, so
@@ -147,8 +152,8 @@ notes and the trip summary wait for the owner. **An amendment of 2026-11-14** (A
 `docs/design.md`) is built and awaits acceptance: a near-white, flat look with hairlines instead of
 cards, trip cards with only name, dates and length (a trip is named after its destination), an
 overview without the days figure, first days or notes, an Itinerary tab of days that open the map of
-that day, quieter map markers, a new-trip screen with travel style, public transport and "Start with
-an empty trip", and meals aimed at lunch 13:00 and dinner 20:00 (day window to 22:00). Adding places
+that day, quieter map markers, a new-trip screen with travel style, public transport (the pill was
+removed by ADR 032) and "Start with an empty trip", and meals aimed at lunch 13:00 and dinner 20:00 (day window to 22:00). Adding places
 to an empty trip (owner request of 2026-11-14) is built and awaits acceptance: an empty (manual) plan cannot be recalculated, so "Add a place" and "Add a restaurant" let the user choose the day, meal and time directly (`POST /v1/itineraries/{id}/days/{n}/items`; `components/ChooseSlot.tsx`), also offered as "Choose day and time" on planned itineraries. **A fourth amendment of 2026-11-14** (ADR 021, decisions 55 to 67) is built and awaits acceptance: a consistency pass over every screen (compact headers, flat past trip, thin outlined buttons, soft edges, travel written into a hairline, a cleaner map key, four document kinds, a drop-down for "Attraction", the wordmark alone on Trips, a launcher icon that fits its mask). **A third amendment of 2026-11-14** (ADR 021, decisions 42 to 54) is built and awaits acceptance: the
 logo wordmark on Trips, the trip's name, dates and length on a full-bleed cover, a tighter and clipped
 map, stops that only select, compact day pills, Back from Add document to the Documents tab, a

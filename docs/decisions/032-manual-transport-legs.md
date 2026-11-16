@@ -1,8 +1,10 @@
 # ADR 032 — Manual transport legs
 
-- **Status:** **Proposed** on 2026-11-16, at the owner's request (the owner chose this option after
-  reviewing an analysis of public transport the same day). **Nothing is built.** The questions
-  below are for the owner; the build starts only after the answers (CLAUDE.md rule 3).
+- **Status:** **Accepted** on 2026-11-16: the owner answered the four questions below as
+  recommended (see "Owner decisions"). Written as **Proposed** the same day, at the owner's request
+  (the owner chose this option after reviewing an analysis of public transport). **Built** the same
+  day (see "As built"), awaiting acceptance of the build. Checked by tests only: **not tried on a
+  device** and not run against the production database (migration `0021`).
 - **Date:** 2026-11-16
 - **Related:** [`026-trip-manager-first.md`](026-trip-manager-first.md),
   [`021-trip-manager-redesign.md`](021-trip-manager-redesign.md) (decisions 92 and 99),
@@ -14,7 +16,7 @@
   [`017-no-budgets-currencies-or-prices.md`](017-no-budgets-currencies-or-prices.md),
   [`../api-evaluation.md`](../api-evaluation.md) section 8
 
-## Questions for the owner (answer before the build; recommendations first)
+## Questions for the owner (recommendations first; answered 2026-11-16, see "Owner decisions")
 
 | # | Question | Recommendation |
 |---|---|---|
@@ -165,6 +167,60 @@ started; see "Later: a suggestion for one leg".
    pill removed; component and accessibility tests.
 5. **Docs in the same change as each step:** CLAUDE.md, `design.md`, `data-model.md`,
    `known-limitations.md`, `app-plan.md`, `product-brief.md`, `build-prompts.md`.
+
+## Owner decisions (2026-11-16)
+
+1. Remove the "Public transport" pill; keep Car as it is.
+2. Optimize without a car: rule (a), walk every computed leg, use the user's legs as entered and
+   name the walks over 2 km in the preview.
+3. Both: legs between two stops of a day and journeys between two cities.
+4. Trip file version 2 carries transport legs, stays and the Car choice.
+
+## As built (2026-11-16, awaiting acceptance)
+
+Migration `0021_transport_legs`. Backend and app tested on synthetic fixtures and fake servers;
+**not run against the production database and not tried on a device.**
+
+- **API.** `ItemCreate.type = transport` with `transport` (`TransportInfo`: `mode`, `from_name`,
+  `from_lat/lon`, `to_name`, `to_lat/lon`, `is_journey`, `note`), optional `start_time` and
+  `duration_minutes`; `ItemUpdate.transport` replaces it and `duration_minutes: null` makes a leg's
+  length unknown; `Item.transport`, `Item.duration_minutes` nullable, `Arrival.covered_by_item_id`.
+  A leg is always locked; `locked: false` is ignored for it. A journey leg added without a position
+  goes first on its day. Overlaps: a leg of unknown length is a point (it clashes only inside another
+  stop), a night train takes the rest of its day. Errors: `422` for a leg without details, with a
+  place, with a half point or an unknown field (a price, for example), `422 not_transport` for
+  transport details on another item, `409 overlap`.
+- **Planner.** `planner/optimize.py` (`optimize-1.0.0`, unchanged version: a plan without legs gives
+  the same answer as before), `optimize_validator.py` ("a transport leg moved", "a stop crossed a
+  transport leg"), `optimize_service.py` (the `OPTIMIZE_LONG_WALKS` note without a car),
+  `repo/plan_state.py` (`TRANSPORT_LEG_DAY`). Generation is unchanged: no golden file changed and
+  `CONFIG_VERSION` is not bumped.
+- **Trip file version 2** (`models/exchange.py`, `repo/exchange.py`; `FORMAT_VERSION = 2` in the app).
+- **App.** `domain/transport.ts`, `screens/TransportLegScreen.tsx` (Add transport and Change
+  transport), the leg row and journey row in `components/plan/DayPlan.tsx`, the leg line and mode
+  mark in `components/ItineraryMap.tsx`, five new icons (bus, metro, ferry, taxi, walk; a train is
+  the existing transport icon), the Add sheet's Transport row, "Attach a document" on a leg. The
+  Public transport pill is gone (`CreateTripScreen.tsx`).
+- **Tests.** `test_api_transport.py` (12), new cases in `test_optimize.py` (13 with the property
+  tests), `test_trip_export.py` (3), `test_planner_recalc.py` (1); `domain/transport.test.ts`,
+  `screens/TransportLeg.test.tsx`, cases in `ItineraryMap.test.tsx`, `BottomNav.test.tsx`,
+  `documents/model.test.ts`, `accessibility.test.tsx`, `CreateTripScreen.test.tsx`.
+- **Deviations from the draft.**
+  (a) **One jsonb column `transport`**, not seven columns: the API validates it (`TransportInfo`),
+  and a CHECK ties it to `type = 'transport'`. It travels through versions and change sets as one
+  value.
+  (b) **Recalculation does not plan around a leg** (decision 5 said it would treat it as fixed). Add a
+  place's suggestions on a generated plan name the day with a leg (`TRANSPORT_LEG_DAY`) and the user
+  chooses the day and time, as on an empty trip. Optimize, which owners use on hand-made trips, does
+  respect legs as decided.
+  (c) **Documents** use the existing journey link (`leg`, by day and name), as decision 7 said; a
+  leg's own screen offers "Attach a document" rather than listing its documents.
+  (d) **The journey row's unknown-time text** now reads "time not calculated: add how you travel as
+  transport", and the backend's `ARRIVAL_TIME_UNKNOWN` note says "add how you travel as a transport
+  leg", instead of "public transport is not built yet".
+  (e) The map key's transport line reads "Travel to a new base city, or transport you entered".
+- **Not built / not verified.** No device check; no production run; recalculation around legs
+  (deviation b); listing a leg's documents on its screen.
 
 ## Alternatives
 

@@ -295,9 +295,10 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
    multi-city trip the duration is the cities' total and cannot be set on its own. The start
    date opens a **month calendar** in a sheet (Monday first, today ringed, "Clear the date"); a date
    is chosen, never typed.
-3. **Getting around:** two pills, **Car** (with a car icon; **both pills start off**, decision 99; Car is sent with the trip, off means Optimize
-   only considers walking) and **Public transport** (saved for later; the plans do not use it yet).
-   There is no travel style: it did nothing.
+3. **Getting around:** one pill, **Car** (with a car icon; it starts off, decision 99; Car is sent with
+   the trip, off means Optimize only considers walking). The **Public transport** pill is gone
+   (ADR 032, 2026-11-16): it was never sent or used; how the user travels is entered as transport
+   legs on the plan. There is no travel style: it did nothing.
 4. A line under the pills saying so.
 5. Two buttons, full width:
    - **Start a fresh trip** (`primary`, the main action): creates the trip and an empty plan, one empty day
@@ -356,8 +357,17 @@ not asked; it is the destination.
   its row a soft rounded tint (the list is 8 dp from the screen edge and a row pads its content by
   12 dp, so the time, the disc and the chevron all have the same room) and highlights its marker, and the map moves to it; nothing opens under it. Lock and Remove are on the place's details.
 - **A journey to the next city whose time is not known** (into or out of Japan, ADR 024) reads
-  "Travel from Tokyo · time not calculated: public transport is not built yet"; its transport marker
+  "Travel from Tokyo · time not calculated: add how you travel as transport"; its transport marker
   stays, with no line to it.
+- **A journey the user entered** (ADR 032) takes the place of that row and of a computed drive: the
+  same row with the mode in its navy square, "To Florence" and "Train from Rome · 1 h 30 min · 10:12
+  to 11:42"; it opens the leg to change it. The computed marker on the map goes; the leg's own line and
+  mode mark show instead.
+- **A transport leg between stops** (ADR 032) is written into a hairline like computed travel, but
+  with the mode icon and the words a step stronger (medium weight, text colour): "——— (train icon) Train · 1 h 30
+  min · 10:12 to 11:42 ———", or "Train · time not entered" when the user left the length out. The row
+  is a 48 dp touch target with the focus ring and opens the leg; its spoken label names the mode,
+  from, to, times and "Entered by you". No computed travel line is drawn across it.
 - **Travel between stops** is written into a hairline: a line, "Walk · 3 min · 170 m" in muted caption,
   a line. A stop row has no hairline of its own, so that travel line is the only divider between two stops. No Routed or Estimated tag (the spoken label still says when a time is an estimate).
 - **Type sizes here are small** (name 14, details 13) so more stops show at once.
@@ -377,11 +387,13 @@ Small, flat and quiet (screen 03's discs, without the heavy rings):
 | Sight | 26 dp teal disc, white number, 2 px white edge, a light shadow |
 | Place to eat | the same size, orange, rounded-square instead of round |
 | Travel to a new base city | the same size, navy, rounded-square, a transport icon |
+| Transport you entered (ADR 032) | the same navy square with the leg's mode icon (train, bus, metro, ferry, taxi, walk, other), at the middle of its line |
 | Selected | 34 dp, navy, white edge |
-| Lines | 2 px grey; solid when routed, dashed when estimated; straight, not the road path |
+| Lines | 2 px grey; solid when routed, dashed when estimated; straight, not the road path. A leg the user entered: 2 px in the text colour, straight from its from-point to its to-point (an end typed by hand borrows the neighbouring stop; none drawn when neither end is known) |
 
 Each marker keeps a 48 dp touch area around the drawn shape. The map key (a 36 dp flat button;
-Attraction, Restaurant or café, Travel to a new base city, the line) and the attribution stay.
+Attraction, Restaurant or café, Your stay, "Travel to a new base city, or transport you entered", the
+line) and the attribution stay.
 A past trip's map uses the same markers: cities navy with a city icon, attractions teal.
 
 ### Place detail (screen 04)
@@ -437,6 +449,18 @@ time" and for an empty trip, a **Day drop-down** (the day that was open, else da
 (right after the day's last stop, or 09:00 on an empty day, until the user sets one; decision 98) and "Add to day N at HH:MM".
 Add a restaurant or café uses the same day drop-down and fields; its default pill is 1 h 15 min
 for a restaurant and 45 min for a café (*proposed*).
+
+**Add transport** (ADR 032; the Add sheet's "Transport" row, "A train, bus or ferry you took or will
+take, entered by you", and a leg's own row in the day list): a compact header and one line saying
+Detour does not look up timetables. Then drop-downs and fields: **How** (Train, Bus, Metro or tram,
+Ferry, Taxi or ride, Walk, Other, each with its icon), **From** and **To** (the day's stops, the trip's
+cities and stays, or "Type a name" for a station or port, which has no point), **Day**, **Leaves at**
+(the time field, optional), a two-part control **How long** / **Arrives at** (the length field with a
+"Not known" pill, or an arrival time; one before the start is the next day), a line saying the length
+in words ("Length: time not entered"), **Journey between cities** (a pill, on a multi-city trip), and
+**Note**. "Add transport" (`primary`), Cancel; when changing a leg also "Attach a document" (a
+journey link by day and name, kind Transport) and a red ghost "Remove this transport" with a
+confirmation sheet. No price, operator, seat or booking field (ADR 017).
 
 ### Documents (screens 15, 16)
 
@@ -547,8 +571,8 @@ the screen reader announcing a screen's title on arrival.
   ("not recalculable"). Adding a place to an empty day by hand needs its own flow: choose the day,
   say how long to stay (a manual item has no default length), and place it by hand. It needs the
   owner's approval and an amendment to ADR 021 before it is built.
-- **Public transport** is stored nowhere (the travel-style choice was removed). Using it needs a field on the trip
-  and a rule in the planner, with an ADR.
+- **Public transport** is entered by hand as transport legs (ADR 032); the old pill is gone. A
+  suggested time for one leg from Transitous is a candidate only (ADR 032, "Later"), not approved.
 - **Photos are not checked on a device.** The crop rule and the "Change photo" sheet are tested by
   component tests only; a look on a small phone and a tablet is still owed (brief, Part 2a).
 - **English names** (ADR 025) come from the user's own name, Wikidata, English Wikipedia, OpenStreetMap

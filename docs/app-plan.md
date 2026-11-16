@@ -332,7 +332,7 @@ checks no longer belong here.
 
 | Phase | Content | Preconditions |
 |---|---|---|
-| 10 Public transport | Transit legs from schedule data through self-hosted MOTIS or Transitous; mode choice between walk, drive and transit; feed attribution | D1, D4; feed licences reviewed for each pilot region |
+| 10 Public transport | Transit legs from schedule data through self-hosted MOTIS or Transitous; mode choice between walk, drive and transit; feed attribution. **Not started.** Built first instead (2026-11-16, owner's choice): **manual transport legs** the user enters by hand (ADR 032), no provider | D1, D4; feed licences reviewed for each pilot region |
 | 11 iOS | Build configuration, permissions, platform testing, build on the owner's Mac and install by cable (no App Store; ADR 008) | The owner's Mac; Apple Developer Program ($99 per year) only if the free route proves unusable |
 | 12 Photos | **Built first (ADR 031):** album links per trip (opened in Google Photos) and a cover from the phone, on the phone only. Later, if wanted: pick photos, link to trip, day, city or item; on-device storage; optional backup | D9; Play photo-permission policy respected; a later step needs its own ADR |
 | 13 More coverage | On-demand region import; supplementary places from Overture and Foursquare OS Places | Hosting capacity; matching rules |

@@ -30,7 +30,7 @@ sightseeing plans are an occasional help, not the main way in.
 | 1 | Destination or area plus duration as input | Search over an imported gazetteer of cities and areas; duration in days. Any place can be a destination as an empty trip (ADR 027) | MVP; outside regions built |
 | 2 | *Optional:* at least two meaningfully different suggested itineraries | Two strategy profiles of one engine plus a diversity check; frozen, maintained | MVP |
 | 3 | Suggested itineraries include cities or areas, attractions, travel times, visit durations. **No restaurants or cafés (ADR 026)** | Imported open data; routed walking and driving times; category-based visit durations; one unplanned midday gap a day | MVP, except public transport |
-| 3 | Public transport when relevant | Schedule-based transit legs | After MVP (Phase 10) |
+| 3 | Public transport when relevant | **Transport legs entered by hand** (mode, from, to, day, start, length or unknown, note; ADR 032, built 2026-11-16). Schedule-based transit legs remain after the MVP (Phase 10, not started) | Manual legs built; routing after MVP |
 | 4 | Add a city or location not in the proposal | Search or map pin; becomes a mandatory visit | MVP |
 | 5 | Automatic recalculation around the addition | Re-plan with minimal disruption; user reviews a diff | MVP |
 | 6 | Add a restaurant manually | Search through Photon (or your saved places), or manual entry with a name, a kind and a pin (ADR 026; no imported restaurants) | MVP |
@@ -134,7 +134,8 @@ Permanently, under the current brief:
 
 Not in the MVP (see `docs/app-plan.md` for the phase each belongs to):
 
-- public transport legs and real-time transit data
+- computed public-transport legs and real-time transit data (legs the user enters by hand are built:
+  ADR 032)
 - iOS build
 - photos inside Detour (a trip links its own Google Photos albums, which open in Google Photos, and its
   cover can be a picture from the phone: ADR 031; showing the photos themselves is not built)

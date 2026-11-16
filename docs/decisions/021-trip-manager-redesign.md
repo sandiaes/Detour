@@ -549,6 +549,13 @@ device or in screenshots**.
 99. **Getting around starts empty.** Car (now with a car icon) and Public transport are both off on
     the new-trip screen; a trip's `uses_car` is false unless the user turns Car on.
 
+100. **Amendment of 2026-11-16 (ADR 032, owner decision): the Public transport pill is removed.**
+    Decisions 92 and 99 described a "Getting around" row of two pills; the **Public transport** pill
+    was local state, never sent, stored or used. It is removed with its hint ("saved for later"), its
+    test and its accessibility check. **Car** stays as decisions 92 and 99 say. How the user travels
+    is recorded as **transport legs** entered by hand (ADR 032); the trip file now carries the Car
+    choice (version 2), so an imported trip keeps it. Decisions 92 and 99 are otherwise unchanged.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until
