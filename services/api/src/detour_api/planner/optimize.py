@@ -6,7 +6,8 @@ plan's. No randomness and no clock: the same plan and the same travel times give
 
 **Objective.** Total travel minutes (walking and driving, each leg rounded up to whole minutes) over
 the whole plan. A leg joins two consecutive stops that both have a point; a free-time block has no
-point, so no leg is counted across it.
+point, so no leg is counted across it. A **transport leg** the user entered (ADR 032) has no point
+either: its own length is the travel of that stretch, so no computed leg is counted across it.
 
 **Empty days stay empty, and a day with stops keeps at least one:** a day boundary has no travel, so
 without this the search would spread a day's stops over the empty days of the trip.
@@ -18,9 +19,13 @@ kept only if the day can be laid out again (below).
 **Who moves.** A *visit* the user has not fixed. A restaurant or café never changes day and keeps
 its chosen start time or starts later, at most 60 minutes later and never after 21:00 (the stops
 before it are laid out around it). A **locked** stop, a stop the user keeps in place and a
-free-time block keep their day, start and end. A visit on a place trip that lies far from the
-trip's point keeps its day. On a multi-city trip a visit stays in the days of its own city. In the
-first scope (``within_days``) nothing changes day.
+free-time block keep their day, start and end. A **transport leg** keeps its day, start and length,
+and **no stop crosses it**: the stops before it stay before it and those after stay after it, each
+side reordered on its own; a day with a leg keeps its own stops in the second scope (none move in
+or out), because the two sides of a leg are usually in different places. A day with a leg of
+unknown length is left as it is, like a day with an item that has no time. A visit on a place
+trip that lies far from the trip's point keeps its day. On a multi-city trip a visit stays in the
+days of its own city. In the first scope (``within_days``) nothing changes day.
 
 **Laying a day out.** The day starts at its current first item's start (09:00 when the first item
 is a restaurant, a block or the day is empty, or earlier); visits follow one another with their
@@ -54,6 +59,7 @@ RESTAURANT_LATEST_START = 21 * 60
 FAR_STOP_M = 25_000
 # More stops than this are refused: the search is quadratic in them.
 MAX_STOPS = 200
+DAY_END = 24 * 60
 MAX_ROUNDS = 500
 FOLLOW_UP_FETCHES = 2
 
@@ -65,7 +71,7 @@ class Stop:
     """One item of the plan, as the search sees it."""
 
     id: str
-    kind: Literal["visit", "meal", "free_time"]
+    kind: Literal["visit", "meal", "free_time", "transport"]
     name: str
     lat: float | None
     lon: float | None
@@ -157,8 +163,15 @@ def build_stops(
     day because they are far from a place trip's point. Items are ``plan_state`` item dicts with a
     ``day`` index added by the caller."""
     keep = set(fixed_ids)
-    # A day with an item that has no time is left exactly as it is.
-    frozen = {int(str(i["day"])) for i in items if i["start_minute"] is None}
+    # A day with an item that has no time is left exactly as it is; so is a day with a transport
+    # leg of unknown length (ADR 032): nothing says when the stops after it can start.
+    frozen = {
+        int(str(i["day"]))
+        for i in items
+        if i["start_minute"] is None or (i["type"] == "transport" and i["duration_minutes"] is None)
+    }
+    # A day with a transport leg keeps its own stops (ADR 032).
+    leg_days = {int(str(i["day"])) for i in items if i["type"] == "transport"}
     stops: list[Stop] = []
     far = 0
     for r in items:
@@ -168,12 +181,28 @@ def build_stops(
         kind = str(r["type"])
         start = r["start_minute"]
         end = r["end_minute"]
-        assert kind in ("visit", "meal", "free_time")  # noqa: S101
-        fixed = bool(r["locked"]) or str(r["id"]) in keep or kind == "free_time" or day in frozen
+        assert kind in ("visit", "meal", "free_time", "transport")  # noqa: S101
+        fixed = (
+            bool(r["locked"])
+            or str(r["id"]) in keep
+            or kind in ("free_time", "transport")
+            or day in frozen
+        )
+        if kind == "transport" and start is not None and end is None:
+            # A night train arrives the next day: it takes the rest of its day.
+            end = DAY_END
         allowed = frozenset({day})
-        if kind == "visit" and not fixed and scope == "across_days" and lat is not None:
+        if (
+            kind == "visit"
+            and not fixed
+            and scope == "across_days"
+            and lat is not None
+            and day not in leg_days
+        ):
             point = Coord.from_degrees(float(str(lat)), float(str(lon)))
-            allowed = _allowed_days(point, day, days, cities, place_point) - (frozen - {day})
+            allowed = _allowed_days(point, day, days, cities, place_point) - (
+                (frozen | leg_days) - {day}
+            )
             if (
                 place_point is not None
                 and not cities
@@ -239,6 +268,8 @@ class _Search:
         for i, s in enumerate(stops):
             self.orders[s.day].append(i)
         self.original = {d: tuple(v) for d, v in self.orders.items()}
+        # Which side of the day's transport legs each stop is on (ADR 032): moves keep it.
+        self.side = {i: s for v in self.original.values() for i, s in _sides(stops, v).items()}
         self._leg_memo: dict[tuple[int, int], int] = {}
         self._fit_memo: dict[tuple[int, tuple[int, ...]], bool] = {}
         # A day's own limit: the later of the window end, its current end and a restaurant's end at
@@ -332,6 +363,9 @@ class _Search:
             self._fit_memo[key] = found
         return found
 
+    def keeps_sides(self, order: Sequence[int]) -> bool:
+        return _sides(self.stops, order) == {i: self.side[i] for i in order}
+
     # -- moves
 
     def run(self) -> None:
@@ -380,6 +414,8 @@ class _Search:
                             continue
                         cand = [*target[:p], v, *target[p:]]
                         if dd == d:
+                            if not self.keeps_sides(cand):
+                                continue
                             before = self.travel(order, d)
                             after = self.travel(cand, d)
                             if after < before and self.fits(d, cand):
@@ -403,7 +439,11 @@ class _Search:
                 order = self.orders[d1]
                 cand = list(order)
                 cand[p1], cand[p2] = v2, v1
-                if self.travel(cand, d1) < self.travel(order, d1) and self.fits(d1, cand):
+                if (
+                    self.keeps_sides(cand)
+                    and self.travel(cand, d1) < self.travel(order, d1)
+                    and self.fits(d1, cand)
+                ):
                     self._commit({d1: cand})
                     return True
                 continue
@@ -419,6 +459,17 @@ class _Search:
                 self._commit({d1: a, d2: b})
                 return True
         return False
+
+
+def _sides(stops: Sequence[Stop], order: Sequence[int]) -> dict[int, int]:
+    """For each stop of a day's order: how many transport legs come before it."""
+    out: dict[int, int] = {}
+    legs = 0
+    for i in order:
+        if stops[i].kind == "transport":
+            legs += 1
+        out[i] = legs
+    return out
 
 
 def lay_out(
@@ -442,7 +493,7 @@ def lay_out(
             earliest = cursor + leg(prev, i)
         else:  # the first stop: the day starts at the stay (ADR 030)
             earliest = cursor + (head(i) if head is not None and s.located else 0)
-        if s.fixed or s.kind == "free_time":
+        if s.fixed or s.kind in ("free_time", "transport"):
             assert s.start is not None and s.end is not None  # noqa: S101
             if s.start < earliest:
                 return None
@@ -518,7 +569,7 @@ def optimize(
     counts in the travel and the day starts that much later."""
     rules = rules or Rules()
     anchors = anchors or {}
-    if len([s for s in stops if s.kind != "free_time"]) > MAX_STOPS:
+    if steps_exceed(stops):
         raise ValueError("too many stops")
     lookup.fetch(_all_cells(stops, scope, anchors), use_provider=False)
     search = _Search(stops, days, scope, lookup, rules, anchors)
@@ -617,7 +668,19 @@ def _lay_all(
 
 
 def steps_exceed(stops: Sequence[Stop]) -> bool:
-    return len([s for s in stops if s.kind != "free_time"]) > MAX_STOPS
+    return len([s for s in stops if s.kind not in ("free_time", "transport")]) > MAX_STOPS
+
+
+def long_walks(outcome: Outcome, walk_max_m: int) -> int:
+    """Walks over ``walk_max_m`` in the proposal: without a car Optimize walks every leg, and the
+    preview names these (owner decision of 2026-11-16, ADR 032)."""
+    return sum(
+        1
+        for laid in outcome.days.values()
+        for p in laid
+        for leg in (p.leg, p.head)
+        if leg is not None and leg.mode == "walk" and leg.meters > walk_max_m
+    )
 
 
 __all__ = [
@@ -633,6 +696,7 @@ __all__ = [
     "Stop",
     "build_stops",
     "lay_out",
+    "long_walks",
     "optimize",
     "rules_of",
     "steps_exceed",

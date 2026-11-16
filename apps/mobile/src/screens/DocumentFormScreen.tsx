@@ -153,7 +153,9 @@ function Form({
       ? [{ key: place.key, name: place.name, day: place.day ?? 0 }, ...places]
       : places;
   const legOptions =
-    leg && !legs.some((l) => l.day === leg.day) ? [{ ...leg, from: null }, ...legs] : legs;
+    leg && !legs.some((l) => l.day === leg.day && l.name === leg.name)
+      ? [{ ...leg, from: null }, ...legs]
+      : legs;
   // Whole trip or an attraction. A document saved earlier about a day or a journey keeps its link
   // and its chip, so editing it never loses what it was about.
   const kinds: LinkKind[] = [
@@ -391,10 +393,10 @@ function Form({
             {kind === "leg"
               ? legOptions.map((l) => (
                   <ChoiceRow
-                    key={l.day}
-                    title={`To ${l.name}`}
+                    key={`${l.day}:${l.name}`}
+                    title={"entered" in l && l.entered ? l.name : `To ${l.name}`}
                     meta={`Day ${l.day}${l.from ? ` · from ${l.from}` : ""}`}
-                    selected={leg?.day === l.day}
+                    selected={leg?.day === l.day && leg.name === l.name}
                     onPress={() => setLeg({ day: l.day, name: l.name })}
                   />
                 ))

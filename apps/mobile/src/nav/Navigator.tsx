@@ -67,6 +67,8 @@ export type Route =
   /** `day`: the day that was open, where "Choose day and time" starts (day 1 when none). */
   | { name: "addPlace"; tripId: string; itineraryId: string; day?: number }
   | { name: "addRestaurant"; tripId: string; itineraryId: string; day?: number }
+  /** Add a transport leg (ADR 032) on `day`, or change the leg `itemId`. */
+  | { name: "transportLeg"; tripId: string; itineraryId: string; day?: number; itemId?: string }
   | { name: "changePreview"; tripId: string; itineraryId: string; changeSetId: string };
 
 export type Navigation = {

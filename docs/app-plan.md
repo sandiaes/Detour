@@ -332,13 +332,27 @@ checks no longer belong here.
 
 | Phase | Content | Preconditions |
 |---|---|---|
-| 10 Public transport | Transit legs from schedule data through self-hosted MOTIS or Transitous; mode choice between walk, drive and transit; feed attribution | D1, D4; feed licences reviewed for each pilot region |
+| 10 Public transport | Transit legs from schedule data through self-hosted MOTIS or Transitous; mode choice between walk, drive and transit; feed attribution. **Not started.** Built first instead (2026-11-16, owner's choice): **manual transport legs** the user enters by hand (ADR 032), no provider | D1, D4; feed licences reviewed for each pilot region |
 | 11 iOS | Build configuration, permissions, platform testing, build on the owner's Mac and install by cable (no App Store; ADR 008) | The owner's Mac; Apple Developer Program ($99 per year) only if the free route proves unusable |
 | 12 Photos | **Built first (ADR 031):** album links per trip (opened in Google Photos) and a cover from the phone, on the phone only. Later, if wanted: pick photos, link to trip, day, city or item; on-device storage; optional backup | D9; Play photo-permission policy respected; a later step needs its own ADR |
 | 13 More coverage | On-demand region import; supplementary places from Overture and Foursquare OS Places | Hosting capacity; matching rules |
 | 14 Weather | Informational forecast overlay | D6 approved; D1 decides the provider |
 
 GTFS-Realtime is considered only after Phase 10, and only for same-day use.
+
+**Phase 10, narrowed (candidate, not approved): one-leg transit suggestion** (2026-11-16). Option D:
+after manual transport legs exist (ADR 032), the user may ask for a suggested public-transport time
+for one leg (from here to there, on this day and time). The backend asks Transitous (MOTIS 2 API)
+for one journey and the app shows it as a labelled estimate, which the user accepts (it becomes an
+ordinary manual leg) or ignores. No planner change, no bulk routing, no use in generation or
+Optimize, no real-time data. One request per tap stays well under Transitous's 720 requests a day
+coordination threshold, and the public repository (ADR 007 addendum) removes the old D11 blocker.
+Preconditions: an ADR citing the Transitous terms and the date read (section 8.1 of
+`api-evaluation.md`, re-checked), an adapter with a timeout, a cache, a daily budget and an
+identifying User-Agent, a visible link to <https://transitous.org/sources/> with each source's
+attribution, and "no suggestion, enter it by hand" as the fallback. Risks: a best-effort service
+that may be withdrawn (manual legs keep working), uneven feeds, timetables rather than promises;
+self-hosted MOTIS stays out of scope. Not approved; see ADR 032, "Later: a suggestion for one leg".
 
 **Multi-city trips (ADR 024, built 2026-11-14, awaiting acceptance).** A trip can be an ordered list
 of 2 to 6 cities chosen by the user, with the days of each; the planner plans each city and the legs

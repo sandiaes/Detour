@@ -2,6 +2,8 @@ import type { Day, Item, Transfer } from "@detour/shared";
 
 export type DayRow =
   | { kind: "item"; key: string; item: Item; ordinal: number | null }
+  /** A transport leg the user entered (ADR 032): drawn like travel, with its mode. */
+  | { kind: "leg"; key: string; item: Item }
   | { kind: "transfer"; key: string; from: Item; to: Item | null; transfer: Transfer }
   | { kind: "free"; key: string; start: string; end: string; minutes: number };
 
@@ -49,7 +51,8 @@ export function buildDayRows(day: Day): DayRow[] {
   let ordinal = 0;
   for (const item of day.items) {
     const located = item.lat !== null && item.lon !== null;
-    rows.push({ kind: "item", key: item.id, item, ordinal: located ? ++ordinal : null });
+    if (item.type === "transport") rows.push({ kind: "leg", key: item.id, item });
+    else rows.push({ kind: "item", key: item.id, item, ordinal: located ? ++ordinal : null });
     if (item.transfer) {
       rows.push({
         kind: "transfer",
@@ -75,16 +78,19 @@ export type DayTotals = {
   travelSeconds: number;
 };
 
-/** Travel includes the drive from the previous base city that starts the day (area trips). */
+/** Travel includes the drive from the previous base city that starts the day (area trips), or
+ * the journey leg the user entered instead of it, and every transport leg with a known length
+ * (ADR 032). A leg of unknown length adds nothing: it is not guessed. */
 export function dayTotals(day: Day): DayTotals {
   let visits = 0;
   let meals = 0;
   let visitMinutes = 0;
-  let travelSeconds = day.arrival?.seconds ?? 0;
+  let travelSeconds = day.arrival?.covered_by_item_id ? 0 : (day.arrival?.seconds ?? 0);
   for (const item of day.items) {
+    if (item.type === "transport") travelSeconds += (item.duration_minutes ?? 0) * 60;
     if (item.type === "visit") {
       visits += 1;
-      visitMinutes += item.duration_minutes;
+      visitMinutes += item.duration_minutes ?? 0;
     }
     if (item.type === "meal") meals += 1;
     if (item.transfer) travelSeconds += item.transfer.seconds;
@@ -212,7 +218,10 @@ export const transportId = (day: Day) => `arrival-${day.id}`;
  */
 export function transportPoint(day: Day, previous: Day | undefined): TransportPoint | null {
   const a = day.arrival;
-  if (!a || day.base_city_lat == null || day.base_city_lon == null) return null;
+  // A journey the user entered (ADR 032) takes the computed arrival's place on the map too.
+  if (!a || a.covered_by_item_id || day.base_city_lat == null || day.base_city_lon == null) {
+    return null;
+  }
   const from =
     previous && previous.base_city_lat != null && previous.base_city_lon != null
       ? ([previous.base_city_lon, previous.base_city_lat] as [number, number])

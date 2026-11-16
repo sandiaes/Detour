@@ -191,7 +191,7 @@ function EditLength({
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const hasDefault = item.default_duration_minutes != null;
-  const effective = minutes ?? item.default_duration_minutes ?? item.duration_minutes;
+  const effective = minutes ?? item.default_duration_minutes ?? item.duration_minutes ?? 0;
   const newStart = parseClock(startText);
   // An item with no time may stay without one; otherwise the time must be a time of day.
   const startValid = newStart !== null || (startText.trim() === "" && ownStart === "");
@@ -424,9 +424,9 @@ export function PlaceDetailScreen({
   const lengthFigure = {
     key: "length",
     icon: "clock" as const,
-    value: formatMinutes(item.duration_minutes),
+    value: item.duration_minutes === null ? "Not entered" : formatMinutes(item.duration_minutes),
     label: item.duration_source === "user" ? "Set by you" : "Typical visit",
-    spoken: `${item.duration_source === "user" ? "Set by you" : "Typical visit"}: ${formatMinutes(item.duration_minutes)}`,
+    spoken: `${item.duration_source === "user" ? "Set by you" : "Typical visit"}: ${item.duration_minutes === null ? "not entered" : formatMinutes(item.duration_minutes)}`,
   };
   const address = formatAddress(detail?.address);
   const town = detail?.city_name ?? day.base_city_name ?? null;

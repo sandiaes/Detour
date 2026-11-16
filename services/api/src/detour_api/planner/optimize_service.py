@@ -120,7 +120,7 @@ def preview_optimize(
         raise conflict("no_better_order", "No shorter order was found for these stops")
     computed = time.perf_counter()
 
-    kept = sum(1 for s in stops if s.fixed and s.kind != "free_time")
+    kept = sum(1 for s in stops if s.fixed and s.kind not in ("free_time", "transport"))
     notes = [
         Note(
             "OPTIMIZED",
@@ -141,6 +141,13 @@ def preview_optimize(
         notes.append(Note("OPTIMIZE_KEPT", {"count": kept}))
     if far:
         notes.append(Note("OPTIMIZE_FAR_KEPT", {"count": far, "name": trip.destination.name}))
+    if not trip.uses_car:
+        # Without a car every computed leg is walked (owner decision of 2026-11-16, ADR 032).
+        walks = optimize.long_walks(outcome, config.walk_max_m)
+        if walks:
+            notes.append(
+                Note("OPTIMIZE_LONG_WALKS", {"count": walks, "km": config.walk_max_m // 1000})
+            )
     notes += [Note("OPTIMIZE_NOT_SHORTEST"), Note("OPTIMIZE_NO_HOURS")]
 
     before_state = _with_plan(state, outcome.before, {})

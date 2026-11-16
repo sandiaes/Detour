@@ -17,6 +17,7 @@ from detour_api.models.exchange import (
     FileDay,
     FileDestination,
     FileItem,
+    FileStay,
     FileStop,
     FileTrip,
     FileVisit,
@@ -24,8 +25,16 @@ from detour_api.models.exchange import (
     ImportResult,
     TripFile,
 )
-from detour_api.models.trips import PLACE_REF, ItemCreate, Trip, TripCreate, UserPlaceCreate
-from detour_api.repo import itineraries, trips, user_places
+from detour_api.models.trips import (
+    PLACE_REF,
+    ItemCreate,
+    StayCreate,
+    TransportInfo,
+    Trip,
+    TripCreate,
+    UserPlaceCreate,
+)
+from detour_api.repo import itineraries, stays, trips, user_places
 
 # -- export ------------------------------------------------------------------------------------
 
@@ -43,6 +52,8 @@ def _reference(conn: Connection, trip: Trip) -> str | None:
 
 
 def _item_kind(type_: str, up_kind: str | None, place_id: Any, venue: str | None) -> str:
+    if type_ == "transport":
+        return "transport"
     if type_ == "meal":
         return up_kind if up_kind in ("restaurant", "cafe") else "restaurant"
     if up_kind == "city":
@@ -56,10 +67,12 @@ def _days(conn: Connection, itinerary_id: uuid.UUID) -> list[FileDay]:
             """
             SELECT d.day_index, d.base_city_name, i.position, i.type, i.display_name,
                    ST_Y(i.display_point) AS lat, ST_X(i.display_point) AS lon, i.start_time,
-                   i.duration_minutes, i.duration_source, i.locked, i.place_id, up.kind AS up_kind
+                   i.duration_minutes, i.duration_source, i.locked, i.place_id, i.transport,
+                   up.kind AS up_kind
             FROM app.itinerary_day d
-            LEFT JOIN app.itinerary_item i ON i.day_id = d.id AND i.type IN ('visit', 'meal')
-                                           AND i.display_point IS NOT NULL
+            LEFT JOIN app.itinerary_item i ON i.day_id = d.id
+                AND ((i.type IN ('visit', 'meal') AND i.display_point IS NOT NULL)
+                     OR i.type = 'transport')
             LEFT JOIN app.user_place up ON up.id = i.user_place_id
             WHERE d.itinerary_id = :it ORDER BY d.day_index, i.position
             """
@@ -84,6 +97,7 @@ def _days(conn: Connection, itinerary_id: uuid.UUID) -> list[FileDay]:
                 duration_minutes=r.duration_minutes,
                 duration_is_user=r.duration_source == "user",
                 locked=r.locked,
+                transport=None if r.transport is None else TransportInfo(**r.transport),
             )
         )
     return [days[k] for k in sorted(days)]
@@ -132,6 +146,11 @@ def export_trip(conn: Connection, trip: Trip) -> FileTrip:
         ],
         days=days,
         visits=_visits(conn, trip.id) if trip.status == "past" and not days else [],
+        stays=[
+            FileStay(name=s.name, lat=s.lat, lon=s.lon, first_day=s.first_day, last_day=s.last_day)
+            for s in stays.list_for_trip(conn, trip.id)
+        ],
+        uses_car=trip.uses_car,
     )
 
 
@@ -163,6 +182,9 @@ def _check_file(file: TripFile) -> None:
             raise invalid("bad_file", f"trip {n + 1}: a trip has a plan or visits, not both")
         if t.status == "active" and t.visits:
             raise invalid("bad_file", f"trip {n + 1}: only a past trip has visits")
+        for stay in t.stays:
+            if stay.last_day < stay.first_day or stay.last_day > t.duration_days:
+                raise invalid("bad_file", f"trip {n + 1}: a stay is outside the trip's days")
 
 
 def _destination_ref(d: FileDestination) -> str:
@@ -181,6 +203,8 @@ def _import_trip(conn: Connection, installation_id: uuid.UUID, t: FileTrip) -> I
         destination_country=d.country_iso2,
         duration_days=t.duration_days,
         start_date=t.start_date,
+        # A version 1 file has no Car choice: the trip keeps a car, as it did before (ADR 032).
+        uses_car=True if t.uses_car is None else t.uses_car,
     )
     trip = trips.create_trip(
         conn, installation_id, body, destination_name=d.name, lat=d.lat, lon=d.lon
@@ -188,6 +212,19 @@ def _import_trip(conn: Connection, installation_id: uuid.UUID, t: FileTrip) -> I
     stops = 0
     if t.days:
         stops = _write_plan(conn, installation_id, trip, t.days)
+    for stay in t.stays:
+        stays.create(
+            conn,
+            installation_id,
+            trip.id,
+            StayCreate(
+                name=stay.name,
+                lat=stay.lat,
+                lon=stay.lon,
+                first_day=stay.first_day,
+                last_day=stay.last_day,
+            ),
+        )
     if t.status == "past":
         _write_visits(conn, trip.id, t.visits)
         conn.execute(
@@ -252,7 +289,28 @@ def _write_plan(
                 ),
                 {"n": day.base_city_name, "i": plan.id, "d": day.day_index},
             )
+        placed = 0
         for it in sorted(day.items, key=lambda x: x.position):
+            if it.transport is not None:
+                # A leg comes back as a leg of the manual plan, as entered (ADR 032).
+                itineraries.create_item(
+                    conn,
+                    installation_id,
+                    plan.id,
+                    day.day_index,
+                    ItemCreate(
+                        type="transport",
+                        transport=it.transport,
+                        start_time=it.start_time,
+                        duration_minutes=it.duration_minutes,
+                        # In the file's order: a journey leg would otherwise go first.
+                        position=placed + 1,
+                    ),
+                )
+                count += 1
+                placed += 1
+                continue
+            assert it.lat is not None and it.lon is not None  # noqa: S101 - FileItem checks
             kind = it.kind if it.kind in ("restaurant", "cafe") else _PLACE_KIND[it.kind]
             key = (kind, it.name.casefold(), round(it.lat, 6), round(it.lon, 6))
             if key not in made:
@@ -290,6 +348,7 @@ def _write_plan(
                     {"i": item.id},
                 )
             count += 1
+            placed += 1
     return count
 
 

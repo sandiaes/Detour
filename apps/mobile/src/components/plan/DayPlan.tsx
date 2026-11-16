@@ -33,6 +33,14 @@ import {
   formatSeconds,
   pluralise,
 } from "../../util/format";
+import {
+  MODE_ICON,
+  MODE_LABEL,
+  isLeg,
+  journeyLeg,
+  legLine,
+  legSentence,
+} from "../../domain/transport";
 import { EmptyState, FocusPressable, Icon, KindIcon, StopMark } from "../ds";
 import { ItineraryMap } from "../ItineraryMap";
 
@@ -52,7 +60,7 @@ export function dayTotalsText(day: Day): string {
   return `${pluralise(t.visits, "visit")}${meals} · ${formatMinutes(t.visitMinutes)} at the sights · ${formatSeconds(t.travelSeconds)} travelling`;
 }
 
-export const UNKNOWN_LEG_TEXT = "time not calculated: public transport is not built yet";
+export const UNKNOWN_LEG_TEXT = "time not calculated: add how you travel as transport";
 
 /** The drive from the previous base city that starts the day, as one line. */
 export function arrivalText(day: Day): string | null {
@@ -72,7 +80,9 @@ export function stopSummary(item: Item): string {
   const parts: string[] = [];
   if (item.type === "free_time") parts.push("Free time");
   else parts.push(STOP_KIND_LABEL[kind]);
-  parts.push(formatMinutes(item.duration_minutes));
+  parts.push(
+    item.duration_minutes === null ? "time not entered" : formatMinutes(item.duration_minutes),
+  );
   return parts.join(" · ");
 }
 
@@ -96,7 +106,7 @@ export function stopSentence(item: Item, ordinal: number | null): string {
   return (
     `${ordinal ? `Stop ${ordinal}. ` : ""}${item.type === "free_time" ? "" : `${STOP_KIND_LABEL[stopKind(item)]}. `}${kind ? `${kind}. ` : ""}${item.display_name}. ` +
     `${tags ? `${tags}. ` : ""}${when}. ` +
-    `${formatMinutes(item.duration_minutes)}, ${source}.${reasons ? ` Why: ${reasons}` : ""}`
+    `${item.duration_minutes === null ? "Length not entered" : formatMinutes(item.duration_minutes)}, ${source}.${reasons ? ` Why: ${reasons}` : ""}`
   );
 }
 
@@ -320,6 +330,75 @@ export function TransferRow({ row }: { row: Extract<DayRow, { kind: "transfer" }
   );
 }
 
+/** A transport leg the user entered (ADR 032), written into a hairline like computed travel but
+ * with its mode: ———— 🚆 Train · 1 h 30 min · 10:12 to 11:42 ————. It opens to be edited. */
+export function LegRow({ item, onOpen }: { item: Item; onOpen?: () => void }) {
+  if (!isLeg(item)) return null;
+  const body = (
+    <>
+      <View style={styles.transferLine} />
+      <View style={styles.startText}>
+        <Icon name={MODE_ICON[item.transport.mode]} size="xs" color={colors.text} />
+        <Text style={styles.legText} numberOfLines={2}>
+          {legLine(item)}
+        </Text>
+      </View>
+      <View style={styles.transferLine} />
+    </>
+  );
+  if (!onOpen) {
+    return (
+      <View style={styles.transfer} accessible accessibilityLabel={legSentence(item)}>
+        {body}
+      </View>
+    );
+  }
+  return (
+    <FocusPressable
+      accessibilityRole="button"
+      accessibilityLabel={legSentence(item)}
+      accessibilityHint="Opens it to change or remove"
+      onPress={onOpen}
+      style={styles.legRow}
+      testID={`leg-${item.id}`}
+    >
+      {body}
+    </FocusPressable>
+  );
+}
+
+/** The journey to a new city as the user entered it (ADR 032): it takes the place of the computed
+ * arrival row, and of "time not calculated" for a journey into or out of Japan. */
+function JourneyRow({ day, item, onOpen }: { day: Day; item: Item; onOpen?: () => void }) {
+  if (!isLeg(item)) return null;
+  const t = item.transport;
+  const to = day.base_city_name ?? t.to_name;
+  const words = `${MODE_LABEL[t.mode]} from ${t.from_name} · ${legLine(item).split(" · ").slice(1).join(" · ")}`;
+  return (
+    <View style={styles.row}>
+      <View style={styles.timeCol}>
+        <Text style={styles.time}>{formatClock(item.start_time) ?? "Start"}</Text>
+      </View>
+      <FocusPressable
+        accessibilityRole={onOpen ? "button" : undefined}
+        accessibilityLabel={`Journey to ${to}. ${legSentence(item)}`}
+        accessibilityHint={onOpen ? "Opens it to change or remove" : undefined}
+        accessible
+        disabled={!onOpen}
+        onPress={onOpen}
+        style={styles.select}
+        testID={`journey-${day.day_index}`}
+      >
+        <StopMark kind="transport" icon={MODE_ICON[t.mode]} />
+        <View style={styles.cardText}>
+          <Text style={styles.title}>{`To ${to}`}</Text>
+          <Text style={styles.meta}>{words}</Text>
+        </View>
+      </FocusPressable>
+    </View>
+  );
+}
+
 /** The morning at the stay (ADR 030), written into a hairline like the travel between stops:
  * ———— ⌂ Walk from Hotel Alpen · 10 min · 800 m ————, centred. */
 export function StartRow({ day }: { day: Day }) {
@@ -362,11 +441,21 @@ export function DayPlanList({
   /** Where each row sits, so a screen can scroll to the stop chosen on the map. */
   onRowLayout?: (id: string, y: number) => void;
 }) {
-  const rows = useMemo(() => buildDayRows(day), [day]);
+  const journey = journeyLeg(day);
+  const rows = useMemo(
+    () => buildDayRows(day).filter((r) => !(r.kind === "leg" && r.item.id === journey?.id)),
+    [day, journey],
+  );
   const transport = transportPoint(day, previousDay);
   return (
     <View style={styles.list}>
-      {day.arrival ? (
+      {journey ? (
+        <JourneyRow
+          day={day}
+          item={journey}
+          onOpen={onDetails ? () => onDetails(journey) : undefined}
+        />
+      ) : day.arrival ? (
         <View onLayout={(e) => onRowLayout?.(`arrival-${day.id}`, e.nativeEvent.layout.y)}>
           <ArrivalRow
             day={day}
@@ -391,6 +480,12 @@ export function DayPlanList({
           </View>
         ) : row.kind === "free" ? (
           <FreeTimeRow key={row.key} row={row} />
+        ) : row.kind === "leg" ? (
+          <LegRow
+            key={row.key}
+            item={row.item}
+            onOpen={onDetails ? () => onDetails(row.item) : undefined}
+          />
         ) : (
           <TransferRow key={row.key} row={row} />
         ),
@@ -659,6 +754,16 @@ const styles = StyleSheet.create({
   },
   transferLine: { flex: 1, height: border.hairline, backgroundColor: colors.border },
   transferText: { ...type.caption, color: colors.muted },
+  // A leg the user entered reads a step stronger than computed travel, and is a touch target.
+  legText: { ...type.caption, fontWeight: weight.medium, color: colors.text },
+  legRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    minHeight: sizes.rowCompact,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+  },
   // The stay's line: the house and the words together in the middle, a hairline either side.
   startText: { flexShrink: 1, flexDirection: "row", alignItems: "center", gap: spacing.xs },
 });

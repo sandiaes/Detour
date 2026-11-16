@@ -91,7 +91,7 @@ def test_a_hand_made_trip_survives_the_round_trip(api_env: ApiEnv) -> None:
     before = _stops(api_env, trip["id"])
 
     file = _export(api_env, trip)
-    assert file["format"] == "detour-trip" and file["format_version"] == 1
+    assert file["format"] == "detour-trip" and file["format_version"] == 2
     assert [len(d["items"]) for d in file["trips"][0]["days"]] == [2, 1]
 
     r = _import(api_env, file)
@@ -240,7 +240,7 @@ def test_a_trip_can_be_exported_only_by_its_owner(api_env: ApiEnv) -> None:
 
 def test_a_file_from_a_newer_version_is_refused(api_env: ApiEnv) -> None:
     file = _export(api_env)
-    file["format_version"] = 2
+    file["format_version"] = 3
     r = _import(api_env, file)
     assert r.status_code == 422 and r.json()["code"] == "format_too_new"
 
@@ -280,3 +280,131 @@ def test_overlapping_stops_in_a_file_are_refused_and_nothing_is_written(api_env:
     r = _import(api_env, {"format_version": 1, "trips": [{**good, "days": [day]}]})
     assert r.status_code == 409  # the plan's own overlap rule; the whole file rolls back
     assert len(api_env.client.get("/v1/trips", headers=api_env.headers).json()) == 1
+
+
+# -- version 2: transport legs, stays and Car (ADR 032) -------------------------------------------
+
+
+def _chosen(api_env: ApiEnv, trip: dict[str, Any]) -> dict[str, Any]:
+    plan = make_itinerary(api_env, trip)
+    api_env.client.patch(
+        f"/v1/trips/{trip['id']}",
+        json={"selected_itinerary_id": plan["id"]},
+        headers=api_env.headers,
+    )
+    return plan
+
+
+def _plan_of(api_env: ApiEnv, trip_id: str) -> dict[str, Any]:
+    trip = api_env.client.get(f"/v1/trips/{trip_id}", headers=api_env.headers).json()
+    got: dict[str, Any] = api_env.client.get(
+        f"/v1/itineraries/{trip['selected_itinerary_id']}", headers=api_env.headers
+    ).json()
+    return got
+
+
+def test_legs_stays_and_car_survive_the_round_trip(api_env: ApiEnv) -> None:
+    trip = _place_trip(api_env, uses_car=False)
+    plan = _chosen(api_env, trip)
+    church = _own_place(api_env, "location", "Lutheran church", 47.5621, 13.6489)
+    add_item(
+        api_env,
+        plan,
+        1,
+        type="visit",
+        user_place_id=church,
+        start_time="09:30:00",
+        duration_minutes=50,
+    )
+    train = {
+        "mode": "train",
+        "from_name": "Hallstatt",
+        "to_name": "Salzburg",
+        "to_lat": 47.8,
+        "to_lon": 13.04,
+        "note": "Change at Attnang",
+    }
+    assert (
+        add_item(
+            api_env,
+            plan,
+            1,
+            type="transport",
+            transport=train,
+            start_time="16:00:00",
+            duration_minutes=150,
+        ).status_code
+        == 201
+    )
+    journey = {**train, "is_journey": True, "mode": "bus"}
+    add_item(
+        api_env,
+        plan,
+        2,
+        type="visit",
+        user_place_id=church,
+        start_time="12:00:00",
+        duration_minutes=30,
+    )
+    add_item(api_env, plan, 2, type="transport", transport=journey, position=2)
+    stay = {"name": "Gasthof", "lat": 47.56, "lon": 13.65, "first_day": 1, "last_day": 2}
+    assert (
+        api_env.client.post(
+            f"/v1/trips/{trip['id']}/stays", json=stay, headers=api_env.headers
+        ).status_code
+        == 201
+    )
+
+    file = _export(api_env, trip)
+    exported = file["trips"][0]
+    assert exported["uses_car"] is False and exported["stays"][0]["name"] == "Gasthof"
+    legs = [i for d in exported["days"] for i in d["items"] if i["kind"] == "transport"]
+    assert len(legs) == 2 and legs[0]["lat"] is None and legs[1]["duration_minutes"] is None
+
+    r = _import(api_env, file)
+    assert r.status_code == 201, r.text
+    made = r.json()["trips"][0]
+    copy = api_env.client.get(f"/v1/trips/{made['trip_id']}", headers=api_env.headers).json()
+    assert copy["uses_car"] is False
+    got_stays = api_env.client.get(
+        f"/v1/trips/{made['trip_id']}/stays", headers=api_env.headers
+    ).json()
+    assert [(s["name"], s["first_day"], s["last_day"]) for s in got_stays] == [("Gasthof", 1, 2)]
+    days = _plan_of(api_env, made["trip_id"])["days"]
+    day1 = [(i["type"], i["display_name"], i["start_time"]) for i in days[0]["items"]]
+    assert day1 == [
+        ("visit", "Lutheran church", "09:30:00"),
+        ("transport", "Train to Salzburg", "16:00:00"),
+    ]
+    assert days[0]["items"][1]["transport"]["note"] == "Change at Attnang"
+    day2 = [(i["type"], i["duration_minutes"]) for i in days[1]["items"]]
+    assert day2 == [("visit", 30), ("transport", None)]  # the file's order, length unknown
+    assert days[1]["items"][1]["transport"]["is_journey"] is True
+
+
+def test_a_version_1_file_still_imports_with_a_car_and_no_stays(api_env: ApiEnv) -> None:
+    trip = _place_trip(api_env, uses_car=False)
+    file = _export(api_env, trip)
+    file["format_version"] = 1
+    for t in file["trips"]:
+        t.pop("stays")
+        t.pop("uses_car")
+    r = _import(api_env, file)
+    assert r.status_code == 201, r.text
+    made = r.json()["trips"][0]
+    copy = api_env.client.get(f"/v1/trips/{made['trip_id']}", headers=api_env.headers).json()
+    assert copy["uses_car"] is True
+
+
+def test_a_leg_in_a_file_needs_its_details_and_a_stop_needs_its_point(api_env: ApiEnv) -> None:
+    trip = _place_trip(api_env)
+    good = _export(api_env, trip)["trips"][0]
+    leg_without = {"position": 1, "kind": "transport", "name": "Train"}
+    stop_without = {"position": 1, "kind": "place", "name": "Somewhere", "duration_minutes": 30}
+    for item in (leg_without, stop_without):
+        day = {"day_index": 1, "items": [item]}
+        r = _import(api_env, {"format_version": 2, "trips": [{**good, "days": [day]}]})
+        assert r.status_code == 422, r.text
+    bad_stay = {"name": "Inn", "lat": 47.5, "lon": 13.6, "first_day": 1, "last_day": 9}
+    r = _import(api_env, {"format_version": 2, "trips": [{**good, "stays": [bad_stay]}]})
+    assert r.status_code == 422 and r.json()["code"] == "bad_file"

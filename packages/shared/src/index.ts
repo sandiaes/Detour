@@ -25,6 +25,7 @@ export type Item = components["schemas"]["Item"];
 export type Photo = components["schemas"]["Photo"];
 export type CoverCandidate = components["schemas"]["CoverCandidate"];
 export type Transfer = components["schemas"]["Transfer"];
+export type TransportInfo = components["schemas"]["TransportInfo"];
 export type PlanNote = components["schemas"]["PlanNote"];
 export type PlanStats = components["schemas"]["PlanStats"];
 export type GenerationResult = components["schemas"]["GenerationResult"];

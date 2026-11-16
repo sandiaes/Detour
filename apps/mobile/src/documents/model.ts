@@ -1,5 +1,6 @@
 import type { Day, Item } from "@detour/shared";
 
+import { MODE_LABEL } from "../domain/transport";
 import { formatBytes, formatDayLabel } from "../util/format";
 
 // Trip documents (ADR 023): tickets, bookings, transport and other documents, kept on the
@@ -129,6 +130,8 @@ export function placeKey(item: Pick<Item, "place_id" | "user_place_id" | "displa
 }
 
 /** What a document is about, in words. */
+const ENTERED_LEG = new RegExp(`^(${Object.values(MODE_LABEL).join("|")}) to `);
+
 export function linkLabel(link: DocLink, startDate: string | null): string {
   switch (link.kind) {
     case "trip":
@@ -138,7 +141,10 @@ export function linkLabel(link: DocLink, startDate: string | null): string {
     case "place":
       return link.day ? `${link.name} · day ${link.day}` : link.name;
     case "leg":
-      return `Journey to ${link.name} · day ${link.day}`;
+      // A leg the user entered is already named by its mode ("Train to Florence", ADR 032).
+      return ENTERED_LEG.test(link.name)
+        ? `${link.name} · day ${link.day}`
+        : `Journey to ${link.name} · day ${link.day}`;
   }
 }
 
@@ -148,7 +154,8 @@ export function linkablePlaces(days: Day[]): { key: string; name: string; day: n
   const out: { key: string; name: string; day: number }[] = [];
   for (const day of [...days].sort((a, b) => a.day_index - b.day_index)) {
     for (const item of day.items) {
-      if (item.type === "free_time") continue;
+      // A transport leg is not a place: its documents link to it as a journey (ADR 032).
+      if (item.type === "free_time" || item.type === "transport") continue;
       const key = placeKey(item);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -158,16 +165,31 @@ export function linkablePlaces(days: Day[]): { key: string; name: string; day: n
   return out;
 }
 
-/** The journeys of a plan: each day that starts at a new base city. */
-export function linkableLegs(days: Day[]): { day: number; name: string; from: string | null }[] {
-  return [...days]
-    .sort((a, b) => a.day_index - b.day_index)
-    .filter((d) => d.arrival)
-    .map((d) => ({
-      day: d.day_index,
-      name: d.base_city_name ?? `day ${d.day_index}`,
-      from: d.arrival?.from_base_city_name ?? null,
-    }));
+export type LinkableLeg = { day: number; name: string; from: string | null; entered?: boolean };
+
+/** The journeys of a plan: each day that starts at a new base city, and each transport leg the
+ * user entered (ADR 032), named as it reads in the plan ("Train to Florence"). */
+export function linkableLegs(days: Day[]): LinkableLeg[] {
+  const out: LinkableLeg[] = [];
+  for (const d of [...days].sort((a, b) => a.day_index - b.day_index)) {
+    if (d.arrival && !d.arrival.covered_by_item_id) {
+      out.push({
+        day: d.day_index,
+        name: d.base_city_name ?? `day ${d.day_index}`,
+        from: d.arrival.from_base_city_name ?? null,
+      });
+    }
+    for (const item of d.items) {
+      if (item.type !== "transport" || !item.transport) continue;
+      out.push({
+        day: d.day_index,
+        name: item.display_name,
+        from: item.transport.from_name,
+        entered: true,
+      });
+    }
+  }
+  return out;
 }
 
 /** Documents grouped by category in a fixed order, newest first within a group. */

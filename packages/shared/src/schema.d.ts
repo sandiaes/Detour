@@ -815,6 +815,11 @@ export interface components {
        * @enum {string}
        */
       confidence: "routed" | "estimated" | "unknown";
+      /**
+       * Covered By Item Id
+       * @description A journey leg the user entered for this day (ADR 032): show it instead of this computed leg, and count its length, not this one
+       */
+      covered_by_item_id?: string | null;
     };
     /** AttributionEntry */
     AttributionEntry: {
@@ -1477,7 +1482,41 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "sight" | "city" | "place" | "restaurant" | "cafe";
+      kind: "sight" | "city" | "place" | "restaurant" | "cafe" | "transport";
+      /** Name */
+      name: string;
+      /**
+       * Lat
+       * @description Null only for a transport leg
+       */
+      lat?: number | null;
+      /** Lon */
+      lon?: number | null;
+      /** Start Time */
+      start_time?: string | null;
+      /**
+       * Duration Minutes
+       * @description Null only for a leg whose length is unknown
+       */
+      duration_minutes?: number | null;
+      /**
+       * Duration Is User
+       * @default false
+       */
+      duration_is_user: boolean;
+      /**
+       * Locked
+       * @default false
+       */
+      locked: boolean;
+      /** @description Version 2: what the user entered for a transport leg */
+      transport?: components["schemas"]["TransportInfo"] | null;
+    };
+    /**
+     * FileStay
+     * @description Where the traveller slept, for a range of days (ADR 030). Version 2.
+     */
+    FileStay: {
       /** Name */
       name: string;
       /**
@@ -1490,20 +1529,10 @@ export interface components {
        * @description WGS 84 longitude
        */
       lon: number;
-      /** Start Time */
-      start_time?: string | null;
-      /** Duration Minutes */
-      duration_minutes: number;
-      /**
-       * Duration Is User
-       * @default false
-       */
-      duration_is_user: boolean;
-      /**
-       * Locked
-       * @default false
-       */
-      locked: boolean;
+      /** First Day */
+      first_day: number;
+      /** Last Day */
+      last_day: number;
     };
     /**
      * FileStop
@@ -1553,6 +1582,13 @@ export interface components {
       days?: components["schemas"]["FileDay"][];
       /** Visits */
       visits?: components["schemas"]["FileVisit"][];
+      /** Stays */
+      stays?: components["schemas"]["FileStay"][];
+      /**
+       * Uses Car
+       * @description Version 2; a version 1 file has none and imports with a car
+       */
+      uses_car?: boolean | null;
     };
     /**
      * FileVisit
@@ -1710,7 +1746,7 @@ export interface components {
        * Type
        * @enum {string}
        */
-      type: "visit" | "meal" | "free_time";
+      type: "visit" | "meal" | "free_time" | "transport";
       /** Place Id */
       place_id: string | null;
       /** User Place Id */
@@ -1723,10 +1759,16 @@ export interface components {
       lon: number | null;
       /** Start Time */
       start_time: string | null;
-      /** End Time */
+      /**
+       * End Time
+       * @description Null when unscheduled; a transport leg may have a start without an end: its length is unknown, or it arrives the next day
+       */
       end_time: string | null;
-      /** Duration Minutes */
-      duration_minutes: number;
+      /**
+       * Duration Minutes
+       * @description Null only for a transport leg whose length the user did not enter (unknown)
+       */
+      duration_minutes: number | null;
       /**
        * Duration Source
        * @enum {string}
@@ -1758,6 +1800,8 @@ export interface components {
       transfer?: components["schemas"]["Transfer"] | null;
       /** @description Restaurant and cafe stops only: its kind */
       restaurant?: components["schemas"]["RestaurantInfo"] | null;
+      /** @description Transport legs only (ADR 032): what the user entered */
+      transport?: components["schemas"]["TransportInfo"] | null;
       /** @description Photo of an imported place, when one was found (restaurants have none yet) */
       image?: components["schemas"]["Photo"] | null;
       /** @description Imported places: the resolved English-facing name and the original local name (ADR 025), read when the plan is read. display_name stays the stored snapshot */
@@ -1769,7 +1813,7 @@ export interface components {
        * Type
        * @enum {string}
        */
-      type: "visit" | "meal" | "free_time";
+      type: "visit" | "meal" | "free_time" | "transport";
       /**
        * Place Id
        * @description A geo.place
@@ -1789,7 +1833,7 @@ export interface components {
       duration_minutes?: number | null;
       /**
        * Position
-       * @description Defaults to the end of the day
+       * @description Defaults to the end of the day; a journey leg defaults to the start
        */
       position?: number | null;
       /**
@@ -1797,6 +1841,8 @@ export interface components {
        * @default false
        */
       locked: boolean;
+      /** @description Required for type transport (ADR 032), and only then. Its length may be left out: it is then unknown */
+      transport?: components["schemas"]["TransportInfo"] | null;
     };
     /**
      * ItemUpdate
@@ -1821,6 +1867,8 @@ export interface components {
        * @description Move to another day
        */
       day_index?: number | null;
+      /** @description A transport leg only: replaces what the user entered (ADR 032). On a leg, duration_minutes: null makes its length unknown */
+      transport?: components["schemas"]["TransportInfo"] | null;
     };
     /** Itinerary */
     Itinerary: {
@@ -2697,6 +2745,39 @@ export interface components {
        * @enum {string}
        */
       confidence: "routed" | "estimated";
+    };
+    /**
+     * TransportInfo
+     * @description A transport leg the user entered by hand (ADR 032). Every value is the user's: nothing is
+     *     computed or looked up. A point is given only when the end was picked from the trip (a stop, a
+     *     city or a stay); a typed name has none. No price, operator or booking (ADR 017).
+     */
+    TransportInfo: {
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "train" | "bus" | "metro_tram" | "ferry" | "taxi" | "walk" | "other";
+      /** From Name */
+      from_name: string;
+      /** From Lat */
+      from_lat?: number | null;
+      /** From Lon */
+      from_lon?: number | null;
+      /** To Name */
+      to_name: string;
+      /** To Lat */
+      to_lat?: number | null;
+      /** To Lon */
+      to_lon?: number | null;
+      /**
+       * Is Journey
+       * @description The journey between two cities: it covers the day's computed arrival
+       * @default false
+       */
+      is_journey: boolean;
+      /** Note */
+      note?: string | null;
     };
     /** Trip */
     Trip: {

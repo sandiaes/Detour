@@ -66,7 +66,7 @@ the current generation: **compact** (built in the 2026-11-14 and -15 restyles), 
 
 | # | Screen / element | File | States and sub-views | Header | Look |
 |---|---|---|---|---|---|
-| S5 | Create new trip | `screens/CreateTripScreen.tsx` | search idle, "type 2 letters", searching, waking, offline, error, results drop-down, nothing found, "Search more widely" (results / none / unavailable), "Enter it by hand" (latitude, longitude), chosen destination (name, kind, X, cover, Change photo, photo credit), area hint, not-plannable reason, multi-city stop list, start date, duration stepper or route total, public transport switch, cities problem, offline notice, planning notice, problem notice, two main buttons, "Open the trip without a plan" | own (back row + title 22 + subtitle) | mixed |
+| S5 | Create new trip | `screens/CreateTripScreen.tsx` | search idle, "type 2 letters", searching, waking, offline, error, results drop-down, nothing found, "Search more widely" (results / none / unavailable), "Enter it by hand" (latitude, longitude), chosen destination (name, kind, X, cover, Change photo, photo credit), area hint, not-plannable reason, multi-city stop list, start date, duration stepper or route total, Car pill (the public transport switch was removed by ADR 032, 2026-11-16), cities problem, offline notice, planning notice, problem notice, two main buttons, "Open the trip without a plan" | own (back row + title 22 + subtitle) | mixed |
 | M1 | Start date (sheet) | `components/ds/Calendar.tsx` | month grid, today ringed, chosen filled, Clear the date | sheet title | compact |
 | M2 | Add a city (sheet) | `components/StopList.tsx` (`CitySearchSheet`) | input, searching, error, none, results, unavailable result | sheet title | older (own input and rows) |
 | M3 | Change photo (sheet) | `components/ds/CoverPicker.tsx` | city tabs (multi-city), loading, error, none, 3-across grid with credit, chosen tick, Automatic photo | sheet title | compact |
@@ -538,7 +538,7 @@ New or renamed (each contrast-tested in `theme.test.ts`):
 | G1 | Bottom bar | Labels → `micro`; active colour → `selected`; Add disc → `primary` 40 dp; no layout change |
 | G2 | Add to this trip | `Sheet` restyle only |
 | G3 | Server banner | → `Notice` (`warning` / `error`) with a `ghost` Retry |
-| S5 | Create new trip | `ScreenHeader`; destination → `SearchField`; chosen destination → `SelectField`-style chosen value with clear; start date → `DateField`; duration → `Stepper`; latitude / longitude → `TextField`s; public transport → `ListRow` with a switch; main buttons → `primary md` and `secondary md`; "Search more widely" `secondary sm`, "Enter it by hand" `ghost sm` (same everywhere); results drop-down unchanged |
+| S5 | Create new trip | `ScreenHeader`; destination → `SearchField`; chosen destination → `SelectField`-style chosen value with clear; start date → `DateField`; duration → `Stepper`; latitude / longitude → `TextField`s; public transport → removed (ADR 032, 2026-11-16; Car is a `Chip`); main buttons → `primary md` and `secondary md`; "Search more widely" `secondary sm`, "Enter it by hand" `ghost sm` (same everywhere); results drop-down unchanged |
 | M1 | Calendar | Selected day → `selected`; day cells `minHeight` |
 | M2 | Add a city | `SearchField`; results → `ListRow compact` with disabled reason; `InlineStatus` |
 | M3 | Change photo | City tabs → `Chip`s; loading → `StateView inline`; grid unchanged |

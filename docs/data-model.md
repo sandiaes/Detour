@@ -296,12 +296,17 @@ The API's `Day` adds the base city's position (`base_city_lat`, `base_city_lon`)
 | `itinerary_item` | Notes |
 |---|---|
 | `position` | Dense and 1-based within a day; unique per day (deferrable, so reorders are atomic) |
-| `type` | `visit`, `meal`, `free_time`. A `meal` item is a restaurant or cafe stop (a place of kind `restaurant` or `cafe`); it has no meal type (`meal_type` was dropped by `0014`). A restaurant takes 75 minutes and a cafe 45 when no length is given (*proposed*, `planner/durations.py`; `duration_source = 'category_default'`); the read endpoints add the kind of the user place by identifier, never copied. Stops of plans made before ADR 026 keep their times and became the installation's own places (`0014`) |
+| `type` | `visit`, `meal`, `free_time`, `transport` (ADR 032, migration `0021`: a leg the user entered; no place, no point). A `meal` item is a restaurant or cafe stop (a place of kind `restaurant` or `cafe`); it has no meal type (`meal_type` was dropped by `0014`). A restaurant takes 75 minutes and a cafe 45 when no length is given (*proposed*, `planner/durations.py`; `duration_source = 'category_default'`); the read endpoints add the kind of the user place by identifier, never copied. Stops of plans made before ADR 026 keep their times and became the installation's own places (`0014`) |
 | `place_id`, `user_place_id` | Exactly one for a visit or meal, neither for free time. A meal needs a user place of kind `restaurant` or `cafe`; a visit must not be one. `user_place_id` is `ON DELETE RESTRICT` |
 | `display_name`, `display_point` | Snapshot at creation (name or, for an unnamed place, its category); user-place renames are propagated |
-| `start_time`, `end_time` | Local time at the destination; both null or both set, `end > start`, same day. Unscheduled is allowed. Timed items of a day may touch but not overlap |
-| `duration_minutes`, `duration_source` | 1 to 1440; `user` or `category_default`. Engine items and imported attractions added without a duration take the category default (ADR 014); a meal or a user place needs a duration |
+| `start_time`, `end_time` | Local time at the destination; both null or both set, `end > start`, same day. Unscheduled is allowed. Timed items of a day may touch but not overlap. A transport leg may have a start and no end: its length is unknown (it counts as a point for the overlap check) or it arrives after midnight (it takes the rest of its day) |
+| `transport` | jsonb, set iff `type = 'transport'` (ADR 032): `mode` (`train`, `bus`, `metro_tram`, `ferry`, `taxi`, `walk`, `other`), `from_name`, `to_name` (1 to 120 characters), optional `from_lat/lon`, `to_lat/lon` (only when the end was picked from the trip), `is_journey` (it covers the day's computed arrival; the API's `Arrival.covered_by_item_id` names it) and an optional `note` (up to 500). Validated by the API (`TransportInfo`); no price, operator or booking. A leg is always `locked` and `origin = user`; `display_name` is "Train to Florence" |
+| `duration_minutes`, `duration_source` | 1 to 1440; `user` or `category_default`. Null only for a transport leg whose length the user did not enter (unknown; never estimated). Engine items and imported attractions added without a duration take the category default (ADR 014); a meal or a user place needs a duration |
 | `origin`, `locked`, `reasons` | `engine` or `user`; a locked item keeps its day, start and end in every recalculation and is never removed by one; an item with origin `user` (added by hand or through a change set, a restaurant added through an `add_restaurant` change set included: a meal with `origin = user` keeps its day and times, ADR 019) is mandatory: never left out (ADR 018); reason codes from the fixed template table (`planner/reasons.py`; `SEED_DATA` on seed items) |
+
+A transport leg is the travel of its stretch: no transfer is written from the stop before it or to
+the stop after it, Optimize never moves it or a stop across it, and Add a place's recalculation names
+its day (`TRANSPORT_LEG_DAY`) instead of planning around it (ADR 032).
 
 `transfer`: `from_item_id` (unique: one outgoing transfer per item), `to_item_id`, `mode`,
 `seconds`, `meters`, `confidence` (`routed`, `estimated`), `geometry`. Written by the planner for
@@ -486,13 +491,16 @@ or null. Deleting a trip deletes its row and the cover copy. The backend stores 
 
 Not a table: the format of what leaves the app. A `.detour` file is a zip holding `trip.json` and,
 when documents are included, `documents.json` and `documents/<n>.<ext>` (generated names).
-`trip.json` is `{format: "detour-trip", format_version: 1, exported_at, trips: [...]}`. Each trip
+`trip.json` is `{format: "detour-trip", format_version: 2, exported_at, trips: [...]}` (version 2
+since 2026-11-16, ADR 032; version 1 files still import). Each trip
 has `title`, `destination` (`kind`, `ref` only when it is a provider reference such as
 `geonames:123`, `photon:N123`, `area:<uuid>` or `manual`, `name`, `lat`, `lon`, `country_iso2`),
 `duration_days`, `start_date`, `status` and `archived_at`, `stops` (the cities of a multi-city trip,
 for reference), `days` (the chosen plan: day number, base city name and the stops with position,
-kind `sight`, `city`, `place`, `restaurant` or `cafe`, name, point, start time, length, whether the
-user set the length, locked) and, for a past trip, `visits` (the archive rows with their visited
+kind `sight`, `city`, `place`, `restaurant`, `cafe` or (version 2) `transport`, name, point (none for
+a leg), start time, length (none for a leg of unknown length), whether the user set the length,
+locked, and for a leg its `transport` details), version 2's `stays` (name, point, first and last day)
+and `uses_car`, and, for a past trip, `visits` (the archive rows with their visited
 mark). It holds no installation, trip, plan or place identifier, no `geo` identifier, no travel
 time and no cover photo. `documents.json` lists each document with its trip's position, title,
 kind, a link by name and day, date, note, file name and type. `albums.json` (ADR 031, written
@@ -500,7 +508,9 @@ whenever a trip has album links) is `{format: "detour-albums", format_version: 1
 [{trip_index, name, url}]}`; the cover picture from the phone is not in the file. Import (`repo/exchange.py`) writes
 every trip as a new `place` trip, a manual itinerary of the user's own places (`app.user_place`,
 `source = manual_pin`) and, for a past trip, `app.trip_visit` rows with no `geo` reference.
-Version 1 keeps importing in later versions.
+A transport leg imports as a leg of the manual plan, in the file's order; stays are added after the
+plan. A version 1 file imports with a car and no stays, as before. Version 1 keeps importing in later
+versions.
 
 ## 9. Differences from the earlier proposal
 

@@ -96,7 +96,7 @@ test.each([
 });
 
 test("a newer format is refused with a request to update", () => {
-  const bytes = zipSync({ "trip.json": strToU8(JSON.stringify(file([], { format_version: 2 }))) });
+  const bytes = zipSync({ "trip.json": strToU8(JSON.stringify(file([], { format_version: 3 }))) });
   expect(() => readArchive(bytes)).toThrow(/newer version of Detour/);
 });
 

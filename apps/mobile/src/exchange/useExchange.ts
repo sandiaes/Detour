@@ -14,6 +14,7 @@ import {
   type ArchiveLink,
   type ReadArchive,
   ArchiveError,
+  FORMAT_VERSION,
   MAX_DOCUMENT_BYTES,
   buildArchive,
   exportFileName,
@@ -122,7 +123,7 @@ export function useExchange() {
       if (tripIds !== "all") title = trips[0]?.title ?? null;
       const file: TripFile = {
         format: "detour-trip",
-        format_version: 1,
+        format_version: FORMAT_VERSION,
         exported_at: new Date().toISOString(),
         trips,
       };

@@ -14,7 +14,9 @@ language model) are in the [product brief](product-brief.md), section 8.
 | No prices, budgets or currencies | Owner's decision | ADR 017 |
 | No restaurant data in the import; no cuisine or meal type | Restaurants are your own places, through Photon or by hand | ADR 026 |
 | Visit lengths are defaults by kind of place | No trustworthy source | Brief, section 7 |
-| Travel times are walking or driving only; some are straight-line estimates, labelled | FOSSGIS server limits, no public transport | ADR 004, ADR 013 |
+| Computed travel times are walking or driving only; some are straight-line estimates, labelled. A train, bus or ferry is entered by hand as a transport leg, with the length the user knows (or "time not entered") | FOSSGIS server limits; no public-transport routing | ADR 004, ADR 013, ADR 032 |
+| Without a car, Optimize walks every computed leg, however long; the preview names the walks over 2 km | Owner decision of 2026-11-16 | ADR 032 |
+| Add a place's suggested days (recalculation) cannot plan a day that has a transport leg; it names the day, and the user chooses the day and time | Not built in the first step | ADR 032 |
 | Photos only where Wikidata or Wikipedia has a free photo; otherwise an illustration | Licence rules | ADR 022 |
 | Names are never translated; a romanized name says so | Honest data | ADR 025 |
 
@@ -22,7 +24,8 @@ language model) are in the [product brief](product-brief.md), section 8.
 
 | Not built | Status |
 |---|---|
-| **Public transport** | After the MVP, Phase 10 (Transitous or nothing) |
+| **Public transport routing** | Not built: legs are entered by hand (ADR 032). Phase 10 (Transitous or nothing) is not started |
+| Suggested transit time for a leg | Not built; manual legs only (ADR 032) |
 | **Weather** | After the MVP; needs an ADR (D6) |
 | **Sync between phones, accounts, sharing** | Parked (D5); a trip moves between phones as a `.detour` file (ADR 028) |
 | **Offline maps** | Not in the MVP; the map needs a connection, the day list works from the saved copy |
@@ -41,7 +44,7 @@ language model) are in the [product brief](product-brief.md), section 8.
 | Export files are not encrypted | Keep them private ([`privacy.md`](privacy.md)) |
 | A reinstall is a new installation: old trips are not visible | Import the backup file |
 | The database has no backups of its own (Supabase Free) | The daily "Back up app data" workflow, when Actions runs |
-| Stays are not in export files | Add them again after an import (ADR 030) |
+| Trip files made before 2026-11-16 (version 1) carry no stays, transport legs or Car choice | An import of such a file has a car and no stays; files exported now (version 2) carry all three (ADR 032) |
 
 ## Hosting
 

@@ -8,6 +8,7 @@ from detour_api.planner.optimize import (
     FAR_STOP_M,
     CityPoint,
     DayInfo,
+    Scope,
     Stop,
     build_stops,
     optimize,
@@ -284,3 +285,122 @@ def test_without_a_stay_the_plan_is_as_before() -> None:
     _, out = run(stops, [1])
     assert out.changed_days == ()  # type: ignore[attr-defined]
     assert all(p.head is None for p in out.days[1])  # type: ignore[attr-defined]
+
+
+# -- transport legs the user entered (ADR 032) ---------------------------------------------------
+
+
+def leg(id_: str, day: int, start: int | None, minutes: int | None) -> dict[str, object]:
+    return {
+        "id": id_,
+        "day": day,
+        "type": "transport",
+        "display_name": id_,
+        "lat": None,
+        "lon": None,
+        "start_minute": start,
+        # Stored as the API stores it: no end when the length is unknown or passes midnight.
+        "end_minute": None
+        if start is None or minutes is None or start + minutes > 24 * 60
+        else start + minutes,
+        "duration_minutes": minutes,
+        "locked": True,
+    }
+
+
+def test_no_stop_crosses_a_transport_leg_and_the_leg_does_not_move() -> None:
+    # Before the train: a zigzag near x = 0..6; after it, a zigzag near x = 50..56. Moving a stop
+    # across the train would never help here, but the search must not even try: each side keeps
+    # its own stops, and each side is still untangled.
+    days = [DayInfo(1, None)]
+    xs_before = [0.0, 6.0, 1.0]
+    xs_after = [50.0, 56.0, 51.0]
+    items = [item(f"b{i}", 1, 48.0 + x * STEP, 540 + 70 * i) for i, x in enumerate(xs_before)]
+    items.append(leg("train", 1, 800, 90))
+    items += [item(f"a{i}", 1, 48.0 + x * STEP, 900 + 70 * i) for i, x in enumerate(xs_after)]
+    stops, _ = build_stops(items, days, scope="within_days", fixed_ids=[])
+    order, out = run(stops, [1])
+    assert order.index("train") == 3
+    assert set(order[:3]) == {"b0", "b1", "b2"} and set(order[4:]) == {"a0", "a1", "a2"}
+    train = next(p for p in out.days[1] if p.id == "train")  # type: ignore[attr-defined]
+    assert (train.start, train.end) == (800, 890)
+    first_after = out.days[1][4]  # type: ignore[attr-defined]
+    assert first_after.start >= 890  # the stops after the train start when it arrives
+
+
+def test_a_leg_is_the_travel_of_its_stretch_no_computed_leg_crosses_it() -> None:
+    days = [DayInfo(1, None)]
+    items = [item("rome", 1, 41.9, 540, lon=12.5), leg("train", 1, 620, 90)]
+    items.append(item("florence", 1, 43.77, 720, lon=11.25))
+    stops, _ = build_stops(items, days, scope="within_days", fixed_ids=[])
+    _, out = run(stops, [1])
+    laid = {p.id: p for p in out.days[1]}  # type: ignore[attr-defined]
+    assert laid["rome"].leg is None and laid["train"].leg is None
+    assert out.travel_before == 0  # type: ignore[attr-defined]
+
+
+def test_a_day_with_a_leg_keeps_its_stops_in_the_second_scope() -> None:
+    days = [DayInfo(1, None), DayInfo(2, None)]
+    items = [
+        item("a", 1, 48.0, 540),
+        leg("bus", 1, 700, 30),
+        item("b", 1, 48.0 + 10 * STEP, 800),
+        item("c", 2, 48.0 + 10 * STEP, 540),
+        item("d", 2, 48.0, 640),
+    ]
+    stops, _ = build_stops(items, days, scope="across_days", fixed_ids=[])
+    by_id = {s.id: s for s in stops}
+    assert by_id["a"].allowed_days == {1} and by_id["b"].allowed_days == {1}
+    assert by_id["c"].allowed_days == {2} and by_id["d"].allowed_days == {2}
+    assert by_id["bus"].fixed
+
+
+def test_a_leg_of_unknown_length_or_without_a_time_leaves_its_day_alone() -> None:
+    days = [DayInfo(1, None), DayInfo(2, None)]
+    items = [
+        item("a", 1, 48.0, 540),
+        leg("unknown", 1, 600, None),
+        item("b", 1, 48.1, 700),
+        leg("untimed", 2, None, 60),
+        item("c", 2, 48.2, 540),
+    ]
+    stops, _ = build_stops(items, days, scope="within_days", fixed_ids=[])
+    assert all(s.fixed for s in stops)
+
+
+def test_a_night_train_takes_the_rest_of_its_day() -> None:
+    days = [DayInfo(1, None)]
+    items = [item("a", 1, 48.0, 540), item("b", 1, 48.1, 620), leg("night", 1, 1350, 540)]
+    stops, _ = build_stops(items, days, scope="within_days", fixed_ids=[])
+    night = next(s for s in stops if s.id == "night")
+    assert (night.start, night.end) == (1350, 24 * 60)
+    run(stops, [1])  # lays out and passes the check
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_property_legs_never_move_and_no_stop_crosses_one(seed: int) -> None:
+    rng = random.Random(seed)  # noqa: S311 - a fixed seed for a fixture, not security
+    days = [DayInfo(1, None), DayInfo(2, None)]
+    items: list[dict[str, object]] = []
+    for d in (1, 2):
+        minute = 540
+        for n in range(6):
+            if n == 3 and (d == 1 or seed % 2):
+                items.append(leg(f"leg{d}", d, minute, 40))
+                minute += 50
+            items.append(item(f"s{d}{n}", d, 48.0 + rng.uniform(0, 0.3), minute))
+            minute += 70
+    scopes: tuple[Scope, ...] = ("within_days", "across_days")
+    for scope in scopes:
+        stops, _ = build_stops(items, days, scope=scope, fixed_ids=[])
+        _, out = run(stops, [1, 2], scope)
+        for d in (1, 2):
+            laid = out.days[d]  # type: ignore[attr-defined]
+            ids = [p.id for p in laid]
+            if f"leg{d}" in ids:
+                at = ids.index(f"leg{d}")
+                was = [str(i["id"]) for i in items if i["day"] == d]
+                assert set(ids[:at]) == set(was[: was.index(f"leg{d}")])
+                assert laid[at].start == next(
+                    i["start_minute"] for i in items if i["id"] == f"leg{d}"
+                )

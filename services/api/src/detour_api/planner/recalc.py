@@ -49,7 +49,7 @@ import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 from detour_api.planner import scoring
 from detour_api.planner.config import DEFAULT_CONFIG, PlannerConfig, Profile
@@ -157,6 +157,8 @@ class Entry:
     # Visits: the attraction's category (None for a user place or when unknown). Meals: venue.
     category: str | None = None
     item_id: str | None = None  # the stored item it continues; None for a new one
+    # A transport leg (ADR 032): what the user entered, carried through unchanged.
+    transport: dict[str, Any] | None = field(default=None, compare=False)
 
     @property
     def coord(self) -> Coord:

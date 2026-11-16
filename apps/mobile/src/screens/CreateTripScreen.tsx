@@ -100,9 +100,8 @@ export function CreateTripScreen() {
   const [days, setDays] = useState(3);
   const [startDate, setStartDate] = useState("");
   const [calendar, setCalendar] = useState(false);
-  // Public transport is saved for later (docs/design.md): chosen here, not sent, and the plans do
-  // not use it yet. The car is sent: without it Optimize only considers walking.
-  const [publicTransport, setPublicTransport] = useState(false);
+  // The car is sent: without it Optimize only considers walking. How the user travels otherwise
+  // is entered as transport legs on the plan (ADR 032; the old "Public transport" pill is gone).
   const [usesCar, setUsesCar] = useState(false);
   const [working, setWorking] = useState<"creating" | "planning" | "starting" | null>(null);
   const [mode, setMode] = useState<"generate" | "empty">("generate");
@@ -579,19 +578,8 @@ export function CreateTripScreen() {
                 accessibilityLabel="Car"
                 testID="uses-car"
               />
-              <Chip
-                label="Public transport"
-                icon="transport"
-                selected={publicTransport}
-                onPress={() => setPublicTransport((v) => !v)}
-                accessibilityLabel="Public transport"
-                testID="public-transport"
-              />
             </View>
-            <Text style={styles.hint}>
-              Without a car, Optimize only considers walking. Public transport is saved for later:
-              the plans do not use it yet.
-            </Text>
+            <Text style={styles.hint}>Without a car, Optimize only considers walking.</Text>
           </View>
 
           {stops && stopsProblem(stops) ? (

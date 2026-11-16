@@ -24,6 +24,7 @@ import { BottomNav, showsBottomNav } from "./nav/BottomNav";
 import { type Route, NavigationProvider, useNavigation } from "./nav/Navigator";
 import { AddPlaceScreen } from "./screens/AddPlaceScreen";
 import { AddRestaurantScreen } from "./screens/AddRestaurantScreen";
+import { TransportLegScreen } from "./screens/TransportLegScreen";
 import { ChangePreviewScreen } from "./screens/ChangePreviewScreen";
 import { CreateTripScreen } from "./screens/CreateTripScreen";
 import { ExportScreen } from "./screens/ExportScreen";
@@ -124,6 +125,8 @@ function CurrentScreen({ route }: { route: Route }) {
       return <AddPlaceScreen route={route} />;
     case "addRestaurant":
       return <AddRestaurantScreen route={route} />;
+    case "transportLeg":
+      return <TransportLegScreen route={route} />;
     case "changePreview":
       return <ChangePreviewScreen key={route.changeSetId} route={route} />;
   }

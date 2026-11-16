@@ -176,7 +176,19 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
               : undefined
           }
         />
-        <ListRow icon="transport" title="Transport" detail="A train, bus or drive" disabled />
+        <ListRow
+          icon="transport"
+          title="Transport"
+          detail={why ?? "A train, bus or ferry you took or will take, entered by you"}
+          disabled={!planId}
+          disabledLabel="Not now"
+          testID="add-sheet-transport"
+          onPress={
+            planId
+              ? () => go({ name: "transportLeg", tripId, itineraryId: planId, ...day })
+              : undefined
+          }
+        />
         <ListRow icon="note" title="Note" detail="Something to remember" disabled />
         <ListRow
           icon="document"

@@ -256,9 +256,54 @@ class UserPlace(BaseModel):
 
 # -- itineraries -------------------------------------------------------------------------------
 
+TransportMode = Literal["train", "bus", "metro_tram", "ferry", "taxi", "walk", "other"]
+
+# How a leg's mode reads in its name ("Train to Florence"); the app has the same words.
+TRANSPORT_LABELS: dict[str, str] = {
+    "train": "Train",
+    "bus": "Bus",
+    "metro_tram": "Metro or tram",
+    "ferry": "Ferry",
+    "taxi": "Taxi or ride",
+    "walk": "Walk",
+    "other": "Transport",
+}
+
+
+class TransportInfo(StrictModel):
+    """A transport leg the user entered by hand (ADR 032). Every value is the user's: nothing is
+    computed or looked up. A point is given only when the end was picked from the trip (a stop, a
+    city or a stay); a typed name has none. No price, operator or booking (ADR 017)."""
+
+    mode: TransportMode
+    from_name: str = Field(min_length=1, max_length=120)
+    from_lat: Latitude | None = None
+    from_lon: Longitude | None = None
+    to_name: str = Field(min_length=1, max_length=120)
+    to_lat: Latitude | None = None
+    to_lon: Longitude | None = None
+    is_journey: bool = Field(
+        default=False,
+        description="The journey between two cities: it covers the day's computed arrival",
+    )
+    note: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _points(self) -> Self:
+        if (self.from_lat is None) != (self.from_lon is None):
+            raise ValueError("from_lat and from_lon are given together")
+        if (self.to_lat is None) != (self.to_lon is None):
+            raise ValueError("to_lat and to_lon are given together")
+        if self.note is not None and not self.note:
+            self.note = None
+        return self
+
+    def display_name(self) -> str:
+        return f"{TRANSPORT_LABELS[self.mode]} to {self.to_name}"[:200]
+
 
 class ItemCreate(StrictModel):
-    type: Literal["visit", "meal", "free_time"]
+    type: Literal["visit", "meal", "free_time", "transport"]
     place_id: uuid.UUID | None = Field(default=None, description="A geo.place")
     user_place_id: uuid.UUID | None = None
     start_time: time | None = Field(default=None, description="Local time at the destination")
@@ -268,16 +313,27 @@ class ItemCreate(StrictModel):
         le=1440,
         description="Required unless the place has a known default (none exists yet)",
     )
-    position: int | None = Field(default=None, ge=1, description="Defaults to the end of the day")
+    position: int | None = Field(
+        default=None,
+        ge=1,
+        description="Defaults to the end of the day; a journey leg defaults to the start",
+    )
     locked: bool = False
+    transport: TransportInfo | None = Field(
+        default=None,
+        description="Required for type transport (ADR 032), and only then. Its length may be "
+        "left out: it is then unknown",
+    )
 
     @model_validator(mode="after")
     def _shape(self) -> Self:
         both = self.place_id is not None and self.user_place_id is not None
         neither = self.place_id is None and self.user_place_id is None
-        if self.type == "free_time":
+        if (self.type == "transport") != (self.transport is not None):
+            raise ValueError("transport is given for a transport item, and only for one")
+        if self.type in ("free_time", "transport"):
             if not neither:
-                raise ValueError("free_time has no place")
+                raise ValueError(f"{self.type} has no place")
         elif both or neither:
             raise ValueError("exactly one of place_id and user_place_id is required")
         if self.start_time is not None and self.start_time.tzinfo is not None:
@@ -298,6 +354,11 @@ class ItemUpdate(StrictModel):
     locked: bool | None = None
     position: int | None = Field(default=None, ge=1)
     day_index: int | None = Field(default=None, ge=1, description="Move to another day")
+    transport: TransportInfo | None = Field(
+        default=None,
+        description="A transport leg only: replaces what the user entered (ADR 032). On a leg, "
+        "duration_minutes: null makes its length unknown",
+    )
 
 
 class Transfer(BaseModel):
@@ -323,6 +384,11 @@ class Arrival(BaseModel):
     seconds: int | None
     meters: int | None
     confidence: Literal["routed", "estimated", "unknown"]
+    covered_by_item_id: uuid.UUID | None = Field(
+        default=None,
+        description="A journey leg the user entered for this day (ADR 032): show it instead of "
+        "this computed leg, and count its length, not this one",
+    )
 
 
 class RestaurantInfo(BaseModel):
@@ -338,15 +404,20 @@ class Item(BaseModel):
     id: uuid.UUID
     day_id: uuid.UUID
     position: int
-    type: Literal["visit", "meal", "free_time"]
+    type: Literal["visit", "meal", "free_time", "transport"]
     place_id: uuid.UUID | None
     user_place_id: uuid.UUID | None
     display_name: str
     lat: float | None
     lon: float | None
     start_time: time | None
-    end_time: time | None
-    duration_minutes: int
+    end_time: time | None = Field(
+        description="Null when unscheduled; a transport leg may have a start without an end: "
+        "its length is unknown, or it arrives the next day"
+    )
+    duration_minutes: int | None = Field(
+        description="Null only for a transport leg whose length the user did not enter (unknown)"
+    )
     duration_source: Literal["category_default", "user"]
     default_duration_minutes: int | None = Field(
         default=None,
@@ -365,6 +436,9 @@ class Item(BaseModel):
     )
     restaurant: RestaurantInfo | None = Field(
         default=None, description="Restaurant and cafe stops only: its kind"
+    )
+    transport: TransportInfo | None = Field(
+        default=None, description="Transport legs only (ADR 032): what the user entered"
     )
     image: Photo | None = Field(
         default=None,
