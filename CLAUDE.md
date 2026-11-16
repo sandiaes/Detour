@@ -56,7 +56,7 @@ on a device (checked by tests only).
 **People and shared trips** (2026-11-16, ADR 034, **proposed, nothing built**, owner request): a person with
 devices (link codes and a recovery code, no email or sign-in provider), a partner link, trips owned by a person
 with members (owner and editor), version checks on every plan write (409 `plan_changed`), and shared documents,
-album links and covers in a private Storage bucket behind the API. Six questions for the owner in its section 9.
+album links and covers in a private Storage bucket behind the API. Owner answered questions 2 to 6 (2026-11-16); question 1, codes or a sign-in provider, is open.
 
 **Regions can be imported from the app** (2026-11-17, ADR 033 step 3, built, awaiting acceptance; tests only; migration
 `0023` and the workflow change must reach `main` first; the GitHub token `DETOUR_GITHUB_TOKEN` and
