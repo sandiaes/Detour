@@ -166,7 +166,7 @@ test("adding another city makes a multi-city trip sent with its stops", async ()
       ],
       duration_days: 4,
       start_date: null,
-      uses_car: true,
+      uses_car: false,
     },
   ]);
 });

@@ -86,7 +86,7 @@ export function tripBody(
     title: choice.name,
     duration_days: start.days,
     start_date: start.startDate,
-    uses_car: start.usesCar ?? true,
+    uses_car: start.usesCar ?? false,
   };
   if (choice.kind === "place" || asPlace) {
     const ref =

@@ -142,7 +142,7 @@ Everything below is exported from `components/ds`. A screen uses these and nothi
 | **`Button`** | `primary` (filled green): the screen's main action, **at most one per screen or sheet**. `secondary` (outlined): a second action. `ghost` (text): a third, quiet action. `destructive` (filled red): only the button that confirms something that cannot be undone. `tone="danger"` makes a secondary or ghost button the red entry point ("Delete trip"). Sizes `md` (44) and `sm` (36); radius 12; optional icon; `fill` stretches it. States: default, pressed, disabled, loading (spinner, announced as busy) and focused (2 dp ring) |
 | **`IconButton`** | `plain`, `onImage` (translucent disc over a photo), `onMap`; sizes `md` and `sm`; always has a spoken label |
 | **Fields** | `TextField`, `SearchField`, `SelectField` (opens a `DropdownPanel` of `ChoiceRow`s), the calendar field, all in one `FieldShell`: a caption label, a 44 dp box, radius 12, a 1 dp `outline` border, 15 pt text, optional leading icon, suffix, clear button, hint (a counter such as "11/500 characters" is a hint) and error. `multiline` grows from three lines |
-| **`TimeField`** | A time of day: the typed field (24-hour) plus **Pick**, which opens a roulette of two wheels under it (hours by 1, minutes by 5, wrapping). **Dragging a wheel down makes the time later, up makes it earlier**; tapping the row above or below the middle steps once; a screen reader adjusts it with increment and decrement. Typed text and wheels always agree (Add a place, Add a restaurant, Edit time) |
+| **`TimeField`** | A time of day: the typed field (24-hour) plus **Pick**, which opens a roulette of two wheels under it (hours by 1, minutes by 5, wrapping). **Dragging a wheel up makes the time later, down makes it earlier** (decision 98); tapping the row above or below the middle steps once; a screen reader adjusts it with increment and decrement. Typed text and wheels always agree (Add a place, Add a restaurant, Edit time) |
 | **`Stepper`** | A number with minus and plus, sizes `md` and `sm` (days, a city's days, a length) |
 | **`Chip`** | The one filter or choice look: a 36 dp pill with an `outline`; selected is a soft green fill, a green border and a check; announced as selected |
 | **`SegmentedControl`** | Two or three exclusive options in one 44 dp control of radius 12 (Search / Address / Pin on map; Suggest a day / Choose day and time; Within each day / Across all days); a form switch, not navigation |
@@ -293,7 +293,7 @@ Back, then the title "Create new trip" and one line of subtitle. Then, as hairli
    multi-city trip the duration is the cities' total and cannot be set on its own. The start
    date opens a **month calendar** in a sheet (Monday first, today ringed, "Clear the date"); a date
    is chosen, never typed.
-3. **Getting around:** two pills, **Car** (on by default, sent with the trip; off means Optimize
+3. **Getting around:** two pills, **Car** (with a car icon; **both pills start off**, decision 99; Car is sent with the trip, off means Optimize
    only considers walking) and **Public transport** (saved for later; the plans do not use it yet).
    There is no travel style: it did nothing.
 4. A line under the pills saying so.
@@ -422,13 +422,13 @@ each of the trip's cities, the open day's city first: its sights lead and each d
 from it ("1.2 km from Florence"; with no day open, from the nearest of the trip's cities; ADR 021,
 decision 95). **Pin on map** opens on the open day's city and shows the plan's stops (that day's
 numbered) and the known sights within 3 km as grey marks; tapping one chooses that sight (decision
-96). Choosing a result closes the
+96) and shows it selected (a larger navy mark). A finger on the map pauses the page's scrolling so the map moves freely, and + and − buttons zoom (decision 98). Choosing a result closes the
 list and the field shows only the choice, with its kind and town; pressing it searches again. Then
 **How long**: one boxed field (minutes, or "1h30"; the unit "min" at its end is pressed to switch to "h", hours such as 1.5; the text is selected on first entry and typing replaces it) and a pill for the default ("Typical length" for
 a sight; "Default · 2 h" for a town, 1 h for any other place); typing replaces the default. Then
 either "Find the best day" (`primary`) with up to three suggested days, or, for "Choose day and
 time" and for an empty trip, a **Day drop-down** (the day that was open, else day 1), a start time field
-(the first free time of that day, until the user sets one) and "Add to day N at HH:MM".
+(right after the day's last stop, or 09:00 on an empty day, until the user sets one; decision 98) and "Add to day N at HH:MM".
 Add a restaurant or café uses the same day drop-down and fields; its default pill is 1 h 15 min
 for a restaurant and 45 min for a café (*proposed*).
 

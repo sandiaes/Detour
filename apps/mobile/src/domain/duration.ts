@@ -12,28 +12,22 @@ export const DAY_END_MINUTES = 20 * 60;
 export const DAY_START_MINUTES = 9 * 60;
 
 /**
- * The earliest "HH:MM" on `day` where a stop of `minutes` fits without touching another timed stop
- * (and its trip to the next one): from the start of the day, the first gap that is long enough,
- * else right after the last stop. Free time is not a stop. `except` leaves one stop out (the one
- * being moved).
+ * The suggested start of a new stop on `day`: right after the last timed stop (and its trip to the
+ * next one, when it has one), or the start of the day when nothing is timed yet (owner request,
+ * 2026-11-16: not the earliest gap, which could land before the stops already there). Free time is
+ * not a stop. `except` leaves one stop out (the one being moved).
  */
-export function firstAvailableTime(day: Day | undefined, minutes: number, except?: string): string {
-  const timed = (day?.items ?? [])
-    .filter((i) => i.id !== except && i.type !== "free_time")
-    .map((i) => ({
-      start: minutesOf(i.start_time),
-      end: minutesOf(i.end_time),
-      travel: i.transfer ? Math.ceil(i.transfer.seconds / 60) : 0,
-    }))
-    .filter(
-      (i): i is { start: number; end: number; travel: number } =>
-        i.start !== null && i.end !== null,
-    )
-    .sort((a, b) => a.start - b.start);
+export function firstAvailableTime(
+  day: Day | undefined,
+  _minutes: number,
+  except?: string,
+): string {
   let at = DAY_START_MINUTES;
-  for (const stop of timed) {
-    if (at + minutes <= stop.start) break;
-    at = Math.max(at, stop.end + stop.travel);
+  for (const i of day?.items ?? []) {
+    if (i.id === except || i.type === "free_time") continue;
+    const end = minutesOf(i.end_time);
+    if (minutesOf(i.start_time) === null || end === null) continue;
+    at = Math.max(at, end + (i.transfer ? Math.ceil(i.transfer.seconds / 60) : 0));
   }
   return clockOf(Math.min(at, 23 * 60 + 59));
 }
