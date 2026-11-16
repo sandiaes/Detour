@@ -569,8 +569,8 @@ export function ListRow({
 }
 
 /**
- * The header of a group of rows that can be folded away (the continents on the Regions screen): a
- * soft band across the screen with the group's name, a quiet summary and a chevron. A tap opens or
+ * The header of a group of rows that can be folded away (the continents on the Regions screen), the
+ * top of a `Card` that holds the group: its name, a quiet summary and a chevron. A tap opens or
  * closes the group; the state is announced as expanded or collapsed.
  */
 export function GroupHeader({
@@ -924,12 +924,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    minHeight: sizes.rowCompact,
+    minHeight: sizes.row,
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surfaceMuted,
   },
-  groupHeaderPressed: { backgroundColor: colors.border },
-  groupHeaderTitle: { ...type.body, fontWeight: weight.semibold, color: colors.text, flex: 1 },
+  groupHeaderPressed: { backgroundColor: colors.surfaceMuted },
+  groupHeaderTitle: { ...type.headline, color: colors.text, flex: 1 },
   groupHeaderSummary: { ...type.caption, color: colors.muted },
   row: {
     flexDirection: "row",
