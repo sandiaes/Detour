@@ -725,14 +725,14 @@ def test_a_past_trip_keeps_its_plans(api_env: ApiEnv) -> None:
     )
 
 
-def test_a_past_trip_works_like_any_trip_and_marking_it_past_happens_once(api_env: ApiEnv) -> None:
+def test_a_past_trip_is_read_only_and_marking_it_past_happens_once(api_env: ApiEnv) -> None:
     trip = make_trip(api_env)
     it = make_itinerary(api_env, trip)
     c, h = api_env.client, api_env.headers
     c.post(f"/v1/trips/{trip['id']}/archive", headers=h)
     assert code(c.post(f"/v1/trips/{trip['id']}/archive", headers=h)) == "already_archived"
-    assert c.patch(f"/v1/trips/{trip['id']}", json={"title": "x"}, headers=h).status_code == 200
-    assert c.post(f"/v1/trips/{trip['id']}/itineraries", headers=h).status_code == 201
+    assert c.patch(f"/v1/trips/{trip['id']}", json={"title": "x"}, headers=h).status_code == 409
+    assert c.post(f"/v1/trips/{trip['id']}/itineraries", headers=h).status_code == 409
     assert c.get(f"/v1/itineraries/{it['id']}", headers=h).status_code == 200
     assert [t["id"] for t in c.get("/v1/trips?status=past", headers=h).json()] == [trip["id"]]
     assert c.get("/v1/trips?status=active", headers=h).json() == []

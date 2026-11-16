@@ -199,7 +199,8 @@ def test_a_fresh_trip_is_filled_optimized_exported_imported_and_kept_as_history(
     assert past.json()["selected_itinerary_id"] == plan["id"]
     assert _stops(_plan(api_env, plan["id"])) == _stops(filled)
     assert c.get(f"/v1/trips/{trip['id']}/visits", headers=h).json() == []
-    # A past trip can still be optimized.
-    assert c.post(
+    # A past trip is read-only: Optimize is refused until it is reopened.
+    refused = c.post(
         f"/v1/itineraries/{plan['id']}/optimize", json={"scope": "within_days"}, headers=h
-    ).status_code in (200, 201, 422)
+    )
+    assert refused.status_code == 409 and refused.json()["code"] == "trip_past"

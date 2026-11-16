@@ -156,6 +156,17 @@ def archive_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
         return trips.archive_trip(conn, session.installation_id, trip_id)
 
 
+@router.post(
+    "/{trip_id}/reopen",
+    summary="Take a past trip out of the past (ADR 006, amendment of 2026-11-17): it can be "
+    "changed again and is not made past by the two-day rule a second time.",
+    responses=ERRORS,
+)
+def reopen_trip(session: SessionDep, trip_id: uuid.UUID) -> Trip:
+    with session.tx() as conn:
+        return trips.reopen_trip(conn, session.installation_id, trip_id)
+
+
 @router.get(
     "/{trip_id}/archive",
     summary="What a past trip keeps and how much room it takes (ADR 006).",
@@ -230,7 +241,7 @@ def set_trip_cover(
     session: SessionDep, request: Request, trip_id: uuid.UUID, body: CoverChoice
 ) -> Trip:
     with session.tx() as conn:
-        trip = trips.require_trip(conn, session.installation_id, trip_id)
+        trip = trips.require_open_trip(conn, session.installation_id, trip_id)
         destinations = trips.cover_destinations(conn, trip_id)
     image_id = None
     if body.commons_file is not None:
@@ -270,7 +281,7 @@ def set_trip_cover(
 )
 def replace_stops(session: SessionDep, trip_id: uuid.UUID, body: StopsEdit) -> Trip:
     with session.tx() as conn:
-        trip = trips.require_trip(conn, session.installation_id, trip_id)
+        trip = trips.require_open_trip(conn, session.installation_id, trip_id)
         if trip.destination.kind != "route":
             raise ApiError(409, "not_a_route", "only a multi-city trip has stops to edit")
         if trip.selected_itinerary_id is not None:

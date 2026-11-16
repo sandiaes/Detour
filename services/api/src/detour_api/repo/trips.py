@@ -7,7 +7,7 @@ from typing import Any
 import structlog
 from sqlalchemy import Connection, Engine, text
 
-from detour_api.errors import conflict, invalid, not_found
+from detour_api.errors import ApiError, conflict, invalid, not_found
 from detour_api.models.images import Photo
 from detour_api.models.trips import (
     ArchiveInfo,
@@ -131,6 +131,25 @@ def require_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUI
     return trip
 
 
+def past_refusal() -> ApiError:
+    """A past trip is read-only (ADR 006, amendment of 2026-11-17): its plan, stays, cities, dates
+    and name are not changed until the user reopens it. Documents and photo links live on the
+    phone and are not affected."""
+    return conflict("trip_past", "a past trip cannot be changed: reopen it first")
+
+
+def refuse_if_past(status: str) -> None:
+    if status == "past":
+        raise past_refusal()
+
+
+def require_open_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+    """The caller's trip, refused with 409 ``trip_past`` when it is a past trip."""
+    trip = require_trip(conn, installation_id, trip_id)
+    refuse_if_past(trip.status)
+    return trip
+
+
 def list_trips(
     conn: Connection, installation_id: uuid.UUID, status: str | None = None
 ) -> list[Trip]:
@@ -240,7 +259,7 @@ def write_stops(conn: Connection, trip_id: uuid.UUID, stops: list[ResolvedStop])
 def update_trip(
     conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, body: TripUpdate
 ) -> Trip:
-    trip = require_trip(conn, installation_id, trip_id)
+    trip = require_open_trip(conn, installation_id, trip_id)
     changed = body.model_fields_set
     sets: list[str] = []
     params: dict[str, Any] = {"t": trip_id, "i": installation_id}
@@ -384,6 +403,22 @@ def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUI
     return require_trip(conn, installation_id, trip_id)
 
 
+def reopen_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+    """Take a past trip out of the past: it is an ordinary trip again and the two-day rule leaves
+    it alone (``reopened_at``), so it does not become past again by itself."""
+    trip = require_trip(conn, installation_id, trip_id)
+    if trip.status != "past":
+        raise conflict("not_archived", "only a past trip can be reopened")
+    conn.execute(
+        text(
+            "UPDATE app.trip SET status = 'active', archived_at = NULL, reopened_at = now(),"
+            " updated_at = now() WHERE id = :t"
+        ),
+        {"t": trip_id},
+    )
+    return require_trip(conn, installation_id, trip_id)
+
+
 def archive_due_trips(
     conn: Connection, installation_id: uuid.UUID, today: date | None = None
 ) -> list[uuid.UUID]:
@@ -396,7 +431,7 @@ def archive_due_trips(
     due = conn.execute(
         text(
             "SELECT id FROM app.trip WHERE installation_id = :i AND status = 'active' AND NOT is_seed"
-            " AND start_date IS NOT NULL"
+            " AND start_date IS NOT NULL AND reopened_at IS NULL"
             " AND start_date + (duration_days - 1 + :g) <= CAST(:today AS date)"
             # A trip made after its last day was entered as a journey already taken: the user
             # fills it and marks it past (ADR 026 decision 23).

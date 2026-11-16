@@ -143,6 +143,21 @@ export function useTripActions() {
     [need, data],
   );
 
+  /** Takes a past trip out of the past (ADR 006, amendment of 2026-11-17): it can be changed
+   * again. Its plan is read again, since the cache may hold a copy from before. */
+  const reopenTrip = useCallback(
+    async (trip: Trip): Promise<Trip> => {
+      const reopened = await call(
+        need().POST("/v1/trips/{trip_id}/reopen", { params: { path: { trip_id: trip.id } } }),
+      );
+      data.update<Trip[]>(keys.trips, (list) =>
+        list.map((t) => (t.id === reopened.id ? reopened : t)),
+      );
+      return reopened;
+    },
+    [need, data],
+  );
+
   /** Confirms or clears one archived visit (the app cannot know what was really visited). */
   const setVisitConfirmed = useCallback(
     async (tripId: string, visitId: string, confirmed: boolean): Promise<TripVisit> => {
@@ -227,6 +242,7 @@ export function useTripActions() {
     selectPlan,
     deleteTrip,
     archiveTrip,
+    reopenTrip,
     setVisitConfirmed,
     connected: client !== null,
   };

@@ -20,6 +20,29 @@ export function localToday(now: Date = new Date()): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The warning the new-trip screen shows when the start date is in the past (owner request of
+ * 2026-11-17); null when there is nothing to say. It never blocks: a journey already taken is a
+ * valid trip (ADR 026, decision 23). Dates are YYYY-MM-DD in the device's local time.
+ */
+export function pastDateWarning(
+  startDate: string,
+  days: number,
+  today: string = localToday(),
+): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || startDate >= today) return null;
+  const last = addDays(startDate, Math.max(days, 1) - 1);
+  return last < today
+    ? "This date is in the past, and so is the whole trip. Detour keeps it as an ordinary trip for you to fill in; mark it as a past trip when you are done, and it will then be read-only."
+    : "This date is in the past, so the first days of the trip have already happened.";
+}
+
 /**
  * A past trip of the older archive (before ADR 006's amendment of 2026-11-16): its plans were
  * deleted and only the visited places remain. Every other trip, past or not, has the same screens.
@@ -27,6 +50,18 @@ export function localToday(now: Date = new Date()): string {
 export function archiveOnly(trip: Trip): boolean {
   return trip.status === "past" && trip.selected_itinerary_id === null;
 }
+
+/**
+ * A past trip is read-only (ADR 006, amendment of 2026-11-17): the plan, stays, cities, dates and
+ * name stay as they were until the user reopens it. Documents and photo links live on the phone
+ * and can still be added. The server refuses every change with 409 `trip_past` as well.
+ */
+export function isReadOnly(trip: Trip | null | undefined): boolean {
+  return trip?.status === "past";
+}
+
+/** What a disabled control says on a past trip. */
+export const PAST_TRIP_NOTE = "A past trip cannot be changed. Reopen it in Trip settings.";
 
 /**
  * Planning: no plan chosen yet. In progress: today is within the trip's dates. Past: the backend

@@ -40,7 +40,7 @@ from detour_api.planner.durations import visit_minutes
 from detour_api.planner.reasons import issue_text
 from detour_api.planner.recalc import Addition, RecalcConfig, RecalcInput, entry_key
 from detour_api.planner.types import BaseCity, Candidate, Issue, Note
-from detour_api.repo import geo, itineraries, planning, user_places
+from detour_api.repo import geo, itineraries, planning, trips, user_places
 from detour_api.repo.geo import METERS_PER_DEGREE
 from detour_api.repo.plan_state import (
     State,
@@ -117,6 +117,7 @@ def _itinerary_row(conn: Connection, installation_id: uuid.UUID, itinerary_id: u
     ).first()
     if row is None:
         raise not_found("itinerary")
+    trips.refuse_if_past(row.trip_status)
     return row
 
 
@@ -596,6 +597,7 @@ def apply(
     """Apply a pending change set. None when the itinerary changed since the preview: the change
     set is then marked expired (the caller commits that and answers 409)."""
     row = _row(conn, installation_id, change_id, lock=True)
+    trips.refuse_if_past(row.trip_status)
     if row.status != "pending":
         raise conflict("change_set_closed", f"this change set is {row.status}")
     version = conn.execute(

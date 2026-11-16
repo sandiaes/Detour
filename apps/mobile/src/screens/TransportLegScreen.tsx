@@ -19,6 +19,7 @@ import {
   ChoiceRow,
   CompactHeader,
   ConfirmSheet,
+  EmptyState,
   ErrorState,
   KeyboardScrollView,
   LoadingState,
@@ -33,6 +34,7 @@ import { keys } from "../data/actions";
 import { useData, useResource } from "../data/DataProvider";
 import { parseClock } from "../domain/clock";
 import { minutesOf } from "../domain/itinerary";
+import { PAST_TRIP_NOTE, isReadOnly } from "../domain/trips";
 import {
   MODE_ICON,
   MODE_LABEL,
@@ -142,6 +144,20 @@ export function TransportLegScreen({ route }: { route: LegRoute }) {
       <View style={styles.fill}>
         <CompactHeader title="Transport" onBack={nav.back} />
         <ErrorState text="This transport leg is no longer in the plan." />
+      </View>
+    );
+  }
+  if (isReadOnly(trip)) {
+    // A past trip is read-only (ADR 006, amendment of 2026-11-17): the leg is shown, not edited.
+    const leg = existing?.item;
+    return (
+      <View style={styles.fill}>
+        <CompactHeader title="Transport" subtitle={trip.title} onBack={nav.back} />
+        <EmptyState
+          title={leg?.display_name ?? "Transport"}
+          text={PAST_TRIP_NOTE}
+          action={{ label: "Back", onPress: nav.back }}
+        />
       </View>
     );
   }

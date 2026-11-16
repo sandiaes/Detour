@@ -78,7 +78,7 @@ test("without a chosen plan, places and restaurants wait for a plan", async () =
   expect(await screen.findByRole("header", { name: "Choose a plan" })).toBeOnTheScreen();
 });
 
-test("an older past trip with no plan cannot be added to until a plan is chosen", async () => {
+test("a past trip cannot be added to", async () => {
   await show(
     { name: "pastTrip", tripId: TRIP_ID },
     createFakeClient({
@@ -95,7 +95,7 @@ test("an older past trip with no plan cannot be added to until a plan is chosen"
   );
   await fireEvent.press(await screen.findByRole("button", { name: "Add to this trip" }));
   expect(
-    await screen.findByRole("button", { name: /^Place\. Choose a plan first\./ }),
+    await screen.findByRole("button", { name: /^Place\. A past trip cannot be changed\./ }),
   ).toBeOnTheScreen();
 });
 
@@ -139,4 +139,20 @@ test("the bar stays on a trip's main screens and leaves forms alone", () => {
   expect(showsBottomNav({ name: "settings" }, 2)).toBe(false);
   expect(tripContext({ name: "tripOverview", tripId: "t" })).toBe("t");
   expect(tripContext({ name: "trips" })).toBeNull();
+});
+
+test("a past trip with a plan cannot be added to either", async () => {
+  await show(
+    { name: "tripOverview", tripId: TRIP_ID },
+    server(makeTrip({ status: "past", selected_itinerary_id: ESSENTIALS_ID })),
+  );
+  await fireEvent.press(await screen.findByRole("button", { name: "Add to this trip" }));
+  for (const name of ["Place", "Restaurant", "Transport"]) {
+    const row = await screen.findByRole("button", {
+      name: new RegExp(`^${name}\\. A past trip cannot be changed\\.`),
+    });
+    expect(row.props.accessibilityState).toMatchObject({ disabled: true });
+  }
+  // A document is not a change to the trip: it stays available.
+  expect(screen.getByTestId("add-sheet-document")).toBeOnTheScreen();
 });

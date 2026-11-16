@@ -37,7 +37,7 @@ import { useResource } from "../data/DataProvider";
 import { useTripCounts } from "../data/tripCounts";
 import { dayTotals } from "../domain/itinerary";
 import { canOptimize, canUndoOptimize } from "../domain/optimize";
-import { type TripCounts, archiveOnly, localToday, shortSpan } from "../domain/trips";
+import { type TripCounts, archiveOnly, isReadOnly, localToday, shortSpan } from "../domain/trips";
 import { type TripSection, useNavigation } from "../nav/Navigator";
 import {
   border,
@@ -349,8 +349,11 @@ export function TripOverviewScreen({
 
   const hasPlan = trip.selected_itinerary_id !== null;
   const planId = trip.selected_itinerary_id as string;
-  const optimizable = hasPlan && plan.data ? canOptimize(plan.data.days) : false;
-  const undoable = hasPlan && plan.data ? canUndoOptimize(versions.data, plan.data.version) : false;
+  // A past trip is read-only (ADR 006, amendment of 2026-11-17).
+  const readOnly = isReadOnly(trip);
+  const optimizable = !readOnly && hasPlan && plan.data ? canOptimize(plan.data.days) : false;
+  const undoable =
+    !readOnly && hasPlan && plan.data ? canUndoOptimize(versions.data, plan.data.version) : false;
   const openOptimize = () => nav.push({ name: "optimize", tripId, itineraryId: planId });
   const undoOptimize = async () => {
     setMenu(false);
@@ -462,7 +465,7 @@ export function TripOverviewScreen({
   const menuSheet = menu ? (
     <Sheet visible title="Trip menu" onClose={() => setMenu(false)}>
       <RowGroup>
-        {isPlaceTrip(trip) ? null : (
+        {isPlaceTrip(trip) || readOnly ? null : (
           <ListRow
             inset="none"
             icon="history"
@@ -484,7 +487,7 @@ export function TripOverviewScreen({
           icon="photos"
           title="Change photo"
           detail={
-            coverSources(trip).length === 0
+            readOnly || coverSources(trip).length === 0
               ? "Choose the trip's cover from your phone"
               : "Choose the trip's cover from your phone or photos of the destination"
           }
@@ -494,17 +497,19 @@ export function TripOverviewScreen({
             setPicker(true);
           }}
         />
-        <ListRow
-          inset="none"
-          icon="home"
-          title="Where you're staying"
-          detail="Each day starts at your stay"
-          testID="menu-stays"
-          onPress={() => {
-            setMenu(false);
-            nav.push({ name: "stays", tripId });
-          }}
-        />
+        {readOnly ? null : (
+          <ListRow
+            inset="none"
+            icon="home"
+            title="Where you're staying"
+            detail="Each day starts at your stay"
+            testID="menu-stays"
+            onPress={() => {
+              setMenu(false);
+              nav.push({ name: "stays", tripId });
+            }}
+          />
+        )}
         {optimizable ? (
           <ListRow
             inset="none"
@@ -544,7 +549,11 @@ export function TripOverviewScreen({
           icon="settings"
           title="Trip settings"
           detail={
-            isPlaceTrip(trip) ? "Mark as past, delete" : "New proposals, mark as past, delete"
+            readOnly
+              ? "Reopen, delete"
+              : isPlaceTrip(trip)
+                ? "Mark as past, delete"
+                : "New proposals, mark as past, delete"
           }
           testID="menu-settings"
           onPress={() => {
@@ -559,7 +568,7 @@ export function TripOverviewScreen({
   const pickerSheet = picker ? (
     <CoverPicker
       visible
-      sources={coverSources(trip)}
+      sources={readOnly ? [] : coverSources(trip)}
       load={actions.coverCandidates}
       chosen={localCover ? null : commonsFileOf(trip.cover_image?.credit.source_url)}
       local={localCover !== null}
@@ -571,7 +580,7 @@ export function TripOverviewScreen({
       }}
       onChoose={async (c) => {
         // A destination photo (or the automatic one) replaces a picture from the phone.
-        if (coverSources(trip).length > 0) {
+        if (!readOnly && coverSources(trip).length > 0) {
           await actions.setCover(trip.id, c?.commons_file ?? null);
           trips.refresh();
         }

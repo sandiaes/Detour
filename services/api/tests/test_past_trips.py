@@ -1,6 +1,7 @@
-"""Past trips (ADR 006, amendment of 2026-11-16): a past trip keeps its plan and works like any
-other trip, only its undo history is cut to five versions; becoming past after the last day; and the
-archive rows of trips that became past before the amendment.
+"""Past trips (ADR 006, amendments of 2026-11-16 and 2026-11-17): a past trip keeps its plan, is
+read-only (409 ``trip_past`` on every change) until the user reopens it, and its undo history is cut
+to five versions; becoming past after the last day; and the archive rows of trips that became past
+before the amendment.
 
 Plans come from the planner on its synthetic sights (Testburg); the routing provider is off in
 tests, so every transfer is a labelled estimate.
@@ -106,39 +107,93 @@ def test_a_past_trip_keeps_its_plan_and_only_its_old_undo_history_goes(api_env: 
     assert again["days"] == plan["days"]
 
 
-def test_a_past_trip_can_still_be_changed_and_keeps_five_versions(api_env: ApiEnv) -> None:
+def test_a_past_trip_is_read_only_and_keeps_five_versions(api_env: ApiEnv) -> None:
+    """ADR 006, amendment of 2026-11-17: nothing of a past trip's plan, stays, cities, dates or
+    name changes until it is reopened. Reading, export and delete still work."""
     trip, plan = _planned_trip(api_env)
+    change = _preview(
+        api_env, plan["id"], action="add_place", place_id=_unplanned_sight(api_env, plan)
+    )
+    assert change.status_code == 201, change.text  # a change previewed before the trip became past
     _archive(api_env, trip)
     c, h = api_env.client, api_env.headers
-    # Another change of the plan is accepted.
+    item = next(i for d in plan["days"] for i in d["items"])
+
+    def refused(response: Any) -> None:
+        assert response.status_code == 409, response.text
+        assert response.json()["code"] == "trip_past"
+
+    # No change set can be previewed or applied.
+    refused(_apply(api_env, change.json()["id"]))
+    refused(
+        _preview(api_env, plan["id"], action="add_place", place_id=_unplanned_sight(api_env, plan))
+    )
+    refused(
+        c.post(f"/v1/itineraries/{plan['id']}/optimize", json={"scope": "within_days"}, headers=h)
+    )
+    # No stop is added, moved, changed or removed.
+    refused(
+        c.post(
+            f"/v1/itineraries/{plan['id']}/days/1/items",
+            json={"type": "free_time", "duration_minutes": 30},
+            headers=h,
+        )
+    )
+    refused(c.patch(f"/v1/items/{item['id']}", json={"duration_minutes": 20}, headers=h))
+    refused(c.delete(f"/v1/items/{item['id']}", headers=h))
+    # No stay, no new plan, no new proposals, no other settings.
+    refused(
+        c.post(
+            f"/v1/trips/{trip['id']}/stays",
+            json={"name": "Hotel", "lat": 50.0, "lon": 10.0, "first_day": 1, "last_day": 1},
+            headers=h,
+        )
+    )
+    refused(c.post(f"/v1/trips/{trip['id']}/itineraries", headers=h))
+    refused(generate(api_env, trip))
+    refused(c.patch(f"/v1/trips/{trip['id']}", json={"title": "Back then"}, headers=h))
+    refused(c.patch(f"/v1/trips/{trip['id']}", json={"start_date": "2027-06-01"}, headers=h))
+    refused(c.delete(f"/v1/itineraries/{plan['id']}", headers=h))
+    # Nothing changed, and it can still be read and exported.
+    assert c.get(f"/v1/itineraries/{plan['id']}", headers=h).json()["days"] == plan["days"]
+    assert c.get(f"/v1/trips/{trip['id']}", headers=h).json()["title"] == trip["title"]
+    assert c.get(f"/v1/trips/{trip['id']}/export", headers=h).status_code == 200
+    stored = sql(
+        api_env, "SELECT count(*) FROM app.itinerary_version WHERE itinerary_id = %s", plan["id"]
+    )
+    assert int(stored[0][0]) <= 5
+
+
+def test_a_reopened_trip_can_be_changed_and_is_not_made_past_again(
+    api_env: ApiEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    trip, plan = _planned_trip(api_env)
+    c, h = api_env.client, api_env.headers
+    # Only a past trip can be reopened.
+    again = c.post(f"/v1/trips/{trip['id']}/reopen", headers=h)
+    assert again.status_code == 409 and again.json()["code"] == "not_archived"
+    _archive(api_env, trip)
+    reopened = c.post(f"/v1/trips/{trip['id']}/reopen", headers=h)
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["status"] == "active" and reopened.json()["archived_at"] is None
+    assert reopened.json()["selected_itinerary_id"] == plan["id"]
+    # It is an ordinary trip again.
     change = _preview(
         api_env, plan["id"], action="add_place", place_id=_unplanned_sight(api_env, plan)
     )
     assert change.status_code == 201, change.text
     assert _apply(api_env, change.json()["id"]).status_code == 200
-    # Settings and new proposals work too.
     assert (
-        c.patch(f"/v1/trips/{trip['id']}", json={"title": "Back then"}, headers=h).status_code
-        == 200
+        c.patch(f"/v1/trips/{trip['id']}", json={"title": "Back now"}, headers=h).status_code == 200
     )
-    assert generate(api_env, trip).status_code == 201
-    # The history stays at five however many changes are made.
-    sql(
-        api_env,
-        "INSERT INTO app.itinerary_version (itinerary_id, version, state)"
-        " SELECT %s, g, '{}'::jsonb FROM generate_series(1, 3) g ON CONFLICT DO NOTHING",
-        plan["id"],
-    )
-    current = c.get(f"/v1/itineraries/{plan['id']}", headers=h).json()
-    change = _preview(
-        api_env, plan["id"], action="add_place", place_id=_unplanned_sight(api_env, current)
-    )
-    if change.status_code == 201:
-        assert _apply(api_env, change.json()["id"]).status_code == 200
-    stored = sql(
-        api_env, "SELECT count(*) FROM app.itinerary_version WHERE itinerary_id = %s", plan["id"]
-    )
-    assert int(stored[0][0]) <= 5
+    # Its last day is long gone, yet reading the trips does not make it past again.
+    monkeypatch.setattr(trips_repo, "today_utc", lambda: date(2030, 1, 1))
+    assert c.get("/v1/trips", headers=h).json()[0]["status"] == "active"
+    # The user can mark it past a second time.
+    assert _archive(api_env, trip)["status"] == "past"
+    # Another installation cannot reopen it.
+    other = api_env.other_installation()
+    assert c.post(f"/v1/trips/{trip['id']}/reopen", headers=other).status_code == 404
 
 
 # -- the archive rows of trips that became past before the amendment -------------------------
