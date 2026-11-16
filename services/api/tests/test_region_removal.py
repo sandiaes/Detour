@@ -17,7 +17,8 @@ REGION = "test-region"
 
 
 def _owner(env: ApiEnv) -> None:
-    env.client.app.state.settings.owner_installation_ids = str(env.installation_id)  # type: ignore[attr-defined]
+    app: Any = env.client.app
+    app.state.settings.owner_installation_ids = str(env.installation_id)
 
 
 def _city_trip() -> dict[str, Any]:
@@ -44,11 +45,9 @@ def _trip_with_one_sight(env: ApiEnv) -> tuple[dict[str, Any], str]:
 
 def test_only_the_owner_may_preview_or_remove(api_env: ApiEnv) -> None:
     c, h = api_env.client, api_env.headers
-    for call in (
-        lambda hd: c.get(f"/v1/regions/{REGION}/removal-preview", headers=hd),
-        lambda hd: c.delete(f"/v1/regions/{REGION}", headers=hd),
-    ):
-        refused = call(h)  # nobody is the owner until it is configured
+    preview = c.get(f"/v1/regions/{REGION}/removal-preview", headers=h)
+    removal = c.delete(f"/v1/regions/{REGION}", headers=h)
+    for refused in (preview, removal):  # nobody is the owner until it is configured
         assert refused.status_code == 403 and refused.json()["code"] == "not_owner"
     _owner(api_env)
     assert c.get(f"/v1/regions/{REGION}/removal-preview", headers=h).status_code == 200

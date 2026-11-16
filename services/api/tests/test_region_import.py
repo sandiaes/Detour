@@ -37,7 +37,7 @@ class Github:
 
 
 def _setup(env: ApiEnv, *, owner: bool = True, token: bool = True) -> Github:
-    app = env.client.app  # type: ignore[attr-defined]
+    app: Any = env.client.app
     github = Github()
     settings = app.state.settings
     settings.github_token = SecretStr("ghp_test_token") if token else None
@@ -206,7 +206,8 @@ def test_the_workflow_reports_through_the_job_command(api_env: ApiEnv) -> None:
 
 def test_the_daily_budget_limits_dispatches(api_env: ApiEnv) -> None:
     github = _setup(api_env)
-    api_env.client.app.state.settings.github_daily_budget = 1  # type: ignore[attr-defined]
+    app: Any = api_env.client.app
+    app.state.settings.github_daily_budget = 1
     assert _post(api_env).status_code == 202
     sql(api_env, "UPDATE geo.import_job SET status = 'succeeded'")
     r = _post(api_env)
