@@ -192,11 +192,36 @@ test("an import under way has a yellow badge", async () => {
   expect(pill && StyleSheet.flatten(pill.props.style).backgroundColor).toBe(colors.warning);
 });
 
-test("the regions are listed under their continent", async () => {
+test("the regions are listed under their continent, and a continent folds", async () => {
   await open({
     "GET /v1/regions/catalog": () => catalog({ regions: [AUSTRIA, LONDON, NEW_YORK] }),
   });
+  // Europe holds data, so it starts open; North America does not, so it starts closed.
   expect(await screen.findByRole("header", { name: "Europe" })).toBeOnTheScreen();
   expect(screen.getByRole("header", { name: "North America" })).toBeOnTheScreen();
-  expect(screen.getByText("New York State")).toBeOnTheScreen();
+  expect(screen.getByText("Austria")).toBeOnTheScreen();
+  expect(screen.queryByText("New York State")).toBeNull();
+  const europe = screen.getByTestId("continent-Europe");
+  expect(europe.props.accessibilityState).toMatchObject({ expanded: true });
+  expect(screen.getByText("1 imported · 2 regions")).toBeOnTheScreen();
+  expect(screen.getByText("1 region")).toBeOnTheScreen();
+  // Open the closed one, close the open one.
+  await fireEvent.press(screen.getByTestId("continent-North America"));
+  expect(await screen.findByText("New York State")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByTestId("continent-Europe"));
+  expect(screen.queryByText("Austria")).toBeNull();
+  expect(screen.getByTestId("continent-Europe").props.accessibilityState).toMatchObject({
+    expanded: false,
+  });
+});
+
+test("with nothing imported the first continent is open", async () => {
+  await open({
+    "GET /v1/regions/catalog": () =>
+      catalog({
+        regions: [{ ...AUSTRIA, state: "not_imported", places: 0, bytes: null }, NEW_YORK],
+      }),
+  });
+  expect(await screen.findByText("Austria")).toBeOnTheScreen();
+  expect(screen.queryByText("New York State")).toBeNull();
 });
