@@ -694,28 +694,11 @@ def test_deleting_an_itinerary_clears_a_selection(api_env: ApiEnv) -> None:
 # -- the past-trip archive (ADR 006) -------------------------------------------------------
 
 
-def test_archiving_keeps_snapshots_and_deletes_the_plans(api_env: ApiEnv) -> None:
+def test_a_past_trip_keeps_its_plans(api_env: ApiEnv) -> None:
     trip = make_trip(api_env, duration_days=2)
-    keep, drop = make_itinerary(api_env, trip), make_itinerary(api_env, trip)
-    museum, castle = find_place(api_env, "testburg museum"), find_place(api_env, "testburg castle")
-    post = create_place(api_env, kind="restaurant", name="Zur Alten Post")
-    city_pin = create_place(api_env, kind="city", name="Pin Town")
+    keep, other_plan = make_itinerary(api_env, trip), make_itinerary(api_env, trip)
+    museum = find_place(api_env, "testburg museum")
     add_item(api_env, keep, 1, type="visit", place_id=museum["id"], duration_minutes=60)
-    add_item(api_env, keep, 1, type="meal", user_place_id=post["id"], duration_minutes=60)
-    add_item(api_env, keep, 2, type="visit", place_id=castle["id"], duration_minutes=60)
-    add_item(api_env, keep, 2, type="visit", user_place_id=city_pin["id"], duration_minutes=60)
-    add_item(api_env, keep, 2, type="free_time", duration_minutes=30)
-    add_item(api_env, drop, 1, type="visit", place_id=museum["id"], duration_minutes=60)
-    sql(
-        api_env,
-        "UPDATE app.itinerary_day SET base_city_id = 900101 WHERE itinerary_id = %s AND day_index = 1",
-        keep["id"],
-    )
-    sql(
-        api_env,
-        "UPDATE app.itinerary_day SET base_city_id = 900105 WHERE itinerary_id = %s AND day_index = 2",
-        keep["id"],
-    )
     api_env.client.patch(
         f"/v1/trips/{trip['id']}",
         json={"selected_itinerary_id": keep["id"]},
@@ -725,56 +708,47 @@ def test_archiving_keeps_snapshots_and_deletes_the_plans(api_env: ApiEnv) -> Non
     r = api_env.client.post(f"/v1/trips/{trip['id']}/archive", headers=api_env.headers)
     assert r.status_code == 200, r.text
     past = r.json()
+    assert past["status"] == "past" and past["archived_at"]
+    assert past["selected_itinerary_id"] == keep["id"]
+    # Nothing is snapshotted or deleted: the plans are the record.
+    assert sql(api_env, "SELECT count(*) FROM app.trip_visit") == [(0,)]
+    assert sql(api_env, "SELECT count(*) FROM app.itinerary") == [(2,)]
     assert (
-        past["status"] == "past" and past["archived_at"] and past["selected_itinerary_id"] is None
+        api_env.client.get(f"/v1/itineraries/{keep['id']}", headers=api_env.headers).status_code
+        == 200
+    )
+    assert (
+        api_env.client.get(
+            f"/v1/itineraries/{other_plan['id']}", headers=api_env.headers
+        ).status_code
+        == 200
     )
 
-    visits = api_env.client.get(f"/v1/trips/{trip['id']}/visits", headers=api_env.headers).json()
-    summary = [(v["day_number"], v["kind"], v["name"]) for v in visits]
-    assert summary == [
-        (1, "city", "Testburg"),
-        (1, "attraction", "Testburg Museum"),
-        (1, "restaurant", "Zur Alten Post"),  # the user's own place is in the record (ADR 026)
-        (2, "city", "Alpenau"),
-        (2, "city", "Pin Town"),
-        (2, "attraction", "Testburg Castle"),
-    ]
-    assert all(v["confirmed"] for v in visits)
-    assert visits[1]["geo_place_ref"] == museum["id"] and visits[4]["geo_place_ref"] is None
-    assert visits[1]["lat"] == pytest.approx(48.2082)  # a snapshot: no routes
-    assert visits[1]["position"] == 1 and visits[2]["position"] == 2
-    assert visits[1]["duration_minutes"] == 60 and "seconds" not in visits[1]
 
-    for table in ("itinerary", "itinerary_day", "itinerary_item", "transfer"):
-        assert sql(api_env, f"SELECT count(*) FROM app.{table}") == [(0,)]  # noqa: S608
-
-
-def test_a_past_trip_is_read_only_and_archiving_is_one_way(api_env: ApiEnv) -> None:
+def test_a_past_trip_works_like_any_trip_and_marking_it_past_happens_once(api_env: ApiEnv) -> None:
     trip = make_trip(api_env)
     it = make_itinerary(api_env, trip)
-    api_env.client.post(f"/v1/trips/{trip['id']}/archive", headers=api_env.headers)
     c, h = api_env.client, api_env.headers
+    c.post(f"/v1/trips/{trip['id']}/archive", headers=h)
     assert code(c.post(f"/v1/trips/{trip['id']}/archive", headers=h)) == "already_archived"
-    assert (
-        code(c.patch(f"/v1/trips/{trip['id']}", json={"title": "x"}, headers=h)) == "trip_archived"
-    )
-    assert code(c.post(f"/v1/trips/{trip['id']}/itineraries", headers=h)) == "trip_archived"
-    assert c.get(f"/v1/itineraries/{it['id']}", headers=h).status_code == 404
+    assert c.patch(f"/v1/trips/{trip['id']}", json={"title": "x"}, headers=h).status_code == 200
+    assert c.post(f"/v1/trips/{trip['id']}/itineraries", headers=h).status_code == 201
+    assert c.get(f"/v1/itineraries/{it['id']}", headers=h).status_code == 200
     assert [t["id"] for t in c.get("/v1/trips?status=past", headers=h).json()] == [trip["id"]]
     assert c.get("/v1/trips?status=active", headers=h).json() == []
     assert c.delete(f"/v1/trips/{trip['id']}", headers=h).status_code == 204
 
 
-def test_a_trip_without_a_selected_itinerary_archives_its_destination_city(api_env: ApiEnv) -> None:
+def test_the_user_can_clear_a_visit_of_an_older_archive(api_env: ApiEnv) -> None:
     trip = make_trip(api_env)
     api_env.client.post(f"/v1/trips/{trip['id']}/archive", headers=api_env.headers)
-    visits = api_env.client.get(f"/v1/trips/{trip['id']}/visits", headers=api_env.headers).json()
-    assert [(v["kind"], v["name"], v["day_number"]) for v in visits] == [("city", "Testburg", 1)]
-
-
-def test_the_user_can_clear_a_visit_that_did_not_happen(api_env: ApiEnv) -> None:
-    trip = make_trip(api_env)
-    api_env.client.post(f"/v1/trips/{trip['id']}/archive", headers=api_env.headers)
+    sql(
+        api_env,
+        "INSERT INTO app.trip_visit (id, trip_id, kind, name, point, day_number)"
+        " VALUES (gen_random_uuid(), %s, 'city', 'Testburg',"
+        " ST_SetSRID(ST_MakePoint(16.37, 48.2), 4326), 1)",
+        trip["id"],
+    )
     (visit,) = api_env.client.get(f"/v1/trips/{trip['id']}/visits", headers=api_env.headers).json()
     url = f"/v1/trips/{trip['id']}/visits/{visit['id']}"
     r = api_env.client.patch(url, json={"confirmed": False}, headers=api_env.headers)

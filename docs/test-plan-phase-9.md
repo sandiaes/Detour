@@ -54,8 +54,8 @@ Before anything: **More, Back up all trips** with documents, and keep the file o
 5. Documents tab: add a PDF and a photo, link one to a day, open it, delete it (confirmation).
 6. Trip menu, Export trip with documents: the share sheet opens; then More, Import a trip with that
    file: a new copy with its documents.
-7. Trip settings, Mark as past trip: the text says every stop is kept; the past trip's Days tab
-   shows the stops with times; clear one visit.
+7. Trip settings, Mark as past trip: the text says the plan stays; the trip moves to the Past tab and
+   opens like any trip (map, Optimize, Add a place all work).
 8. A trip to a place outside Austria and Italy: only "Start a fresh trip" is offered.
 9. Photos: a cover with its "i" credit; trip menu, Change photo; More, Image credits.
 10. Leave the phone for 20 minutes, open Detour: "Waking the server", then the trips.

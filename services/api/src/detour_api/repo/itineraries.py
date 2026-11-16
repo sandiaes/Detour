@@ -197,8 +197,6 @@ def _item(row: Any, transfer: Transfer | None = None) -> Item:
 def create_manual(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Itinerary:
     """An empty itinerary with one day per trip day, to be filled by hand."""
     trip = trips.require_trip(conn, installation_id, trip_id)
-    if trip.status == "past":
-        raise conflict("trip_archived", "a past trip cannot get new itineraries")
     count = conn.execute(
         text("SELECT count(*) FROM app.itinerary WHERE trip_id = :t"), {"t": trip_id}
     ).scalar_one()
@@ -336,9 +334,7 @@ def require_itinerary(
 
 def delete_itinerary(conn: Connection, installation_id: uuid.UUID, itinerary_id: uuid.UUID) -> None:
     itinerary = require_itinerary(conn, installation_id, itinerary_id)
-    trip = trips.require_trip(conn, installation_id, itinerary.trip_id)
-    if trip.status == "past":
-        raise conflict("trip_archived", "a past trip cannot be changed")
+    trips.require_trip(conn, installation_id, itinerary.trip_id)
     conn.execute(text("DELETE FROM app.itinerary WHERE id = :i"), {"i": itinerary_id})
 
 
@@ -360,8 +356,6 @@ def _day_context(
     ).first()
     if row is None:
         raise not_found("itinerary day")
-    if row.trip_status == "past":
-        raise conflict("trip_archived", "a past trip cannot be changed")
     return row
 
 
@@ -552,8 +546,6 @@ def update_item(
     ).first()
     if row is None:
         raise not_found("item")
-    if row.trip_status == "past":
-        raise conflict("trip_archived", "a past trip cannot be changed")
     changed = body.model_fields_set
     plan_state.snapshot(conn, row.itinerary_id)
 
@@ -648,8 +640,6 @@ def delete_item(conn: Connection, installation_id: uuid.UUID, item_id: uuid.UUID
     ).first()
     if row is None:
         raise not_found("item")
-    if row.trip_status == "past":
-        raise conflict("trip_archived", "a past trip cannot be changed")
     plan_state.snapshot(conn, row.itinerary_id)
     conn.execute(text("DELETE FROM app.itinerary_item WHERE id = :i"), {"i": item_id})
     conn.execute(

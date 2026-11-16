@@ -330,8 +330,8 @@ not asked; it is the destination.
   separate Itinerary tab: the original proposals are in the trip menu and new ones in Trip settings.
 - **Map tab (screens 03, 14):** a compact header (small Back and menu buttons, the name) and the tabs close
   together, then the map (clipped to its area; the attribution "i" sits above the sheet's curve) of the day, then **the day pills**, then the day's stops. It uses the whole screen.
-- **Photos (ADR 031):** the trip's album links as hairline rows (name, "Google Photos · opens in Google
-  Photos", a dots button for Rename and Remove link), **Link an album** (a sheet with the link, a hint
+- **Photos (ADR 031):** the trip's album links as hairline rows (a soft green photo tile, name, "Google Photos · opens in Google
+  Photos", a dots button for Rename and Remove link), **Link an album** (always the green `primary` button) (a sheet with the link, a hint
   "In Google Photos, open the album, tap Share, then Copy link", and an optional name), and a muted
   note that the link stays on this phone. Empty: "No album linked yet". Detour shows no photo of an
   album; a row opens it outside the app.
@@ -465,7 +465,11 @@ for a restaurant and 45 min for a café (*proposed*).
 - **The empty tab sits close under the tabs:** the room above the illustration equals the room between it and the title (`StateView` `tight`).
 - **A place's details** list that place's documents under "Tickets and documents" (sights) or
   "Bookings and documents" (places to eat), with "Attach a document".
-- **A past trip** is a flat page: a compact header with the settings icon, a summary, a Documents
+- **A past trip** (since ADR 006's amendment of 2026-11-16) is an ordinary trip with a "Past" badge:
+  the same cover, tabs (Overview, Map, Photos, Documents), Add, Optimize and trip menu as an upcoming
+  trip; it only sits in the Trips screen's Past tab. The page below describes the **older archive**
+  (a past trip with no plan), which keeps this screen:
+  a flat page with a compact header with the settings icon, a summary, a Documents
   row, underlined Map, Days and List tabs, and hairline rows with plain Skip and Restore actions
   (the visited mark of every stop, restaurants and cafés included). **Days** (ADR 026, built) is the
   day record: a heading per day ("Day 2 · Sun 2 May") and its stops in their planned order, each
@@ -498,7 +502,7 @@ Pushed screens with a `ScreenHeader` and the 16 dp gutter. **Trip settings** is 
 explanation and one small button. **Mark as past trip** and **Delete trip** are `secondary` buttons
 with `tone="danger"`; each opens a `ConfirmSheet` ("Mark as a past trip?", "Delete this trip?")
 whose red button says what will happen ("Yes, mark as past", "Yes, delete the trip") and whose way
-back is "Keep planning" or "Keep the trip". **Export** has one `ListRow` with a switch for the
+back is "Not yet" or "Keep the trip". Marking as past says the plan stays and only the undo history is cut to five. **Export** has one `ListRow` with a switch for the
 documents and, when they are included, a warning `Notice` that the file is not encrypted; **Import**
 lists the trips in the file as `ListRow`s; **Settings** shows the connection as `InfoRow`s and the
 credits as link rows with an external-link icon; **Image credits** lists the photos the same way.
@@ -508,8 +512,10 @@ A document's own screen has facts as `InfoRow`s, Open (`primary`), Edit (`second
 ### Photos, Explore, More (screens 07, 10, 11)
 
 Planned features and a menu of hairline rows. Items that are not built say "Coming later". **Photos**
-lists every trip's linked albums under the trip's name and dates (ADR 031); empty, it says to link
-an album on a trip's Photos tab.
+lists every trip with linked albums as one card (ADR 031; owner, 2026-11-16): a header row with the
+trip's cover thumbnail, its name and "dates · length", which opens the trip's Photos tab, then the
+albums as rows (photo tile, name, source, an external-link icon). Empty, it says to link an album on a
+trip's Photos tab and offers a green "Go to my trips" button.
 
 ## 5. Plans and times
 

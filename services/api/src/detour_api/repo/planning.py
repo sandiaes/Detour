@@ -58,8 +58,6 @@ def load_context(
     conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, config: PlannerConfig
 ) -> PlanningContext:
     trip = trips.require_trip(conn, installation_id, trip_id)
-    if trip.status == "past":
-        raise conflict("trip_archived", "a past trip cannot get new itineraries")
     if trip.destination.kind == "place":
         raise ApiError(
             409,
@@ -323,8 +321,6 @@ def save_generation(
     ).first()
     if trip_row is None:
         raise ApiError(404, "not_found", "trip not found")
-    if trip_row.status == "past":
-        raise conflict("trip_archived", "a past trip cannot get new itineraries")
     # A new generation replaces the earlier engine proposals the user did not select.
     conn.execute(
         text(

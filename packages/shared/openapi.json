@@ -1521,7 +1521,7 @@
         "tags": [
           "trips"
         ],
-        "summary": "Make the trip a past trip (ADR 006): keep a snapshot of its visits, delete the plans.",
+        "summary": "Make the trip a past trip (ADR 006): its plan stays, undo history is cut to five.",
         "operationId": "archive_trip",
         "security": [
           {

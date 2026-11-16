@@ -218,11 +218,11 @@ def test_areas_in_japan_are_single_city_only(api_env: ApiEnv) -> None:
     assert r.status_code == 422 and r.json()["code"] == "area_single_city_only"
 
 
-def test_a_past_trip_is_refused(api_env: ApiEnv) -> None:
+def test_a_past_trip_can_get_proposals(api_env: ApiEnv) -> None:
+    add_synthetic_sights(api_env)
     trip = make_trip(api_env)
     api_env.client.post(f"/v1/trips/{trip['id']}/archive", headers=api_env.headers)
-    r = generate(api_env, trip)
-    assert r.status_code == 409 and r.json()["code"] == "trip_archived"
+    assert generate(api_env, trip).status_code == 201
 
 
 def test_a_region_that_is_no_longer_available_is_refused(api_env: ApiEnv) -> None:

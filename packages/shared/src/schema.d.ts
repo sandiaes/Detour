@@ -346,7 +346,7 @@ export interface paths {
     /** What a past trip keeps and how much room it takes (ADR 006). */
     get: operations["get_trip_archive"];
     put?: never;
-    /** Make the trip a past trip (ADR 006): keep a snapshot of its visits, delete the plans. */
+    /** Make the trip a past trip (ADR 006): its plan stays, undo history is cut to five. */
     post: operations["archive_trip"];
     delete?: never;
     options?: never;

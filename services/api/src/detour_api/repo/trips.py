@@ -241,8 +241,6 @@ def update_trip(
     conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID, body: TripUpdate
 ) -> Trip:
     trip = require_trip(conn, installation_id, trip_id)
-    if trip.status == "past":
-        raise conflict("trip_archived", "a past trip cannot be changed")
     changed = body.model_fields_set
     sets: list[str] = []
     params: dict[str, Any] = {"t": trip_id, "i": installation_id}
@@ -354,163 +352,32 @@ def today_utc() -> date:
     return datetime.now(UTC).date()
 
 
-def _collect_visits(conn: Connection, trip: Trip) -> list[dict[str, Any]]:
-    """The day record of the selected itinerary, as snapshots (ADR 026): every stop with its day,
-    order, start and length, the user's restaurants and cafes included; free time is not a stop.
-    Each base city is listed once, however many days are spent there, without a time."""
-    visits: list[dict[str, Any]] = []
-    if trip.selected_itinerary_id is not None:
-        cities = conn.execute(
-            text(
-                """
-                SELECT c.id, c.name, ST_Y(c.geom) lat, ST_X(c.geom) lon, min(d.day_index) AS day
-                FROM app.itinerary_day d JOIN geo.city c ON c.id = d.base_city_id
-                WHERE d.itinerary_id = :it GROUP BY c.id, c.name, c.geom
-                ORDER BY min(d.day_index), c.id
-                """
-            ),
-            {"it": trip.selected_itinerary_id},
-        ).all()
-        visits += [
-            {
-                "kind": "city",
-                "name": c.name,
-                "lat": c.lat,
-                "lon": c.lon,
-                "ref": f"city:{c.id}",
-                "day": c.day,
-                "position": None,
-                "start": None,
-                "minutes": None,
-            }
-            for c in cities
-        ]
-        items = conn.execute(
-            text(
-                """
-                SELECT d.day_index, i.position, i.display_name, i.place_id, i.type,
-                       i.start_time, i.duration_minutes,
-                       ST_Y(i.display_point) lat, ST_X(i.display_point) lon, up.kind AS up_kind
-                FROM app.itinerary_item i
-                JOIN app.itinerary_day d ON d.id = i.day_id
-                LEFT JOIN app.user_place up ON up.id = i.user_place_id
-                WHERE d.itinerary_id = :it AND i.type IN ('visit', 'meal')
-                  AND i.display_point IS NOT NULL
-                ORDER BY d.day_index, i.position
-                """
-            ),
-            {"it": trip.selected_itinerary_id},
-        ).all()
-        # A town the user added by hand may be a base city already listed (or added twice).
-        listed_cities = {v["name"].casefold() for v in visits}
-        for it in items:
-            is_city = it.type == "visit" and it.up_kind == "city"
-            if is_city:
-                if it.display_name.casefold() in listed_cities:
-                    continue
-                listed_cities.add(it.display_name.casefold())
-            visits.append(
-                {
-                    "kind": (
-                        "city"
-                        if is_city
-                        else it.up_kind
-                        if it.type == "meal" and it.up_kind in ("restaurant", "cafe")
-                        else "restaurant"
-                        if it.type == "meal"
-                        else "attraction"
-                    ),
-                    "name": it.display_name,
-                    "lat": it.lat,
-                    "lon": it.lon,
-                    "ref": None if it.place_id is None else str(it.place_id),
-                    "day": it.day_index,
-                    "position": it.position,
-                    "start": it.start_time,
-                    "minutes": it.duration_minutes,
-                }
-            )
-    if not any(v["kind"] == "city" for v in visits) and trip.destination.kind in ("city", "place"):
-        visits.insert(
-            0,
-            {
-                "kind": "city",
-                "name": trip.destination.name,
-                "lat": trip.destination.lat,
-                "lon": trip.destination.lon,
-                # A place trip's destination has no geo row (ADR 027).
-                "ref": (
-                    None if trip.destination.kind == "place" else f"city:{trip.destination.ref}"
-                ),
-                "day": 1,
-                "position": None,
-                "start": None,
-                "minutes": None,
-            },
-        )
-    return visits
-
-
 def _archive(conn: Connection, trip: Trip, reason: str) -> bool:
-    """Writes the archive and deletes the plans. False if the trip was already past (a concurrent
-    request got there first)."""
+    """Makes the trip a past trip. Since the amendment of 2026-11-16 nothing is deleted except the
+    undo history beyond the newest five versions of each plan: a past trip keeps its plan, routes,
+    stays and documents and works like any other trip. False if the trip was already past (a
+    concurrent request got there first)."""
+    from detour_api.repo import plan_state
+
     status = conn.execute(
         text("SELECT status FROM app.trip WHERE id = :t FOR UPDATE"), {"t": trip.id}
     ).scalar_one()
     if status == "past":
         return False
-    visits = _collect_visits(conn, trip)
-    for v in visits:
-        conn.execute(
-            text(
-                "INSERT INTO app.trip_visit (id, trip_id, kind, name, point, geo_place_ref,"
-                " day_number, position, start_time, duration_minutes) VALUES (:id, :t, :k, :n,"
-                " ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :ref, :d, :pos, :st, :min)"
-            ),
-            {
-                "id": uuid.uuid4(),
-                "t": trip.id,
-                "k": v["kind"],
-                "n": v["name"],
-                "lon": v["lon"],
-                "lat": v["lat"],
-                "ref": v["ref"],
-                "d": v["day"],
-                "pos": v["position"],
-                "st": v["start"],
-                "min": v["minutes"],
-            },
-        )
-    conn.execute(
-        text("UPDATE app.trip SET selected_itinerary_id = NULL WHERE id = :t"), {"t": trip.id}
-    )
-    # Days, items, transfers (with their route geometry), itinerary versions and change sets go
-    # with their itinerary (ON DELETE CASCADE).
-    deleted = conn.execute(text("DELETE FROM app.itinerary WHERE trip_id = :t"), {"t": trip.id})
+    pruned = plan_state.prune_versions(conn, trip.id)
     conn.execute(
         text(
             "UPDATE app.trip SET status = 'past', archived_at = now(), updated_at = now() WHERE id = :t"
         ),
         {"t": trip.id},
     )
-    info = archive_info(conn, trip.id)
-    log.info(
-        "trip_archived",
-        reason=reason,
-        itineraries_deleted=deleted.rowcount,
-        visits=info.cities + info.attractions,
-        size_bytes=info.size_bytes,
-    )
+    log.info("trip_archived", reason=reason, versions_pruned=pruned)
     return True
 
 
 def archive_trip(conn: Connection, installation_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
-    """Turn a trip into a past trip, on the user's request.
-
-    Keeps the title, destination, dates and duration, and one snapshot row per stop of the
-    *selected* itinerary (day, order, start and length) and per base city; deletes every
-    itinerary (and with them transfers, route geometry, versions and seeds).
-    """
+    """Turn a trip into a past trip, on the user's request. The plan is kept; only the undo
+    history is cut to five versions."""
     trip = require_trip(conn, installation_id, trip_id)
     if trip.status == "past" or not _archive(conn, trip, "user"):
         raise conflict("already_archived", "the trip is already a past trip")

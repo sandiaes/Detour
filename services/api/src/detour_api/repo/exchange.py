@@ -131,7 +131,7 @@ def export_trip(conn: Connection, trip: Trip) -> FileTrip:
             for s in trip.stops
         ],
         days=days,
-        visits=_visits(conn, trip.id) if trip.status == "past" else [],
+        visits=_visits(conn, trip.id) if trip.status == "past" and not days else [],
     )
 
 
@@ -159,8 +159,8 @@ def _check_file(file: TripFile) -> None:
             if day.day_index in seen:
                 raise invalid("bad_file", f"trip {n + 1}: day {day.day_index} appears twice")
             seen.add(day.day_index)
-        if t.status == "past" and t.days:
-            raise invalid("bad_file", f"trip {n + 1}: a past trip keeps visits, not a plan")
+        if t.days and t.visits:
+            raise invalid("bad_file", f"trip {n + 1}: a trip has a plan or visits, not both")
         if t.status == "active" and t.visits:
             raise invalid("bad_file", f"trip {n + 1}: only a past trip has visits")
 
@@ -186,6 +186,8 @@ def _import_trip(conn: Connection, installation_id: uuid.UUID, t: FileTrip) -> I
         conn, installation_id, body, destination_name=d.name, lat=d.lat, lon=d.lon
     )
     stops = 0
+    if t.days:
+        stops = _write_plan(conn, installation_id, trip, t.days)
     if t.status == "past":
         _write_visits(conn, trip.id, t.visits)
         conn.execute(
@@ -195,9 +197,6 @@ def _import_trip(conn: Connection, installation_id: uuid.UUID, t: FileTrip) -> I
             ),
             {"at": t.archived_at, "t": trip.id},
         )
-        return ImportedTrip(index=0, trip_id=str(trip.id), title=trip.title, days=0, stops=0)
-    if t.days:
-        stops = _write_plan(conn, installation_id, trip, t.days)
     return ImportedTrip(
         index=0,
         trip_id=str(trip.id),

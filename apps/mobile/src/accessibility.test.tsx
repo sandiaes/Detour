@@ -372,7 +372,7 @@ test("trip settings: the red entry points and both confirmation sheets", async (
   await showHeader({ name: "tripSettings", tripId: TRIP_ID }, "Trip settings", planServer());
   checkControls();
   for (const [entry, title, confirm, back] of [
-    [/^Mark the trip/, "Mark as a past trip?", "Yes, mark as past", "Keep planning"],
+    [/^Mark the trip/, "Mark as a past trip?", "Yes, mark as past", "Not yet"],
     [/^Delete the trip/, "Delete this trip?", "Yes, delete the trip", "Keep the trip"],
   ] as const) {
     await fireEvent.press(await screen.findByRole("button", { name: entry }));

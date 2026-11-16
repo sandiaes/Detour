@@ -117,8 +117,6 @@ def _itinerary_row(conn: Connection, installation_id: uuid.UUID, itinerary_id: u
     ).first()
     if row is None:
         raise not_found("itinerary")
-    if row.trip_status == "past":
-        raise conflict("trip_archived", "a past trip cannot be changed")
     return row
 
 
@@ -598,8 +596,6 @@ def apply(
     """Apply a pending change set. None when the itinerary changed since the preview: the change
     set is then marked expired (the caller commits that and answers 409)."""
     row = _row(conn, installation_id, change_id, lock=True)
-    if row.trip_status == "past":
-        raise conflict("trip_archived", "a past trip cannot be changed")
     if row.status != "pending":
         raise conflict("change_set_closed", f"this change set is {row.status}")
     version = conn.execute(

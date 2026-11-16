@@ -3,6 +3,7 @@ import type { ArchiveInfo, Itinerary, Trip } from "@detour/shared";
 import { call } from "../api/unwrap";
 import {
   type TripCounts,
+  archiveOnly,
   countsFromArchive,
   countsFromItinerary,
   countsWithoutPlan,
@@ -12,7 +13,7 @@ import { type Resource, useResource } from "./DataProvider";
 
 /** The active plan of a trip, read through the shared cache (null key when there is none). */
 export function useActivePlan(trip: Trip | undefined): Resource<Itinerary> {
-  const id = trip && trip.status !== "past" ? trip.selected_itinerary_id : null;
+  const id = trip ? trip.selected_itinerary_id : null;
   return useResource<Itinerary>(
     id ? keys.itinerary(id) : null,
     (c) =>
@@ -35,16 +36,16 @@ export function useTripCounts(trip: Trip | undefined): {
   plan: Resource<Itinerary>;
 } {
   const plan = useActivePlan(trip);
-  const past = trip?.status === "past";
+  const past = trip ? archiveOnly(trip) : false;
   const tripId = trip?.id ?? "";
   const archive = useResource<ArchiveInfo>(past ? keys.archive(tripId) : null, (c) =>
     call(c.GET("/v1/trips/{trip_id}/archive", { params: { path: { trip_id: tripId } } })),
   );
   let counts: TripCounts | null;
   if (!trip) counts = null;
-  else if (past) counts = archive.data ? countsFromArchive(trip, archive.data) : null;
   else if (trip.selected_itinerary_id) {
     counts = plan.data ? countsFromItinerary(trip, plan.data) : null;
-  } else counts = countsWithoutPlan(trip);
+  } else if (past) counts = archive.data ? countsFromArchive(trip, archive.data) : null;
+  else counts = countsWithoutPlan(trip);
   return { counts, plan };
 }

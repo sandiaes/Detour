@@ -28,6 +28,8 @@ from detour_api.planner.types import Issue, Leg
 
 # Versions kept per itinerary (the oldest are removed first).
 MAX_VERSIONS = 30
+# A past trip keeps fewer undo versions (ADR 006, amendment of 2026-11-16).
+MAX_VERSIONS_PAST = 5
 
 State = dict[str, Any]
 
@@ -264,10 +266,30 @@ def snapshot(
             "c": change_set_id,
         },
     )
+    past = conn.execute(
+        text(
+            "SELECT t.status = 'past' FROM app.itinerary i JOIN app.trip t ON t.id = i.trip_id"
+            " WHERE i.id = :i"
+        ),
+        {"i": itinerary_id},
+    ).scalar_one()
     conn.execute(
         text("DELETE FROM app.itinerary_version WHERE itinerary_id = :i AND version <= :v - :n"),
-        {"i": itinerary_id, "v": version, "n": MAX_VERSIONS},
+        {"i": itinerary_id, "v": version, "n": MAX_VERSIONS_PAST if past else MAX_VERSIONS},
     )
+
+
+def prune_versions(conn: Connection, trip_id: uuid.UUID, keep: int = MAX_VERSIONS_PAST) -> int:
+    """Keeps only the newest ``keep`` versions of every itinerary of a trip (when it becomes
+    past). Returns how many were deleted."""
+    deleted = conn.execute(
+        text(
+            "DELETE FROM app.itinerary_version v USING app.itinerary i WHERE v.itinerary_id = i.id"
+            " AND i.trip_id = :t AND v.version <= i.version - :n - 1"
+        ),
+        {"t": trip_id, "n": keep},
+    )
+    return deleted.rowcount
 
 
 def stored_version(conn: Connection, itinerary_id: uuid.UUID, version: int) -> State | None:
