@@ -225,3 +225,36 @@ test("a ticket can be attached to a leg: Add document opens linked to it", async
   await fireEvent.press(await screen.findByTestId("leg-document"));
   expect(await screen.findByRole("header", { name: "Add document" })).toBeOnTheScreen();
 });
+
+test("From lists cities first, then stays, then the day's stops, then Type a name", async () => {
+  await showForm({ day: 1 }, planWith(), {
+    "GET /v1/trips/{trip_id}/stays": () => [
+      {
+        id: "s1",
+        trip_id: TRIP_ID,
+        name: "Hotel Alpen",
+        lat: 48.2,
+        lon: 16.37,
+        first_day: 1,
+        last_day: 2,
+        created_at: "2026-11-15T10:00:00Z",
+      },
+    ],
+  });
+  await fireEvent.press(await screen.findByTestId("leg-from"));
+  const rows = screen
+    .getAllByTestId(/^leg-from-(Cities|Where|Stops|type)/)
+    .map((r) => r.props.testID as string);
+  const group = (id: string) =>
+    id.startsWith("leg-from-Cities")
+      ? 0
+      : id.startsWith("leg-from-Where")
+        ? 1
+        : id.startsWith("leg-from-Stops")
+          ? 2
+          : 3;
+  const order = rows.map(group);
+  expect(order).toEqual([...order].sort((a, b) => a - b));
+  expect(new Set(order)).toEqual(new Set([0, 1, 2, 3]));
+  expect(rows[rows.length - 1]).toBe("leg-from-type");
+});

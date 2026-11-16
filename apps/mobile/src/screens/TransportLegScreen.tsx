@@ -55,8 +55,8 @@ type Option = End & { key: string; group: string };
 const NOTE_MAX = 500;
 const NAME_MAX = 120;
 
-/** What the From and To lists offer: the day's stops, the trip's cities, its stays and its
- * destination, each once by name. */
+/** What the From and To lists offer, in this order: the trip's cities (its destination when it has
+ * one city), its stays, then the day's stops, each once by name. */
 export function endOptions(trip: Trip, day: Day | undefined, stays: Stay[]): Option[] {
   const out: Option[] = [];
   const seen = new Set<string>();
@@ -66,15 +66,16 @@ export function endOptions(trip: Trip, day: Day | undefined, stays: Stay[]): Opt
     seen.add(key);
     out.push({ key, group, name, lat, lon });
   };
-  for (const item of day?.items ?? []) {
-    if (item.type === "transport" || item.lat === null || item.lon === null) continue;
-    add("Stops of this day", item.display_name, item.lat, item.lon);
-  }
+  // Cities first, then stays, then the day's stops (owner, 2026-11-16); "Type a name" comes last.
   for (const s of trip.stops ?? []) add("Cities of the trip", s.name, s.lat, s.lon);
   if (!trip.stops?.length) {
     add("Cities of the trip", trip.destination.name, trip.destination.lat, trip.destination.lon);
   }
   for (const s of stays) add("Where you're staying", s.name, s.lat, s.lon);
+  for (const item of day?.items ?? []) {
+    if (item.type === "transport" || item.lat === null || item.lon === null) continue;
+    add("Stops of this day", item.display_name, item.lat, item.lon);
+  }
   return out;
 }
 

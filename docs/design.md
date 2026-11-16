@@ -453,8 +453,8 @@ for a restaurant and 45 min for a café (*proposed*).
 **Add transport** (ADR 032; the Add sheet's "Transport" row, "A train, bus or ferry you took or will
 take, entered by you", and a leg's own row in the day list): a compact header and one line saying
 Detour does not look up timetables. Then drop-downs and fields: **How** (Train, Bus, Metro or tram,
-Ferry, Taxi or ride, Walk, Other, each with its icon), **From** and **To** (the day's stops, the trip's
-cities and stays, or "Type a name" for a station or port, which has no point), **Day**, **Leaves at**
+Ferry, Taxi or ride, Walk, Other, each with its icon), **From** and **To** (in this order: the trip's
+cities, its stays, the day's stops, then "Type a name" for a station or port, which has no point), **Day**, **Leaves at**
 (the time field, optional), a two-part control **How long** / **Arrives at** (the length field with a
 "Not known" pill, or an arrival time; one before the start is the next day), a line saying the length
 in words ("Length: time not entered"), **Journey between cities** (a pill, on a multi-city trip), and
