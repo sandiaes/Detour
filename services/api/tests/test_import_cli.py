@@ -1,6 +1,7 @@
 """The commands the Import region workflow runs, driven through ``main()``."""
 
 import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -24,18 +25,37 @@ def test_countries_command_and_unknown_regions(capsys: pytest.CaptureFixture[str
 
 
 def test_every_known_region_has_a_geofabrik_url_and_countries() -> None:
-    assert set(REGIONS) == {
-        "austria",
-        "czech-republic",
-        "greater-london",
-        "hungary",
-        "italy",
-        "japan",
-    }
-    for region in REGIONS.values():
+    # The regions already imported or built on, plus the catalog added in ADR 033.
+    assert {"austria", "czech-republic", "greater-london", "hungary", "italy", "japan"} <= set(
+        REGIONS
+    )
+    for region_id, region in REGIONS.items():
+        assert region.id == region_id and re.fullmatch(r"[a-z0-9-]+", region_id)
         assert region.extract_url.startswith("https://download.geofabrik.de/")
         assert region.extract_url.endswith("-latest.osm.pbf")
         assert region.poly_url.endswith(".poly") and region.countries
+        assert all(re.fullmatch(r"[A-Z]{2}", c) for c in region.countries)
+
+
+def test_a_country_is_claimed_by_one_whole_country_region_or_by_parts_only() -> None:
+    """The country code decides which region a destination is planned in (geo.region_for_country):
+    a whole-country region is the only one that claims its code; city and state regions (scope
+    "part") may share a code because they are matched by their coverage polygon as well."""
+    by_code: dict[str, list[str]] = {}
+    for region in REGIONS.values():
+        for code in region.countries:
+            by_code.setdefault(code, []).append(region.scope)
+    for code, scopes in by_code.items():
+        assert scopes.count("country") <= 1, code
+        assert scopes.count("country") == 0 or len(scopes) == 1, code
+
+
+def test_every_region_has_a_continent_and_the_known_parts_are_parts() -> None:
+    assert REGIONS["japan"].continent == "Asia"
+    assert REGIONS["new-york"].continent == "North America"
+    assert REGIONS["austria"].continent == "Europe"
+    parts = {r.id for r in REGIONS.values() if r.scope == "part"}
+    assert parts == {"greater-london", "paris", "berlin", "new-york"}
 
 
 def test_the_target_and_staging_urls_are_required(monkeypatch: pytest.MonkeyPatch) -> None:

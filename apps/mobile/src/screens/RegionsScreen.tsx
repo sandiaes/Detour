@@ -13,6 +13,7 @@ import {
   Notice,
   RowGroup,
   ScreenHeader,
+  SectionHeader,
   Sheet,
 } from "../components/ds";
 import { useResource } from "../data/DataProvider";
@@ -21,6 +22,7 @@ import {
   type RegionCatalog,
   type RegionRemoval,
   anyImportInProgress,
+  groupByContinent,
   importInProgress,
   regionLine,
   removalMessage,
@@ -140,27 +142,34 @@ export function RegionsScreen() {
               ) : null}
               {problem && !region && !removal ? <Notice tone="error">{problem}</Notice> : null}
             </View>
-            <RowGroup>
-              {catalog.data.regions.map((r) => (
-                <ListRow
-                  key={r.id}
-                  title={r.name}
-                  detail={regionLine(r)}
-                  testID={`region-${r.id}`}
-                  trailing={
-                    importInProgress(r) ? (
-                      <Badge label="Importing" tone="warning" />
-                    ) : r.state === "available" ? (
-                      <Badge label="Available" tone="primary" />
-                    ) : undefined
-                  }
-                  onPress={() => {
-                    setProblem(null);
-                    setOpenId(r.id);
-                  }}
-                />
-              ))}
-            </RowGroup>
+            {groupByContinent(catalog.data.regions).map((group) => (
+              <View key={group.continent} style={styles.group}>
+                <View style={styles.groupHead}>
+                  <SectionHeader title={group.continent} />
+                </View>
+                <RowGroup>
+                  {group.regions.map((r) => (
+                    <ListRow
+                      key={r.id}
+                      title={r.name}
+                      detail={regionLine(r)}
+                      testID={`region-${r.id}`}
+                      trailing={
+                        importInProgress(r) ? (
+                          <Badge label="Importing" tone="warning" />
+                        ) : r.state === "available" ? (
+                          <Badge label="Available" tone="primary" />
+                        ) : undefined
+                      }
+                      onPress={() => {
+                        setProblem(null);
+                        setOpenId(r.id);
+                      }}
+                    />
+                  ))}
+                </RowGroup>
+              </View>
+            ))}
           </>
         )}
       </ScrollView>
@@ -222,6 +231,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { gap: layout.section, paddingBottom: spacing.xxl },
   intro: { paddingHorizontal: layout.gutter, gap: spacing.sm },
+  group: { gap: spacing.xs },
+  groupHead: { paddingHorizontal: layout.gutter },
   text: { ...type.label, color: colors.text },
   muted: { ...type.caption, color: colors.muted },
   actions: { gap: spacing.sm },

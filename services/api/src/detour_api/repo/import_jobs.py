@@ -88,6 +88,7 @@ def catalog(
             CatalogRegion(
                 id=definition.id,
                 name=definition.name,
+                continent=definition.continent,
                 country_codes=list(definition.countries),
                 state="not_imported" if row is None else row.status,
                 places=0 if row is None else int(row.n),
@@ -96,6 +97,10 @@ def catalog(
                 job=jobs.get(definition.id),
             )
         )
+    # By continent; within one, regions with data (or an import under way) first, then by name.
+    regions.sort(
+        key=lambda r: (r.continent, r.state == "not_imported" and r.places_kept == 0, r.name)
+    )
     return RegionCatalog(
         can_manage=can_manage,
         import_enabled=import_enabled,

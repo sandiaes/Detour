@@ -76,8 +76,26 @@ workflow reports back.
 3. **A catalog** (`importer/regions.py`) lists the regions that can be imported, with no size: the
    download's size (Geofabrik's file, hundreds of MB to GB) says nothing about what a region takes in
    the database, so none is shown before an import (owner decision of 2026-11-17). **Greater London** is added (`europe/great-britain/england/
-   greater-london`, a 124 MB download listed on Geofabrik's England page on 2026-11-17; the page shows no
-   `.poly` for it, so the region's coverage polygon stays unknown and the importer warns). Great
+   greater-london`, a 124 MB download listed on Geofabrik's England page on 2026-11-17; Geofabrik's England table lists no `.poly` link for it; if the file is missing the region's
+   coverage polygon stays unknown and the importer warns, which was not checked) **Eighteen countries were added on 2026-11-17** (links read the same day on Geofabrik's europe page,
+   each a single extract): Belgium, Croatia, Denmark, Finland, Greece, Iceland, Ireland, Luxembourg,
+   Malta, Netherlands, Norway, Poland, Portugal, Slovakia, Slovenia, Spain, Sweden, Switzerland.
+   France and Germany (about 4.5 GB each) are left out until a smaller country has been imported and
+   measured. A country appears once, because its code decides where a destination is planned; the
+   catalog test enforces it. The list shows regions with data first, then the rest by name. **Paris and Berlin** are added as city extracts (Geofabrik
+   `france/ile-de-france`, 324 MB, and `germany/berlin`, 95 MB; the region pages link `.poly`
+   files, read 2026-11-17). A city extract claims its country's code, so the destination match is
+   now also geographic: when a region's coverage polygon is known, a destination must lie inside
+   it (5 km of slack for simplified polygons), otherwise Manchester would count as inside Greater
+   London and Lyon inside Paris (`geo.region_for_country`, the destination search). A region with no
+   polygon is still matched by country, so before a first import, and if the polygon cannot be
+   loaded, a city extract still claims its whole country. Multi-city bases are still matched by
+   country only. **New York State** is added for the USA
+   (`north-america/us/new-york`, 475 MB, a `.poly` linked on its page, read 2026-11-17); Geofabrik has no
+   extract for New York City alone. Each region now has a **continent** (the Regions screen groups
+   by it) and a **scope**: `country` (a whole country, the only region that claims its code) or
+   `part` (a city or state that claims its country's code but is matched by its polygon, so several
+   may share a code; a test enforces this). Great
    Britain (2.1 GB download) is deliberately not offered yet: it is far larger than a city and its
    share of the free database is unknown. The download is filtered on the GitHub runner, so its size
    is not the size the region takes in the database.

@@ -233,3 +233,10 @@ def test_an_imported_catalog_region_shows_its_places_and_about_how_much_room_it_
     # Its share cannot be more than the whole of the place tables, or the database itself.
     assert austria["bytes"] <= cat["geo_bytes"]
     assert next(r for r in cat["regions"] if r["id"] == LONDON)["bytes"] is None
+    # Grouped by continent; within one, regions with data first, then by name.
+    regions = cat["regions"]
+    assert [r["continent"] for r in regions] == sorted(r["continent"] for r in regions)
+    europe = [r["name"] for r in regions if r["continent"] == "Europe"]
+    assert europe[0] == "Austria" and europe[1:] == sorted(europe[1:])
+    assert {r["continent"] for r in regions} == {"Asia", "Europe", "North America"}
+    assert len(regions) >= 20
