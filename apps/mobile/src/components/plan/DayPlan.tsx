@@ -42,6 +42,7 @@ import {
   legSentence,
 } from "../../domain/transport";
 import { EmptyState, FocusPressable, Icon, KindIcon, StopMark } from "../ds";
+import { OfflineMap } from "../OfflineMap";
 import { ItineraryMap } from "../ItineraryMap";
 
 // One day of a plan (ADR 021, step 3): a day selector, the day's stops in time order, and the map.
@@ -613,11 +614,7 @@ export function PlanDayView({
             }}
           />
         ) : (
-          <EmptyState
-            title="The map needs a connection"
-            text="The map style comes from the server, and the map tiles come from the internet. The day list works offline."
-            action={{ label: "Show the day list", onPress: onShowList }}
-          />
+          <OfflineMap />
         )}
       </View>
       <View style={styles.sheet}>

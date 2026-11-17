@@ -487,7 +487,8 @@ export function ListRow({
   selected?: boolean;
   disabled?: boolean;
   /** The word shown on a disabled row instead of the chevron. */
-  disabledLabel?: string;
+  /** `null` shows no word: the row is only faded (offline). */
+  disabledLabel?: string | null;
   danger?: boolean;
   role?: "button" | "radio" | "checkbox";
   checked?: boolean;
@@ -501,13 +502,17 @@ export function ListRow({
   const compact = density === "compact";
   const spoken =
     accessibilityLabel ??
-    [title, detail, meta, disabled ? disabledLabel : null].filter(Boolean).join(". ");
+    [title, detail, meta, disabled ? (disabledLabel ?? "Needs a connection") : null]
+      .filter(Boolean)
+      .join(". ");
   const iconColor = danger ? colors.danger : disabled ? colors.muted : colors.primary;
   const end =
     trailing !== undefined ? (
       trailing
     ) : disabled ? (
-      <Badge label={disabledLabel} />
+      disabledLabel === null ? null : (
+        <Badge label={disabledLabel} />
+      )
     ) : selected && role === "button" ? (
       <Icon name="check" size="sm" color={colors.selected} />
     ) : onPress ? (
@@ -541,6 +546,7 @@ export function ListRow({
         divider && styles.rowDivider,
         selected && styles.rowSelected,
         pressed && styles.quietPressed,
+        disabled && disabledLabel === null && styles.faded,
       ]}
     >
       {icon ? (
@@ -945,6 +951,7 @@ const styles = StyleSheet.create({
   rowTitle: { ...type.body, fontWeight: weight.semibold, color: colors.text },
   rowTitleCompact: { ...type.label, fontWeight: weight.semibold, color: colors.text },
   rowTitleDisabled: { color: colors.muted },
+  faded: { opacity: opacity.disabled },
   rowDetail: { ...type.caption, color: colors.muted },
 
   info: {

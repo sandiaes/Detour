@@ -21,6 +21,7 @@ import {
   WakingServer,
 } from "../components/ds";
 import { PastTripMap } from "../components/PastTripMap";
+import { OfflineMap } from "../components/OfflineMap";
 import { ResourceNotices } from "../components/ResourceNotices";
 import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
@@ -234,11 +235,7 @@ export function PastTripScreen({ tripId }: { tripId: string }) {
         ) : mapConfig ? (
           <PastTripMap points={points} map={mapConfig} onShowList={() => setView("list")} />
         ) : (
-          <EmptyState
-            title="The map needs a connection"
-            text="The map style comes from the server, and the map tiles come from the internet. The list works offline."
-            action={{ label: "Show the list", onPress: () => setView("list") }}
-          />
+          <OfflineMap />
         )}
       </View>
     );

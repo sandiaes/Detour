@@ -124,7 +124,7 @@ test("while waking, saved trips are shown with a notice instead of a spinner", a
   expect(screen.getByText(/The free host is starting up/)).toBeOnTheScreen();
 });
 
-test("offline with a saved copy: the trips can be read and the notice says so", async () => {
+test("offline with a saved copy: the trips can be read", async () => {
   const cache = createMemoryStore(() => Date.now() - 5 * 60_000);
   await cache.set("trips", [makeTrip()]);
   const client = createFakeClient({ "GET /v1/trips": offline });
@@ -134,8 +134,7 @@ test("offline with a saved copy: the trips can be read and the notice says so", 
     </Harness>,
   );
   expect(await screen.findByText("Vienna")).toBeOnTheScreen();
-  expect(await screen.findByText(/Showing trips saved 5 minutes ago/)).toBeOnTheScreen();
-  expect(screen.getByText(/changes need a connection/)).toBeOnTheScreen();
+  expect(screen.queryByText(/Showing trips saved/)).toBeNull();
 });
 
 test("the backend being unreachable is the same offline read", async () => {
@@ -147,7 +146,8 @@ test("the backend being unreachable is the same offline read", async () => {
     </Harness>,
   );
   expect(await screen.findByText("Vienna")).toBeOnTheScreen();
-  expect(await screen.findByText(/Showing trips saved/)).toBeOnTheScreen();
+  expect(await screen.findByText("You’re offline")).toBeOnTheScreen();
+  expect(screen.queryByText(/Showing trips saved/)).toBeNull();
 });
 
 test("offline with nothing saved says so and offers another try", async () => {

@@ -22,19 +22,8 @@ export function ResourceNotices({
   // The age of a saved copy is worked out once, when the notice first appears.
   const [now] = useState(Date.now);
   if (resource.data === undefined) return null;
-  if (resource.offline) {
-    return (
-      <Notice
-        inset={inset}
-        tone="warning"
-        label="Offline"
-        action={{ label: "Try again", onPress: resource.refresh }}
-      >
-        Showing {noun} saved {resource.savedAt ? formatAge(resource.savedAt, now) : "earlier"}. You
-        can read them, but changes need a connection.
-      </Notice>
-    );
-  }
+  // Offline is told once, by the banner at the top of the app.
+  if (resource.offline) return null;
   if (resource.waking && resource.fromCache) {
     return (
       <Notice inset={inset} tone="info" label="Waking the server">
