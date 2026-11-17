@@ -587,6 +587,12 @@ device or in screenshots**.
     The bottom bar's Map tab shows a globe icon (`globe`); the `map` icon stays for the trip's own
     Map tab. This replaces the colours of decision 101 (green and navy).
 
+104. **Amendment of 2026-11-17 (owner decision): Saved places, Travel preferences and Archive trip are dropped.**
+    The three "Coming later" rows are removed from More (and their unused icons), and are not
+    planned. This replaces the mention in decisions 5 and 8 and the "Not built" table. A trip is
+    still hidden from the lists by marking it as past or deleting it. The Map tab's empty state is
+    an ordinary empty state, not a "Not built yet" notice.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until

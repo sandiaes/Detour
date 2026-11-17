@@ -344,14 +344,9 @@ function planServer() {
   } as never);
 }
 
-test("more and photos: planned rows are dimmed buttons that say why", async () => {
+test("more, map and photos", async () => {
   await showHeader({ name: "more" }, "More");
   checkControls();
-  for (const name of [/^Saved places\./, /^Travel preferences\./, /^Archive trip\./]) {
-    const row = screen.getByRole("button", { name });
-    expect(row.props.accessibilityState).toMatchObject({ disabled: true });
-    expect(row.props.accessibilityLabel).toMatch(/Coming later$/);
-  }
   for (const [header, tab] of [
     ["Map", "World map"],
     ["Photos", "Photos"],

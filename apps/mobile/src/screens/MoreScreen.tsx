@@ -5,8 +5,7 @@ import { useNavigation } from "../nav/Navigator";
 import { colors, layout, spacing, type } from "../theme";
 
 /**
- * More (ADR 021). Settings works today; the other rows are the planned parts of the design and
- * say so. A trip's own actions (new proposals, mark as past, delete) stay in its settings.
+ * More (ADR 021). A trip's own actions (new proposals, mark as past, delete) stay in its settings.
  */
 export function MoreScreen() {
   const nav = useNavigation();
@@ -15,18 +14,6 @@ export function MoreScreen() {
       <ScreenHeader title="More" />
       <ScrollView contentContainerStyle={styles.content}>
         <RowGroup>
-          <ListRow
-            icon="bookmark"
-            title="Saved places"
-            detail="Places you keep for later trips"
-            disabled
-          />
-          <ListRow
-            icon="preferences"
-            title="Travel preferences"
-            detail="Pace and interests"
-            disabled
-          />
           <ListRow
             icon="export"
             title="Back up all trips"
@@ -40,12 +27,6 @@ export function MoreScreen() {
             detail="Add trips from a Detour file"
             testID="more-import"
             onPress={() => nav.push({ name: "importTrips" })}
-          />
-          <ListRow
-            icon="archive"
-            title="Archive trip"
-            detail="Hide a trip from your lists"
-            disabled
           />
         </RowGroup>
         <RowGroup>

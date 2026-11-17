@@ -12,8 +12,8 @@ import {
   MapChip,
   MapFailure,
   PinMark,
-  PlannedFeature,
   ScreenHeader,
+  StateView,
 } from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
@@ -56,7 +56,9 @@ export function MapScreen() {
       <ScreenHeader title="Map" />
       {points.length === 0 && trips.data ? (
         <View style={styles.empty}>
-          <PlannedFeature
+          <StateView
+            kind="empty"
+            layout="inline"
             icon="globe"
             title="No places yet"
             text="The cities of your trips appear here: orange for where you have been, green for where you are going."
