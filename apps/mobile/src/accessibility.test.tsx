@@ -231,7 +231,7 @@ test("trip overview: a day on the map with a stop chosen", async () => {
 });
 
 test.each([
-  ["explore", "Explore is planned"],
+  ["map", "Been · 0"],
   ["photos", "No albums linked yet"],
   ["more", "Settings"],
 ] as const)("the %s tab", async (name, ready) => {
@@ -344,7 +344,7 @@ function planServer() {
   } as never);
 }
 
-test("more, explore and photos: planned rows are dimmed buttons that say why", async () => {
+test("more and photos: planned rows are dimmed buttons that say why", async () => {
   await showHeader({ name: "more" }, "More");
   checkControls();
   for (const name of [/^Saved places\./, /^Travel preferences\./, /^Archive trip\./]) {
@@ -352,8 +352,11 @@ test("more, explore and photos: planned rows are dimmed buttons that say why", a
     expect(row.props.accessibilityState).toMatchObject({ disabled: true });
     expect(row.props.accessibilityLabel).toMatch(/Coming later$/);
   }
-  for (const header of ["Explore", "Photos"]) {
-    await fireEvent.press(screen.getByRole("tab", { name: header }));
+  for (const [header, tab] of [
+    ["Map", "World map"],
+    ["Photos", "Photos"],
+  ] as const) {
+    await fireEvent.press(screen.getByRole("tab", { name: tab }));
     await screen.findByRole("header", { name: header });
     checkControls();
   }

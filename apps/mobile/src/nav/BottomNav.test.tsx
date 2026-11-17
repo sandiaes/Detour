@@ -99,12 +99,12 @@ test("a past trip cannot be added to", async () => {
   ).toBeOnTheScreen();
 });
 
-test("Explore, Photos and More are root tabs; the planned ones say they are not built", async () => {
+test("Map, Photos and More are root tabs; the unbuilt ones say so", async () => {
   await show({ name: "trips" });
   await screen.findByText("Vienna");
-  await fireEvent.press(screen.getByRole("tab", { name: "Explore" }));
-  expect(await screen.findByTestId("explore-planned")).toBeOnTheScreen();
-  expect(screen.getByRole("tab", { name: "Explore" }).props.accessibilityState).toMatchObject({
+  await fireEvent.press(screen.getByRole("tab", { name: "World map" }));
+  expect(await screen.findByRole("header", { name: "Map" })).toBeOnTheScreen();
+  expect(screen.getByRole("tab", { name: "World map" }).props.accessibilityState).toMatchObject({
     selected: true,
   });
   await fireEvent.press(screen.getByRole("tab", { name: "Photos" }));

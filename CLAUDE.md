@@ -10,6 +10,8 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
+**Explore is removed and the fifth tab is a Map tab** (2026-11-17, ADR 021 decision 101, owner request; built, awaiting acceptance; tests only): a flat world map of the cities of your trips, green for been and navy for going; the bottom bar is Trips, Map, Add, Photos, More.
+
 **Direction change of 2026-11-14 (ADR 026, proposed; all six build steps are built: the planner, the
 slot-engine removal, the data step, history and the app changes):** Detour is a **trip manager
 and travel history first**. Trips usually start empty; generating itineraries is an optional helper

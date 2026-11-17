@@ -37,7 +37,7 @@ test("push, replace and the back button", async () => {
   expect(back.press()).toBe(false);
 });
 
-test.each(["explore", "photos", "more"] as const)(
+test.each(["map", "photos", "more"] as const)(
   "back from the %s tab returns to Trips before leaving the app",
   async (root) => {
     const back = captureBackButton();

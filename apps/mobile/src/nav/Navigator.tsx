@@ -3,18 +3,18 @@ import { type ReactNode, createContext, useCallback, useContext, useEffect, useS
 import { BackHandler } from "react-native";
 
 // A small stack navigator held in React state (ADR 015). The app has four root tabs (ADR 021:
-// Trips, Explore, Photos, More; Add is an action, not a screen) and a handful of pushed screens, so
+// Trips, Map, Photos, More; Add is an action, not a screen) and a handful of pushed screens, so
 // a navigation library (and its native screens module) is not needed. The Android back button pops
 // the stack, then returns from another root tab to Trips, then leaves the app.
 
 /** The tabs of one trip (ADR 021). */
 export type TripSection = "overview" | "map" | "photos" | "documents";
 
-export type RootName = "trips" | "explore" | "photos" | "more";
+export type RootName = "trips" | "map" | "photos" | "more";
 
 export type Route =
   | { name: "trips" }
-  | { name: "explore" }
+  | { name: "map" }
   | { name: "photos" }
   | { name: "more" }
   | { name: "settings" }

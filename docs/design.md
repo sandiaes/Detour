@@ -159,7 +159,7 @@ Everything below is exported from `components/ds`. A screen uses these and nothi
 | **`ConfirmSheet`** | **The one confirmation** (decision 81): a sheet with the title as a question, one sentence on what will happen, a **`destructive` confirm** and a `secondary` way back. Used to delete a trip, mark it as past and delete a document. The entry point is a `secondary` or `ghost` button with `tone="danger"`. When the action fails the sheet closes so the problem notice is in view |
 | **`StateView`** | The loading, empty, error, waking, offline and planned views (`LoadingState`, `EmptyState`, `ErrorState`, `WakingServer`, `PlannedFeature`): an icon in a 48 dp soft circle, a headline, a label-size text and an optional secondary action; `fill` centres it, `inline` sits in the page. **`InlineStatus`** is a spinner and a caption ("Searching…") |
 | **`Notice`** | `info`, `warning`, `error`, `success`: an icon, a word (Note, Offline, Problem, Done) and the text, radius 8, no outer margin, an optional action |
-| **Offline** | One quiet banner at the top of the app (`BackendBanner`): a crossed-wifi icon, "You’re offline" and "Saved trips remain available." No screen repeats it and there is no Retry button (the app retries by itself). The map area shows the app logo, faded (`OfflineMap`), with no text or button. Controls that need the server (Explore, Photos, Add outside a trip, the Place, Restaurant and Transport rows, and every change that checks `actions.connected`) are faded (`opacity.disabled`) and not pressable, with no "Not now" word. The flag is `useOffline()`: the connection failed, or a request lost the network |
+| **Offline** | One quiet banner at the top of the app (`BackendBanner`): a crossed-wifi icon, "You’re offline" and "Saved trips remain available." No screen repeats it and there is no Retry button (the app retries by itself). The map area shows the app logo, faded (`OfflineMap`), with no text or button. Controls that need the server (Photos, Add outside a trip, the Place, Restaurant and Transport rows, and every change that checks `actions.connected`) are faded (`opacity.disabled`) and not pressable, with no "Not now" word. The flag is `useOffline()`: the connection failed, or a request lost the network |
 | **Headers** | `ScreenHeader` (Back, a 24 pt title, a subtitle, right actions: Trips, More and pushed screens), `CompactHeader` (Back, a one-line 18 pt title, a subtitle, an action: screens inside a trip), `CoverBar` (Back and menu over a cover). A header is announced when its screen opens |
 | **Map overlays** | `MapChip` (a status tag), `MapPanel` (the white key panel), `MapFailure` (what happened, "Try the map again", a way to the list); a button on a map is `IconButton variant="onMap"` |
 | **`FocusPressable`** | A `Pressable` that draws the focus ring; for every tappable thing that is not one of the shared controls (a document row, a calendar day, a card, a stop row) |
@@ -538,9 +538,9 @@ credits as link rows with an external-link icon; **Image credits** lists the pho
 A document's own screen has facts as `InfoRow`s, Open (`primary`), Edit (`secondary`) and Delete
 (red text), which asks in a `ConfirmSheet`.
 
-### Photos, Explore, More (screens 07, 10, 11)
+### Map, Photos, More (screens 07, 10, 11)
 
-Planned features and a menu of hairline rows. Items that are not built say "Coming later". **Photos**
+**Map** (ADR 021 decision 101) is a flat world map with a marker per city of every trip: green for been (a past trip), navy for going; tapping one names it and its trips and opens the first; a key under the map counts both. Planned features and a menu of hairline rows. Items that are not built say "Coming later". **Photos**
 lists every trip with linked albums as one card (ADR 031; owner, 2026-11-16): a header row with the
 trip's cover thumbnail, its name and "dates · length", which opens the trip's Photos tab, then the
 albums as rows (photo tile, name, source, an external-link icon). Empty, it says to link an album on a

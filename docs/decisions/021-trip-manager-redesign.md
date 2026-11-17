@@ -556,6 +556,22 @@ device or in screenshots**.
     is recorded as **transport legs** entered by hand (ADR 032); the trip file now carries the Car
     choice (version 2), so an imported trip keeps it. Decisions 92 and 99 are otherwise unchanged.
 
+101. **Amendment of 2026-11-17 (owner request): Explore is removed; the fifth place is a Map tab.**
+    Explore was only a placeholder. A browse-and-discover tab does not fit what Detour is (ADR 026:
+    trip manager and travel history first): sights exist only for imported regions, photos come
+    from a best-effort Wikidata and Wikipedia chain, and the data has no ratings, hours or prices
+    (hard constraint 5), so there is little to browse and coverage would look like a fault. Places
+    are found from inside a trip, through Add. The bottom bar is now **Trips, Map, Add, Photos,
+    More**. **Map** is a flat world map (the existing MapLibre map and tile style; no globe, which
+    would need a newer native MapLibre, and hides half its pins) with one point per city of every
+    trip: **green for been** (a past trip) and **navy for going** (any other trip); a city on both
+    is going. A multi-city trip adds each of its cities; the seed trip is left out. Tapping a point
+    names it and its trips and opens the first. The tab uses the trips already read and cached, adds
+    no API, data or provider, and shows "No places yet" when there are no trips. The tab's spoken
+    name is "World map", because a trip's own tab is also called Map. It is not disabled offline:
+    the map says it cannot load and offers the trips list. Decisions 4, 5 and the Explore row of the
+    table of "Later" items are superseded.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until

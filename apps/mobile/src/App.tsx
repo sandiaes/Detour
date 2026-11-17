@@ -28,7 +28,7 @@ import { TransportLegScreen } from "./screens/TransportLegScreen";
 import { ChangePreviewScreen } from "./screens/ChangePreviewScreen";
 import { CreateTripScreen } from "./screens/CreateTripScreen";
 import { ExportScreen } from "./screens/ExportScreen";
-import { ExploreScreen } from "./screens/ExploreScreen";
+import { MapScreen } from "./screens/MapScreen";
 import { ImportScreen } from "./screens/ImportScreen";
 import { ItineraryScreen } from "./screens/ItineraryScreen";
 import { MoreScreen } from "./screens/MoreScreen";
@@ -53,8 +53,8 @@ function CurrentScreen({ route }: { route: Route }) {
   switch (route.name) {
     case "trips":
       return <TripsScreen />;
-    case "explore":
-      return <ExploreScreen />;
+    case "map":
+      return <MapScreen />;
     case "photos":
       return <PhotosScreen />;
     case "more":
