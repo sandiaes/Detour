@@ -92,7 +92,7 @@ All services except the tile host run from one Docker Compose file in developmen
   native projects. This keeps the iOS build a configuration task, not a port.
 - **Redesign, steps 1 and 2 (ADR 021, proposed):** design tokens and reusable components
   (`src/theme.ts`, `src/components/ds/`, line icons and illustrated covers drawn with
-  `react-native-svg`), a bottom bar (Trips, Explore, Add, Photos, More; Add is contextual), the
+  `react-native-svg`), a bottom bar (Trips, Map, Add, Photos, More; Add is contextual; ADR 021 decision 101), the
   trips list with Upcoming and Past tabs, and a Trip Overview built around the active itinerary
   (`selected_itinerary_id`) with Overview, Itinerary, Map, Photos and Documents tabs. The original
   proposals are in the trip's menu. Step 3: the itinerary a day at a time
@@ -100,7 +100,7 @@ All services except the tile host run from one Docker Compose file in developmen
   base cities (the API's `Day.base_city_lat`/`lon`, read from `geo.city` at read time), and a place
   detail screen. Step 4: adding a place by search, address or pin with up to three suggested
   days, each from the Phase 7 recalculation restricted to that day (`place-suggestions`), then
-  the usual preview. Explore, Photos, Documents and notes are placeholders that say they are not
+  the usual preview. Photos, Documents and notes are placeholders that say they are not
   built.
 - **Built in Phase 5 (ADR 015):** a stack navigator in React state, a small server-state layer in front of an `expo-sqlite` read cache, and the screens: trips, new trip, the two proposals compared, day list, plan map, Settings with credits. Offline reads, "waking the server" and error states are in every list screen. The Phase 1 description that follows is the shell it replaced.
 - **Built in Phase 1:** `apps/mobile` with six placeholder screens (Trips, Create Trip, Itinerary,

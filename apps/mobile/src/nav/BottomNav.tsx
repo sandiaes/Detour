@@ -11,18 +11,19 @@ import { isReadOnly } from "../domain/trips";
 import { TOUCH, colors, opacity, radius, size as sizes, spacing, type, weight } from "../theme";
 import { type RootName, type Route, useNavigation } from "./Navigator";
 
-// The bottom navigation (ADR 021): Trips, Explore, Add, Photos, More. Add is contextual: outside a
+// The bottom navigation (ADR 021): Trips, Map, Add, Photos, More. Add is contextual: outside a
 // trip it starts a new trip; inside one it offers what can be added to that trip.
 
-const TABS: { key: RootName; label: string; icon: IconName }[] = [
+const TABS: { key: RootName; label: string; icon: IconName; spoken?: string }[] = [
   { key: "trips", label: "Trips", icon: "trips" },
-  { key: "explore", label: "Explore", icon: "explore" },
+  // "Map" is also the name of a trip's own tab, so the bar's one is announced as the world map.
+  { key: "map", label: "Map", icon: "map", spoken: "World map" },
   { key: "photos", label: "Photos", icon: "photos" },
   { key: "more", label: "More", icon: "more" },
 ];
 
 /** Tabs that have nothing to show without the server. Trips and More keep working offline. */
-const NEEDS_CONNECTION = new Set<RootName>(["explore", "photos"]);
+const NEEDS_CONNECTION = new Set<RootName>(["photos"]);
 
 /** Screens of one trip on which the bottom bar stays visible, with Add acting on that trip. */
 const TRIP_SCREENS = new Set<Route["name"]>(["tripOverview", "itinerary", "pastTrip"]);
@@ -38,7 +39,7 @@ export function tripContext(route: Route): string | null {
 }
 
 function rootOf(route: Route): RootName {
-  if (route.name === "explore" || route.name === "photos" || route.name === "more") {
+  if (route.name === "map" || route.name === "photos" || route.name === "more") {
     return route.name;
   }
   return route.name === "settings" ? "more" : "trips";
@@ -109,6 +110,7 @@ export function BottomNav() {
     <NavItem
       key={t.key}
       label={t.label}
+      accessibilityLabel={t.spoken}
       icon={t.icon}
       selected={active === t.key}
       disabled={offline && NEEDS_CONNECTION.has(t.key)}

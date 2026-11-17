@@ -16,7 +16,7 @@ import { Harness } from "./testing/harness";
 // Timers are restored after the screens unmount (Testing Library cleans up first).
 afterEach(() => jest.useRealTimers());
 
-test("the bottom bar has Trips, Explore, Add, Photos and More; Settings is under More", async () => {
+test("the bottom bar has Trips, Map, Add, Photos and More; Settings is under More", async () => {
   const client = createFakeClient({
     "GET /v1/trips": () => [],
     "GET /v1/attributions": () => [
@@ -42,7 +42,7 @@ test("the bottom bar has Trips, Explore, Add, Photos and More; Settings is under
     </Harness>,
   );
   expect(await screen.findByRole("header", { name: "Detour" })).toBeOnTheScreen();
-  for (const name of ["Trips", "Explore", "Photos", "More"]) {
+  for (const name of ["Trips", "World map", "Photos", "More"]) {
     expect(screen.getByRole("tab", { name })).toBeOnTheScreen();
   }
   expect(screen.getByRole("button", { name: "Add a trip" })).toBeOnTheScreen();
@@ -91,8 +91,8 @@ test("a failed connection shows one quiet offline message", async () => {
   expect(screen.getByText("You’re offline")).toBeOnTheScreen();
   expect(screen.getByText("Saved trips remain available.")).toBeOnTheScreen();
   expect(screen.queryByText("Retry")).toBeNull();
-  // Add and Explore need the server: faded and not pressable.
-  expect(screen.getByTestId("nav-explore")).toBeDisabled();
+  // Add and Photos need the server: faded and not pressable. The map tab says it is offline itself.
+  expect(screen.getByTestId("nav-map")).toBeEnabled();
   expect(screen.getByTestId("nav-photos")).toBeDisabled();
   expect(screen.getByTestId("nav-add")).toBeDisabled();
   expect(screen.getByTestId("nav-trips")).toBeEnabled();
