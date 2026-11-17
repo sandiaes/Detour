@@ -572,6 +572,11 @@ device or in screenshots**.
     the map says it cannot load and offers the trips list. Decisions 4, 5 and the Explore row of the
     table of "Later" items are superseded.
 
+102. **Amendment of 2026-11-17 (owner request): "Show on map" is removed from a place's details.**
+    The day's Map tab already highlights the stop that was tapped, and Back from the details returns
+    to it (decision 70), so the button only duplicated that. Decision 51 no longer lists it. The
+    itinerary map screen it opened stays: the proposals' "View details" still uses it.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until

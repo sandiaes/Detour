@@ -535,23 +535,6 @@ export function PlaceDetailScreen({
           ) : null}
 
           <View style={styles.actions}>
-            <Button
-              label="Show on map"
-              icon="map"
-              variant="secondary"
-              size="sm"
-              testID="show-on-map"
-              onPress={() =>
-                nav.push({
-                  name: "itinerary",
-                  tripId,
-                  itineraryId,
-                  view: "map",
-                  day: day.day_index,
-                  itemId: item.id,
-                })
-              }
-            />
             {lengthEditable ? (
               <EditLength
                 key={`${item.id}:${item.duration_minutes}:${day.day_index}`}

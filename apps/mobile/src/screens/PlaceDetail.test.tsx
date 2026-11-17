@@ -146,16 +146,6 @@ test("without an address the position is shown, never a made-up address", async 
   expect(screen.queryByText(/Straße|street/i)).toBeNull();
 });
 
-test("Show on the map opens the day's map with the stop highlighted", async () => {
-  await open("i3");
-  await fireEvent.press(await screen.findByTestId("show-on-map"));
-  expect(await screen.findByTestId("map")).toBeOnTheScreen();
-  expect(
-    screen.getByLabelText("Stop 4, Attraction: St. Stephen's Cathedral").props.accessibilityState,
-  ).toEqual({ selected: true });
-  expect(screen.getByTestId("stop-i3").props.accessibilityState).toMatchObject({ selected: true });
-});
-
 test("lock and remove work from the details too", async () => {
   const client = await open(
     "i1",
