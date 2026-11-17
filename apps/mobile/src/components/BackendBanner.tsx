@@ -26,7 +26,7 @@ export function BackendBanner() {
   return (
     <View style={styles.banner}>
       <View style={styles.offline} accessibilityLiveRegion="polite" testID="offline-banner">
-        <Icon name="offline" size="md" color={colors.warningText} />
+        <Icon name="offline" size="md" color={colors.errorText} />
         <View style={styles.text}>
           <Text style={styles.title}>You’re offline</Text>
           <Text style={styles.body}>Saved trips remain available.</Text>
@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.warning,
+    backgroundColor: colors.error,
   },
   text: { flex: 1 },
   title: { ...type.label, color: colors.text, fontWeight: weight.bold },

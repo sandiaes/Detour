@@ -1,6 +1,7 @@
-import { Image, StyleSheet, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
-import { colors } from "../theme";
+import { colors, spacing, type, weight } from "../theme";
+import { Icon } from "./ds";
 
 const LOGO = require("../../assets/detour-logo.png") as number;
 const LOGO_WIDTH = 200;
@@ -18,6 +19,8 @@ export function OfflineMap() {
         resizeMode="contain"
         accessibilityIgnoresInvertColors
       />
+      <Icon name="offline" size="lg" color={colors.muted} />
+      <Text style={styles.title}>You’re offline</Text>
     </View>
   );
 }
@@ -29,5 +32,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.background,
   },
+  title: { ...type.label, color: colors.muted, fontWeight: weight.bold },
   logo: { width: LOGO_WIDTH, height: LOGO_HEIGHT, opacity: FADED },
 });

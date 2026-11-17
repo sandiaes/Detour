@@ -6,6 +6,7 @@ import { call, describeError } from "../api/unwrap";
 import { Cover } from "../components/ds/Cover";
 import { DurationField } from "../components/ds/DurationField";
 import { StatusBar } from "expo-status-bar";
+import { useOffline } from "../api/BackendProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { parseClock } from "../domain/clock";
 import { checkDuration } from "../domain/duration";
@@ -343,7 +344,9 @@ export function PlaceDetailScreen({
   itemId: string;
 }) {
   const nav = useNavigation();
-  const insets = useSafeAreaInsets();
+  const safeInsets = useSafeAreaInsets();
+  // While the offline banner sits above, the app already starts below the status bar.
+  const insets = { ...safeInsets, top: useOffline() ? 0 : safeInsets.top };
   const [stuck, setStuck] = useState(false);
   const titleRef = useAnnounceOnMount();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));

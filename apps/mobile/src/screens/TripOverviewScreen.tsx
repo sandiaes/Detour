@@ -2,6 +2,7 @@ import type { Day, Itinerary, ItineraryVersion, Stay, Trip } from "@detour/share
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { AppState, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useOffline, useBackend } from "../api/BackendProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { call, describeError } from "../api/unwrap";
@@ -54,7 +55,6 @@ import {
   weight,
 } from "../theme";
 import { pluralise } from "../util/format";
-import { useBackend } from "../api/BackendProvider";
 import { PlanDayView, dayTitle } from "../components/plan/DayPlan";
 import { useItemActions } from "../data/itemActions";
 import { DocumentList } from "../components/documents/DocumentList";
@@ -281,7 +281,9 @@ export function TripOverviewScreen({
       sub.remove();
     };
   }, [shared, refreshPlan, refreshTrips]);
-  const insets = useSafeAreaInsets();
+  const safeInsets = useSafeAreaInsets();
+  // While the offline banner sits above, the app already starts below the status bar.
+  const insets = { ...safeInsets, top: useOffline() ? 0 : safeInsets.top };
   const planId0 = trip?.selected_itinerary_id ?? null;
   const stays = useResource<Stay[]>(
     planId0 ? keys.stays(tripId) : null,
@@ -670,7 +672,7 @@ export function TripOverviewScreen({
   return (
     // The cover reaches the very top of the screen, under the status bar.
     <View style={[styles.fill, { marginTop: -insets.top }]}>
-      <StatusBar style={stuck ? "dark" : "light"} />
+      <StatusBar style={stuck || insets.top === 0 ? "dark" : "light"} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         stickyHeaderIndices={[1]}
