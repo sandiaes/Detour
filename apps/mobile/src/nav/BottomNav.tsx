@@ -17,7 +17,7 @@ import { type RootName, type Route, useNavigation } from "./Navigator";
 const TABS: { key: RootName; label: string; icon: IconName; spoken?: string }[] = [
   { key: "trips", label: "Trips", icon: "trips" },
   // "Map" is also the name of a trip's own tab, so the bar's one is announced as the world map.
-  { key: "map", label: "Map", icon: "map", spoken: "World map" },
+  { key: "map", label: "Map", icon: "globe", spoken: "World map" },
   { key: "photos", label: "Photos", icon: "photos" },
   { key: "more", label: "More", icon: "more" },
 ];

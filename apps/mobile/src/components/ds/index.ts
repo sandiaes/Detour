@@ -4,6 +4,7 @@ export { TimeField } from "./TimeField";
 export { KeyboardScrollView, useKeyboardOverlap } from "./keyboard";
 export { Icon, type IconName, type IconSize } from "./Icon";
 export { KindIcon, placeKind } from "./KindIcon";
+export { PinMark } from "./PinMark";
 export {
   Badge,
   type BadgeTone,

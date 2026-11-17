@@ -50,6 +50,10 @@ export const colors = {
   /** Map marker disc and its number: white on this. */
   marker: "#2b6b64",
   markerSelected: "#14243a",
+  /** The world map's pins, taken from the logo: its orange pin for places been to, its wordmark
+   * green for places going to. Drawn with a white edge; the words beside them always say which. */
+  pinBeen: "#f27756",
+  pinGoing: "#193a33",
   /** Restaurants and cafés on the map and in the day list: white on this. */
   eat: "#b5511c",
   eatSoft: "#f9e8dc",
@@ -155,6 +159,10 @@ export const size = {
   mark: 24,
   marker: 26,
   markerSelected: 34,
+  /** The world map pin (the logo's): height; its width follows. */
+  pin: 34,
+  pinSelected: 44,
+  pinKey: 18,
   /** Thumbnails and tiles beside a row. */
   thumb: 56,
   tile: 40,

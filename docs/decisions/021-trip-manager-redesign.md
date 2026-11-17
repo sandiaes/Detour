@@ -564,7 +564,7 @@ device or in screenshots**.
     are found from inside a trip, through Add. The bottom bar is now **Trips, Map, Add, Photos,
     More**. **Map** is a flat world map (the existing MapLibre map and tile style; no globe, which
     would need a newer native MapLibre, and hides half its pins) with one point per city of every
-    trip: **green for been** (a past trip) and **navy for going** (any other trip); a city on both
+    trip: **orange for been** (a past trip) and **green for going** (any other trip); a city on both
     is going. A multi-city trip adds each of its cities; the seed trip is left out. Tapping a point
     names it and its trips and opens the first. The tab uses the trips already read and cached, adds
     no API, data or provider, and shows "No places yet" when there are no trips. The tab's spoken
@@ -576,6 +576,16 @@ device or in screenshots**.
     The day's Map tab already highlights the stop that was tapped, and Back from the details returns
     to it (decision 70), so the button only duplicated that. Decision 51 no longer lists it. The
     itinerary map screen it opened stays: the proposals' "View details" still uses it.
+
+103. **Amendment of 2026-11-17 (owner request): the world map uses the logo's pin and a globe icon.**
+    The Map tab's points are the pin of the app logo (`components/ds/PinMark.tsx`, tip on the city,
+    white edge, white centre) instead of round marks: **orange `#f27756` (the logo's pin) for been
+    and deep green `#193a33` (the logo's wordmark) for going** (tokens `pinBeen`, `pinGoing`;
+    navy stays for the selected state, which draws the pin larger with a navy edge). Orange means
+    been, not places to eat, which keeps its own `eat` orange on lists and trip maps. The colours
+    never carry the meaning alone: the key, the panel and each pin's spoken name say been or going.
+    The bottom bar's Map tab shows a globe icon (`globe`); the `map` icon stays for the trip's own
+    Map tab. This replaces the colours of decision 101 (green and navy).
 
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the

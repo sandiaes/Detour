@@ -540,7 +540,7 @@ A document's own screen has facts as `InfoRow`s, Open (`primary`), Edit (`second
 
 ### Map, Photos, More (screens 07, 10, 11)
 
-**Map** (ADR 021 decision 101) is a flat world map with a marker per city of every trip: green for been (a past trip), navy for going; tapping one names it and its trips and opens the first; a key under the map counts both. Planned features and a menu of hairline rows. Items that are not built say "Coming later". **Photos**
+**Map** (ADR 021 decision 101) is a flat world map with the logo's pin per city of every trip: orange for been (a past trip), deep green for going (decision 103); tapping one names it and its trips and opens the first; a key under the map counts both. Planned features and a menu of hairline rows. Items that are not built say "Coming later". **Photos**
 lists every trip with linked albums as one card (ADR 031; owner, 2026-11-16): a header row with the
 trip's cover thumbnail, its name and "dates · length", which opens the trip's Photos tab, then the
 albums as rows (photo tile, name, source, an external-link icon). Empty, it says to link an album on a

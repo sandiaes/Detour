@@ -11,9 +11,9 @@ import {
   IconButton,
   MapChip,
   MapFailure,
+  PinMark,
   PlannedFeature,
   ScreenHeader,
-  StopMark,
 } from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
@@ -24,7 +24,7 @@ import { TOUCH, border, colors, layout, size as sizes, spacing, type, weight } f
 
 const PADDING = { top: 72, right: 56, bottom: 72, left: 56 };
 
-/** The Map tab: a world map of the places the user has been to (green) and is going to (navy). */
+/** The Map tab: a world map of the places the user has been to (orange) and is going to (green). */
 export function MapScreen() {
   const nav = useNavigation();
   const { state } = useBackend();
@@ -57,9 +57,9 @@ export function MapScreen() {
       {points.length === 0 && trips.data ? (
         <View style={styles.empty}>
           <PlannedFeature
-            icon="map"
+            icon="globe"
             title="No places yet"
-            text="The cities of your trips appear here: green for where you have been, navy for where you are going."
+            text="The cities of your trips appear here: orange for where you have been, green for where you are going."
             testID="map-empty"
           />
         </View>
@@ -86,7 +86,7 @@ export function MapScreen() {
                   key={p.id}
                   id={p.id}
                   lngLat={p.lngLat}
-                  anchor="center"
+                  anchor="bottom"
                   selected={selectedId === p.id}
                   onPress={() => setSelectedId(p.id)}
                 >
@@ -98,12 +98,7 @@ export function MapScreen() {
                     accessibilityState={{ selected: selectedId === p.id }}
                     style={styles.hit}
                   >
-                    <StopMark
-                      kind={p.state === "been" ? "sight" : "city"}
-                      icon={p.state === "going" ? "city" : undefined}
-                      size="map"
-                      selected={selectedId === p.id}
-                    />
+                    <PinMark tone={p.state} selected={selectedId === p.id} />
                   </View>
                 </Marker>
               ))}
@@ -170,11 +165,11 @@ function Panel({
       ) : (
         <View style={styles.key} accessible accessibilityLabel={keyText(counts)}>
           <View style={styles.keyItem}>
-            <StopMark kind="sight" size="key" />
+            <PinMark tone="been" size="key" />
             <Text style={styles.meta}>Been · {counts.been}</Text>
           </View>
           <View style={styles.keyItem}>
-            <StopMark kind="city" icon="city" size="key" />
+            <PinMark tone="going" size="key" />
             <Text style={styles.meta}>Going · {counts.going}</Text>
           </View>
         </View>
@@ -196,7 +191,8 @@ const styles = StyleSheet.create({
     height: TOUCH,
     minHeight: TOUCH,
     alignItems: "center",
-    justifyContent: "center",
+    // The pin's tip is its bottom edge, which sits on the city.
+    justifyContent: "flex-end",
   },
   panel: {
     backgroundColor: colors.background,
