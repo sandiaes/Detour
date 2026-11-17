@@ -196,7 +196,7 @@ from the Phase 7 recalculation (`POST /v1/itineraries/{id}/place-suggestions`, `
 acceptance** (ADR 023, proposed): tickets, bookings, transport and insurance as PDFs or pictures,
 linked to the trip, a day, a place or a journey, **kept on the phone only** (`expo-file-system`, a
 `trip_document` table in the app's SQLite database; nothing uploaded). Photos (the user's own),
-notes and the trip summary wait for the owner. **An amendment of 2026-11-14** (ADR 021, decisions 25 to 31; the design is described in
+notes wait for the owner (the trip summary and the user's own photos inside Detour are dropped, ADR 021 decision 105). **An amendment of 2026-11-14** (ADR 021, decisions 25 to 31; the design is described in
 `docs/design.md`) is built and awaits acceptance: a near-white, flat look with hairlines instead of
 cards, trip cards with only name, dates and length (a trip is named after its destination), an
 overview without the days figure, first days or notes, an Itinerary tab of days that open the map of

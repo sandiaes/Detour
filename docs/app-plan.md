@@ -385,7 +385,7 @@ the imported regions** (ADR 027, built); (5) **export and import of a trip as a 
 accepted and built): the engine reorders the stops for the least travel, within each day or across
 all days, restaurants within 60 minutes of their chosen time and never after 21:00, with a preview
 and an undo; then saved
-ideas, manual reordering, notes, trip summary and photos.
+ideas, manual reordering and notes (the trip summary and photos inside Detour are dropped, ADR 021 decision 105).
 
 ## 5. MVP exclusions
 

@@ -619,7 +619,7 @@ the screen reader announcing a screen's title on arrival.
 - **English names** (ADR 025) come from the user's own name, Wikidata, English Wikipedia, OpenStreetMap
   and safe romanization, in that order; the rest keep their local name. Wikidata names arrive in the
   background, so a place may show its local name on the first look. Not checked on a device.
-- **Notes, reservations, trip summary:** ADR 021, "Not built". Documents are built (ADR 023) and
+- **Notes and reservations:** ADR 021, "Not built". (The trip summary and the user's own photos shown inside Detour are dropped, decision 105.) Documents are built (ADR 023) and
   are kept on the phone only; a trip file (ADR 028) carries them, unencrypted and only when the user
   chooses, from "Export trip" and "Back up all trips".
 - **Dark mode** is not designed.

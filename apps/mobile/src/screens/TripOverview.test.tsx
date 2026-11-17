@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 
 import { AppContent } from "../App";
+import { captureBackButton } from "../testing/backButton";
 import { createFakeClient, offline } from "../testing/fakeClient";
 import {
   ESSENTIALS_ID,
@@ -144,6 +145,28 @@ test("the Map tab shows the map with the day's list under it, sharing the select
   await fireEvent.press(screen.getByRole("tab", { name: "Day 2, Sun 2 May" }));
   expect(screen.getByLabelText(/^Transport: drive to Graz from Vienna/)).toBeOnTheScreen();
   expect(screen.getByLabelText("Stop 1, Attraction: Hofburg")).toBeOnTheScreen();
+});
+
+test("Back from the Map tab returns to the Overview, then to Trips (arrow and Android's button)", async () => {
+  const back = captureBackButton();
+  await open();
+  await fireEvent.press(await screen.findByRole("tab", { name: "Map" }));
+  await screen.findByTestId("map");
+  await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+  expect(screen.getByRole("tab", { name: "Overview" }).props.accessibilityState).toMatchObject({
+    selected: true,
+  });
+  await fireEvent.press(screen.getByRole("tab", { name: "Map" }));
+  await screen.findByTestId("map");
+  await act(async () => {
+    expect(back.press()).toBe(true);
+  });
+  expect(screen.getByRole("tab", { name: "Overview" }).props.accessibilityState).toMatchObject({
+    selected: true,
+  });
+  // On the Overview, Back leaves the trip.
+  await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+  expect(await screen.findByText("Trips")).toBeOnTheScreen();
 });
 
 test("Photos start with no album linked; Documents start empty", async () => {

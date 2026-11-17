@@ -138,7 +138,7 @@ Not in the MVP (see `docs/app-plan.md` for the phase each belongs to):
   ADR 032)
 - iOS build
 - photos inside Detour (a trip links its own Google Photos albums, which open in Google Photos, and its
-  cover can be a picture from the phone: ADR 031; showing the photos themselves is not built)
+  cover can be a picture from the phone: ADR 031; showing the photos themselves is dropped, ADR 021 decision 105)
 - weather
 - suggestions for destinations outside the imported pilot regions (trips there are empty, ADR 027)
 - sign-in with email, passwords or outside accounts (ADR 034 gives a person several phones with one-time codes; sharing a trip with one other person is ADR 034 step 3, not built yet; a trip can also be exported and imported as a file, ADR 028)

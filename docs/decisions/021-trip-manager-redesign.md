@@ -593,6 +593,16 @@ device or in screenshots**.
     still hidden from the lists by marking it as past or deleting it. The Map tab's empty state is
     an ordinary empty state, not a "Not built yet" notice.
 
+105. **Amendment of 2026-11-17 (owner decision): two ideas are dropped, three are kept; Back on a trip's tabs.**
+    The **trip summary** and **the user's own photos shown inside Detour** (by day, place or on the
+    map) are dropped and are not planned; the Photos tab keeps linking albums (ADR 031) and a cover
+    can still come from the phone. **Notes** (the Add sheet's Note row), **Take a photo** (Add
+    document) and **Notes and photos** on a place's details stay as "not built" and may be built later.
+    Weather, public transport routing, offline maps and the iPhone build stay listed as they were.
+    Back (the arrow and Android's button) on a trip's **Map, Photos or Documents** tab now returns to
+    its **Overview** first, and Back on the Overview leaves the trip; the tabs replace one another, so
+    before this Back went straight to Trips. The navigator gained `interceptBack` for this.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until
