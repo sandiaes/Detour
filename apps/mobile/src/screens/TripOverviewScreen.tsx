@@ -333,11 +333,12 @@ export function TripOverviewScreen({
     setSectionState(next);
     remember({ section: next });
   };
-  // Back from Map, Photos or Documents returns to the Overview first, then leaves the trip: the
-  // tabs replace one another instead of stacking, so the navigator alone would go straight to Trips.
+  // Back from the Map tab returns to the Overview first, then leaves the trip: the tabs replace one
+  // another instead of stacking, so the navigator alone would go straight to Trips. Photos and
+  // Documents leave the trip directly.
   const { interceptBack } = nav;
   useEffect(() => {
-    if (section === "overview") return;
+    if (section !== "map") return;
     interceptBack(() => {
       setSection("overview");
       return true;

@@ -169,6 +169,16 @@ test("Back from the Map tab returns to the Overview, then to Trips (arrow and An
   expect(await screen.findByText("Trips")).toBeOnTheScreen();
 });
 
+test.each(["Trip photos", "Trip documents"])(
+  "Back from the %s tab leaves the trip",
+  async (tab) => {
+    await open();
+    await fireEvent.press(await screen.findByRole("tab", { name: tab }));
+    await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByRole("header", { name: "Detour" })).toBeOnTheScreen();
+  },
+);
+
 test("Photos start with no album linked; Documents start empty", async () => {
   await open();
   await fireEvent.press(await screen.findByRole("tab", { name: "Trip photos" }));

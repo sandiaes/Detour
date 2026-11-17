@@ -599,9 +599,9 @@ device or in screenshots**.
     can still come from the phone. **Notes** (the Add sheet's Note row), **Take a photo** (Add
     document) and **Notes and photos** on a place's details stay as "not built" and may be built later.
     Weather, public transport routing, offline maps and the iPhone build stay listed as they were.
-    Back (the arrow and Android's button) on a trip's **Map, Photos or Documents** tab now returns to
-    its **Overview** first, and Back on the Overview leaves the trip; the tabs replace one another, so
-    before this Back went straight to Trips. The navigator gained `interceptBack` for this.
+    Back (the arrow and Android's button) on a trip's **Map** tab now returns to its **Overview**
+    first, and Back on the Overview leaves the trip; the tabs replace one another, so before this Back
+    went straight to Trips. Photos and Documents still leave the trip with one Back (owner, same day). The navigator gained `interceptBack` for this.
 
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
