@@ -42,6 +42,10 @@ export type BackendContextValue = {
   state: BackendState;
   apiUrl: string;
   retry: () => void;
+  /** True when the server cannot be reached: the connection failed, or a request lost the network. */
+  offline?: boolean;
+  /** Screens that fetch data tell the app when a request reached the server or not. */
+  reportNetwork?: (down: boolean) => void;
 };
 
 export const BackendContext = createContext<BackendContextValue | null>(null);
@@ -52,9 +56,16 @@ export function useBackend(): BackendContextValue {
   return value;
 }
 
+/** Whether the app is offline. Buttons that need the server fade while it is true. */
+export function useOffline(): boolean {
+  const value = useContext(BackendContext);
+  return value ? (value.offline ?? value.state.phase === "error") : false;
+}
+
 export function BackendProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<BackendState>({ phase: "connecting", waking: false });
   const [attempt, setAttempt] = useState(0);
+  const [networkDown, setNetworkDown] = useState(false);
   // Failed attempts in a row; a ref, as it only shapes the wait and is never drawn.
   const failures = useRef(0);
 
@@ -68,6 +79,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
       .then((connection) => {
         if (!cancelled) {
           failures.current = 0;
+          setNetworkDown(false);
           setState({ phase: "ready", connection });
         }
       })
@@ -121,7 +133,15 @@ export function BackendProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <BackendContext.Provider value={{ state, apiUrl: API_URL, retry }}>
+    <BackendContext.Provider
+      value={{
+        state,
+        apiUrl: API_URL,
+        retry,
+        offline: state.phase === "error" || networkDown,
+        reportNetwork: setNetworkDown,
+      }}
+    >
       {children}
     </BackendContext.Provider>
   );

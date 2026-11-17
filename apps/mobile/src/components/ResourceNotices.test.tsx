@@ -30,7 +30,7 @@ test("a paused database keeps the saved copy on screen and says how old it is", 
   expect(screen.getByText(/Showing the copy saved 3 hours ago/)).toBeOnTheScreen();
 });
 
-test("offline, the saved copy is labelled with its age", async () => {
+test("offline, no notice here: the banner at the top tells it once", async () => {
   const savedAt = Date.now() - 2 * 86_400_000;
   await render(
     <ResourceNotices
@@ -38,7 +38,7 @@ test("offline, the saved copy is labelled with its age", async () => {
       resource={{ ...base, savedAt, offline: true, error: new NetworkError() }}
     />,
   );
-  expect(screen.getByText(/Showing trips saved 2 days ago/)).toBeOnTheScreen();
+  expect(screen.queryByText(/Showing trips saved/)).toBeNull();
 });
 
 test("each dependency that is down has its own plain message", () => {

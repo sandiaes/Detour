@@ -156,7 +156,7 @@ test("attractions without a city row are listed under the destination", async ()
   expect(screen.getByText("Destination · 3 attractions")).toBeOnTheScreen();
 });
 
-test("offline, a past trip is read from the device: the list works, the map says it needs a connection", async () => {
+test("offline, a past trip is read from the device: the list works, the map shows the faded logo", async () => {
   const cache = createMemoryStore();
   await cache.set("trips", [makePastTrip()]);
   await cache.set(`visits:${TRIP_ID}`, makeArchivedVisits());
@@ -165,8 +165,8 @@ test("offline, a past trip is read from the device: the list works, the map says
       <AppContent />
     </Harness>,
   );
-  expect(await screen.findByText("The map needs a connection")).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole("button", { name: "Show the list" }));
+  expect(await screen.findByTestId("offline-map")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("tab", { name: "Show the list by city" }));
   expect(await screen.findByText("Kunsthaus Graz")).toBeOnTheScreen();
   // Clearing a visit needs the server: the control is off rather than failing silently.
   expect(screen.getByRole("button", { name: "Mark Kunsthaus Graz as skipped" })).toBeDisabled();

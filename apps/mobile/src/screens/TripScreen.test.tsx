@@ -206,7 +206,7 @@ test("a trip that is past shows its saved places, not proposals", async () => {
   expect(screen.queryByRole("button", { name: "Plan this trip" })).toBeNull();
 });
 
-test("offline, saved plans are shown with a notice", async () => {
+test("offline, saved plans are shown under the one banner", async () => {
   const cache = createMemoryStore();
   await cache.set("trips", [makeTrip()]);
   await cache.set(`itineraries:${TRIP_ID}`, [makeSummary("essentials"), makeSummary("wider")]);
@@ -216,9 +216,8 @@ test("offline, saved plans are shown with a notice", async () => {
     </Harness>,
   );
   expect(await screen.findByTestId("plan-essentials")).toBeOnTheScreen();
-  expect(
-    screen.getAllByText(/You can read them, but changes need a connection/).length,
-  ).toBeGreaterThan(0);
+  expect(screen.queryByText(/You can read them, but changes need a connection/)).toBeNull();
+  expect(screen.getByText("You’re offline")).toBeOnTheScreen();
 });
 
 test("visiblePlans shows the newest generation, Essentials first, and keeps an older selection", () => {

@@ -10,7 +10,7 @@ import type {
 } from "@detour/shared";
 import { useCallback } from "react";
 
-import { useBackend } from "../api/BackendProvider";
+import { useBackend, useOffline } from "../api/BackendProvider";
 import { NetworkError, call, callEmpty } from "../api/unwrap";
 import { useData } from "./DataProvider";
 
@@ -34,6 +34,7 @@ function toSummary(itinerary: Itinerary): ItinerarySummary {
 
 export function useTripActions() {
   const { state } = useBackend();
+  const offline = useOffline();
   const data = useData();
   const client = state.phase === "ready" ? state.connection.client : null;
 
@@ -288,6 +289,6 @@ export function useTripActions() {
     archiveTrip,
     reopenTrip,
     setVisitConfirmed,
-    connected: client !== null,
+    connected: client !== null && !offline,
   };
 }

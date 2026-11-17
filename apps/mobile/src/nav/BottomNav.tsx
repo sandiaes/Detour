@@ -2,12 +2,13 @@ import type { Trip } from "@detour/shared";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useOffline } from "../api/BackendProvider";
 import { call } from "../api/unwrap";
 import { Icon, type IconName, ListRow, RowGroup, Sheet, useFocusRing } from "../components/ds";
 import { keys } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { isReadOnly } from "../domain/trips";
-import { TOUCH, colors, radius, size as sizes, spacing, type, weight } from "../theme";
+import { TOUCH, colors, opacity, radius, size as sizes, spacing, type, weight } from "../theme";
 import { type RootName, type Route, useNavigation } from "./Navigator";
 
 // The bottom navigation (ADR 021): Trips, Explore, Add, Photos, More. Add is contextual: outside a
@@ -19,6 +20,9 @@ const TABS: { key: RootName; label: string; icon: IconName }[] = [
   { key: "photos", label: "Photos", icon: "photos" },
   { key: "more", label: "More", icon: "more" },
 ];
+
+/** Tabs that have nothing to show without the server. Trips and More keep working offline. */
+const NEEDS_CONNECTION = new Set<RootName>(["explore", "photos"]);
 
 /** Screens of one trip on which the bottom bar stays visible, with Add acting on that trip. */
 const TRIP_SCREENS = new Set<Route["name"]>(["tripOverview", "itinerary", "pastTrip"]);
@@ -49,6 +53,7 @@ function NavItem({
   accessibilityLabel,
   hint,
   onPress,
+  disabled = false,
   testID,
 }: {
   label: string;
@@ -58,6 +63,8 @@ function NavItem({
   accessibilityLabel?: string;
   hint?: string;
   onPress: () => void;
+  /** Needs the server and there is none: faded and not pressable. */
+  disabled?: boolean;
   testID: string;
 }) {
   const focus = useFocusRing();
@@ -66,8 +73,9 @@ function NavItem({
       accessibilityRole={add ? "button" : "tab"}
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={hint}
-      accessibilityState={add ? undefined : { selected }}
-      style={[styles.item, focus.ring]}
+      accessibilityState={add ? { disabled } : { selected, disabled }}
+      style={[styles.item, focus.ring, disabled && styles.faded]}
+      disabled={disabled}
       onPress={onPress}
       {...focus.focusProps}
       testID={testID}
@@ -90,6 +98,7 @@ export function BottomNav() {
   const [adding, setAdding] = useState(false);
   const tripId = tripContext(nav.route);
   const active = rootOf(nav.route);
+  const offline = useOffline();
 
   const onAdd = () => {
     if (tripId) setAdding(true);
@@ -102,6 +111,7 @@ export function BottomNav() {
       label={t.label}
       icon={t.icon}
       selected={active === t.key}
+      disabled={offline && NEEDS_CONNECTION.has(t.key)}
       onPress={() => nav.switchRoot({ name: t.key })}
       testID={`nav-${t.key}`}
     />
@@ -118,6 +128,7 @@ export function BottomNav() {
           add
           accessibilityLabel={tripId ? "Add to this trip" : "Add a trip"}
           hint={tripId ? "Choose what to add: a place, a restaurant, and more" : "Plan a new trip"}
+          disabled={offline && !tripId}
           onPress={onAdd}
           testID="nav-add"
         />
@@ -134,6 +145,7 @@ export function BottomNav() {
 /** What can be added to a trip. Places and restaurants go through the existing adjustment flow. */
 export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: () => void }) {
   const nav = useNavigation();
+  const offline = useOffline();
   const trips = useResource<Trip[]>(keys.trips, (c) => call(c.GET("/v1/trips")));
   const trip = trips.data?.find((t) => t.id === tripId);
   const planId = trip?.selected_itinerary_id ?? null;
@@ -143,7 +155,9 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
     : !planId
       ? "Choose a plan first"
       : undefined;
-  const canChange = planId !== null && !readOnly;
+  const canChange = planId !== null && !readOnly && !offline;
+  // Offline the rows are only faded; the other reasons keep their word.
+  const label = offline && planId !== null && !readOnly ? null : "Not now";
 
   const go = (route: Route) => {
     onClose();
@@ -164,7 +178,7 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
           title="Place"
           detail={why ?? "A sight, town, address or pin; Detour suggests the best days"}
           disabled={!canChange}
-          disabledLabel="Not now"
+          disabledLabel={label}
           testID="add-sheet-place"
           onPress={
             planId && canChange
@@ -177,7 +191,7 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
           title="Restaurant"
           detail={why ?? "Search or enter one, then choose the day and time"}
           disabled={!canChange}
-          disabledLabel="Not now"
+          disabledLabel={label}
           testID="add-sheet-restaurant"
           onPress={
             planId && canChange
@@ -190,7 +204,7 @@ export function AddToTripSheet({ tripId, onClose }: { tripId: string; onClose: (
           title="Transport"
           detail={why ?? "A train, bus or ferry you took or will take, entered by you"}
           disabled={!canChange}
-          disabledLabel="Not now"
+          disabledLabel={label}
           testID="add-sheet-transport"
           onPress={
             planId && canChange
@@ -226,6 +240,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.xxs,
   },
+  faded: { opacity: opacity.disabled },
   label: { ...type.micro, color: colors.muted, fontWeight: weight.medium },
   labelActive: { color: colors.selected, fontWeight: weight.bold },
   marker: { height: 3, width: 20, borderRadius: radius.pill, backgroundColor: "transparent" },

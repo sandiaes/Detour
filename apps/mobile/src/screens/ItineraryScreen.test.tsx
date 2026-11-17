@@ -198,7 +198,7 @@ test("a plan saved on the device opens offline", async () => {
     </Harness>,
   );
   expect(await screen.findByText("Schönbrunn Palace")).toBeOnTheScreen();
-  expect(await screen.findByText(/Showing this plan saved/)).toBeOnTheScreen();
+  expect(screen.queryByText(/Showing this plan saved/)).toBeNull();
 });
 
 test("a plan that was never opened cannot be read offline, and the screen says so", async () => {
@@ -276,7 +276,7 @@ test("a stop's details open from its row", async () => {
   expect(await screen.findByRole("header", { name: "Belvedere" })).toBeOnTheScreen();
 });
 
-test("the map needs a connection and says so, offering the list", async () => {
+test("offline, the map area shows the faded logo and nothing else", async () => {
   const cache = createMemoryStore();
   await cache.set("trips", [makeTrip()]);
   await cache.set(`itinerary:${ESSENTIALS_ID}`, makeItinerary("essentials"));
@@ -285,7 +285,9 @@ test("the map needs a connection and says so, offering the list", async () => {
       <AppContent />
     </Harness>,
   );
-  expect(await screen.findByText("The map needs a connection")).toBeOnTheScreen();
+  expect(await screen.findByTestId("offline-map")).toBeOnTheScreen();
+  expect(screen.queryByText("The map needs a connection")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Show the day list" })).toBeNull();
 });
 
 test("sights and places to eat are told apart in words, not by colour alone", async () => {

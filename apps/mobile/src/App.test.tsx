@@ -81,16 +81,22 @@ test("the banner says the server is waking up during a cold start", async () => 
   expect(screen.getByText(/Waking the server\. The free host was asleep/)).toBeOnTheScreen();
 });
 
-test("a failed connection shows the reason and a retry button", async () => {
+test("a failed connection shows one quiet offline message", async () => {
   const retry = jest.fn();
   await render(
     <Harness state={{ phase: "error", message: "Health check failed (HTTP 503)." }} retry={retry}>
       <AppContent />
     </Harness>,
   );
-  expect(screen.getByText(/Health check failed \(HTTP 503\)/)).toBeOnTheScreen();
-  await fireEvent.press(screen.getByText("Retry"));
-  expect(retry).toHaveBeenCalledTimes(1);
+  expect(screen.getByText("You’re offline")).toBeOnTheScreen();
+  expect(screen.getByText("Saved trips remain available.")).toBeOnTheScreen();
+  expect(screen.queryByText("Retry")).toBeNull();
+  // Add and Explore need the server: faded and not pressable.
+  expect(screen.getByTestId("nav-explore")).toBeDisabled();
+  expect(screen.getByTestId("nav-photos")).toBeDisabled();
+  expect(screen.getByTestId("nav-add")).toBeDisabled();
+  expect(screen.getByTestId("nav-trips")).toBeEnabled();
+  expect(retry).not.toHaveBeenCalled();
 });
 
 test("a new installation does not show another installation's saved trips", async () => {

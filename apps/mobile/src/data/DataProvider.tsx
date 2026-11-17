@@ -152,7 +152,7 @@ export function useResource<T>(
 ): Resource<T> {
   const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
   const { cache, memory, inflight, listeners } = useData();
-  const { state: backend, retry } = useBackend();
+  const { state: backend, retry, reportNetwork } = useBackend();
   const [state, setState] = useState<ResourceState<T>>(INITIAL);
   const [nonce, setNonce] = useState(0);
   const forced = useRef(false);
@@ -232,8 +232,10 @@ export function useResource<T>(
           refreshing: false,
           error: null,
         });
+        reportNetwork?.(false);
       } catch (error) {
         const offline = error instanceof NetworkError;
+        if (offline) reportNetwork?.(true);
         patch(
           shown
             ? { refreshing: false, offline, error }
@@ -246,7 +248,7 @@ export function useResource<T>(
       cancelled = true;
     };
     // `client` identity changes only when the connection is remade.
-  }, [key, client, backendPhase, nonce, ttlMs, cache, memory, inflight]);
+  }, [key, client, backendPhase, nonce, ttlMs, cache, memory, inflight, reportNetwork]);
 
   // A change made elsewhere in the app (a plan was selected, trips were planned) shows at once.
   useEffect(() => {

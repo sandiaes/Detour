@@ -1,31 +1,53 @@
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { useBackend } from "../api/BackendProvider";
-import { layout, spacing } from "../theme";
-import { Notice } from "./ds";
+import { useBackend, useOffline } from "../api/BackendProvider";
+import { colors, layout, radius, spacing, type, weight } from "../theme";
+import { Icon, Notice } from "./ds";
 
-/** Shown above every screen while the backend is not ready. Hidden once it is. */
+/**
+ * Shown above every screen while the backend is not ready. Offline is one quiet message; it is the
+ * only offline message in the app (screens do not repeat it).
+ */
 export function BackendBanner() {
-  const { state, retry } = useBackend();
-  if (state.phase === "ready") return null;
-  return (
-    <View style={styles.banner}>
-      {state.phase === "connecting" ? (
+  const { state } = useBackend();
+  const offline = useOffline();
+  if (state.phase === "connecting" && !offline) {
+    return (
+      <View style={styles.banner}>
         <Notice tone="warning" label={state.waking ? "Waking the server" : "Connecting"}>
           {state.waking
             ? "The free host was asleep and is starting up."
             : "Connecting to the server…"}
         </Notice>
-      ) : (
-        <Notice tone="error" label="Offline" action={{ label: "Retry", onPress: retry }}>
-          Could not reach the server. {state.message}
-          {state.retryAt ? " Trying again by itself; saved trips can still be read." : ""}
-        </Notice>
-      )}
+      </View>
+    );
+  }
+  if (!offline) return null;
+  return (
+    <View style={styles.banner}>
+      <View style={styles.offline} accessibilityLiveRegion="polite" testID="offline-banner">
+        <Icon name="offline" size="md" color={colors.warningText} />
+        <View style={styles.text}>
+          <Text style={styles.title}>You’re offline</Text>
+          <Text style={styles.body}>Saved trips remain available.</Text>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   banner: { paddingHorizontal: layout.gutter, paddingVertical: spacing.xs },
+  offline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.warning,
+  },
+  text: { flex: 1 },
+  title: { ...type.label, color: colors.text, fontWeight: weight.bold },
+  body: { ...type.caption, color: colors.muted },
 });
