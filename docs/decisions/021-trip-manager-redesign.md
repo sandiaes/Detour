@@ -603,6 +603,15 @@ device or in screenshots**.
     first, and Back on the Overview leaves the trip; the tabs replace one another, so before this Back
     went straight to Trips. Photos and Documents still leave the trip with one Back (owner, same day). The navigator gained `interceptBack` for this.
 
+106. **Amendment of 2026-11-17 (owner request): the start date can be changed from Trip settings.**
+    Trip settings has a **Trip dates** section (not on a past trip) with a calendar: Change start
+    date, or clear it. The API already accepted `start_date` on `PATCH /v1/trips/{id}` and moves every
+    day of every plan with it; only the app lacked a way to do it. It exists so past trips can be
+    entered with future dates first and moved to their real dates afterwards. A date that has
+    already passed is allowed; because the trip was created after its last day, the two-day rule
+    leaves it alone (ADR 026 decision 23), so the user marks it as past by hand. A past trip still
+    refuses date changes until it is reopened.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until

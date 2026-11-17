@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { call, describeError } from "../api/unwrap";
+import { CalendarSheet } from "../components/ds/Calendar";
 import {
   Button,
   ConfirmSheet,
@@ -17,10 +18,11 @@ import { keys, useTripActions } from "../data/actions";
 import { useResource } from "../data/DataProvider";
 import { useDocumentActions } from "../documents/DocumentsProvider";
 import type { PersonInfo } from "../domain/devices";
+import { localToday } from "../domain/trips";
 import { canShareWith, otherMembers, ownerOf, personName } from "../domain/sharing";
 import { useNavigation } from "../nav/Navigator";
 import { colors, layout, spacing, type } from "../theme";
-import { formatTripSpan } from "../util/format";
+import { formatDate, formatTripSpan } from "../util/format";
 
 /** Settings of one trip: who is on it (ADR 034), new proposals, mark as past, delete or leave. */
 export function TripSettingsScreen({ tripId }: { tripId: string }) {
@@ -32,12 +34,13 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
   // The people you are linked to (More, People): who the trip can be shared with.
   const me = useResource<PersonInfo>("me", (c) => call(c.GET("/v1/me")), { ttlMs: 0 });
   const [busy, setBusy] = useState<
-    "generate" | "delete" | "archive" | "reopen" | "share" | "leave" | null
+    "generate" | "delete" | "archive" | "reopen" | "share" | "leave" | "dates" | null
   >(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [stopSharing, setStopSharing] = useState<TripMember | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [calendar, setCalendar] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   if (trips.data === undefined) {
@@ -71,6 +74,19 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
   const createdBy = ownerOf(trip);
   const shareable = owner ? canShareWith(trip, me.data?.people ?? []) : [];
   const hasPlan = trip.selected_itinerary_id !== null;
+
+  const changeStart = async (iso: string | null) => {
+    setCalendar(false);
+    setBusy("dates");
+    setProblem(null);
+    try {
+      await actions.setStartDate(trip, iso);
+    } catch (e) {
+      setProblem(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const regenerate = async () => {
     setBusy("generate");
@@ -268,6 +284,34 @@ export function TripSettingsScreen({ tripId }: { tripId: string }) {
                 disabled={!actions.connected || busy !== null}
                 accessibilityLabel={`Reopen the trip ${trip.title}`}
                 onPress={() => void reopen()}
+              />
+            </Section>
+          ) : null}
+
+          {!past ? (
+            <Section title="Trip dates">
+              <Text style={styles.text}>
+                {trip.start_date
+                  ? `Starts ${formatDate(trip.start_date)}. Changing the start date moves every day of the plan with it. A trip whose dates are already over is not made a past trip by itself: mark it as past below.`
+                  : "No start date yet. Choose one and every day of the plan gets its date."}
+              </Text>
+              <Button
+                testID="edit-dates"
+                label={trip.start_date ? "Change start date" : "Set start date"}
+                variant="secondary"
+                size="sm"
+                loading={busy === "dates"}
+                disabled={!actions.connected || busy !== null}
+                onPress={() => setCalendar(true)}
+              />
+              <CalendarSheet
+                visible={calendar}
+                title="Start date"
+                value={trip.start_date ?? ""}
+                today={localToday()}
+                onPick={(iso) => void changeStart(iso)}
+                onClear={() => void changeStart(null)}
+                onClose={() => setCalendar(false)}
               />
             </Section>
           ) : null}

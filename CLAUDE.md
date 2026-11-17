@@ -10,6 +10,8 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
+**Trip settings can change the start date** (2026-11-17, ADR 021 decision 106, owner request; tests only): a calendar under "Trip dates", for entering past trips with future dates first and moving them to the real dates, then marking them as past.
+
 **Explore is removed and the fifth tab is a Map tab** (2026-11-17, ADR 021 decision 101, owner request; built, awaiting acceptance; tests only): a flat world map of the cities of your trips, the logo's orange pin for been and its deep green for going (decision 103), a globe icon in the bottom bar; the bottom bar is Trips, Map, Add, Photos, More.
 
 **Direction change of 2026-11-14 (ADR 026, proposed; all six build steps are built: the planner, the

@@ -109,6 +109,29 @@ test("a past trip can be reopened or deleted, and offers no changes", async () =
   expect(screen.getByRole("button", { name: /^Reopen the trip/ })).toBeOnTheScreen();
   expect(screen.queryByRole("button", { name: "Get new proposals" })).toBeNull();
   expect(screen.queryByTestId("archive-trip")).toBeNull();
+  expect(screen.queryByTestId("edit-dates")).toBeNull();
+});
+
+test("the start date can be changed to a date in the past; the trip stays active", async () => {
+  const client = await open({
+    "PATCH /v1/trips/{trip_id}": (c: { body: { start_date: string | null } }) =>
+      makeTrip({
+        selected_itinerary_id: ESSENTIALS_ID,
+        start_date: c.body.start_date,
+        end_date: "2026-03-03",
+      }),
+  });
+  await fireEvent.press(await screen.findByTestId("edit-dates"));
+  // The calendar opens on the trip's month (May 2027): go back to March 2026, 14 months.
+  for (let i = 0; i < 14; i++) await fireEvent.press(screen.getByTestId("cal-prev"));
+  await fireEvent.press(screen.getByTestId("cal-2026-03-01"));
+  await waitFor(() =>
+    expect(client.calls.find((c) => c.method === "PATCH")?.body).toEqual({
+      start_date: "2026-03-01",
+    }),
+  );
+  // Dates already over do not make it a past trip: it can still be marked as past by hand.
+  expect(await screen.findByTestId("archive-trip")).toBeOnTheScreen();
 });
 
 test("reopening a past trip calls the server and returns to the trip", async () => {

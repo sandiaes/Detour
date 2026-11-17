@@ -96,6 +96,26 @@ export function useTripActions() {
     [need, data],
   );
 
+  /** Changes the trip's start date (or removes it); every day of its plans moves with it. The
+   * plans held on this phone are dropped so they are read again with the new dates. */
+  const setStartDate = useCallback(
+    async (trip: Trip, startDate: string | null): Promise<Trip> => {
+      const updated = await call(
+        need().PATCH("/v1/trips/{trip_id}", {
+          params: { path: { trip_id: trip.id } },
+          body: { start_date: startDate },
+        }),
+      );
+      data.update<Trip[]>(keys.trips, (list) =>
+        list.map((t) => (t.id === updated.id ? updated : t)),
+      );
+      data.invalidate(keys.itineraries(trip.id));
+      if (trip.selected_itinerary_id) data.invalidate(keys.itinerary(trip.selected_itinerary_id));
+      return updated;
+    },
+    [need, data],
+  );
+
   /** A clean trip: one empty day per trip day, chosen as the trip's plan at once, so the trip opens
    * on it and places can be added freely. No proposals are made. */
   const startEmptyTrip = useCallback(
@@ -283,6 +303,7 @@ export function useTripActions() {
     generate,
     startEmptyTrip,
     selectPlan,
+    setStartDate,
     deleteTrip,
     shareTrip,
     removeMember,
