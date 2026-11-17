@@ -29,6 +29,7 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
     alignItems: "center",
+    gap: spacing.sm,
     justifyContent: "center",
     backgroundColor: colors.background,
   },
