@@ -10,6 +10,8 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
+**The iPhone without a Mac or a paid account** (2026-11-18, ADR 035, proposed, owner request; nothing built, waiting for the owner's answers in its section 1): unsigned `.ipa` from GitHub's macOS runners, installed with SideStore and a free Apple ID (AltStore as fallback). The sources were read first and differ from what the owner was told: SideStore's sign-in was broken by Apple on 0.6.4 and before and only the experimental 0.7.0-alpha fixes it, and its Shortcuts refresh has open bugs.
+
 **Trip settings can change the start date** (2026-11-17, ADR 021 decision 106, owner request; tests only): a calendar under "Trip dates", for entering past trips with future dates first and moving them to the real dates, then marking them as past.
 
 **Explore is removed and the fifth tab is a Map tab** (2026-11-17, ADR 021 decision 101, owner request; built, awaiting acceptance; tests only): a flat world map of the cities of your trips, the logo's orange pin for been and its deep green for going (decision 103), a globe icon in the bottom bar; the bottom bar is Trips, Map, Add, Photos, More.

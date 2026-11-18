@@ -38,6 +38,11 @@ Expo Go (ADR 001, `api-evaluation.md`), so a **development build** is required.
    Apple limits are verified.
 4. Updates are installed by hand (a new APK, a new build); there are no store updates.
 
+> **Amendment of 2026-11-18 (ADR 035, proposed):** decision 3 no longer applies as written. The owner
+> has no Mac, so the iPhone file is built unsigned on GitHub's macOS runners and installed with
+> SideStore and a free Apple ID. The text above is kept as it was decided. See
+> [`035`](035-iphone-without-a-paid-account.md).
+
 ## Alternatives
 
 | Alternative | Why not |
