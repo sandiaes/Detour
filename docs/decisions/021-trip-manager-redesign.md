@@ -587,6 +587,31 @@ device or in screenshots**.
     The bottom bar's Map tab shows a globe icon (`globe`); the `map` icon stays for the trip's own
     Map tab. This replaces the colours of decision 101 (green and navy).
 
+104. **Amendment of 2026-11-17 (owner decision): Saved places, Travel preferences and Archive trip are dropped.**
+    The three "Coming later" rows are removed from More (and their unused icons), and are not
+    planned. This replaces the mention in decisions 5 and 8 and the "Not built" table. A trip is
+    still hidden from the lists by marking it as past or deleting it. The Map tab's empty state is
+    an ordinary empty state, not a "Not built yet" notice.
+
+105. **Amendment of 2026-11-17 (owner decision): two ideas are dropped, three are kept; Back on a trip's tabs.**
+    The **trip summary** and **the user's own photos shown inside Detour** (by day, place or on the
+    map) are dropped and are not planned; the Photos tab keeps linking albums (ADR 031) and a cover
+    can still come from the phone. **Notes** (the Add sheet's Note row), **Take a photo** (Add
+    document) and **Notes and photos** on a place's details stay as "not built" and may be built later.
+    Weather, public transport routing, offline maps and the iPhone build stay listed as they were.
+    Back (the arrow and Android's button) on a trip's **Map** tab now returns to its **Overview**
+    first, and Back on the Overview leaves the trip; the tabs replace one another, so before this Back
+    went straight to Trips. Photos and Documents still leave the trip with one Back (owner, same day). The navigator gained `interceptBack` for this.
+
+106. **Amendment of 2026-11-17 (owner request): the start date can be changed from Trip settings.**
+    Trip settings has a **Trip dates** section (not on a past trip) with a calendar: Change start
+    date, or clear it. The API already accepted `start_date` on `PATCH /v1/trips/{id}` and moves every
+    day of every plan with it; only the app lacked a way to do it. It exists so past trips can be
+    entered with future dates first and moved to their real dates afterwards. A date that has
+    already passed is allowed; because the trip was created after its last day, the two-day rule
+    leaves it alone (ADR 026 decision 23), so the user marks it as past by hand. A past trip still
+    refuses date changes until it is reopened.
+
 **Consequences.** Every screen shares its parts, so a change to a button or a field is made once.
 Screens that were drawn by hand (Trip settings, Export, Import, Settings, Image credits, the
 documents) now look like the rest. The tour and the owner's look on a phone are still owed; until

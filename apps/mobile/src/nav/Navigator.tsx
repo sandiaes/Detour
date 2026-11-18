@@ -1,5 +1,13 @@
 import type { DocCategory, DocLink } from "../documents/model";
-import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { BackHandler } from "react-native";
 
 // A small stack navigator held in React state (ADR 015). The app has four root tabs (ADR 021:
@@ -89,6 +97,12 @@ export type Navigation = {
   resetTo: (routes: Route[]) => void;
   /** Show a root tab and drop everything above it. */
   switchRoot: (route: Route & { name: RootName }) => void;
+  /**
+   * Lets the open screen take the next Back (the arrow and Android's button) before the stack is
+   * popped, for a screen whose tabs replace one another instead of stacking. The handler returns
+   * true when it handled the press. Pass null to let go; a screen does so when it unmounts.
+   */
+  interceptBack: (handler: (() => boolean) | null) => void;
 };
 
 const NavigationContext = createContext<Navigation | null>(null);
@@ -107,8 +121,10 @@ export function NavigationProvider({
   children: ReactNode;
 }) {
   const [stack, setStack] = useState<Route[]>([initial]);
+  const interceptor = useRef<(() => boolean) | null>(null);
 
   const back = useCallback((): boolean => {
+    if (interceptor.current?.()) return true;
     if (stack.length > 1) {
       setStack((s) => s.slice(0, -1));
       return true;
@@ -133,6 +149,9 @@ export function NavigationProvider({
     back,
     resetTo: (routes) => setStack(routes.length > 0 ? routes : [{ name: "trips" }]),
     switchRoot: (route) => setStack([route]),
+    interceptBack: (handler) => {
+      interceptor.current = handler;
+    },
   };
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;
 }

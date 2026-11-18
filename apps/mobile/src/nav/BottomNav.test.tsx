@@ -110,11 +110,7 @@ test("Map, Photos and More are root tabs; the unbuilt ones say so", async () => 
   await fireEvent.press(screen.getByRole("tab", { name: "Photos" }));
   expect(await screen.findByTestId("photos-empty")).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("tab", { name: "More" }));
-  for (const name of [/^Saved places\./, /^Travel preferences\./, /^Archive trip\./]) {
-    expect(screen.getByRole("button", { name }).props.accessibilityState).toMatchObject({
-      disabled: true,
-    });
-  }
+  expect(screen.queryByText("Saved places")).toBeNull();
   // The backup and the import (ADR 028) are built.
   for (const name of [/^Back up all trips\./, /^Import a trip\./]) {
     expect(screen.getByRole("button", { name }).props.accessibilityState).toMatchObject({

@@ -30,9 +30,10 @@ language model) are in the [product brief](product-brief.md), section 8.
 | **Sync between phones, accounts, sharing** | Parked (D5); a trip moves between phones as a `.detour` file (ADR 028) |
 | **Offline maps** | Not in the MVP; the map needs a connection, the day list works from the saved copy |
 | **Map** tab | A flat world map of the cities of your trips (been and going); it needs the map host, so it is blank offline |
-| Your own photos **inside** Detour (by day, place or on the map) | Not built: a trip links its Google Photos albums, which open in Google Photos; Google no longer lets apps read albums they did not create (ADR 031) |
+| Your own photos | A trip links its Google Photos albums, which open in Google Photos; showing them inside Detour is dropped (ADR 021, decision 105; Google no longer lets apps read albums they did not create, ADR 031) |
 | A cover chosen from the phone on another phone | Not carried by the trip file; the destination photo comes back (ADR 031) |
-| Saved places, travel preferences, archive (hide) a trip, notes, trip summary | Shown as not built in More or the trip (ADR 021, "Not built") |
+| Notes, taking a photo of a document with the camera | Shown as not built where they would go (the Add sheet, a place's details, Add document) |
+| Saved places, travel preferences, archive (hide) a trip | Dropped by the owner (ADR 021, decision 104); not planned |
 | iPhone | Phase 11, on the owner's Mac ([`ios-readiness.md`](ios-readiness.md)) |
 | Editing while offline | The saved copy is read-only; changes need a connection (ADR 015) |
 

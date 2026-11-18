@@ -10,6 +10,8 @@ different itineraries and recalculates when the user adds places or restaurants.
 
 ## Current state
 
+**Trip settings can change the start date** (2026-11-17, ADR 021 decision 106, owner request; tests only): a calendar under "Trip dates", for entering past trips with future dates first and moving them to the real dates, then marking them as past.
+
 **Explore is removed and the fifth tab is a Map tab** (2026-11-17, ADR 021 decision 101, owner request; built, awaiting acceptance; tests only): a flat world map of the cities of your trips, the logo's orange pin for been and its deep green for going (decision 103), a globe icon in the bottom bar; the bottom bar is Trips, Map, Add, Photos, More.
 
 **Direction change of 2026-11-14 (ADR 026, proposed; all six build steps are built: the planner, the
@@ -196,7 +198,7 @@ from the Phase 7 recalculation (`POST /v1/itineraries/{id}/place-suggestions`, `
 acceptance** (ADR 023, proposed): tickets, bookings, transport and insurance as PDFs or pictures,
 linked to the trip, a day, a place or a journey, **kept on the phone only** (`expo-file-system`, a
 `trip_document` table in the app's SQLite database; nothing uploaded). Photos (the user's own),
-notes and the trip summary wait for the owner. **An amendment of 2026-11-14** (ADR 021, decisions 25 to 31; the design is described in
+notes wait for the owner (the trip summary and the user's own photos inside Detour are dropped, ADR 021 decision 105). **An amendment of 2026-11-14** (ADR 021, decisions 25 to 31; the design is described in
 `docs/design.md`) is built and awaits acceptance: a near-white, flat look with hairlines instead of
 cards, trip cards with only name, dates and length (a trip is named after its destination), an
 overview without the days figure, first days or notes, an Itinerary tab of days that open the map of

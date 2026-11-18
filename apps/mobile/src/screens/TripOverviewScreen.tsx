@@ -333,6 +333,21 @@ export function TripOverviewScreen({
     setSectionState(next);
     remember({ section: next });
   };
+  // Back from the Map tab returns to the Overview first, then leaves the trip: the tabs replace one
+  // another instead of stacking, so the navigator alone would go straight to Trips. Photos and
+  // Documents leave the trip directly.
+  const { interceptBack } = nav;
+  useEffect(() => {
+    if (section !== "map") return;
+    interceptBack(() => {
+      setSection("overview");
+      return true;
+    });
+    return () => interceptBack(null);
+    // `setSection` reads this render's route and state, so the handler is renewed with them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, dayState, selectedStop]);
+  const goBack = nav.back;
   const setDayIndex = (d: number) => {
     setDayState(d);
     setSelectedStop(null);
@@ -636,7 +651,7 @@ export function TripOverviewScreen({
     <View style={styles.compactHeadWrap}>
       <CompactHeader
         title={trip.title}
-        onBack={nav.back}
+        onBack={goBack}
         right={
           <IconButton
             icon="dots"
@@ -693,7 +708,7 @@ export function TripOverviewScreen({
         >
           <CoverBar
             top={insets.top}
-            onBack={nav.back}
+            onBack={goBack}
             right={
               <IconButton
                 icon="dots"

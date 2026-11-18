@@ -176,7 +176,10 @@ test("create a trip, compare the proposals, select one, read its days, see it on
     expect(screen.queryByText("Estimated")).toBeNull();
     expect(screen.getByText("Data from OpenStreetMap")).toBeOnTheScreen();
 
-    // Back to the list of trips: the selected plan is shown there without refetching the list.
+    // Back from the map returns to the overview, then to the list of trips: the selected plan is
+    // shown there without refetching the list.
+    await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByTestId("day-row-1")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("header", { name: "Detour" })).toBeOnTheScreen();
     expect(screen.getAllByText("Upcoming")).toHaveLength(2); // the tab and the trip's badge
