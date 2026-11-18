@@ -8,7 +8,8 @@ import hashlib
 import os
 import re
 import subprocess
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
 from email.utils import parsedate_to_datetime
@@ -111,9 +112,14 @@ def download(
     dest: Path,
     user_agent: str = DEFAULT_USER_AGENT,
     transport: httpx.BaseTransport | None = None,
-    retries: int = 3,
+    retries: int = 5,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> DownloadResult:
-    """Download with an identifying User-Agent, retrying network errors. Streams to disk."""
+    """Download with an identifying User-Agent, retrying network errors. Streams to disk.
+
+    Waits 5, 10, 20 ... seconds between attempts: a server that is briefly unreachable (the
+    2026-11-18 Geofabrik ``ConnectError``) is not given three tries in one second.
+    """
     dest.parent.mkdir(parents=True, exist_ok=True)
     last_error: Exception | None = None
     for attempt in range(1, retries + 1):
@@ -138,6 +144,8 @@ def download(
         except (httpx.HTTPError, OSError) as exc:
             last_error = exc
             log.warning("download_failed", url=url, attempt=attempt, error=type(exc).__name__)
+            if attempt < retries:
+                sleep(5.0 * 2 ** (attempt - 1))
     raise RuntimeError(f"could not download {url}: {type(last_error).__name__}")
 
 

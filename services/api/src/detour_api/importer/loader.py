@@ -218,6 +218,7 @@ def _copy_areas(
     conn: psycopg.Connection[Any], region: RegionDef, staging: psycopg.Connection[Any]
 ) -> int:
     n = 0
+    seen: set[int] = set()
     with (
         conn.cursor() as cur,
         cur.copy(
@@ -230,6 +231,11 @@ def _copy_areas(
             level_text = b.tags.get("admin_level", "")
             if not name or not level_text.isdigit():
                 continue
+            # The same relation can come out of the extract twice (Sweden, 2026-11-18); it is one
+            # area, and counting it twice made the stored count disagree with the loaded one.
+            if b.osm_id in seen:
+                continue
+            seen.add(b.osm_id)
             iso = (b.tags.get("ISO3166-2") or "")[:2]
             if len(iso) != 2 or iso not in region.countries:
                 iso = region.countries[0] if len(region.countries) == 1 else ""
