@@ -354,6 +354,7 @@ def test_download_sends_an_identifying_user_agent_and_hashes_the_file(tmp_path: 
 
 def test_download_fails_clearly_after_retries(tmp_path: Path) -> None:
     calls = {"n": 0}
+    waits: list[float] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls["n"] += 1
@@ -361,9 +362,13 @@ def test_download_fails_clearly_after_retries(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="could not download"):
         pipeline.download(
-            "https://example.invalid/x", tmp_path / "x", transport=httpx.MockTransport(handler)
+            "https://example.invalid/x",
+            tmp_path / "x",
+            transport=httpx.MockTransport(handler),
+            sleep=waits.append,
         )
-    assert calls["n"] == 3
+    assert calls["n"] == 5
+    assert waits == [5.0, 10.0, 20.0, 40.0]  # backs off, no wait after the last attempt
 
 
 def test_pg_env_keeps_passwords_out_of_command_lines() -> None:
