@@ -85,9 +85,7 @@ workflow reports back.
    or the database. A GitHub answer's body is never logged.
 3. **A catalog** (`importer/regions.py`) lists the regions that can be imported, with no size: the
    download's size (Geofabrik's file, hundreds of MB to GB) says nothing about what a region takes in
-   the database, so none is shown before an import (owner decision of 2026-11-17). **Greater London** is added (`europe/great-britain/england/
-   greater-london`, a 124 MB download listed on Geofabrik's England page on 2026-11-17; Geofabrik's England table lists no `.poly` link for it; if the file is missing the region's
-   coverage polygon stays unknown and the importer warns, which was not checked) **Eighteen countries were added on 2026-11-17** (links read the same day on Geofabrik's europe page,
+   the database, so none is shown before an import (owner decision of 2026-11-17). **Greater London** is added (`europe/united-kingdom/england/greater-london/greater-london`, 124 MB, OSM data up to 2026-11-18T21:21:02Z; first written as `europe/great-britain/england/greater-london` on 2026-11-17, which failed on 2026-11-19 because Geofabrik lists England under the United Kingdom; its page links `greater-london.poly`, read 2026-11-19; the file address is the owner's, see `regions.py`) **Eighteen countries were added on 2026-11-17** (links read the same day on Geofabrik's europe page,
    each a single extract): Belgium, Croatia, Denmark, Finland, Greece, Iceland, Ireland, Luxembourg,
    Malta, Netherlands, Norway, Poland, Portugal, Slovakia, Slovenia, Spain, Sweden, Switzerland.
    France and Germany (about 4.5 GB each) are left out until a smaller country has been imported and
@@ -100,7 +98,7 @@ workflow reports back.
    London and Lyon inside Paris (`geo.region_for_country`, the destination search). A region with no
    polygon is still matched by country, so before a first import, and if the polygon cannot be
    loaded, a city extract still claims its whole country. Multi-city bases are still matched by
-   country only. **New York State** is added for the USA
+   country only. **Bordeaux (Aquitaine)** is added (2026-11-19; Geofabrik `france/aquitaine`, 283 MB, `aquitaine.poly` linked on its page, read the same day; no extract for Bordeaux alone). It claims France's code like Paris, so a destination belongs to it only inside its polygon. **New York State** is added for the USA
    (`north-america/us/new-york`, 475 MB, a `.poly` linked on its page, read 2026-11-17); Geofabrik has no
    extract for New York City alone. Each region now has a **continent** (the Regions screen groups
    by it) and a **scope**: `country` (a whole country, the only region that claims its code) or
@@ -140,7 +138,10 @@ workflow reports back.
    three attempts. While a retry is pending the job stays `running` with the message "GitHub
    couldn't reach Geofabrik. Trying again on another machine (attempt 2 of 3)."; after the third
    it is `failed` with "GitHub couldn't reach Geofabrik, try again." Other failures are not
-   repeated. If the retry cannot be started, the job is shown as stalled after 45 minutes. Not
+   repeated. A download the server answers with HTTP 4xx (not 408 or 429), such as a wrong catalog
+   address, is not retried at all: the importer exits with code 76 and the job fails with "Geofabrik
+   has no file at this region's address: the link saved for it is wrong." (a wrong Greater London
+   address was retried as if it were a network failure on 2026-11-19). If the retry cannot be started, the job is shown as stalled after 45 minutes. Not
    yet run on GitHub.
 
 Not built: offering "Import sights for London" on the new-trip screen when a destination has no

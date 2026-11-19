@@ -55,7 +55,7 @@ def test_every_region_has_a_continent_and_the_known_parts_are_parts() -> None:
     assert REGIONS["new-york"].continent == "North America"
     assert REGIONS["austria"].continent == "Europe"
     parts = {r.id for r in REGIONS.values() if r.scope == "part"}
-    assert parts == {"greater-london", "paris", "berlin", "new-york"}
+    assert parts == {"greater-london", "paris", "bordeaux", "berlin", "new-york"}
 
 
 def test_the_target_and_staging_urls_are_required(monkeypatch: pytest.MonkeyPatch) -> None:

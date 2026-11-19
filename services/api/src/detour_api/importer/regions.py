@@ -37,14 +37,19 @@ REGIONS: dict[str, RegionDef] = {
         RegionDef("hungary", "Hungary", "europe/hungary", ("HU",)),
         RegionDef("italy", "Italy", "europe/italy", ("IT",)),
         RegionDef("japan", "Japan", "asia/japan", ("JP",), "Asia"),
-        # Geofabrik lists Greater London under England (read 2026-11-17,
-        # https://download.geofabrik.de/europe/great-britain/england.html). That table shows no
-        # .poly link for it; if the file is missing the coverage polygon stays unknown and the
-        # importer warns.
+        # Greater London sits under England under the *United Kingdom* at Geofabrik (the tree is
+        # europe/united-kingdom/england/greater-london; an earlier "great-britain" path, written
+        # on 2026-11-17, gave 502 and 404 on 2026-11-19; Great Britain is now a separate region).
+        # The page https://download.geofabrik.de/europe/united-kingdom/england/greater-london.html
+        # (read 2026-11-19) shows a 124 MB extract, OSM data up to 2026-11-18T21:21:02Z, and links
+        # greater-london.poly (200). The owner gave the file's address as
+        # .../england/greater-london/greater-london-latest.osm.pbf, which is what the path below
+        # builds; the page itself links the file without the extra directory. Neither .osm.pbf was
+        # downloaded to check (only the .poly, which answers at both addresses).
         RegionDef(
             "greater-london",
             "Greater London",
-            "europe/great-britain/england/greater-london",
+            "europe/united-kingdom/england/greater-london/greater-london",
             ("GB",),
             scope="part",
         ),
@@ -60,6 +65,13 @@ REGIONS: dict[str, RegionDef] = {
             "paris", "Paris (Île-de-France)", "europe/france/ile-de-france", ("FR",), scope="part"
         ),
         RegionDef("berlin", "Berlin", "europe/germany/berlin", ("DE",), scope="part"),
+        # Geofabrik has no extract for Bordeaux alone: its Aquitaine region (the departments of
+        # Gironde, Dordogne, Landes, Lot-et-Garonne and Pyrénées-Atlantiques) is the smallest one
+        # that holds it: 283 MB, a .poly linked on its page, OSM data up to 2026-11-18T21:21:02Z
+        # (read 2026-11-19, https://download.geofabrik.de/europe/france/aquitaine.html).
+        RegionDef(
+            "bordeaux", "Bordeaux (Aquitaine)", "europe/france/aquitaine", ("FR",), scope="part"
+        ),
         # The USA by state (a country is far too big for the free database). Geofabrik has no
         # extract for New York City alone: the state is 475 MB and links a .poly file (read
         # 2026-11-17, https://download.geofabrik.de/north-america/us/new-york.html).
