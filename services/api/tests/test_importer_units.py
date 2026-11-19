@@ -367,8 +367,8 @@ def test_download_fails_clearly_after_retries(tmp_path: Path) -> None:
             transport=httpx.MockTransport(handler),
             sleep=waits.append,
         )
-    assert calls["n"] == 5
-    assert waits == [5.0, 10.0, 20.0, 40.0]  # backs off, no wait after the last attempt
+    assert calls["n"] == 7
+    assert waits == [5.0, 10.0, 20.0, 40.0, 80.0, 160.0]  # backs off, no wait after the last attempt
 
 
 def test_pg_env_keeps_passwords_out_of_command_lines() -> None:
