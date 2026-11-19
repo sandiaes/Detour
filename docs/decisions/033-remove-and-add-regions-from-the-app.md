@@ -100,7 +100,7 @@ workflow reports back.
    London and Lyon inside Paris (`geo.region_for_country`, the destination search). A region with no
    polygon is still matched by country, so before a first import, and if the polygon cannot be
    loaded, a city extract still claims its whole country. Multi-city bases are still matched by
-   country only. **New York State** is added for the USA
+   country only. **Bordeaux (Aquitaine)** is added (2026-11-19; Geofabrik `france/aquitaine`, 283 MB, `aquitaine.poly` linked on its page, read the same day; no extract for Bordeaux alone). It claims France's code like Paris, so a destination belongs to it only inside its polygon. **New York State** is added for the USA
    (`north-america/us/new-york`, 475 MB, a `.poly` linked on its page, read 2026-11-17); Geofabrik has no
    extract for New York City alone. Each region now has a **continent** (the Regions screen groups
    by it) and a **scope**: `country` (a whole country, the only region that claims its code) or
