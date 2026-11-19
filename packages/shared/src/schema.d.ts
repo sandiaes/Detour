@@ -3336,6 +3336,16 @@ export interface components {
       /** Admin Areas Kept */
       admin_areas_kept: number;
       /**
+       * Cities Removed
+       * @description GeoNames cities of the region's countries that go (none where another region with data still covers the country); a later import loads them again
+       */
+      cities_removed: number;
+      /**
+       * Cities Kept
+       * @description Cities a trip, a stop or a kept place still names
+       */
+      cities_kept: number;
+      /**
        * Trips
        * @description The caller's trips that use this region's data, past trips included
        */

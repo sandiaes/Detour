@@ -122,3 +122,58 @@ def test_removal_waits_for_an_import_and_can_be_repeated(api_env: ApiEnv) -> Non
     assert c.delete(f"/v1/regions/{REGION}", headers=h).status_code == 200
     second = c.delete(f"/v1/regions/{REGION}", headers=h)
     assert second.status_code == 200 and second.json()["places_total"] == 0
+
+
+def _city_ids(env: ApiEnv) -> set[int]:
+    return {int(r[0]) for r in sql(env, "SELECT id FROM geo.city WHERE country_iso2 = 'AT'")}
+
+
+def test_removal_takes_the_countrys_cities_except_those_a_trip_names(api_env: ApiEnv) -> None:
+    trip, _ = _trip_with_one_sight(api_env)  # a trip to Testburg (city 900101)
+    _owner(api_env)
+    c, h = api_env.client, api_env.headers
+    for new_id in (990001, 990002):  # two more Austrian cities that no trip names
+        sql(
+            api_env,
+            "INSERT INTO geo.city SELECT (json_populate_record(c, json_build_object("
+            "'id', %s::bigint, 'name', 'Extra', 'ascii_name', 'Extra', 'name_norm', 'extra',"
+            " 'alt_names', '{}'::text[], 'alt_names_norm', '{}'::text[]))).* FROM geo.city c"
+            " WHERE c.id = 900101",
+            new_id,
+        )
+    before = _city_ids(api_env)
+    assert 900101 in before and len(before) > 1
+    p = c.get(f"/v1/regions/{REGION}/removal-preview", headers=h).json()
+    assert p["cities_kept"] >= 1 and p["cities_removed"] == len(before) - p["cities_kept"]
+    assert _city_ids(api_env) == before  # a preview changes nothing
+
+    assert c.delete(f"/v1/regions/{REGION}", headers=h).status_code == 200
+    after = _city_ids(api_env)
+    assert 900101 in after and len(after) == p["cities_kept"] < len(before)
+    # The trip still opens on its city.
+    assert c.get(f"/v1/trips/{trip['id']}", headers=h).status_code == 200
+
+
+def test_removal_keeps_the_cities_while_another_region_with_data_covers_the_country(
+    api_env: ApiEnv,
+) -> None:
+    _owner(api_env)
+    sql(
+        api_env,
+        "INSERT INTO geo.region SELECT (r).* FROM (SELECT json_populate_record(r, "
+        "json_build_object('id', 'other-at')) AS r FROM geo.region r WHERE r.id = %s) x",
+        REGION,
+    )
+    sql(
+        api_env,
+        "UPDATE geo.place SET region_id = 'other-at' WHERE id = "
+        "(SELECT id FROM geo.place WHERE region_id = %s AND is_active ORDER BY id LIMIT 1)",
+        REGION,
+    )
+    before = _city_ids(api_env)
+    p = api_env.client.get(f"/v1/regions/{REGION}/removal-preview", headers=api_env.headers).json()
+    assert p["cities_removed"] == 0
+    assert (
+        api_env.client.delete(f"/v1/regions/{REGION}", headers=api_env.headers).status_code == 200
+    )
+    assert _city_ids(api_env) == before

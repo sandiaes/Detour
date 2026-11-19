@@ -139,6 +139,8 @@ test("removing a region shows what is kept first, then removes it", async () => 
       places_kept: 10,
       admin_areas_removed: 3,
       admin_areas_kept: 0,
+      cities_removed: 40,
+      cities_kept: 1,
       trips: [{ id: "t1", title: "Graz weekend", status: "past" }],
       bytes_freed_estimate: 7_000_000,
     }),

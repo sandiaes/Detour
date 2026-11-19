@@ -107,11 +107,14 @@ test("the removal message says what goes, what stays and which trips use it", ()
     places_kept: 1,
     admin_areas_removed: 2,
     admin_areas_kept: 0,
+    cities_removed: 40,
+    cities_kept: 1,
     trips: [{ id: "t", title: "Graz", status: "past" }],
     bytes_freed_estimate: 5_400_000,
   });
   expect(text).toContain("99 places are removed, which frees about 5 MB.");
   expect(text).toContain("1 place your trips use stay");
+  expect(text).toContain("40 cities of its countries are removed");
   expect(text).toContain("Graz");
   expect(text).toContain("import the region again");
 });

@@ -9,8 +9,11 @@ names and lookups of places that are gone, and the photo lookups of those places
 
 The region row stays, ``disabled`` and without a current data version, so a later import fills it
 again; places have deterministic identifiers, so the kept ones become active again by themselves.
-The GeoNames gazetteer (countries, cities) is not touched: it is shared and small, and a trip's
-city destination reads it.
+The GeoNames cities of the region's countries go too (they were most of the imported data in
+production: 28 of 43 MB), except where another region with data still covers the country, and except
+every city that a trip, a stop, a day's base, a past-trip record, a display-name override or a kept
+place still names. A later import loads the cities again (the workflow's gazetteer step, on by
+default) under the same GeoNames identifiers. Countries, currencies and the travel-time cache stay.
 """
 
 import uuid
@@ -42,6 +45,27 @@ _AREA_KEPT = (
     " AND t.destination_ref = a.id::text)"
     " OR EXISTS (SELECT 1 FROM app.place_name_override o WHERE o.entity_kind = 'area'"
     "   AND o.entity_ref = a.id::text)"
+)
+
+# A city the app still names (ids are GeoNames ids, stored as text or bigint; no foreign key).
+_CITY_KEPT = (
+    "EXISTS (SELECT 1 FROM app.trip t WHERE t.destination_kind = 'city'"
+    " AND t.destination_ref = c.id::text)"
+    " OR EXISTS (SELECT 1 FROM app.trip_stop s WHERE s.city_id = c.id)"
+    " OR EXISTS (SELECT 1 FROM app.itinerary_day d WHERE d.base_city_id = c.id)"
+    " OR EXISTS (SELECT 1 FROM app.trip_visit v WHERE v.kind = 'city'"
+    "   AND v.geo_place_ref = c.id::text)"
+    " OR EXISTS (SELECT 1 FROM app.place_name_override o WHERE o.entity_kind = 'city'"
+    "   AND o.entity_ref = c.id::text)"
+    # Only a place that stays protects its city (the others are deleted first).
+    f" OR EXISTS (SELECT 1 FROM geo.place p WHERE p.city_id = c.id AND ({_PLACE_KEPT}))"
+)
+
+# The region's countries that no other region with data covers: only their cities may go.
+_FREE_COUNTRIES = (
+    "SELECT cc FROM unnest(CAST(:c AS text[])) AS cc WHERE NOT EXISTS ("
+    " SELECT 1 FROM geo.region o WHERE o.id <> :r AND cc = ANY (o.country_codes)"
+    " AND EXISTS (SELECT 1 FROM geo.place p WHERE p.region_id = o.id AND p.is_active))"
 )
 
 
@@ -106,6 +130,17 @@ def preview(conn: Connection, person_id: uuid.UUID, region_id: str) -> RegionRem
         ),
         {"r": region_id},
     ).one()
+    cities = conn.execute(
+        text(
+            f"""
+            SELECT count(*) AS total,
+                   count(*) FILTER (WHERE {_CITY_KEPT}) AS kept,
+                   COALESCE(sum(pg_column_size(c.*)) FILTER (WHERE NOT ({_CITY_KEPT})), 0) AS freed
+            FROM geo.city c WHERE c.country_iso2 IN ({_FREE_COUNTRIES})
+            """
+        ),
+        {"r": region_id, "c": list(region.country_codes)},
+    ).one()
     return RegionRemoval(
         region_id=region.id,
         name=region.name,
@@ -114,8 +149,10 @@ def preview(conn: Connection, person_id: uuid.UUID, region_id: str) -> RegionRem
         places_kept=int(counts.kept),
         admin_areas_removed=int(areas.total) - int(areas.kept),
         admin_areas_kept=int(areas.kept),
+        cities_removed=int(cities.total) - int(cities.kept),
+        cities_kept=int(cities.kept),
         trips=_installation_trips(conn, person_id, region_id, list(region.country_codes)),
-        bytes_freed_estimate=int(counts.freed),
+        bytes_freed_estimate=int(counts.freed) + int(cities.freed),
     )
 
 
@@ -145,8 +182,23 @@ def remove(conn: Connection, person_id: uuid.UUID, region_id: str) -> RegionRemo
         text("UPDATE geo.admin_area SET is_active = false WHERE region_id = :r AND is_active"),
         {"r": region_id},
     )
-    # Names and photo links of places that are gone. Kept places keep theirs.
+    # The cities of countries no other region with data covers, except those the app still names
+    # (after the places, so a kept place's city stays).
+    conn.execute(
+        text(
+            f"DELETE FROM geo.city c WHERE c.country_iso2 IN ({_FREE_COUNTRIES})"
+            f" AND NOT ({_CITY_KEPT})"
+        ),
+        {"r": region_id, "c": list(region.country_codes)},
+    )
+    # Names and photo links of places and cities that are gone. Kept ones keep theirs.
     names_store.prune(conn)
+    conn.execute(
+        text(
+            "DELETE FROM geo.image_lookup l WHERE l.kind = 'city'"
+            " AND NOT EXISTS (SELECT 1 FROM geo.city c WHERE c.id::text = l.ref_id)"
+        )
+    )
     conn.execute(
         text(
             "DELETE FROM geo.image_lookup l WHERE l.kind = 'place'"

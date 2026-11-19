@@ -534,3 +534,36 @@ def test_gate_6_is_judged_on_the_size_after_the_vacuum(
     report = import_fixture_region(target, staging, tmp_path / "small")
     gate6 = next(g for g in report["gates"] if g["gate"] == 6)
     assert gate6["passed"] is True and gate6["checks"][0]["value"] == 12345
+
+
+def test_a_boundary_of_another_country_is_left_to_that_countrys_import(
+    pipeline_dbs: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sweden's extract holds a Danish region by the Öresund (relations that are partly inside an
+    extract are kept). It must not be loaded as a Swedish area: the Danish import owns that row, and
+    counting it made Sweden's import fail its own check on 2026-11-18 and 2026-11-19."""
+    from detour_api.importer import loader
+    from detour_api.importer.pipeline import Boundary
+    from detour_api.importer.regions import REGIONS
+
+    with psycopg.connect(pipeline_dbs[0]) as conn:
+        ewkb = conn.execute(
+            "SELECT encode(ST_AsEWKB(ST_Multi(ST_SetSRID(ST_MakeEnvelope(12, 55, 13, 56), 4326))),"
+            " 'hex')"
+        ).fetchone()
+        assert ewkb is not None
+
+        def tags(name: str, iso: str | None) -> dict[str, str]:
+            return {"name": name, "admin_level": "4", **({"ISO3166-2": iso} if iso else {})}
+
+        boundaries = [
+            Boundary(1, tags("Skåne län", "SE-M"), ewkb[0]),
+            Boundary(2, tags("Region Hovedstaden", "DK-84"), ewkb[0]),
+            Boundary(3, tags("Untagged län", None), ewkb[0]),
+        ]
+        monkeypatch.setattr(loader, "iter_boundaries", lambda _staging: iter(boundaries))
+        conn.execute(loader._STAGE_AREA)
+        loaded = loader._copy_areas(conn, REGIONS["sweden"], conn)
+        names = conn.execute("SELECT name, country_iso2 FROM stage_area ORDER BY name").fetchall()
+    assert loaded == 2
+    assert names == [("Skåne län", "SE"), ("Untagged län", "SE")]
