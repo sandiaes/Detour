@@ -107,19 +107,24 @@ def _http_date(value: str | None) -> date | None:
         return None
 
 
+class DownloadError(RuntimeError):
+    """Every attempt to download a file failed (a network problem, not a problem with the data)."""
+
+
 def download(
     url: str,
     dest: Path,
     user_agent: str = DEFAULT_USER_AGENT,
     transport: httpx.BaseTransport | None = None,
-    retries: int = 7,
+    retries: int = 5,
     sleep: Callable[[float], None] = time.sleep,
 ) -> DownloadResult:
     """Download with an identifying User-Agent, retrying network errors. Streams to disk.
 
-    Waits 5, 10, 20 ... 160 seconds between attempts (about 5 minutes in all): a server that is
-    unreachable for a while (the 2026-11-18/19 Geofabrik ``ConnectError``, which outlasted 80 s)
-    is not given three tries in one second.
+    Waits 5, 10, 20, 40 seconds between attempts (about a minute and a quarter). A runner whose
+    network cannot reach the server (the 2026-11-18/19 ``Network is unreachable`` errors lasted
+    minutes) is not helped by waiting longer: the workflow tests the connection first and starts
+    the whole import again on a fresh runner. Raises ``DownloadError`` when every attempt fails.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
     last_error: Exception | None = None
@@ -153,7 +158,7 @@ def download(
             )
             if attempt < retries:
                 sleep(5.0 * 2 ** (attempt - 1))
-    raise RuntimeError(f"could not download {url}: {type(last_error).__name__}")
+    raise DownloadError(f"could not download {url}: {type(last_error).__name__}")
 
 
 def filter_extract(source: Path, dest: Path) -> None:

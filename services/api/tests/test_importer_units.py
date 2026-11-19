@@ -360,22 +360,15 @@ def test_download_fails_clearly_after_retries(tmp_path: Path) -> None:
         calls["n"] += 1
         return httpx.Response(503)
 
-    with pytest.raises(RuntimeError, match="could not download"):
+    with pytest.raises(pipeline.DownloadError, match="could not download"):
         pipeline.download(
             "https://example.invalid/x",
             tmp_path / "x",
             transport=httpx.MockTransport(handler),
             sleep=waits.append,
         )
-    assert calls["n"] == 7
-    assert waits == [
-        5.0,
-        10.0,
-        20.0,
-        40.0,
-        80.0,
-        160.0,
-    ]  # backs off, no wait after the last attempt
+    assert calls["n"] == 5
+    assert waits == [5.0, 10.0, 20.0, 40.0]  # backs off, no wait after the last attempt
 
 
 def test_pg_env_keeps_passwords_out_of_command_lines() -> None:
@@ -429,3 +422,31 @@ def test_english_name_is_searchable_only_when_it_differs() -> None:
     decision = decide(same)
     assert isinstance(decision, Decision)
     assert build_place("r", "N", 2, decision, same, 13.0, 47.8).name_en_norm is None
+
+
+def test_gate_4_asks_less_of_a_city_or_a_state_than_of_a_country() -> None:
+    """Paris (Ile-de-France) had 4,212 named attractions and was held back by the country figure
+    of 5,000 on 2026-11-19; a part region needs 1,000."""
+    paris = _counters(4212, 4212)
+    assert {g.number for g in evaluate_gates(paris, 0, "country") if not g.passed} == {4}
+    assert all(g.passed for g in evaluate_gates(paris, 0, "part"))
+    assert all(g.passed for g in evaluate_gates(_counters(1000, 1000), 0, "part"))
+    below = evaluate_gates(_counters(999, 999), 0, "part")
+    assert {g.number for g in below if not g.passed} == {4}
+    # the other checks do not change with the scope
+    named_pct = evaluate_gates(_counters(4000, 1000), 0, "part")
+    assert {g.number for g in named_pct if not g.passed} == {4}
+
+
+def test_a_failed_download_ends_the_import_with_a_code_the_workflow_can_read(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from detour_api.importer import cli
+
+    def fail(*_a: object, **_k: object) -> None:
+        raise pipeline.DownloadError("could not download https://example.invalid/x: ConnectError")
+
+    monkeypatch.setattr(cli, "run_region_import", fail)
+    monkeypatch.setenv("DETOUR_IMPORT_DATABASE_URL", "postgresql://u:p@db.example:5432/postgres")
+    monkeypatch.setenv("DETOUR_STAGING_DATABASE_URL", "postgresql://u:p@localhost:5432/postgres")
+    assert cli.main(["region", "denmark", "--work-dir", str(tmp_path / "w")]) == 75

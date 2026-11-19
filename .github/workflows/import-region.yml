@@ -25,6 +25,11 @@ on:
         required: false
         type: string
         default: ""
+      attempt:
+        description: "Set by the workflow itself when it starts the import again (1 to 3); leave as is"
+        required: false
+        type: string
+        default: "1"
 
 permissions:
   contents: read
@@ -39,6 +44,10 @@ jobs:
     name: Import ${{ inputs.region }}
     runs-on: ubuntu-24.04
     timeout-minutes: 240
+    # True when GitHub's machine could not reach Geofabrik (the check below, or the download
+    # itself): the "retry" job then starts the import again on another machine.
+    outputs:
+      network_failed: ${{ steps.geofabrik.outcome == 'failure' || steps.region.outputs.download_failed == 'true' }}
     services:
       postgis:
         image: postgis/postgis:18-3.7
@@ -58,6 +67,7 @@ jobs:
       DETOUR_IMPORT_USER_AGENT: "Detour-import/1 (+https://github.com/${{ github.repository }})"
       REGION: ${{ inputs.region }}
       JOB_ID: ${{ inputs.job_id }}
+      ATTEMPT: ${{ inputs.attempt }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Check the database secret
@@ -70,6 +80,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Install the importer
+        run: pip install ./services/api
+      # Some GitHub machines cannot reach Geofabrik (2026-11-18/19: "Network is unreachable" for
+      # minutes, on machines whose package downloads were slow too). Find out in the first minute,
+      # before the slow steps, and let the "retry" job start again on another machine.
+      - name: Check that Geofabrik can be reached
+        id: geofabrik
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if curl --fail --silent --show-error --output /dev/null --max-time 15 \
+                 --user-agent "$DETOUR_IMPORT_USER_AGENT" https://download.geofabrik.de/; then
+              echo "Geofabrik answered (attempt $attempt)"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::GitHub could not reach download.geofabrik.de from this machine after about a minute"
+          exit 1
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/boost
@@ -80,19 +108,29 @@ jobs:
           sudo apt-get install -y --no-install-recommends osm2pgsql osmium-tool
           osm2pgsql --version
           osmium --version
-          pip install ./services/api
       - name: Migrate the database
         working-directory: services/api
         run: alembic upgrade head
       - name: Tell the app the import is running
         if: ${{ inputs.job_id != '' }}
-        run: python -m detour_api.importer job "$JOB_ID" running --run-url "$RUN_URL"
+        run: |
+          if [ "$ATTEMPT" -gt 1 ]; then
+            python -m detour_api.importer job "$JOB_ID" running --run-url "$RUN_URL" \
+              --message "Trying again on another GitHub machine (attempt $ATTEMPT of 3)."
+          else
+            python -m detour_api.importer job "$JOB_ID" running --run-url "$RUN_URL"
+          fi
       - name: Import the gazetteer (GeoNames)
         if: ${{ inputs.gazetteer }}
         run: python -m detour_api.importer gazetteer $(python -m detour_api.importer countries "$REGION")
       - name: Import the region
+        id: region
         run: |
-          python -m detour_api.importer region "$REGION" --out-dir out --allow-failed-gates
+          status=0
+          python -m detour_api.importer region "$REGION" --out-dir out --allow-failed-gates || status=$?
+          # 75: every download attempt failed (a network problem); the "retry" job reads this
+          if [ "$status" -eq 75 ]; then echo "download_failed=true" >> "$GITHUB_OUTPUT"; fi
+          exit "$status"
       - name: Report
         if: ${{ always() }}
         run: |
@@ -106,8 +144,16 @@ jobs:
         if: ${{ always() && inputs.job_id != '' }}
         env:
           JOB_STATUS: ${{ job.status }}
+          NETWORK_FAILED: ${{ steps.geofabrik.outcome == 'failure' || steps.region.outputs.download_failed == 'true' }}
         run: |
-          if [ "$JOB_STATUS" != "success" ]; then
+          if [ "$JOB_STATUS" != "success" ] && [ "$NETWORK_FAILED" = "true" ] && [ "$ATTEMPT" -lt 3 ]; then
+            # The "retry" job starts the import again; the app keeps showing it as running.
+            python -m detour_api.importer job "$JOB_ID" running --run-url "$RUN_URL" \
+              --message "GitHub couldn't reach Geofabrik. Trying again on another machine (attempt $((ATTEMPT + 1)) of 3)."
+          elif [ "$JOB_STATUS" != "success" ] && [ "$NETWORK_FAILED" = "true" ]; then
+            python -m detour_api.importer job "$JOB_ID" failed --run-url "$RUN_URL" \
+              --message "GitHub couldn't reach Geofabrik, try again."
+          elif [ "$JOB_STATUS" != "success" ]; then
             python -m detour_api.importer job "$JOB_ID" failed --run-url "$RUN_URL" \
               --message "The import did not finish: open the workflow run for the reason."
           elif [ -f out/report.json ] && python -c "import json,sys; sys.exit(0 if json.load(open('out/report.json'))['all_gates_passed'] else 1)"; then
@@ -123,3 +169,29 @@ jobs:
           name: import-${{ inputs.region }}
           path: out/
           if-no-files-found: ignore
+
+  # A run cannot be re-run while it is still running, so the new attempt is a new run with the same
+  # inputs (a workflow_dispatch started with the workflow's own token is allowed to start a run).
+  # Only a network failure is repeated, at most three attempts in all.
+  retry:
+    name: Try again on another machine
+    needs: import
+    if: ${{ always() && needs.import.result == 'failure' && needs.import.outputs.network_failed == 'true' && fromJSON(inputs.attempt) < 3 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Start the import again
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF: ${{ github.ref_name }}
+          REGION: ${{ inputs.region }}
+          GAZETTEER: ${{ inputs.gazetteer }}
+          JOB_ID: ${{ inputs.job_id }}
+          NEXT_ATTEMPT: ${{ fromJSON(inputs.attempt) + 1 }}
+        run: |
+          gh workflow run import-region.yml --repo "$REPO" --ref "$REF" \
+            -f region="$REGION" -f gazetteer="$GAZETTEER" -f job_id="$JOB_ID" \
+            -f attempt="$NEXT_ATTEMPT"
