@@ -112,13 +112,14 @@ def download(
     dest: Path,
     user_agent: str = DEFAULT_USER_AGENT,
     transport: httpx.BaseTransport | None = None,
-    retries: int = 5,
+    retries: int = 7,
     sleep: Callable[[float], None] = time.sleep,
 ) -> DownloadResult:
     """Download with an identifying User-Agent, retrying network errors. Streams to disk.
 
-    Waits 5, 10, 20 ... seconds between attempts: a server that is briefly unreachable (the
-    2026-11-18 Geofabrik ``ConnectError``) is not given three tries in one second.
+    Waits 5, 10, 20 ... 160 seconds between attempts (about 5 minutes in all): a server that is
+    unreachable for a while (the 2026-11-18/19 Geofabrik ``ConnectError``, which outlasted 80 s)
+    is not given three tries in one second.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
     last_error: Exception | None = None
@@ -143,7 +144,13 @@ def download(
             return DownloadResult(dest, digest, size, url, modified)
         except (httpx.HTTPError, OSError) as exc:
             last_error = exc
-            log.warning("download_failed", url=url, attempt=attempt, error=type(exc).__name__)
+            log.warning(
+                "download_failed",
+                url=url,
+                attempt=attempt,
+                error=type(exc).__name__,
+                reason=str(exc)[:200],  # the cause (refused, reset, timed out, TLS), no secrets
+            )
             if attempt < retries:
                 sleep(5.0 * 2 ** (attempt - 1))
     raise RuntimeError(f"could not download {url}: {type(last_error).__name__}")
