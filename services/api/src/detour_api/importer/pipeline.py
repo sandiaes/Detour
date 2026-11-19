@@ -108,7 +108,14 @@ def _http_date(value: str | None) -> date | None:
 
 
 class DownloadError(RuntimeError):
-    """Every attempt to download a file failed (a network problem, not a problem with the data)."""
+    """A download failed. ``retryable`` is False when the server answered that the file is not
+    there or not allowed (HTTP 4xx other than 408 and 429): the address is wrong, and trying
+    again, on this machine or another, cannot help (the logs of 2026-11-19: a wrong Greater
+    London address was tried 5 times and the whole import 3 times as if the network were down)."""
+
+    def __init__(self, message: str, retryable: bool = True) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 def download(
@@ -149,13 +156,19 @@ def download(
             return DownloadResult(dest, digest, size, url, modified)
         except (httpx.HTTPError, OSError) as exc:
             last_error = exc
+            status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
             log.warning(
                 "download_failed",
                 url=url,
                 attempt=attempt,
                 error=type(exc).__name__,
+                status=status,
                 reason=str(exc)[:200],  # the cause (refused, reset, timed out, TLS), no secrets
             )
+            if status is not None and 400 <= status < 500 and status not in (408, 429):
+                raise DownloadError(
+                    f"could not download {url}: HTTP {status}", retryable=False
+                ) from exc
             if attempt < retries:
                 sleep(5.0 * 2 ** (attempt - 1))
     raise DownloadError(f"could not download {url}: {type(last_error).__name__}")

@@ -450,3 +450,76 @@ def test_a_failed_download_ends_the_import_with_a_code_the_workflow_can_read(
     monkeypatch.setenv("DETOUR_IMPORT_DATABASE_URL", "postgresql://u:p@db.example:5432/postgres")
     monkeypatch.setenv("DETOUR_STAGING_DATABASE_URL", "postgresql://u:p@localhost:5432/postgres")
     assert cli.main(["region", "denmark", "--work-dir", str(tmp_path / "w")]) == 75
+
+
+def test_a_404_is_not_retried_and_says_the_address_is_wrong(tmp_path: Path) -> None:
+    """A wrong catalog address (Greater London, 2026-11-19) answered 404: five attempts and three
+    whole imports on other machines could never help."""
+    calls = {"n": 0}
+    waits: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(404)
+
+    with pytest.raises(pipeline.DownloadError, match="HTTP 404") as raised:
+        pipeline.download(
+            "https://example.invalid/x",
+            tmp_path / "x",
+            transport=httpx.MockTransport(handler),
+            sleep=waits.append,
+        )
+    assert raised.value.retryable is False
+    assert calls["n"] == 1 and waits == []
+
+
+@pytest.mark.parametrize(
+    ("status", "retryable"), [(502, True), (503, True), (408, True), (429, True)]
+)
+def test_a_server_side_or_busy_answer_is_still_retried(
+    tmp_path: Path, status: int, retryable: bool
+) -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(status)
+
+    with pytest.raises(pipeline.DownloadError) as raised:
+        pipeline.download(
+            "https://example.invalid/x",
+            tmp_path / "x",
+            transport=httpx.MockTransport(handler),
+            sleep=lambda _s: None,
+        )
+    assert raised.value.retryable is retryable and calls["n"] == 5
+
+
+def test_a_missing_file_ends_the_import_with_its_own_exit_code(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from detour_api.importer import cli
+
+    def missing(*_a: object, **_k: object) -> None:
+        raise pipeline.DownloadError("could not download https://x/y: HTTP 404", retryable=False)
+
+    monkeypatch.setattr(cli, "run_region_import", missing)
+    monkeypatch.setenv("DETOUR_IMPORT_DATABASE_URL", "postgresql://u:p@db.example:5432/postgres")
+    monkeypatch.setenv("DETOUR_STAGING_DATABASE_URL", "postgresql://u:p@localhost:5432/postgres")
+    assert cli.main(["region", "denmark", "--work-dir", str(tmp_path / "w")]) == 76
+
+
+def test_the_catalog_addresses_that_were_checked_against_geofabrik() -> None:
+    """Read on Geofabrik's pages on 2026-11-19 (no network here): the United Kingdom, not Great
+    Britain, holds England and Greater London; France's regions sit under europe/france."""
+    from detour_api.importer.regions import REGIONS
+
+    london = REGIONS["greater-london"]
+    assert london.extract_url == (
+        "https://download.geofabrik.de/europe/united-kingdom/england/greater-london/"
+        "greater-london-latest.osm.pbf"
+    )
+    assert london.poly_url.endswith("/england/greater-london/greater-london.poly")
+    assert REGIONS["bordeaux"].extract_url.endswith("/europe/france/aquitaine-latest.osm.pbf")
+    assert REGIONS["paris"].extract_url.endswith("/europe/france/ile-de-france-latest.osm.pbf")
+    assert all("great-britain" not in r.geofabrik_path for r in REGIONS.values())

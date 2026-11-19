@@ -130,6 +130,8 @@ jobs:
           python -m detour_api.importer region "$REGION" --out-dir out --allow-failed-gates || status=$?
           # 75: every download attempt failed (a network problem); the "retry" job reads this
           if [ "$status" -eq 75 ]; then echo "download_failed=true" >> "$GITHUB_OUTPUT"; fi
+          # 76: Geofabrik answered that the file is not there (the catalog address is wrong)
+          if [ "$status" -eq 76 ]; then echo "download_missing=true" >> "$GITHUB_OUTPUT"; fi
           exit "$status"
       - name: Report
         if: ${{ always() }}
@@ -145,6 +147,7 @@ jobs:
         env:
           JOB_STATUS: ${{ job.status }}
           NETWORK_FAILED: ${{ steps.geofabrik.outcome == 'failure' || steps.region.outputs.download_failed == 'true' }}
+          FILE_MISSING: ${{ steps.region.outputs.download_missing == 'true' }}
         run: |
           if [ "$JOB_STATUS" != "success" ] && [ "$NETWORK_FAILED" = "true" ] && [ "$ATTEMPT" -lt 3 ]; then
             # The "retry" job starts the import again; the app keeps showing it as running.
@@ -153,6 +156,9 @@ jobs:
           elif [ "$JOB_STATUS" != "success" ] && [ "$NETWORK_FAILED" = "true" ]; then
             python -m detour_api.importer job "$JOB_ID" failed --run-url "$RUN_URL" \
               --message "GitHub couldn't reach Geofabrik, try again."
+          elif [ "$JOB_STATUS" != "success" ] && [ "$FILE_MISSING" = "true" ]; then
+            python -m detour_api.importer job "$JOB_ID" failed --run-url "$RUN_URL" \
+              --message "Geofabrik has no file at this region's address: the link saved for it is wrong."
           elif [ "$JOB_STATUS" != "success" ]; then
             python -m detour_api.importer job "$JOB_ID" failed --run-url "$RUN_URL" \
               --message "The import did not finish: open the workflow run for the reason."

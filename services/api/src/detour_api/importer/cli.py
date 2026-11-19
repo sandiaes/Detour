@@ -107,6 +107,8 @@ def run_region_import(
 
 # EX_TEMPFAIL: the import could not start because the download failed; trying again may work.
 DOWNLOAD_FAILED_EXIT_CODE = 75
+# The server said the file is not there (HTTP 4xx): the catalog address is wrong; no retry helps.
+DOWNLOAD_MISSING_EXIT_CODE = 76
 
 
 def _cmd_region(args: argparse.Namespace) -> int:
@@ -130,7 +132,7 @@ def _cmd_region(args: argparse.Namespace) -> int:
     except pipeline.DownloadError as exc:
         # The workflow starts the import again on a fresh runner when it sees this code.
         print(f"error: {exc}", file=sys.stderr)
-        return DOWNLOAD_FAILED_EXIT_CODE
+        return DOWNLOAD_FAILED_EXIT_CODE if exc.retryable else DOWNLOAD_MISSING_EXIT_CODE
     finally:
         if not args.keep_work:
             shutil.rmtree(work, ignore_errors=True)

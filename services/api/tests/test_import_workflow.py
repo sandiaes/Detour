@@ -43,3 +43,11 @@ def test_no_expression_uses_arithmetic() -> None:
     expressions have no arithmetic. That happened on 2026-11-19; do the sum in the shell."""
     for expression in re.findall(r"\$\{\{(.*?)\}\}", _text(), flags=re.DOTALL):
         assert "+" not in expression, expression
+
+
+def test_a_missing_file_is_reported_and_never_tried_again() -> None:
+    text = _text()
+    assert '"$status" -eq 76' in text and "download_missing=true" in text
+    assert "Geofabrik has no file at this region's address" in text
+    retry = text[text.index("\n  retry:") :]
+    assert "download_missing" not in retry  # only a network failure starts another attempt
