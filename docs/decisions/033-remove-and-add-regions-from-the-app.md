@@ -129,6 +129,20 @@ workflow reports back.
 7. The workflow still runs by hand from the Actions tab (its inputs are now a text field and an
    optional `job_id`). An unknown region fails at the first import command.
 
+8. **The workflow tests the network and tries again (2026-11-19).** GitHub's machines sometimes
+   cannot reach Geofabrik (`[Errno 101] Network is unreachable` for five minutes on two Paris runs,
+   on machines whose package downloads were slow too). The workflow installs the importer first,
+   then checks `download.geofabrik.de` for about a minute **before** the slow package install; the
+   download itself retries five times (5, 10, 20, 40 s) and, when all fail, the importer exits with
+   code 75. On either failure a `retry` job starts the workflow again on another machine with the
+   same inputs and `attempt` + 1 (a run cannot be re-run while it is running, so it is a new
+   `workflow_dispatch`, which the workflow's own token may start with `actions: write`), at most
+   three attempts. While a retry is pending the job stays `running` with the message "GitHub
+   couldn't reach Geofabrik. Trying again on another machine (attempt 2 of 3)."; after the third
+   it is `failed` with "GitHub couldn't reach Geofabrik, try again." Other failures are not
+   repeated. If the retry cannot be started, the job is shown as stalled after 45 minutes. Not
+   yet run on GitHub.
+
 Not built: offering "Import sights for London" on the new-trip screen when a destination has no
 sight data; a removal's photo files; importing a region larger than the free database allows
 (the import's own size gate decides, and the screen shows the usage).

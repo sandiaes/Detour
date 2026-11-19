@@ -55,3 +55,16 @@ nothing to measure and are **removed** (importer rules `2026-11-14.1`). Gates 4,
 their numbers**, so every earlier reference to "gate 6" or "gate 5" stays valid; the report lists
 them as 4, 5 and 6. Gate 5 now judges attractions only. Gate 6 (size) measures a much smaller
 database once the migration has deleted the restaurants.
+
+## Amendment of 2026-11-19: gate 4 for a city or a state (built, owner approval)
+
+Gate 4's 5,000 named attractions was set from five whole countries (9,000 to 22,000). A region of
+scope `part` (a city extract or a state, ADR 033) is far smaller: **Paris (Île-de-France) imported
+cleanly on 2026-11-19 with 4,212 named attractions (100% named, 99.9% Latin names, 69 MB in all)
+and stayed `disabled`**, so the app showed no "Imported" tag and a trip there said "No sight data
+for this region yet". Gate 4 now asks for **at least 1,000 named attractions for a `part` region**
+and keeps 5,000 for a country (`importer/report.py`, `MIN_NAMED_ATTRACTIONS_PART`); the 40% named
+share, gate 5 and gate 6 are unchanged. The figure 1,000 is a judgement, not measured: no other
+city has been imported yet, so it is to be revisited with the first Berlin, London or New York
+numbers. A region imported before this change is judged again by importing it again.
+

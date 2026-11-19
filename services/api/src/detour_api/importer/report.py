@@ -9,7 +9,7 @@ import json
 from collections import Counter
 from dataclasses import dataclass, field
 from hashlib import md5
-from typing import Any
+from typing import Any, Literal
 
 from detour_api.importer.derive import PlaceRow
 from detour_api.importer.selection import REVIEW_CLASSES, Decision
@@ -22,6 +22,10 @@ GEO_SIZE_LIMIT_BYTES = 250 * 1_000_000
 DISPLAY_RULE_IMPLEMENTED = False
 
 MIN_NAMED_ATTRACTIONS = 5000
+# ADR 009 amendment of 2026-11-19: gate 4's 5,000 was measured on whole countries (9,000 to 22,000
+# named attractions). A city or a state ("part" regions) is far smaller: Paris (Ile-de-France) has
+# 4,212 and was held back by the country threshold although its data is sound.
+MIN_NAMED_ATTRACTIONS_PART = 1000
 MIN_ATTRACTION_NAMED_PCT = 40.0
 MIN_LATIN_NAME_PCT = 90.0
 
@@ -162,9 +166,13 @@ def _at_least(label: str, value: float | int | None, threshold: float | int) -> 
     return Check(label, shown, threshold, value is not None and value >= threshold)
 
 
-def evaluate_gates(counters: Counters, geo_bytes: int) -> list[Gate]:
+def evaluate_gates(
+    counters: Counters, geo_bytes: int, scope: Literal["country", "part"] = "country"
+) -> list[Gate]:
     """Gates 4 to 6 of ADR 009. Gates 1 to 3 (restaurants) were retired by ADR 026: restaurants
-    and cafes are no longer imported. The numbers are kept so references stay valid."""
+    and cafes are no longer imported. The numbers are kept so references stay valid. Gate 4's
+    count is lower for a ``part`` region (a city or a state) than for a country."""
+    min_named = MIN_NAMED_ATTRACTIONS_PART if scope == "part" else MIN_NAMED_ATTRACTIONS
     attractions = counters.kinds.get("attraction", KindStats())
     latin_checks = [
         _at_least(
@@ -181,7 +189,7 @@ def evaluate_gates(counters: Counters, geo_bytes: int) -> list[Gate]:
             4,
             "Named attractions",
             [
-                _at_least("named attractions", attractions.named, MIN_NAMED_ATTRACTIONS),
+                _at_least("named attractions", attractions.named, min_named),
                 _at_least(
                     "attractions named (%)",
                     ratio(attractions.named, attractions.total),

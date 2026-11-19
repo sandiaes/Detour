@@ -90,6 +90,8 @@ is next in the owner's order.
 Import and Remove for the owner; the backend asks GitHub to run the Import region workflow, which reports progress into
 `geo.import_job`.
 
+**Imports: gate 4 is 1,000 for a city or state, and a failed network is retried** (2026-11-19, ADR 009 amendment and ADR 033 decision 8, owner request; tests only, workflow not yet run on GitHub): Paris loaded with 4,212 named attractions but stayed `disabled` under the country figure of 5,000; the Import region workflow checks Geofabrik in its first minute, shortens the download retries to about a minute and starts the whole import again (up to 3 attempts) on another machine when GitHub's network cannot reach it. Re-import Paris to enable it.
+
 **Removing a region also removes its GeoNames cities** (2026-11-19, ADR 033 decision 5 amended, owner request; tests only): `geo.city` was 28 of 43 MB; cities stay where another region with data covers the country or a trip, stop, past-trip record or kept place names them; an import loads them again. **Sweden's import failed** (2026-11-18/19, `admin areas: loaded 24, database 23`): a Danish region partly inside Sweden's extract was loaded as Swedish; boundaries tagged with another country are now skipped, the upsert never overwrites another region's area, the error names the areas, and download retries back off (not yet confirmed by a run).
 
 **Regions can be removed** (2026-11-17, ADR 033 proposed, owner request; step 2 of 3 built, awaiting acceptance; tests only): `DELETE /v1/regions/{id}` (owner only, `DETOUR_OWNER_INSTALLATION_IDS`) with

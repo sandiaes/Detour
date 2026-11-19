@@ -105,6 +105,10 @@ def run_region_import(
     return report
 
 
+# EX_TEMPFAIL: the import could not start because the download failed; trying again may work.
+DOWNLOAD_FAILED_EXIT_CODE = 75
+
+
 def _cmd_region(args: argparse.Namespace) -> int:
     region = REGIONS.get(args.region)
     if region is None:
@@ -123,6 +127,10 @@ def _cmd_region(args: argparse.Namespace) -> int:
             pbf=Path(args.pbf) if args.pbf else None,
             user_agent=os.environ.get("DETOUR_IMPORT_USER_AGENT", pipeline.DEFAULT_USER_AGENT),
         )
+    except pipeline.DownloadError as exc:
+        # The workflow starts the import again on a fresh runner when it sees this code.
+        print(f"error: {exc}", file=sys.stderr)
+        return DOWNLOAD_FAILED_EXIT_CODE
     finally:
         if not args.keep_work:
             shutil.rmtree(work, ignore_errors=True)

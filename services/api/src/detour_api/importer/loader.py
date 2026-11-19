@@ -21,7 +21,7 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Any, Literal
 
 import psycopg
 import structlog
@@ -502,7 +502,7 @@ def load_region(
             warnings.append("The extract has no replication timestamp: snapshot date unknown.")
 
         geo_bytes = _geo_bytes(conn)
-        gates = evaluate_gates(counters, geo_bytes)
+        gates = evaluate_gates(counters, geo_bytes, region.scope)
         all_passed = all(g.passed for g in gates)
         status = "available" if all_passed else "disabled"
 
@@ -585,6 +585,7 @@ def finalize_size_gate(
     report: dict[str, Any],
     counters: Counters,
     size_after: int,
+    scope: Literal["country", "part"] = "country",
 ) -> None:
     """Gate 6 judged on the size after the vacuum, not on the size inside the import transaction.
 
@@ -593,7 +594,7 @@ def finalize_size_gate(
     other five gates do not depend on size and are unchanged. Updates the stored report and the
     region status when the outcome moves.
     """
-    gates = evaluate_gates(counters, size_after)
+    gates = evaluate_gates(counters, size_after, scope)
     all_passed = all(g.passed for g in gates)
     status = "available" if all_passed else "disabled"
     report["geo_size_at_commit_bytes"] = report["geo_size_bytes"]
@@ -634,7 +635,7 @@ def import_region(
         report["geo_size_after_vacuum_bytes"] = size_after
         report["vacuum"] = "full" if full else "plain"
         if size_after is not None:
-            finalize_size_gate(conn, run_id, region.id, report, counters, size_after)
+            finalize_size_gate(conn, run_id, region.id, report, counters, size_after, region.scope)
     log.info("import_done", region=region.id, status=report["region_status"])
     return report, counters
 
