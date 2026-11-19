@@ -25,7 +25,7 @@ def test_only_a_network_failure_is_tried_again_and_at_most_three_times() -> None
     assert "needs: import" in retry and "actions: write" in retry
     assert "needs.import.outputs.network_failed == 'true'" in retry
     assert "fromJSON(inputs.attempt) < 3" in retry
-    assert 'attempt="$NEXT_ATTEMPT"' in retry and 'job_id="$JOB_ID"' in retry
+    assert 'attempt="$((ATTEMPT + 1))"' in retry and 'job_id="$JOB_ID"' in retry
     assert "steps.geofabrik.outcome == 'failure'" in text
     assert "steps.region.outputs.download_failed == 'true'" in text
     # the importer's exit code for a failed download is the one the workflow looks for
