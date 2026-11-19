@@ -164,6 +164,11 @@ class RegionRemoval(BaseModel):
     places_kept: int = Field(description="Places a trip still names: kept, no longer searchable")
     admin_areas_removed: int
     admin_areas_kept: int
+    cities_removed: int = Field(
+        description="GeoNames cities of the region's countries that go (none where another region "
+        "with data still covers the country); a later import loads them again"
+    )
+    cities_kept: int = Field(description="Cities a trip, a stop or a kept place still names")
     trips: list[RemovalTrip] = Field(
         description="The caller's trips that use this region's data, past trips included"
     )

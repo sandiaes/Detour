@@ -1,7 +1,7 @@
 # ADR 033 — Remove and add regions from the app
 
 - **Status:** **Proposed** (owner request of 2026-11-17: "delete a region but keep past trips
-  intact, and add a region through the app"). **Step 2 (removal) is built**, awaiting acceptance;
+  intact, and add a region through the app"). **Step 2 (removal) is built** (cities added 2026-11-19), awaiting acceptance;
   checked by tests only, not tried on a device, not run against production. **Step 3 (adding a
   region from the app) is built the same way**, awaiting acceptance and **not yet tried against
   GitHub** (migration `0023` and the workflow change must be on the default branch first).
@@ -39,8 +39,18 @@ and the default length of a stop.
 4. **Region row** stays, `disabled`, without a current data version; a later import fills it again,
    and the kept places become active again by their deterministic identifiers. Creating a trip in
    it is then refused like any unavailable region (409 `region_not_available`).
-5. **Not touched:** the GeoNames gazetteer (countries, cities), the travel-time cache and every
-   `app` row.
+5. **Cities (amended 2026-11-19, owner request):** the GeoNames cities of the region's countries are
+   removed too. In production `geo.city` was 28 of the 43 MB of imported data (Denmark's places
+   were about 10 MB), so leaving it made "Remove" free far less than it showed. A city **stays**
+   when another region with active places covers the same country (a country's cities are shared
+   between its regions), and when anything in `app` still names it: a trip's city destination, a
+   stop (`trip_stop.city_id`), a day's base city, a past-trip city record, a display-name override,
+   or a kept place's `city_id`. Their stored names and photo lookups go with them
+   (`names.store.prune`, `image_lookup`). The next import loads the cities again under the same
+   GeoNames ids (the workflow's gazetteer step, on by default; the app's Import sends it on); an
+   import without it leaves places without a `city_id` and the loader says so. Countries, currencies
+   and the travel-time cache are not touched, nor is any `app` row. The preview gains
+   `cities_removed` and `cities_kept`, and its space estimate includes the cities.
 6. 409 `import_running` while any region is `importing`. A removal of 1,000 rows or more is
    followed by `VACUUM (FULL, ANALYZE)` after the commit, as in the importer.
 7. The preview lists the caller's trips that use the region and an estimate of the space freed,
@@ -132,7 +142,8 @@ sight data; a removal's photo files; importing a region larger than the free dat
 
 ## Consequences
 
-- Removing a region frees most of its space but not all: places that trips use stay, and so do
-  photo files. A region used by many trips frees less.
+- Removing a region frees most of its space but not all: places and cities that trips use stay, and
+  so do photo files. Cities of a country another region still covers stay too, so removing Paris
+  frees no French cities while another French region holds data. A region used by many trips frees less.
 - An upcoming trip to a removed region keeps its stops but cannot get suggestions, and its stops
   are no longer found as sights (they remain as stops). A past trip is read-only anyway.

@@ -11931,6 +11931,16 @@
             "type": "integer",
             "title": "Admin Areas Kept"
           },
+          "cities_removed": {
+            "type": "integer",
+            "title": "Cities Removed",
+            "description": "GeoNames cities of the region's countries that go (none where another region with data still covers the country); a later import loads them again"
+          },
+          "cities_kept": {
+            "type": "integer",
+            "title": "Cities Kept",
+            "description": "Cities a trip, a stop or a kept place still names"
+          },
           "trips": {
             "items": {
               "$ref": "#/components/schemas/RemovalTrip"
@@ -11954,6 +11964,8 @@
           "places_kept",
           "admin_areas_removed",
           "admin_areas_kept",
+          "cities_removed",
+          "cities_kept",
           "trips",
           "bytes_freed_estimate"
         ],

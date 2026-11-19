@@ -96,6 +96,11 @@ export function removalMessage(removal: RegionRemoval): string {
   const lines = [
     `${n.toLocaleString("en")} ${n === 1 ? "place is" : "places are"} removed, which frees about ${mb} MB.`,
   ];
+  if (removal.cities_removed > 0) {
+    lines.push(
+      `${count(removal.cities_removed, "city", "cities")} of its countries are removed with them and load again with the next import.`,
+    );
+  }
   if (removal.places_kept > 0) {
     lines.push(
       `${count(removal.places_kept, "place", "places")} your trips use stay, so the trips look the same.`,

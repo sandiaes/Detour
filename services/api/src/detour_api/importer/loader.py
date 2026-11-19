@@ -237,6 +237,10 @@ def _copy_areas(
                 continue
             seen.add(b.osm_id)
             iso = (b.tags.get("ISO3166-2") or "")[:2]
+            # An extract keeps relations that are only partly inside it: Sweden's holds a Danish
+            # region by the Öresund. It belongs to the Danish import, which owns that row.
+            if len(iso) == 2 and iso.isalpha() and iso not in region.countries:
+                continue
             if len(iso) != 2 or iso not in region.countries:
                 iso = region.countries[0] if len(region.countries) == 1 else ""
             ref = f"relation/{b.osm_id}"
@@ -385,7 +389,8 @@ def _merge(conn: psycopg.Connection[Any], region: RegionDef, run_id: uuid.UUID) 
             country_iso2 = EXCLUDED.country_iso2, geom = EXCLUDED.geom, is_active = true,
             last_changed_import_run_id = EXCLUDED.last_changed_import_run_id,
             wikidata_id = EXCLUDED.wikidata_id
-        WHERE (geo.admin_area.name, geo.admin_area.name_norm, geo.admin_area.level,
+        WHERE geo.admin_area.region_id = EXCLUDED.region_id
+          AND (geo.admin_area.name, geo.admin_area.name_norm, geo.admin_area.level,
                geo.admin_area.country_iso2, geo.admin_area.geom, geo.admin_area.is_active,
                geo.admin_area.wikidata_id)
               IS DISTINCT FROM
@@ -481,7 +486,18 @@ def load_region(
         ).fetchone()
         assert area_count is not None  # noqa: S101
         if area_count[0] != counters.areas:
-            raise ImportError_(f"admin areas: loaded {counters.areas}, database {area_count[0]}")
+            # Name the staged areas that are not stored as this region's, so a run's log says why.
+            odd = conn.execute(
+                "SELECT s.source_ref, s.name, COALESCE(a.region_id, '(none)')"
+                " FROM stage_area s LEFT JOIN geo.admin_area a ON a.source_ref = s.source_ref"
+                " AND a.source = 'osm' WHERE a.region_id IS DISTINCT FROM %s OR NOT a.is_active"
+                " ORDER BY s.source_ref LIMIT 10",
+                (region.id,),
+            ).fetchall()
+            raise ImportError_(
+                f"admin areas: loaded {counters.areas}, database {area_count[0]}; "
+                f"not stored for {region.id}: {odd}"
+            )
         if source.osm_snapshot_date is None:
             warnings.append("The extract has no replication timestamp: snapshot date unknown.")
 
